@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { STRIPE_LINKS, addUTM } from '../config/stripe';
 
 const Blog = () => {
     // In production, this would fetch from API or server-side
@@ -132,7 +133,7 @@ const Blog = () => {
                         Get Sage Fortress Edition and let AI handle your entire business workflow.
                     </p>
                     <a
-                        href="https://naofumi3.gumroad.com/l/sage-professional"
+                        href={addUTM(STRIPE_LINKS.fortress, 'blog', 'cta_section')}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-block px-12 py-6 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white text-xl font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
