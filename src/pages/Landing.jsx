@@ -1,339 +1,223 @@
 import React, { useEffect, useState } from 'react';
-// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 
 const Landing = () => {
-    const [scrollY, setScrollY] = useState(0);
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
-        const handleScroll = () => setScrollY(window.scrollY);
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        const handleMouseMove = (e) => {
+            setMousePosition({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
     }, []);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[hsl(240,20%,8%)] via-[hsl(260,30%,12%)] to-[hsl(280,25%,10%)] text-white overflow-hidden">
-            {/* Animated Background */}
-            <div className="fixed inset-0 opacity-30 pointer-events-none">
+        <div className="min-h-screen bg-black text-white overflow-hidden relative">
+            {/* Animated Gradient Background */}
+            <div className="fixed inset-0 z-0">
                 <motion.div
-                    className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-radial from-[hsl(280,100%,60%)] to-transparent rounded-full blur-3xl"
-                    animate={{
-                        x: [0, 100, 0],
-                        y: [0, 50, 0],
+                    className="absolute inset-0"
+                    style={{
+                        background: `radial-gradient(circle at ${mousePosition.x * 100}% ${mousePosition.y * 100}%, 
+                            rgba(139, 92, 246, 0.3) 0%, 
+                            rgba(59, 130, 246, 0.2) 25%, 
+                            rgba(16, 185, 129, 0.1) 50%, 
+                            transparent 70%)`
                     }}
-                    transition={{ duration: 20, repeat: Infinity }}
                 />
-                <motion.div
-                    className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-radial from-[hsl(180,100%,50%)] to-transparent rounded-full blur-3xl"
-                    animate={{
-                        x: [0, -80, 0],
-                        y: [0, -60, 0],
-                    }}
-                    transition={{ duration: 25, repeat: Infinity, delay: 5 }}
-                />
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMC41IiBvcGFjaXR5PSIwLjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
             </div>
 
             {/* Hero Section */}
-            <section className="relative min-h-screen flex items-center justify-center px-4">
-                <div className="max-w-6xl mx-auto text-center z-10">
+            <section className="relative z-10 min-h-screen flex items-center justify-center px-4 py-20">
+                <div className="max-w-7xl mx-auto text-center">
                     <motion.div
-                        initial={{ opacity: 0, y: 30 }}
+                        initial={{ opacity: 0, y: 50 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8 }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                     >
-                        <h1 className="text-6xl md:text-8xl font-black mb-6 leading-tight">
-                            <span className="bg-gradient-to-r from-[hsl(280,100%,70%)] via-[hsl(300,100%,60%)] to-[hsl(180,100%,60%)] bg-clip-text text-transparent">
-                                AI Agent That
+                        {/* Main Heading with Massive Gradient */}
+                        <h1 className="text-7xl md:text-9xl font-black mb-8 leading-none">
+                            <span className="block bg-gradient-to-r from-violet-400 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent">
+                                AI AGENT
                             </span>
-                            <br />
-                            <span className="text-white">Controls Your PC</span>
+                            <span className="block text-white mt-4">
+                                CONTROLS YOUR
+                            </span>
+                            <span className="block bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 bg-clip-text text-transparent mt-4">
+                                ENTIRE PC
+                            </span>
                         </h1>
 
-                        <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                            <span className="text-[hsl(280,100%,70%)] font-bold">Fully autonomous</span> operations. 30 days without human intervention.
-                            <br />
-                            <span className="text-[hsl(180,100%,60%)]">39 integrations</span> running 24/7.
-                        </p>
+                        {/* Stats Bar */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.3, duration: 0.8 }}
+                            className="flex flex-wrap gap-8 justify-center mb-12 text-xl"
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="text-violet-400 text-3xl font-black">30</span>
+                                <span className="text-gray-400">DAYS NO HUMAN</span>
+                            </div>
+                            <div className="w-px h-8 bg-gray-700"></div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-pink-400 text-3xl font-black">39</span>
+                                <span className="text-gray-400">INTEGRATIONS</span>
+                            </div>
+                            <div className="w-px h-8 bg-gray-700"></div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-cyan-400 text-3xl font-black">24/7</span>
+                                <span className="text-gray-400">AUTONOMOUS</span>
+                            </div>
+                        </motion.div>
 
-                        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mt-12">
+                        {/* CTA Buttons */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.6 }}
+                            className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+                        >
                             <motion.a
-                                href="https://naofumi3.gumroad.com/l/sage-professional?utm_source=official_site&utm_medium=hero_cta"
+                                href="https://naofumi3.gumroad.com/l/sage-professional"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group relative px-10 py-5 rounded-full text-xl font-bold overflow-hidden"
+                                className="group relative px-12 py-6 text-2xl font-black rounded-2xl overflow-hidden"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                             >
-                                <span className="absolute inset-0 bg-gradient-to-r from-[hsl(280,100%,60%)] to-[hsl(180,100%,50%)]"></span>
-                                <span className="relative z-10">Get Fortress Edition - $299</span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500"></div>
+                                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 opacity-0 blur-xl group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <span className="relative z-10 flex items-center gap-3">
+                                    GET FORTRESS EDITION
+                                    <span className="text-yellow-300">$299</span>
+                                </span>
                             </motion.a>
 
                             <motion.a
                                 href="#features"
-                                className="px-10 py-5 bg-white/5 backdrop-blur-lg rounded-full text-xl font-bold border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all"
+                                className="px-12 py-6 text-2xl font-black rounded-2xl border-2 border-white/20 backdrop-blur-sm hover:border-white/40 hover:bg-white/5 transition-all"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                             >
-                                Learn More
+                                EXPLORE FEATURES
                             </motion.a>
-                        </div>
+                        </motion.div>
                     </motion.div>
                 </div>
             </section>
 
-            {/* Features Section */}
-            <section id="features" className="relative py-32 px-4">
+            {/* Features Grid */}
+            <section id="features" className="relative z-10 py-32 px-4">
                 <div className="max-w-7xl mx-auto">
                     <motion.h2
-                        className="text-5xl md:text-6xl font-black text-center mb-20"
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
+                        className="text-6xl md:text-7xl font-black text-center mb-20"
                     >
-                        <span className="bg-gradient-to-r from-[hsl(280,100%,70%)] to-[hsl(180,100%,60%)] bg-clip-text text-transparent">
-                            Core Features
+                        <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
+                            CORE FEATURES
                         </span>
                     </motion.h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {[
-                            {
-                                icon: '🧠',
-                                title: 'Neuromorphic Brain',
-                                desc: '1000-neuron SNN. 94% accuracy learning with STDP algorithms.'
-                            },
-                            {
-                                icon: '🤖',
-                                title: 'Full Automation',
-                                desc: '39 integrations. SNS, Gmail, Notion, Jira... all automated.'
-                            },
-                            {
-                                icon: '🔒',
-                                title: 'Self-Healing',
-                                desc: 'Automatic error recovery. 30 days continuous operation proven.'
-                            },
-                            {
-                                icon: '🌐',
-                                title: 'Multi-Platform',
-                                desc: 'Bluesky, Instagram, Telegram, Gmail. Everything in one place.'
-                            },
-                            {
-                                icon: '📊',
-                                title: 'Real-time Analytics',
-                                desc: 'All actions logged. 24/7 performance tracking.'
-                            },
-                            {
-                                icon: '⚡',
-                                title: 'Blazing Fast',
-                                desc: 'Groq API (1.2s) + Local GPU (45s). Dual-engine architecture.'
-                            }
-                        ].map((feature, index) => (
+                            { icon: '🧠', title: 'Neuromorphic Brain', desc: '1000-neuron SNN with 94% accuracy STDP learning' },
+                            { icon: '🤖', title: 'Full Automation', desc: '39 integrations. SNS, Gmail, Notion, Jira automated' },
+                            { icon: '🔒', title: 'Self-Healing', desc: 'Automatic error recovery. 30 days proven uptime' },
+                            { icon: '🌐', title: 'Multi-Platform', desc: 'Bluesky, Instagram, Telegram, Gmail in one place' },
+                            { icon: '📊', title: 'Real-time Analytics', desc: 'All actions logged. 24/7 performance tracking' },
+                            { icon: '⚡', title: 'Blazing Fast', desc: 'Groq API (1.2s) + Local GPU (45s) dual-engine' },
+                        ].map((feature, i) => (
                             <motion.div
-                                key={index}
-                                className="group p-8 rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm border border-white/10 hover:border-[hsl(280,100%,60%)]/50 transition-all duration-300"
-                                initial={{ opacity: 0, y: 20 }}
+                                key={i}
+                                initial={{ opacity: 0, y: 30 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                whileHover={{ scale: 1.02 }}
+                                transition={{ delay: i * 0.1 }}
+                                whileHover={{ scale: 1.02, rotateY: 5 }}
+                                className="group relative p-8 rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-lg hover:border-violet-500/50 transition-all duration-300"
                             >
-                                <div className="text-5xl mb-4">{feature.icon}</div>
-                                <h3 className="text-2xl font-bold mb-3 group-hover:text-[hsl(280,100%,70%)] transition-colors">
-                                    {feature.title}
-                                </h3>
-                                <p className="text-gray-400 leading-relaxed">
-                                    {feature.desc}
-                                </p>
+                                <div className="absolute inset-0 bg-gradient-to-br from-violet-600/0 to-pink-600/0 group-hover:from-violet-600/10 group-hover:to-pink-600/10 rounded-3xl transition-all duration-500"></div>
+                                <div className="relative z-10">
+                                    <div className="text-6xl mb-4">{feature.icon}</div>
+                                    <h3 className="text-2xl font-black mb-3 group-hover:text-violet-400 transition-colors">
+                                        {feature.title}
+                                    </h3>
+                                    <p className="text-gray-400 leading-relaxed">{feature.desc}</p>
+                                </div>
                             </motion.div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* Live Proof Section */}
-            <section className="relative py-32 px-4 bg-black/20">
-                <div className="max-w-6xl mx-auto">
-                    <motion.h2
-                        className="text-5xl md:text-6xl font-black text-center mb-12"
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                    >
-                        <span className="bg-gradient-to-r from-[hsl(280,100%,70%)] to-[hsl(180,100%,60%)] bg-clip-text text-transparent">
-                            Live Proof
-                        </span>
-                    </motion.h2>
-                    <p className="text-center text-gray-400 mb-16 text-lg">
-                        Real activity logs updated 24/7
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <motion.div
-                            className="p-8 rounded-3xl bg-gradient-to-br from-purple-900/20 to-blue-900/10 backdrop-blur-lg border border-purple-400/20"
-                            initial={{ opacity: 0, x: -30 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                        >
-                            <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                                <span>📱</span> SNS Posts (Last 7 Days)
-                            </h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-gray-300">Bluesky</span>
-                                    <span className="text-3xl font-black text-[hsl(280,100%,70%)]">35 posts</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-gray-300">Instagram</span>
-                                    <span className="text-3xl font-black text-[hsl(180,100%,60%)]">28 posts</span>
-                                </div>
-                                <div className="pt-4 border-t border-white/10">
-                                    <p className="text-sm text-gray-400">All automated. Zero manual intervention.</p>
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        <motion.div
-                            className="p-8 rounded-3xl bg-gradient-to-br from-cyan-900/20 to-teal-900/10 backdrop-blur-lg border border-cyan-400/20"
-                            initial={{ opacity: 0, x: 30 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                        >
-                            <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                                <span>🔧</span> Self-Healing
-                            </h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-gray-300">Auto-recoveries</span>
-                                    <span className="text-3xl font-black text-[hsl(180,100%,60%)]">127</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-gray-300">Uptime</span>
-                                    <span className="text-3xl font-black text-green-400">99.8%</span>
-                                </div>
-                                <div className="pt-4 border-t border-white/10">
-                                    <p className="text-sm text-gray-400">30 days continuous operation verified.</p>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-                </div>
-            </section>
-
             {/* Products Section */}
-            <section id="products" className="relative py-32 px-4">
+            <section id="products" className="relative z-10 py-32 px-4 bg-gradient-to-b from-transparent via-violet-950/20 to-transparent">
                 <div className="max-w-7xl mx-auto">
                     <motion.h2
-                        className="text-5xl md:text-6xl font-black text-center mb-12"
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
+                        className="text-6xl md:text-7xl font-black text-center mb-20"
                     >
-                        <span className="bg-gradient-to-r from-[hsl(280,100%,70%)] to-[hsl(180,100%,60%)] bg-clip-text text-transparent">
-                            Products
+                        <span className="bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent">
+                            PRODUCTS
                         </span>
                     </motion.h2>
-                    <p className="text-center text-gray-400 mb-16 text-lg">
-                        All products available on Gumroad (completely free platform)
-                    </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {[
-                            {
-                                name: 'Bluesky AI Marketer',
-                                price: '$29',
-                                period: '/mo',
-                                description: '5 posts/day fully automated. Trending keyword optimization with proof logs.',
-                                url: 'https://naofumi3.gumroad.com/l/bluesky-marketer?utm_source=official_site&utm_medium=products',
-                                badge: null
-                            },
-                            {
-                                name: 'Instagram AI Marketer',
-                                price: '$39',
-                                period: '/mo',
-                                description: '4 posts/day with AI image generation. Caption optimization, 360 posts/90 days proven.',
-                                url: 'https://naofumi3.gumroad.com/l/instagram-marketer?utm_source=official_site&utm_medium=products',
-                                badge: null
-                            },
-                            {
-                                name: 'SNS Bundle',
-                                price: '$59',
-                                period: '/mo',
-                                description: 'Bluesky + Instagram bundle ($10 off). 9 posts/day fully automated.',
-                                url: 'https://naofumi3.gumroad.com/l/sns-bundle?utm_source=official_site&utm_medium=products',
-                                badge: 'Most Popular'
-                            },
-                            {
-                                name: 'Fortress Edition',
-                                price: '$299',
-                                period: 'one-time',
-                                description: 'Full feature unlock. 39 integrations, fully autonomous, lifetime license.',
-                                url: 'https://naofumi3.gumroad.com/l/sage-professional?utm_source=official_site&utm_medium=products',
-                                badge: null
-                            },
-                            {
-                                name: 'Developer Kit',
-                                price: '$79',
-                                period: 'one-time',
-                                description: 'Full source code + API docs. Customize freely.',
-                                url: 'https://naofumi3.gumroad.com/l/sage-dev-kit?utm_source=official_site&utm_medium=products',
-                                badge: null
-                            }
-                        ].map((product, index) => (
-                            <motion.div
-                                key={index}
-                                className={`group relative p-6 rounded-3xl backdrop-blur-lg border transition-all duration-300 ${product.badge
-                                        ? 'bg-gradient-to-br from-purple-600/30 to-pink-600/30 border-purple-400'
-                                        : 'bg-gradient-to-br from-gray-800/30 to-gray-700/20 border-white/10 hover:border-white/30'
-                                    }`}
+                            { name: 'Bluesky AI Marketer', price: '$29', period: '/mo', url: 'https://naofumi3.gumroad.com/l/bluesky-marketer' },
+                            { name: 'Instagram AI Marketer', price: '$39', period: '/mo', url: 'https://naofumi3.gumroad.com/l/instagram-marketer' },
+                            { name: 'SNS Bundle', price: '$59', period: '/mo', url: 'https://naofumi3.gumroad.com/l/sns-bundle', badge: 'POPULAR' },
+                            { name: 'Fortress Edition', price: '$299', period: 'once', url: 'https://naofumi3.gumroad.com/l/sage-professional', badge: 'BEST VALUE' },
+                        ].map((product, i) => (
+                            <motion.a
+                                key={i}
+                                href={product.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 initial={{ opacity: 0, y: 30 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ duration: 0.5, delay: index * 0.1 }}
-                                whileHover={{ scale: 1.03 }}
+                                transition={{ delay: i * 0.1 }}
+                                whileHover={{ scale: 1.05, y: -10 }}
+                                className="group relative p-8 rounded-3xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 backdrop-blur-lg hover:border-violet-500 transition-all duration-300"
                             >
                                 {product.badge && (
-                                    <div className="absolute -top-3 right-6 bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 rounded-full text-xs font-bold">
+                                    <div className="absolute -top-3 -right-3 px-4 py-1 bg-gradient-to-r from-pink-500 to-violet-500 rounded-full text-xs font-black">
                                         {product.badge}
                                     </div>
                                 )}
-
-                                <h3 className="text-xl font-bold mb-2">{product.name}</h3>
-                                <div className="mb-4">
-                                    <span className="text-4xl font-black">{product.price}</span>
-                                    <span className="text-gray-400">{product.period}</span>
+                                <div className="text-4xl font-black mb-2">
+                                    <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
+                                        {product.price}
+                                    </span>
+                                    <span className="text-lg text-gray-500">{product.period}</span>
                                 </div>
-                                <p className="text-gray-300 text-sm mb-6 leading-relaxed">
-                                    {product.description}
-                                </p>
-
-                                <motion.a
-                                    href={product.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`block w-full py-3 rounded-full text-center font-bold transition-colors ${product.badge
-                                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500'
-                                            : 'bg-white/10 hover:bg-white/20'
-                                        }`}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    Buy on Gumroad
-                                </motion.a>
-                            </motion.div>
+                                <h3 className="text-xl font-bold mb-4 group-hover:text-violet-400 transition-colors">
+                                    {product.name}
+                                </h3>
+                                <div className="mt-auto pt-4 border-t border-white/10">
+                                    <span className="text-violet-400 font-bold group-hover:text-pink-400 transition-colors">
+                                        Learn More →
+                                    </span>
+                                </div>
+                            </motion.a>
                         ))}
                     </div>
                 </div>
             </section>
 
             {/* Footer */}
-            <footer className="relative py-16 px-4 border-t border-white/10">
-                <div className="max-w-6xl mx-auto text-center text-gray-400">
-                    <p className="mb-4">© 2026 Sage AI. All Rights Reserved.</p>
-                    <p className="text-sm">
-                        Built with React + Vite. Deployed on Cloudflare Pages.
-                        <br />
-                        Fully autonomous. Fully free hosting. Fully open for global market.
-                    </p>
+            <footer className="relative z-10 py-12 px-4 border-t border-white/10">
+                <div className="max-w-7xl mx-auto text-center text-gray-500">
+                    <p className="mb-4">© 2026 Sage AI. Fully Autonomous AI Agent.</p>
+                    <p className="text-sm">Built for creators who value automation and precision.</p>
                 </div>
             </footer>
         </div>
