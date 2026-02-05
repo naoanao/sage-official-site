@@ -97,12 +97,12 @@ const Landing = () => {
                             </motion.a>
 
                             <motion.a
-                                href="#features"
+                                href="/blog"
                                 className="px-12 py-6 text-2xl font-black rounded-2xl border-2 border-white/20 backdrop-blur-sm hover:border-white/40 hover:bg-white/5 transition-all"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                             >
-                                EXPLORE FEATURES
+                                READ BLOG
                             </motion.a>
                         </motion.div>
                     </motion.div>
