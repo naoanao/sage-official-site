@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { STRIPE_LINKS, addUTM } from '../config/stripe';
 
 const Landing = () => {
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -81,7 +82,7 @@ const Landing = () => {
                             className="flex flex-col sm:flex-row gap-6 justify-center items-center"
                         >
                             <motion.a
-                                href="https://naofumi3.gumroad.com/l/sage-professional"
+                                href={addUTM(STRIPE_LINKS.fortress, 'website', 'hero_cta')}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="group relative px-12 py-6 text-2xl font-black rounded-2xl overflow-hidden"
@@ -171,14 +172,14 @@ const Landing = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {[
-                            { name: 'Bluesky AI Marketer', price: '$29', period: '/mo', url: 'https://naofumi3.gumroad.com/l/bluesky-marketer' },
-                            { name: 'Instagram AI Marketer', price: '$39', period: '/mo', url: 'https://naofumi3.gumroad.com/l/instagram-marketer' },
-                            { name: 'SNS Bundle', price: '$59', period: '/mo', url: 'https://naofumi3.gumroad.com/l/sns-bundle', badge: 'POPULAR' },
-                            { name: 'Fortress Edition', price: '$299', period: 'once', url: 'https://naofumi3.gumroad.com/l/sage-professional', badge: 'BEST VALUE' },
+                            { name: 'Bluesky AI Marketer', price: '$29', period: '/mo', link: 'bluesky' },
+                            { name: 'Instagram AI Marketer', price: '$39', period: '/mo', link: 'instagram' },
+                            { name: 'SNS Bundle', price: '$59', period: '/mo', link: 'bundle', badge: 'POPULAR' },
+                            { name: 'Fortress Edition', price: '$299', period: 'once', link: 'fortress', badge: 'BEST VALUE' },
                         ].map((product, i) => (
                             <motion.a
                                 key={i}
-                                href={product.url}
+                                href={addUTM(STRIPE_LINKS[product.link], 'website', 'product_grid')}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 initial={{ opacity: 0, y: 30 }}
