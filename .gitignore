@@ -1,0 +1,11 @@
+
+# Sage 3.0 Protection
+dist/
+*.pickle
+token_*
+push_output.txt
+challenge_log_*
+*.log
+node_modules/
+.env
+.DS_Store
