@@ -8,4 +8,14 @@ challenge_log_*
 *.log
 node_modules/
 .env
+.env.bak
+.env.*
+*.bak
+*secrets*.json
+sage_security.key
+BACKUPS/
+__pycache__/
+*.pyc
 .DS_Store
+commits_list.txt
+commits_readable.txt
