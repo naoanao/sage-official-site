@@ -90,7 +90,7 @@ const Landing = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        FOR SOLOPRENEURS & CREATORS — 27 POSTS SHIPPED AUTONOMOUSLY
+                        FOR SOLOPRENEURS & CREATORS — {snsStats.total_posts} POSTS SHIPPED AUTONOMOUSLY
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
