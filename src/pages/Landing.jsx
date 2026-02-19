@@ -4,6 +4,7 @@ import { STRIPE_LINKS, addUTM } from '../config/stripe';
 
 const Landing = () => {
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+    const [snsStats, setSnsStats] = useState({ total_posts: 31 });
 
     useEffect(() => {
         const handleMouseMove = (e) => {
@@ -11,6 +12,13 @@ const Landing = () => {
         };
         window.addEventListener('mousemove', handleMouseMove);
         return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
+
+    useEffect(() => {
+        fetch('/api/sns/stats')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data && data.total_posts) setSnsStats(data); })
+            .catch(() => { });
     }, []);
 
     return (
@@ -66,6 +74,11 @@ const Landing = () => {
                             <div className="flex items-center gap-2">
                                 <span className="text-pink-400 text-3xl font-black">39</span>
                                 <span className="text-gray-400">INTEGRATIONS</span>
+                            </div>
+                            <div className="w-px h-8 bg-gray-700"></div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-fuchsia-400 text-3xl font-black">{snsStats.total_posts}</span>
+                                <span className="text-gray-400">POSTS AUTO-SHIPPED</span>
                             </div>
                             <div className="w-px h-8 bg-gray-700"></div>
                             <div className="flex items-center gap-2">
