@@ -41,15 +41,19 @@ jobs:
           url = "http://127.0.0.1:8080/api/system/health"
           for _ in range(120):
             try:
-              res = requests.get(url, timeout=1.0)
+              res = requests.get(url, timeout=2.0)
               if res.status_code == 200:
-                print("Server Healthy!")
-                break
-            except Exception:
+                data = res.json()
+                if data.get("status") == "healthy":
+                  print("Server Healthy and Initialized!")
+                  break
+                else:
+                  print(f"Server alive but status is: {data.get('status')}")
+            except Exception as e:
               pass
             time.sleep(1)
           else:
-            raise SystemExit("Server Health Check Failed on :8080")
+            raise SystemExit("Server Health Check (status=healthy) Failed on :8080")
           PY
 
       - name: Run pilot E2E test
