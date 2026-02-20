@@ -721,7 +721,7 @@ def init_course_pipeline(orchestrator_obj):
             groq_client=getattr(orchestrator_obj, 'groq_llm', None),
             gemini_client=getattr(orchestrator_obj, 'gemini_llm', None),
             image_agent=getattr(orchestrator_obj, 'image_agent', None),
-            obsidian=getattr(orchestrator_obj, 'memory_agent', None),
+            obsidian=getattr(orchestrator_obj, 'obsidian_agent', None),
             brain=getattr(orchestrator_obj, 'neuromorphic_brain', None)
         )
         logger.info("[INIT] Course Production Pipeline Ready.")
