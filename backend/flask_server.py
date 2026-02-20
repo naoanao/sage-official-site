@@ -77,6 +77,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logger.info("🚀 [SYSTEM] logging initialized: Writing to backend/logs/sage_ultimate.log")
+import chromadb
+logger.info(f"🚀 [DEBUG] Python Version: {sys.version}")
+logger.info(f"🚀 [DEBUG] ChromaDB Version: {getattr(chromadb, '__version__', 'unknown')}")
 
 # Log Startup Flags (Transparency)
 import os
@@ -1179,6 +1182,22 @@ def api_pilot_generate():
 
         # Normalize inputs
         topic = _pick('topic', default=None)
+        
+        # --- ENCODING REPAIR (Windows Mojibake Guard) ---
+        if topic and isinstance(topic, str):
+            try:
+                # If it was incorrectly decoded as CP932, it might be fixable by re-encoding/decoding
+                # Only attempt if it looks like Mojibake (contains non-ASCII)
+                if any(ord(c) > 127 for c in topic):
+                    # Check if it was double-encoded or mis-decoded
+                    # Common pattern: UTF-8 bytes treated as CP932
+                    repaired = topic.encode('cp932', errors='ignore').decode('utf-8')
+                    if repaired != topic and len(repaired) > 1:
+                        logger.info(f"🔧 Repaired topic encoding: '{topic}' -> '{repaired}'")
+                        topic = repaired
+            except:
+                pass
+
         customer_request = _pick('customer_request', 'customerrequest', default='')
         quality_tier = _pick('quality_tier', 'qualitytier', default=None)
         num_sections = _to_int(_pick('num_sections', 'numsections', default=5), default=5)
