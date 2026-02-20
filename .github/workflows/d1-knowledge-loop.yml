@@ -2,7 +2,7 @@ name: D1 Knowledge Loop (Mock)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
 
 jobs:
@@ -34,34 +34,33 @@ jobs:
           nohup python backend/flask_server.py > backend/logs/ci_flask.log 2>&1 &
           echo $! > backend/logs/ci_flask.pid
 
-      - name: Wait for 8080
+      - name: Wait for API Ready
         run: |
           python - << 'PY'
-          import socket, time
-          host, port = "127.0.0.1", 8080
-          for _ in range(120):  # up to ~120s
-            s = socket.socket()
+          import requests, time
+          url = "http://127.0.0.1:8080/api/system/health"
+          for _ in range(120):
             try:
-              s.settimeout(1.0)
-              s.connect((host, port))
-              print("Server Up!")
-              break
+              res = requests.get(url, timeout=1.0)
+              if res.status_code == 200:
+                print("Server Healthy!")
+                break
             except Exception:
-              time.sleep(1)
-            finally:
-              try: s.close()
-              except Exception: pass
+              pass
+            time.sleep(1)
           else:
-            raise SystemExit("Server did not start on :8080")
+            raise SystemExit("Server Health Check Failed on :8080")
           PY
 
       - name: Run pilot E2E test
         run: |
           python test_pilot_pipeline.py
 
-      - name: Upload server log (always)
+      - name: Upload artifacts (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci_flask_log
-          path: backend/logs/ci_flask.log
+          name: ci_debug_bundle
+          path: |
+            backend/logs/ci_flask.log
+            ci_metadata_snapshot.json

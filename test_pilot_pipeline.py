@@ -164,6 +164,11 @@ def run_test():
                     if not missing_meta:
                         print(f"✅ All mandatory metadata keys verified: {required_meta_keys}")
                         print(f"   [Snapshot] retrieved_at: {meta['retrieved_at']}, paper_used: {meta['paper_knowledge_used']}")
+                        
+                        # --- CI Artifact Support ---
+                        with open("ci_metadata_snapshot.json", "w", encoding="utf-8") as f:
+                            json.dump(meta, f, indent=4, ensure_ascii=False)
+                        print(f"📁 Metadata snapshot saved to ci_metadata_snapshot.json")
                     else:
                         print(f"❌ Error: Missing metadata keys in integrated memory: {missing_meta}")
                         print(f"   Actual metadata: {meta}")
