@@ -295,7 +295,7 @@ def get_healing_status():
     else:
         return jsonify({"status": "idle", "message": "No healing events yet."})
 
-@app.route('/api/system/health', methods=['GET'])
+@app.route('/api/sage/status', methods=['GET'])
 def get_system_health():
     """
     Returns the TRUE internal state of Sage for 'No Lies' visibility.
@@ -312,6 +312,33 @@ def get_system_health():
             "llm_provider": "unknown",
             "telemetry": "off"
         }), 200
+
+@app.route('/api/system/health', methods=['GET'])
+def system_health_detailed():
+    """Detailed health check for D0/D1 stability"""
+    global orchestrator, course_gen_global
+    try:
+        # Use simple string checks or safe Path access
+        storage_ok = os.path.exists(os.path.join(str(project_root), "memorydb"))
+        log_active = os.path.exists(str(LOG_FILE)) if 'LOG_FILE' in globals() else False
+        
+        components = {
+            "brain": "online" if orchestrator else "offline",
+            "pipeline": "ready" if course_gen_global else "warming_up",
+            "storage": "ok" if storage_ok else "limited",
+            "logs": "active" if log_active else "unstable"
+        }
+        
+        all_ready = all(v in ["online", "ready", "ok", "active"] for v in components.values())
+        
+        return jsonify({
+            "status": "healthy" if all_ready else "degraded",
+            "components": components,
+            "timestamp": datetime.now().isoformat()
+        }), 200
+    except Exception as e:
+        logger.error(f"❌ [HEALTH FAIL] {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/system/kpi', methods=['GET'])
 def get_system_kpi():
@@ -407,7 +434,9 @@ def get_detailed_stats():
     """Aggregated stats for the admin dashboard"""
     try:
         from backend.modules.api_monitor import api_monitor
+        from backend.modules.monetization_measure import MonetizationMeasure
         api_stats = api_monitor.get_usage_stats()
+        monetization_stats = MonetizationMeasure.get_stats()
         
         # Get KPI stats (reuse internal logic)
         kpi_resp = get_system_kpi()
@@ -415,6 +444,7 @@ def get_detailed_stats():
 
         return jsonify({
             "api_usage": api_stats,
+            "monetization": monetization_stats,
             "kpi": kpi_data,
             "system": {
                 "uptime": "active",
@@ -725,7 +755,7 @@ def init_course_pipeline(orchestrator_obj):
             gemini_client=getattr(orchestrator_obj, 'gemini_llm', None),
             image_agent=getattr(orchestrator_obj, 'image_agent', None),
             obsidian=getattr(orchestrator_obj, 'obsidian_agent', None),
-            brain=getattr(orchestrator_obj, 'neuromorphic_brain', None)
+            brain=getattr(orchestrator_obj, 'memory_agent', None)
         )
         logger.info("[INIT] Course Production Pipeline Ready.")
         return course_gen_global
@@ -1185,18 +1215,17 @@ def api_pilot_generate():
         
         # --- ENCODING REPAIR (Windows Mojibake Guard) ---
         if topic and isinstance(topic, str):
-            try:
-                # If it was incorrectly decoded as CP932, it might be fixable by re-encoding/decoding
-                # Only attempt if it looks like Mojibake (contains non-ASCII)
-                if any(ord(c) > 127 for c in topic):
-                    # Check if it was double-encoded or mis-decoded
-                    # Common pattern: UTF-8 bytes treated as CP932
+            # DoD: Only attempt repair if specific patterns found (typical SJIS-mangled UTF-8)
+            # Patterns like '縺', '∝', '蟄', '繧' are high-probability markers
+            mangled_markers = ['縺', '蟄', '∝', '繧', '・']
+            if any(m in topic for m in mangled_markers) and any(ord(c) > 127 for c in topic):
+                try:
                     repaired = topic.encode('cp932', errors='ignore').decode('utf-8')
                     if repaired != topic and len(repaired) > 1:
-                        logger.info(f"🔧 Repaired topic encoding: '{topic}' -> '{repaired}'")
+                        logger.info(f"🔧 [REPAIRED] topic encoding: '{topic}' -> '{repaired}'")
                         topic = repaired
-            except:
-                pass
+                except:
+                    pass
 
         customer_request = _pick('customer_request', 'customerrequest', default='')
         quality_tier = _pick('quality_tier', 'qualitytier', default=None)

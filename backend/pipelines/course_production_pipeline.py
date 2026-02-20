@@ -68,18 +68,26 @@ class CourseProductionPipeline:
         try:
             # Step 0: Knowledge Context Injection (Brain RAG)
             knowledge_context = ""
+            retrieved_sources = []
             if self.brain:
                 try:
                     kb_res = self.brain.query(topic, n_results=3)
                     if isinstance(kb_res, dict):
                         if 'documents' in kb_res and kb_res['documents'] and kb_res['documents'][0]:
                             knowledge_context = "\n".join(kb_res['documents'][0])
+                            # Extract metadata for Evidence section
+                            if 'metadatas' in kb_res and kb_res['metadatas'] and kb_res['metadatas'][0]:
+                                for meta in kb_res['metadatas'][0]:
+                                    if meta:
+                                        src = meta.get('source') or meta.get('type') or "Semantic Memory"
+                                        retrieved_sources.append(src)
                         elif 'response' in kb_res and kb_res['response']:
                             knowledge_context = kb_res['response']
                 except Exception as e:
                     logger.warning(f"Brain query failed: {e}")
 
             # Step 0.1: Paper Knowledge Injection (Research Guard)
+            paper_knowledge_used = False
             if any(k in topic.lower() for k in ["research", "論文", "調べて", "paper", "調べ"]):
                 try:
                     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -89,6 +97,7 @@ class CourseProductionPipeline:
                         with open(path, 'r', encoding='utf-8') as f:
                              knowledge_context += "\n\n[Sacred Paper Retrieval Guidelines]\n" + f.read()
                         logger.info("🧪 Paper Knowledge injected successfully.")
+                        paper_knowledge_used = True
                     else:
                         logger.warning(f"🧪 Paper Knowledge path MISSING: {path}")
                 except Exception as e:
@@ -112,8 +121,30 @@ class CourseProductionPipeline:
                 logger.info(f"✅ Sales page generated ({len(sales_page)} chars)")
             
             # Step 5: Save to Obsidian
-            note_path = self._save_to_obsidian(topic, outline, sections, slides, sales_page, knowledge_context=knowledge_context)
+            note_path = self._save_to_obsidian(
+                topic, outline, sections, slides, sales_page, 
+                knowledge_context=knowledge_context,
+                sources=retrieved_sources
+            )
             logger.info(f"✅ Saved to Obsidian: {note_path}")
+
+            # Step 6: 統合C (Save back to Brain for re-use/reproducibility)
+            if self.brain and note_path:
+                try:
+                    summary_text = f"Research Topic: {topic}\nKey Sections: {', '.join(outline)}\nGeneration Date: {datetime.now().isoformat()}"
+                    self.brain.add_memory(summary_text, metadata={
+                        "type": "research_summary",
+                        "topic": topic,
+                        "outline": json.dumps(outline, ensure_ascii=False),
+                        "sources": json.dumps(retrieved_sources, ensure_ascii=False),
+                        "paper_knowledge_used": paper_knowledge_used,
+                        "source": "CourseProductionPipeline",
+                        "note_path": str(note_path),
+                        "retrieved_at": datetime.now().isoformat()
+                    })
+                    logger.info("🧠 Research summary (enriched) integrated back into Brain.")
+                except Exception as e:
+                    logger.warning(f"Failed to integrate research back to Brain: {e}")
             
             return {
                 "status": "success",
@@ -263,9 +294,7 @@ Content:"""
             logger.error(f"Sales page generation failed: {e}")
             return None
     
-    def _save_to_obsidian(self, topic: str, outline: List[str], 
-                          sections: List[Dict], slides: List[Dict], sales_page: Optional[str] = None,
-                          knowledge_context: str = "") -> Optional[str]:
+    def _save_to_obsidian(self, topic: str, outline: List[str], sections: List[Dict], slides: List[Dict], sales_page: str = None, knowledge_context: str = "", sources: List[str] = None) -> Optional[str]:
         """Save course to Obsidian"""
         
         if not self.obsidian:
@@ -282,9 +311,16 @@ Content:"""
             content += f"{i}. {title}\n"
         content += "\n"
         
-        # Research Evidence Section
+        # Research Evidence Section (統合B: Mandatory Section)
         if knowledge_context:
             content += "## 🧪 Research Context & Evidence\n\n"
+            content += f"- **Query**: {topic}\n"
+            content += f"- **Used-guidelines**: backend/brain/paper_knowledge/README.md\n"
+            
+            src_list = list(set(sources)) if sources else ["ChromaDB Semantic Memory"]
+            content += f"- **URLs/Sources**: {', '.join(src_list)}\n"
+            content += f"- **Date**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            
             content += "> [!IMPORTANT] Integrated Knowledge\n"
             content += "> This course was generated using the following specialized knowledge:\n\n"
             content += f"{knowledge_context}\n\n"
@@ -309,6 +345,7 @@ Content:"""
             content += "## 💰 Sales Page\n\n"
             content += sales_page
             content += "\n\n---\n\n"
+        
         
         try:
             note_path = self.obsidian.create_knowledge_note(
