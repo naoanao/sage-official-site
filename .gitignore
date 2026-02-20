@@ -14,6 +14,25 @@ node_modules/
 *secrets*.json
 sage_security.key
 BACKUPS/
+# Build and Binary artifacts
+build/
+bin/
+*.o
+*.obj
+*.exe
+.gradle/
+*.apk
+*.zip
+
+# Local Knowledge and Memory (Safe to exclude if using Cloud/Docker or for stability)
+memorydb/
+obsidian_vault/
+generated_images/
+*.tmp
+
+# IDEs
+.vscode/
+.idea/
 __pycache__/
 *.pyc
 .DS_Store

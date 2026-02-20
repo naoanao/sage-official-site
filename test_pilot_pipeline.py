@@ -19,7 +19,7 @@ LOG_PATH = Path("backend/logs/sage_ultimate.log")
 TOPIC = "AIによる地球環境保全の最新論文を調べて"
 
 def run_test():
-    print(f"🚀 Starting Python-based Pilot Smoke Test [STRICT MODE]...")
+    print(f"🚀 Starting Python-based Pilot Smoke Test [ULTIMATE MODE]...")
     
     # --- 0. Pre-check Brain Count ---
     initial_count = -1
@@ -86,7 +86,6 @@ def run_test():
     if note_path_str:
         note_path = Path(note_path_str)
         if not note_path.exists():
-            # Server might return path relative to 'backend'
             note_path = Path("backend") / note_path_str
     
     if not note_path or not note_path.exists():
@@ -106,9 +105,8 @@ def run_test():
         with open(note_path, 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
             
-            # --- STRICT VERIFICATION (統合B) ---
             heading = "## 🧪 Research Context & Evidence"
-            mandatory_keys = [
+            mandatory_note_keys = [
                 "- **Query**",
                 "- **Used-guidelines**",
                 "- **URLs/Sources**",
@@ -123,50 +121,64 @@ def run_test():
             
             if heading_found_line != -1:
                 print(f"✅ Found Heading: '{heading}' at line {heading_found_line+1}")
-                # Check keys within next 100 lines
                 found_keys = []
                 for j in range(heading_found_line + 1, min(heading_found_line + 101, len(lines))):
                     stripped = lines[j].strip()
-                    for key in mandatory_keys:
+                    for key in mandatory_note_keys:
                         if stripped.startswith(key) and key not in found_keys:
                             found_keys.append(key)
                 
-                missing_keys = [k for k in mandatory_keys if k not in found_keys]
+                missing_keys = [k for k in mandatory_note_keys if k not in found_keys]
                 if not missing_keys:
-                    print(f"✅ All mandatory keys found within Evidence section: {mandatory_keys}")
+                    print(f"✅ All mandatory keys found within Evidence section: {mandatory_note_keys}")
                 else:
                     print(f"❌ Error: Missing keys in Evidence section: {missing_keys}")
-                    print("--- Snippet after heading ---")
-                    print("".join(lines[heading_found_line:heading_found_line+15]))
-                    print("-----------------------------")
                     return False
             else:
                 print(f"❌ Error: Required heading '{heading}' NOT found in note content.")
-                print("--- Start of note preview ---")
-                print("".join(lines[:15]))
-                print("-----------------------------")
                 return False
     else:
         print(f"❌ Error: Could not find generated note file.")
         return False
 
-    # --- 5. Verify Brain Integration (Chroma Count Check) ---
+    # --- 5. Verify Brain Integration (Chroma Count & Metadata Check) ---
     if SageMemory and initial_count != -1:
-        print(f"🧠 Verifying Brain integration (ChromaDB count check)...")
+        print(f"🧠 Verifying Brain integration (Metadata Persistence Check)...")
         time.sleep(2)  # Wait for integration
         try:
             memory = SageMemory()
             final_count = memory.collection.count()
             print(f"🧠 Final Brain Count: {final_count}")
+            
             if final_count > initial_count:
                 print(f"✅ Brain count increased! (+{final_count - initial_count})")
+                
+                # Retrieve the newly added memory to verify metadata
+                results = memory.query(TOPIC, n_results=1)
+                if results and 'metadatas' in results and results['metadatas']:
+                    meta = results['metadatas'][0][0]
+                    # Required fields for integration quality
+                    required_meta_keys = ["source", "retrieved_at", "topic", "note_path", "paper_knowledge_used", "outline", "sources"]
+                    missing_meta = [k for k in required_meta_keys if k not in meta]
+                    
+                    if not missing_meta:
+                        print(f"✅ All mandatory metadata keys verified: {required_meta_keys}")
+                        print(f"   [Snapshot] retrieved_at: {meta['retrieved_at']}, paper_used: {meta['paper_knowledge_used']}")
+                    else:
+                        print(f"❌ Error: Missing metadata keys in integrated memory: {missing_meta}")
+                        print(f"   Actual metadata: {meta}")
+                        return False
+                else:
+                    print(f"❌ Error: Could not retrieve integrated memory to verify metadata.")
+                    return False
             else:
                 print(f"❌ Error: Brain count did NOT increase. Integration failed.")
                 return False
         except Exception as e:
-            print(f"⚠️ Could not check final Brain count: {e}")
+            print(f"⚠️ Could not check Brain stats: {e}")
+            return False
 
-    print("🎉 ALL TESTS PASSED! Knowledge Loop Verified.")
+    print("🎉 ALL TESTS PASSED! Knowledge Loop [ULTIMATE] Verified.")
     return True
 
 if __name__ == "__main__":

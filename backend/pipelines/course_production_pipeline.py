@@ -103,22 +103,29 @@ class CourseProductionPipeline:
                 except Exception as e:
                     logger.error(f"🧪 Paper Knowledge injection error: {e}")
 
-            # Step 1: Generate outline
-            outline = self._generate_outline(topic, num_sections)
-            logger.info(f"✅ Outline generated: {len(outline)} sections")
-            
-            # Step 2: Generate section content (with Knowledge Context)
-            sections = self._generate_sections(outline, knowledge_context=knowledge_context)
-            logger.info(f"✅ Content generated: {len(sections)} sections")
-            
-            # Step 3: Generate slide images
-            slides = self._generate_slides(sections)
-            logger.info(f"✅ Slides generated: {len(slides)} images")
-            
-            # Step 4: Generate sales page
-            sales_page = self._generate_sales_page(topic, outline, sections)
-            if sales_page:
-                logger.info(f"✅ Sales page generated ({len(sales_page)} chars)")
+            if os.getenv("SAGE_MOCK") == "1":
+                logger.info("🧪 [SAGE_MOCK] Simulation Mode Active. Skipping external APIs.")
+                outline = [f"Mock Section {i+1}" for i in range(num_sections)]
+                sections = [{"number": i+1, "title": t, "content": f"Mock Content for {t}."} for i, t in enumerate(outline)]
+                slides = [{"section": s["number"], "title": s["title"], "image_url": "/api/mock/img.jpg", "status": "mock"} for s in sections]
+                sales_page = "Mock Sales Page Content"
+            else:
+                # Step 1: Generate outline
+                outline = self._generate_outline(topic, num_sections)
+                logger.info(f"✅ Outline generated: {len(outline)} sections")
+                
+                # Step 2: Generate section content (with Knowledge Context)
+                sections = self._generate_sections(outline, knowledge_context=knowledge_context)
+                logger.info(f"✅ Content generated: {len(sections)} sections")
+                
+                # Step 3: Generate slide images
+                slides = self._generate_slides(sections)
+                logger.info(f"✅ Slides generated: {len(slides)} images")
+                
+                # Step 4: Generate sales page
+                sales_page = self._generate_sales_page(topic, outline, sections)
+                if sales_page:
+                    logger.info(f"✅ Sales page generated ({len(sales_page)} chars)")
             
             # Step 5: Save to Obsidian
             note_path = self._save_to_obsidian(

@@ -1,0 +1,67 @@
+name: D1 Knowledge Loop (Mock)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  d1-knowledge-loop:
+    runs-on: ubuntu-latest
+    env:
+      SAGE_MOCK: "1"
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start API server (background)
+        run: |
+          mkdir -p backend/logs
+          nohup python backend/flask_server.py > backend/logs/ci_flask.log 2>&1 &
+          echo $! > backend/logs/ci_flask.pid
+
+      - name: Wait for 8080
+        run: |
+          python - << 'PY'
+          import socket, time
+          host, port = "127.0.0.1", 8080
+          for _ in range(120):  # up to ~120s
+            s = socket.socket()
+            try:
+              s.settimeout(1.0)
+              s.connect((host, port))
+              print("Server Up!")
+              break
+            except Exception:
+              time.sleep(1)
+            finally:
+              try: s.close()
+              except Exception: pass
+          else:
+            raise SystemExit("Server did not start on :8080")
+          PY
+
+      - name: Run pilot E2E test
+        run: |
+          python test_pilot_pipeline.py
+
+      - name: Upload server log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci_flask_log
+          path: backend/logs/ci_flask.log
