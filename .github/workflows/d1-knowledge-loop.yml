@@ -1,7 +1,7 @@
 name: D1 Knowledge Loop (Mock)
 on:
   push:
-    branches: [ ci/final-test-branch ]
+    branches: [ci/final-test-branch]
   pull_request:
 
 jobs:
@@ -25,7 +25,13 @@ jobs:
           nohup python backend/flask_server.py > backend/logs/ci_flask.log 2>&1 &
       - name: Wait (Port 8080)
         run: |
-          python -c "import socket, time; [exit(0) if not socket.socket().connect_ex(('127.0.0.1', 8080)) else time.sleep(1) for _ in range(60)]" || exit 1
+          for i in {1..180}; do
+            python -c "import socket, sys; sys.exit(0 if socket.socket().connect_ex(('127.0.0.1', 8080)) == 0 else 1)" && exit 0
+            sleep 1
+          done
+          echo "Server failed to start in 180 seconds. Dumping logs:"
+          cat backend/logs/ci_flask.log || true
+          exit 1
       - name: Run test
         run: python test_pilot_pipeline.py
       - name: Upload Logs
