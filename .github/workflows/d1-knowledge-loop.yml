@@ -22,7 +22,7 @@ jobs:
       - name: Start API
         run: |
           mkdir -p backend/logs
-          nohup python backend/flask_server.py > backend/logs/ci_flask.log 2>&1 &
+          nohup python backend/flask_server.py > backend/logs/sage_ultimate.log 2>&1 &
       - name: Wait (Port 8080)
         run: |
           for i in {1..180}; do
@@ -30,7 +30,7 @@ jobs:
             sleep 1
           done
           echo "Server failed to start in 180 seconds. Dumping logs:"
-          cat backend/logs/ci_flask.log || true
+          cat backend/logs/sage_ultimate.log || true
           exit 1
       - name: Run test
         run: python test_pilot_pipeline.py
