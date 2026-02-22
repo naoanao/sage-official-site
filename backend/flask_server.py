@@ -35,7 +35,7 @@ load_dotenv(dotenv_path=env_path)  # Explicitly load .env from project root
 sys.path.append(os.path.dirname(os.path.abspath(__file__))) # Ensure modules are importable
 config_load_msg = []
 try:
-    from modules.sage_config import config
+    from backend.modules.sage_config import config
     config_load_msg.append("==================================================")
     config_load_msg.append("   Sage Ultimate: Startup Guard Check")
     config_load_msg.append("==================================================")
@@ -365,7 +365,7 @@ def get_system_kpi():
 
 # --- AUDIT LOGGING ---
 try:
-    from modules.sage_audit import audit_logger
+    from backend.modules.sage_audit import audit_logger
     print("[SUCCESS] SageAudit integration enabled.")
 except ImportError:
     print("[WARNING] SageAudit module not found, audit logging disabled.")
@@ -686,7 +686,7 @@ def instagram_post():
         if result.get("success"):
             # 収益化ログに記録 (統合版の規律)
             try:
-                from modules.sage_audit import audit_logger
+                from backend.modules.sage_audit import audit_logger
                 if audit_logger:
                     audit_logger.log_event("sns_post_success", "system", {"platform": "instagram", "id": result.get("id")})
             except:
@@ -1790,7 +1790,7 @@ def api_read_file():
         if not path:
             return jsonify({"status": "error", "message": "path required"}), 400
         
-        from modules.file_operations_agent import FileOperationsAgent
+        from backend.modules.file_operations_agent import FileOperationsAgent
         agent = FileOperationsAgent()
         result = agent.read_file(path)
         
@@ -1807,7 +1807,7 @@ def api_browser_browse():
         if not url:
             return jsonify({"status": "error", "message": "url required"}), 400
         
-        from modules.browser_agent import BrowserAgent
+        from backend.modules.browser_agent import BrowserAgent
         agent = BrowserAgent()
         result = agent.browse(url)
         return jsonify(result)
@@ -1823,7 +1823,7 @@ def api_browser_search():
         if not query:
             return jsonify({"status": "error", "message": "query required"}), 400
         
-        from modules.browser_agent import BrowserAgent
+        from backend.modules.browser_agent import BrowserAgent
         agent = BrowserAgent()
         result = agent.search_google(query)
         return jsonify(result)
@@ -1840,7 +1840,7 @@ def api_browser_screenshot():
         if not url:
             return jsonify({"status": "error", "message": "url required"}), 400
         
-        from modules.browser_agent import BrowserAgent
+        from backend.modules.browser_agent import BrowserAgent
         agent = BrowserAgent()
         result = agent.take_screenshot(url, output_path)
         return jsonify(result)
@@ -1860,7 +1860,7 @@ def api_write_file():
         if not path:
             return jsonify({"status": "error", "message": "path required"}), 400
         
-        from modules.file_operations_agent import FileOperationsAgent
+        from backend.modules.file_operations_agent import FileOperationsAgent
         agent = FileOperationsAgent()
         result = agent.write_file(path, content, overwrite)
         
@@ -1877,7 +1877,7 @@ def api_list_directory():
         path = data.get('path', '.')
         pattern = data.get('pattern', '*')
         
-        from modules.file_operations_agent import FileOperationsAgent
+        from backend.modules.file_operations_agent import FileOperationsAgent
         agent = FileOperationsAgent()
         result = agent.list_directory(path, pattern)
         
@@ -1887,7 +1887,7 @@ def api_list_directory():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # --- SYSTEM MONITOR API (The Body's Senses) ---
-from modules.system_monitor_agent import SystemMonitorAgent
+from backend.modules.system_monitor_agent import SystemMonitorAgent
 
 @app.route('/api/system/healer/test-event', methods=['POST'])
 def api_test_healer_event():
@@ -1923,7 +1923,7 @@ def api_execute_command():
         if not command:
             return jsonify({"status": "error", "message": "command required"}), 400
         
-        from modules.file_operations_agent import FileOperationsAgent
+        from backend.modules.file_operations_agent import FileOperationsAgent
         agent = FileOperationsAgent()
         result = agent.execute_command(command, cwd, timeout)
         
@@ -2169,7 +2169,7 @@ if __name__ == '__main__':
  # --- SELF HEALING AGENT INTEGRATION (Phase 1 Pivot) ---
     # --- Autonomous Security Check ---
     try:
-        from modules.self_healing_agent import SelfHealingAgent
+        from backend.modules.self_healing_agent import SelfHealingAgent
         import threading
         from backend.modules.security_utils import SecurityUtils
         
