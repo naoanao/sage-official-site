@@ -43,6 +43,11 @@ def run_test():
         "topic": TOPIC,
         "num_sections": 1
     }
+    # --- SAGE BRAKE (CLIENT SIDE) ---
+    if os.path.exists("SAGE_STOP"):
+        print("🚨 [BRAKE] EMERGENCY STOP DETECTED! (SAGE_STOP file exists). Aborting test.")
+        return False
+
     print(f"📡 Sending request to {API_URL}...")
     try:
         start_time = time.time()
