@@ -1,7 +1,7 @@
 name: D1 Knowledge Loop (Mock)
 on:
   push:
-    branches: [ci/final-test-branch]
+    branches: [main, ci/final-test-branch]
   pull_request:
 
 jobs:
