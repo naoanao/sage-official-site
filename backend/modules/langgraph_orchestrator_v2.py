@@ -73,6 +73,13 @@ except ImportError:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("LangGraphOrchestrator")
 
+try:
+    from backend.modules.auto_regulator import auto_regulator
+    from backend.modules.api_monitor import api_monitor
+except ImportError:
+    auto_regulator = None
+    api_monitor = None
+
 # Groq
 try:
     from langchain_groq import ChatGroq
@@ -101,6 +108,11 @@ class SimpleGeminiSDK:
 
     def invoke(self, input_data):
         if not self.model: raise Exception("Gemini API Key missing")
+        
+        # --- SAGE BRAKE CHECK ---
+        if auto_regulator:
+            auto_regulator.check_safety()
+
         try:
             text = ""
             if isinstance(input_data, str): text = input_data
@@ -109,6 +121,13 @@ class SimpleGeminiSDK:
             else: text = str(input_data)
             
             response = self.model.generate_content(text)
+            
+            # --- LOG USAGE ---
+            if api_monitor:
+                # Estimate tokens (approx 4 chars/token for rough tracking)
+                est_tokens = len(text) // 4 + len(response.text) // 4
+                api_monitor.log_usage(model="gemini-2.5-flash", tokens=est_tokens)
+
             return AIMessage(content=response.text)
         except Exception as e:
             logger.error(f"Gemini invoke failed: {e}")
@@ -120,6 +139,10 @@ class SimpleOllamaSDK:
         self.base_url = base_url
 
     def invoke(self, input_data):
+        # --- SAGE BRAKE CHECK ---
+        if auto_regulator:
+            auto_regulator.check_safety()
+
         try:
             prompt = ""
             if isinstance(input_data, str): prompt = input_data
@@ -130,6 +153,11 @@ class SimpleOllamaSDK:
             response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=60)
             if response.status_code == 200:
                 content = response.json().get("message", {}).get("content", "")
+                
+                # --- LOG USAGE (Ollama is free, but we track counts) ---
+                if api_monitor:
+                    api_monitor.log_usage(model=f"ollama-{self.model}", tokens=len(prompt)//4)
+
                 return AIMessage(content=content)
             else:
                 raise Exception(f"Ollama Error: {response.text}")
