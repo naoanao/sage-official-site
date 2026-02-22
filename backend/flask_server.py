@@ -183,7 +183,7 @@ except Exception as e:
 # logger = logging.getLogger(__name__)
 
 # [SAGE 3.0] Define Absolute Static Folder for SPA Stability
-FRONTEND_DIST = (project_root / "frontend" / "dist").resolve()
+FRONTEND_DIST = (project_root / "dist").resolve()
 if not FRONTEND_DIST.exists():
     logger.warning(f"[WARNING] Frontend dist folder not found at: {FRONTEND_DIST}")
 
@@ -2137,6 +2137,78 @@ def public_get_posts():
         }), 200
 
 
+
+
+# --- SAGE BRAKE API (Safety Control) ---
+@app.route('/api/brake/status', methods=['GET'])
+def api_brake_status():
+    stop_file = project_root / "SAGE_STOP"
+    return jsonify({"enabled": stop_file.exists()})
+
+@app.route('/api/brake/toggle', methods=['POST'])
+def api_brake_toggle():
+    data = request.get_json(silent=True) or {}
+    enable = data.get('enabled', False)
+    stop_file = project_root / "SAGE_STOP"
+    
+    # Security: Token check for remote control
+    admin_token = os.getenv("SAGE_ADMIN_TOKEN")
+    provided_token = request.headers.get("X-SAGE-ADMIN-TOKEN")
+    if admin_token and provided_token != admin_token:
+        logger.warning(f"Unauthorized brake toggle attempt from {request.remote_addr}")
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+        
+    try:
+        if enable:
+            stop_file.touch()
+            logger.warning("🚨 SAGE BRAKE ENABLED via API")
+        else:
+            if stop_file.exists():
+                stop_file.unlink()
+            logger.info("✅ SAGE BRAKE DISABLED via API")
+        return jsonify({"status": "success", "enabled": stop_file.exists()})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/d1/generate', methods=['POST'])
+def api_d1_generate():
+    """Manual trigger for D1 Knowledge Loop (D1: Idea -> Observation -> Artifacts)"""
+    try:
+        logger.info("🚀 [D1] Knowledge Loop manual trigger started via Cockpit")
+        
+        if not autonomous:
+             return jsonify({"status": "error", "message": "Autonomous adapter not initialized"}), 503
+
+        # Force Observation
+        obs = autonomous._observe_and_log()
+        
+        # Manually trigger a high-value 'D1' Action: Trend Research & Report
+        topic = "AI Monetization Trends 2026"
+        decision = {
+            'type': 'research_ai_trends',
+            'data': {'topic': topic}
+        }
+        
+        # We temporarily enable execution if it was off, just for this manual trigger
+        original_exec = autonomous.phase_2_execute
+        autonomous.phase_2_execute = True
+        try:
+            autonomous._execute_decision(decision)
+        finally:
+            autonomous.phase_2_execute = original_exec
+
+        return jsonify({
+            "status": "success", 
+            "message": f"D1 Loop Executed: Research report for '{topic}' generated and stored."
+        })
+    except Exception as e:
+        logger.error(f"D1 trigger error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/monetize', methods=['POST'])
+def api_monetize_alias():
+    """UI Helper for Monetization Dashboard. Simply routes to the existing Course Production Pipeline."""
+    return api_pilot_generate()
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
