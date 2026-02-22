@@ -81,6 +81,15 @@ class AutonomousAdapter:
         
         while self.running:
             try:
+                # --- SAGE BRAKE CHECK ---
+                from .auto_regulator import auto_regulator
+                try:
+                    auto_regulator.check_safety()
+                except RuntimeError as e:
+                    logger.critical(f"🛑 [AUTONOMOUS] SAFETY BRAKE TRIGGERED: {e}")
+                    self.stop()
+                    break
+
                 self.loop_count += 1
                 
                 # Phase 1: Observe (ACTIVE)
