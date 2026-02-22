@@ -5,7 +5,6 @@ import json
 import time
 import os
 import logging
-from datetime import datetime
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
@@ -85,9 +84,7 @@ class SageMemory:
                     metadatas=[{
                         "session_id": session_id,
                         "timestamp": timestamp,
-                        "type": "conversation",
-                        "source": "interaction",
-                        "retrieved_at": datetime.now().isoformat()
+                        "type": "conversation"
                     }],
                     ids=[doc_id]
                 )
@@ -98,16 +95,7 @@ class SageMemory:
     def add_memory(self, content: str, metadata: dict = None):
         """Simple memory addition."""
         if metadata is None:
-            metadata = {
-                "type": "long_term", 
-                "timestamp": time.time(),
-                "source": "manual_injection",
-                "retrieved_at": datetime.now().isoformat()
-            }
-        
-        # Legacy normalization insurance
-        if "retrievedat" in metadata and "retrieved_at" not in metadata:
-            metadata["retrieved_at"] = metadata.pop("retrievedat")
+            metadata = {"type": "long_term", "timestamp": time.time()}
         
         doc_id = f"mem_{int(time.time()*1000)}"
         
