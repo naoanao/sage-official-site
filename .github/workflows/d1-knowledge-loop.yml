@@ -1,70 +1,42 @@
 name: D1 Knowledge Loop (Mock)
-
 on:
   push:
-    branches: ["main"]
+    branches: [ci/final-test-branch]
   pull_request:
 
 jobs:
-  d1-knowledge-loop:
+  test:
     runs-on: ubuntu-latest
     env:
       SAGE_MOCK: "1"
-      PYTHONUTF8: "1"
-      PYTHONIOENCODING: "utf-8"
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Start API server (background)
+      - name: Start API
         run: |
           mkdir -p backend/logs
-          nohup python backend/flask_server.py > backend/logs/ci_flask.log 2>&1 &
-          echo $! > backend/logs/ci_flask.pid
-
-      - name: Wait for API Ready
+          nohup python backend/flask_server.py > backend/logs/sage_ultimate.log 2>&1 &
+      - name: Wait (Port 8080)
         run: |
-          python - << 'PY'
-          import requests, time
-          url = "http://127.0.0.1:8080/api/system/health"
-          for _ in range(120):
-            try:
-              res = requests.get(url, timeout=2.0)
-              if res.status_code == 200:
-                data = res.json()
-                if data.get("status") == "healthy":
-                  print("Server Healthy and Initialized!")
-                  break
-                else:
-                  print(f"Server alive but status is: {data.get('status')}")
-            except Exception as e:
-              pass
-            time.sleep(1)
-          else:
-            raise SystemExit("Server Health Check (status=healthy) Failed on :8080")
-          PY
-
-      - name: Run pilot E2E test
-        run: |
-          python test_pilot_pipeline.py
-
-      - name: Upload artifacts (always)
+          for i in {1..180}; do
+            python -c "import socket, sys; sys.exit(0 if socket.socket().connect_ex(('127.0.0.1', 8080)) == 0 else 1)" && exit 0
+            sleep 1
+          done
+          echo "Server failed to start in 180 seconds. Dumping logs:"
+          cat backend/logs/sage_ultimate.log || true
+          exit 1
+      - name: Run test
+        run: python test_pilot_pipeline.py
+      - name: Upload Logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci_debug_bundle
-          path: |
-            backend/logs/ci_flask.log
-            ci_metadata_snapshot.json
+          name: ci_logs
+          path: backend/logs/*.log
