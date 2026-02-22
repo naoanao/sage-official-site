@@ -20,3 +20,16 @@ __pycache__/
 commits_list.txt
 commits_readable.txt
 v2_output.json
+
+# Temporary / Experimental
+full_stat.txt
+diff_*.txt
+push_*.txt
+*_err.txt
+ci_logs*/
+SAGE_STOP
+*.ps1
+*_debug.log
+*.tmp
+/files/*
+!/files/.gitkeep
