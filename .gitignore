@@ -34,3 +34,4 @@ SAGE_STOP
 /files/*
 !/files/.gitkeep
 .claude/worktrees/
+compliance_deploy/
