@@ -54,6 +54,7 @@ mss
 python-dotenv
 watchdog
 PyGithub
+groq>=0.4.0
 gunicorn
 notion-client
 numpy
