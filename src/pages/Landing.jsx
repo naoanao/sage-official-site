@@ -18,7 +18,7 @@ const Landing = () => {
                     });
                 }
             })
-            .catch(() => { }); // Fail silently — fallback values remain
+            .catch(() => { }); // Fail silently  Efallback values remain
     }, []);
 
     const steps = [
@@ -78,7 +78,7 @@ const Landing = () => {
                     <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
                     <a href="/offer" className="hover:text-white transition-colors">Store</a>
                     <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
-                    <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
+                    <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
                 </div>
             </nav>
 
@@ -92,7 +92,7 @@ const Landing = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        FOR SOLOPRENEURS & CREATORS — {snsStats.total_posts} POSTS SHIPPED AUTONOMOUSLY
+                        FOR SOLOPRENEURS & CREATORS  E{snsStats.total_posts} POSTS SHIPPED AUTONOMOUSLY
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
@@ -104,7 +104,7 @@ const Landing = () => {
 
                     <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
                         Stop juggling 10 tools. Sage turns <span className="text-white">one conversation</span> into
-                        <span className="text-white"> SEO blogs</span>, <span className="text-white">social posts</span>, and <span className="text-white">revenue</span> — while you sleep.
+                        <span className="text-white"> SEO blogs</span>, <span className="text-white">social posts</span>, and <span className="text-white">revenue</span>  Ewhile you sleep.
                     </p>
 
                     {/* CTAs */}
@@ -209,32 +209,32 @@ const Landing = () => {
                             <div className="text-4xl font-black mb-1">$0</div>
                             <div className="text-sm text-slate-500 mb-8">See what Sage can do</div>
                             <ul className="space-y-3 text-sm text-slate-400 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> AI Chat (unlimited)</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dashboard access</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> 3 blog posts / month</li>
-                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5">—</span> <span className="text-slate-600">Autonomous SNS posting</span></li>
-                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5">—</span> <span className="text-slate-600">Monetization tools</span></li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> AI Chat (unlimited)</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Dashboard access</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> 3 blog posts / month</li>
+                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5"> E/span> <span className="text-slate-600">Autonomous SNS posting</span></li>
+                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5"> E/span> <span className="text-slate-600">Monetization tools</span></li>
                             </ul>
                             <a href="/dashboard" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
                                 Try It Free
                             </a>
                         </div>
 
-                        {/* Pro — Highlighted */}
+                        {/* Pro  EHighlighted */}
                         <div className="p-8 rounded-2xl bg-blue-600/10 border border-blue-500/30 relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-                            <div className="text-sm font-mono text-blue-400 mb-2">PRO — {snsStats.total_posts}+ POSTS SHIPPED LAST MONTH</div>
+                            <div className="text-sm font-mono text-blue-400 mb-2">PRO  E{snsStats.total_posts}+ POSTS SHIPPED LAST MONTH</div>
                             <div className="text-4xl font-black mb-1">$29<span className="text-lg font-normal text-slate-500">/mo</span></div>
                             <div className="text-sm text-slate-400 mb-8">~<span className="text-white font-medium">$1/day</span> · You sleep. Sage ships.</div>
                             <ul className="space-y-3 text-sm text-slate-300 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Everything in Starter</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> <span className="text-white font-medium">Unlimited AI blog posts</span></li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> <span className="text-white font-medium">Autonomous SNS (Bluesky + Instagram)</span></li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Monetization dashboard</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Priority support</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Everything in Starter</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> <span className="text-white font-medium">Unlimited AI blog posts</span></li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> <span className="text-white font-medium">Autonomous SNS (Bluesky + Instagram)</span></li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Monetization dashboard</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Priority support</li>
                             </ul>
                             <a href="/offer" className="block w-full text-center py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]">
-                                Go Autopilot — 7 Days Free
+                                Go Autopilot  E7 Days Free
                             </a>
                         </div>
 
@@ -244,11 +244,11 @@ const Landing = () => {
                             <div className="text-4xl font-black mb-1">Custom</div>
                             <div className="text-sm text-slate-500 mb-8">Your AI, your brand</div>
                             <ul className="space-y-3 text-sm text-slate-400 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Everything in Pro</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Custom AI model tuning</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> White-label deployment</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> API access</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dedicated support</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Everything in Pro</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Custom AI model tuning</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> White-label deployment</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> API access</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Dedicated support</li>
                             </ul>
                             <a href="mailto:sage@onelovepeople.com" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
                                 Book a Demo
@@ -290,7 +290,7 @@ const Landing = () => {
                         {[
                             {
                                 q: "I'm not technical. Can I actually use this?",
-                                a: "Yes — that's the whole point. You type what you want in plain English. Sage writes the blog, posts to social media, and tracks the results. No code, no dashboards to configure, no learning curve."
+                                a: "Yes  Ethat's the whole point. You type what you want in plain English. Sage writes the blog, posts to social media, and tracks the results. No code, no dashboards to configure, no learning curve."
                             },
                             {
                                 q: "What exactly gets automated?",
@@ -302,7 +302,7 @@ const Landing = () => {
                             },
                             {
                                 q: "Is my data safe?",
-                                a: "Absolutely. Sage runs a hybrid AI architecture — sensitive data stays on your local machine, only non-private content touches the cloud for speed."
+                                a: "Absolutely. Sage runs a hybrid AI architecture  Esensitive data stays on your local machine, only non-private content touches the cloud for speed."
                             },
                             {
                                 q: "What kind of support do I get?",
