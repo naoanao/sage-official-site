@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { FiMessageSquare, FiCpu, FiShare2, FiDollarSign, FiLayout, FiArrowRight, FiActivity, FiShield, FiGlobe, FiDatabase } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
@@ -74,7 +75,7 @@ const Landing = () => {
                     SAGE 3.0
                 </div>
                 <div className="flex gap-4 sm:gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap">
-                    <a href="/blog" className="hover:text-white transition-colors">Blog</a>
+                    <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
                     <a href="/offer" className="hover:text-white transition-colors">Store</a>
                     <a href="https://bsky.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">SNS</a>
                 </div>
