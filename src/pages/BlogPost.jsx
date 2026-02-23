@@ -14,7 +14,7 @@ const BlogPost = () => {
         const loadPost = async () => {
             try {
                 // Dynamically load all MDX files in the posts directory
-                const posts = import.meta.glob('../blog/posts/*.mdx', { as: 'raw', eager: true });
+                const posts = import.meta.glob('../blog/posts/*.mdx', { eager: true, query: '?raw', import: 'default' });
 
                 let rawContent = null;
                 let frontmatter = {};
