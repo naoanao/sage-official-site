@@ -33,3 +33,4 @@ SAGE_STOP
 *.tmp
 /files/*
 !/files/.gitkeep
+.claude/worktrees/
