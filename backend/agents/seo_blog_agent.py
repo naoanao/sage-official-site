@@ -2,8 +2,11 @@ import os
 import sys
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
 from pytrends.request import TrendReq
-import google.generativeai as genai
+import requests
+
+load_dotenv()
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -12,12 +15,10 @@ logger = logging.getLogger(__name__)
 class SEOBlogAgent:
     def __init__(self):
         self.pytrends = TrendReq(hl='ja-JP', tz=360)
-        self.gemini_api_key = os.getenv("GOOGLE_AI_STUDIO_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if self.gemini_api_key:
-            genai.configure(api_key=self.gemini_api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
-        else:
-            logger.warning("Gemini API key not found. AI generation will fail.")
+        self.groq_api_key = os.getenv("GROQ_API_KEY")
+        self.model_name = "llama-3.3-70b-versatile"
+        if not self.groq_api_key:
+            logger.warning("Groq API key not found. AI generation will fail.")
 
     def get_trending_keywords(self):
         try:
@@ -53,8 +54,22 @@ class SEOBlogAgent:
         ---
         """
         try:
-            response = self.model.generate_content(prompt)
-            return response.text
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": self.model_name,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3
+            }
+            response = requests.post(url, headers=headers, json=payload, timeout=120)
+            if response.status_code == 200:
+                return response.json()['choices'][0]['message']['content']
+            else:
+                logger.error(f"Groq API Error: {response.text}")
+                return None
         except Exception as e:
             logger.error(f"Error generating article: {e}")
             return None
