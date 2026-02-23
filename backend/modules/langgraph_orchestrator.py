@@ -533,12 +533,16 @@ class LangGraphOrchestrator:
         return workflow.compile()
 
     # === 修正1: run() メソッドで context を永続化 ===
-    def run(self, user_message: str, model_name: str = "gemini"):
+    def run(self, user_message: str, model_name: str = "gemini", context: dict = None):
         """Entry point for the backend to run the orchestrator."""
         # 既存の context があれば再利用（セッション維持）
         if not hasattr(self, '_persistent_context'):
             self._persistent_context = {}
-        
+
+        # Merge externally supplied context (e.g. from SageMasterAgent SICA proposal)
+        if context:
+            self._persistent_context.update(context)
+
         # Load recent history to provide context
         history = []
         if self.memory_agent:
@@ -551,7 +555,7 @@ class LangGraphOrchestrator:
                 initial_messages.append(HumanMessage(content=h['content']))
             else:
                 initial_messages.append(AIMessage(content=h['content']))
-        
+
         initial_messages.append(HumanMessage(content=user_message))
 
         inputs = {

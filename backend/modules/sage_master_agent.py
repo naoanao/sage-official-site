@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import json
+import threading
 from typing import Dict, Any
 
 # Add project root to path
@@ -53,9 +54,15 @@ class SageMasterAgent:
         
         # 2. Save User Input to Short-Term Memory
         self.memory.save_short_term("user", user_message)
-        
+
         # 3. Delegate to Orchestrator (Execution)
-        response = self.orchestrator.run(user_message)
+        # SICA Proposal Applied: pass retrieved memory context to orchestrator
+        context = {
+            "short_term_history": short_term,
+            "long_term_knowledge": long_term,
+            "config": self.config
+        }
+        response = self.orchestrator.run(user_message, context=context)
         
         # 4. Process Result
         final_output = response.get("final_response", "I'm thinking...")
@@ -64,12 +71,12 @@ class SageMasterAgent:
         self.memory.save_short_term("sage", final_output)
         
         # 6. Auto-Reflection (SICA Loop)
-        # Run asynchronously or periodically in real production.
-        # For now, we run it lightly if the message implies a complex task.
-        if len(user_message) > 20: 
+        # SICA Proposal Applied: run in background thread to avoid blocking response
+        if len(user_message) > 20:
             try:
-                logger.info("🔄 Triggering SICA Analysis...")
-                self.sica.run_analysis()
+                logger.info("🔄 Triggering SICA Analysis in background...")
+                thread = threading.Thread(target=self.sica.run_analysis, daemon=True)
+                thread.start()
             except Exception as e:
                 logger.warning(f"SICA Trigger Failed: {e}")
         
