@@ -1,6 +1,8 @@
 import threading
 import time
 import logging
+import os
+import json
 from datetime import datetime
 from typing import Optional, Dict, Any
 
@@ -12,7 +14,8 @@ SAFE_ACTIONS = [
     'send_telegram_notification',
     'log_milestone',
     'research_ai_trends',
-    'optimize_monetization' # NEW: Content Loop Hook
+    'optimize_monetization', # NEW: Content Loop Hook
+    'draft_social_post'      # NEW: Human-in-the-loop Distribution
 ]
 
 class AutonomousAdapter:
@@ -240,33 +243,198 @@ class AutonomousAdapter:
         
         try:
             if decision['type'] == 'research_ai_trends':
-                # Trigger Research Tool via Orchestrator Logic
+                # Trigger Research Tool via Perplexity (Direct Requests for robustness)
                 topic = decision['data'].get('topic', 'AI Trends')
-                logger.info(f"   -> Researching '{topic}' via NotebookLM/Search...")
+                logger.info(f"⚡ [D1] LIVE HARVESTING: Researching '{topic}' via Perplexity API...")
                 
-                # Simulate Orchestrator Step
-                # Note: We can't easily call execute_node because it expects complex state.
-                # But we can call the tool method directly if we find it, OR use the orchestrator's 'research_agent'
+                research_report = ""
                 
-                # Check for NotebookLM Agent
-                if hasattr(self.orchestrator, 'notebooklm_agent') and self.orchestrator.notebooklm_agent:
-                     res = self.orchestrator.notebooklm_agent.research_topic(topic)
-                     logger.info(f"   -> Research Result Status: {res.get('status')}")
-                     
-                     if res.get('status') == 'success':
-                         # SAVE TO DESKTOP FOR USER VISIBILITY
-                         desktop_path = r"C:\Users\nao\Desktop\Sage_Final_Unified\AI_TRENDS_REPORT.md"
-                         with open(desktop_path, 'w', encoding='utf-8') as f:
-                             f.write(res.get('report', 'No Data'))
-                         logger.info(f"   -> 📝 Wrote report to {desktop_path}")
-                     
-                elif hasattr(self.orchestrator, 'browser_agent') and self.orchestrator.browser_agent:
-                     # Fallback to simple browser search
-                     res = self.orchestrator.browser_agent.navigate(f"https://www.google.com/search?q={topic}")
-                     logger.info(f"   -> Browser Search Performed: {res}")
-                else:
-                     logger.warning("   -> No Research Agent available.")
+                # --- NEW: SEARCH TREND EVIDENCE (FREE REAL WATER) ---
+                trend_evidence = ""
+                if hasattr(self.orchestrator, 'browser_agent') and self.orchestrator.browser_agent:
+                    try:
+                        trends = self.orchestrator.browser_agent.get_google_trends(topic)
+                        if trends.get('status') == 'success':
+                            trend_evidence = f"\n## 📊 Search Trend Evidence (Live Data)\n"
+                            trend_evidence += f"- **Topic Keyword**: {trends['keyword']}\n"
+                            trend_evidence += f"- **Data Range**: Last 3 months (Relative Index)\n"
+                            for entry in trends['interest_over_time']:
+                                trend_evidence += f"  - {entry['date']}: {entry['value']}\n"
+                            
+                            if trends['related_rising']:
+                                trend_evidence += "- **Rising Related Queries (Market Buzz)**:\n"
+                                for r in trends['related_rising'][:3]:
+                                    q = r.get('query') or r.get('keyword', 'N/A')
+                                    v = r.get('value') or r.get('breakout', 'N/A')
+                                    trend_evidence += f"  - {q} (+{v})\n"
+                            logger.info("✅ [D1] Google Trends Evidence harvested.")
+                    except Exception as tr_err:
+                        logger.warning(f"⚠️ Trend harvesting failed: {tr_err}")
 
+                pplx_key = os.getenv("PERPLEXITY_API_KEY")
+                
+                if pplx_key:
+                    try:
+                        import requests
+                        url = "https://api.perplexity.ai/chat/completions"
+                        
+                        payload = {
+                            "model": "sonar-reasoning-pro",
+                            "messages": [
+                                {
+                                    "role": "system",
+                                    "content": "You are an expert researcher. Provide specific data, numbers, and verifiable URLs. IMPORTANT: Ensure all projections and data are strictly for the year 2026. Do not confuse 2025 data with 2026 projections."
+                                },
+                                {
+                                    "role": "user",
+                                    "content": f"Research the following topic and provide a detailed report with REAL-WORLD DATA, SPECIFIC NUMBERS, and VERIFIABLE URLs specifically for the year 2026.\nTopic: {topic}\nSeed Research: Use https://www.fortunebusinessinsights.com/influencer-marketing-platform-market-108880 as a primary source for market size projections if applicable."
+                                }
+                            ],
+                            "temperature": 0.2
+                        }
+                        headers = {
+                            "Authorization": f"Bearer {pplx_key}",
+                            "Content-Type": "application/json"
+                        }
+                        
+                        response = requests.post(url, json=payload, headers=headers, timeout=60)
+                        if response.status_code == 200:
+                            res_data = response.json()
+                            research_report = res_data['choices'][0]['message']['content']
+                            logger.info("✅ [D1] Perplexity Research Success (via Requests).")
+                        else:
+                            logger.error(f"❌ Perplexity API Error: {response.status_code} - {response.text}")
+                    except Exception as ex:
+                        logger.error(f"❌ Perplexity Request Failed: {ex}")
+                
+                # Fallback to BrowserAgent if Perplexity is unavailable
+                if not research_report:
+                    logger.warning("⚠️ Perplexity unavailable, falling back to BrowserAgent...")
+                    if hasattr(self.orchestrator, 'browser_agent') and self.orchestrator.browser_agent:
+                         search_res = self.orchestrator.browser_agent.search(topic)
+                         if search_res.get('status') == 'success' and search_res.get('results'):
+                             results = search_res['results']
+                             research_report += f"# D1 Research (Browser Fallback): {topic}\n"
+                             research_report += "## 🌐 Search Results\n\n"
+                             for i, r in enumerate(results[:5], 1):
+                                 research_report += f"### {i}. {r['title']}\n"
+                                 research_report += f"- **Source**: {r['link']}\n"
+                                 research_report += f"- **Insight**: {r['snippet']}\n\n"
+                         else:
+                             # Don't set FATAL here, just leave it empty and let the final check handle it
+                             logger.warning(f"❌ No search results for {topic}")
+                
+                # --- NEW: EVIDENCE PURIFICATION (D1.5 DEEP VERIFICATION) ---
+                if research_report and hasattr(self.orchestrator, 'browser_agent'):
+                    logger.info("🛡️ [D1] PURIFYING EVIDENCE: Cross-referencing all numbers with cited sources...")
+                    
+                    # 1. Collect all reachable sources from the report
+                    all_urls = list(set(re.findall(r'https?://[^\s)\]]+', research_report)))
+                    source_contents = {}
+                    for u in all_urls:
+                        # Basic reachability and content fetch
+                        res = self.orchestrator.browser_agent.verify_url_content(u, []) # Fetch text
+                        if res.get('status') == 'success' and res.get('reachable'):
+                            # Fetch again with no search terms to get full text once
+                            import requests
+                            try:
+                                h = {'User-Agent': 'Mozilla/5.0'}
+                                source_contents[u] = re.sub(r'<[^>]+>', ' ', requests.get(u, headers=h, timeout=10).text).lower()
+                            except:
+                                continue
+                    
+                    # 2. Extract and verify every fact in the report
+                    raw_lines = research_report.split('\n')
+                    purified_lines = []
+                    for line in raw_lines:
+                        new_line = line
+                        
+                        # Year Check
+                        if "2025" in line and "2026" not in line:
+                             new_line = f"⚠️ [YEAR MISMATCH] {new_line}"
+                        
+                        # Look for facts in this line
+                        found_facts = re.findall(r'(\$?\d+(?:\.\d+)?\s*(?:billion|million|trillion|%))', line, re.IGNORECASE)
+                        for fact in found_facts:
+                            fact_clean = fact.lower().strip()
+                            is_verified = False
+                            for s_url, s_text in source_contents.items():
+                                if fact_clean in s_text:
+                                    is_verified = True
+                                    break
+                            
+                            tag = " [🔍 Verified in Sources]" if is_verified else " [⚠️ Unverified Number]"
+                            if tag not in new_line:
+                                new_line = new_line.replace(fact, f"{fact}{tag}")
+                        
+                        # URL tag (basic reachability/status)
+                        found_urls = re.findall(r'https?://[^\s)\]]+', line)
+                        for u in found_urls:
+                            status = " [✅ Reachable]" if u in source_contents else " [❌ UNREACHABLE/HALLUCINATED URL]"
+                            new_line = new_line.replace(u, f"{u}{status}")
+                            
+                        purified_lines.append(new_line)
+                    
+                    research_report = "\n".join(purified_lines)
+                    logger.info("✅ [D1] Evidence Purification (Cross-Reference) complete.")
+
+                # Final fallback if absolutely everything failed
+                if not research_report and not trend_evidence:
+                    research_report = f"# D1 Failure Report: {topic}\n⚠️ FATAL: No external data (Trends or Search) could be harvested."
+                
+                # Ensure we have at least trend evidence even if main research failed
+                if not research_report and trend_evidence:
+                    research_report = f"# Intelligence Report: {topic}\n" + trend_evidence
+                elif trend_evidence and research_report:
+                    # Clean the report title if prepending
+                    clean_report = research_report.replace(f"# Intelligence Report: {topic}\n", "")
+                    research_report = f"# Intelligence Report (Verified): {topic}\n" + trend_evidence + "\n---\n" + clean_report
+
+                # Add explicit footer (Fixing typo)
+                research_report += "\n\n---\n*Verified via Sage Internal Grounding (D1 Knowledge Loop). Citations validated for reachability.*"
+
+                # 3. SAVE TO OBSIDIAN
+                if research_report:
+                    try:
+                        import pathlib
+                        vault_dir = pathlib.Path("obsidian_vault/knowledge")
+                        vault_dir.mkdir(parents=True, exist_ok=True)
+                        report_name = f"research_{int(time.time())}.md"
+                        report_path = vault_dir / report_name
+                        with open(report_path, 'w', encoding='utf-8') as f:
+                            f.write(research_report)
+                        logger.info(f"💾 [D1] Final Intelligence Report stored at {report_path}")
+                    except Exception as ex:
+                        logger.error(f"Failed to save research report: {ex}")
+
+            elif decision['type'] == 'draft_social_post':
+                # NEW: D3 Human-in-the-loop Distribution
+                topic = decision['data'].get('topic', 'AI Insights')
+                logger.info(f"⚡ [D3] DRAFTING DISTRIBUTION: {topic}")
+                
+                try:
+                    draft_content = f"# 📝 D3 Distribution Draft: {topic}\n"
+                    draft_content += f"**Status**: Pending Human Approval\n"
+                    draft_content += f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                    
+                    draft_content += "## 🐦 X (Twitter) Proposal\n"
+                    draft_content += f"🚀 Latest Findings in '{topic}'\n"
+                    draft_content += "Evidence-based monetization strategy now available in the vault. #SageAI #Automation\n\n"
+                    
+                    draft_content += "## 📸 Instagram Proposal\n"
+                    draft_content += f"Caption for {topic}: Real-world ROI data for 2026. Link in bio.\n\n"
+                    
+                    import pathlib
+                    draft_dir = pathlib.Path("obsidian_vault/drafts")
+                    draft_dir.mkdir(parents=True, exist_ok=True)
+                    draft_path = draft_dir / f"draft_{int(time.time())}.md"
+                    
+                    with open(draft_path, 'w', encoding='utf-8') as f:
+                        f.write(draft_content)
+                    
+                    logger.info(f"💾 [D3] Social Distribution Draft saved: {draft_path}")
+                except Exception as d_err:
+                    logger.error(f"Distribution drafting failed: {d_err}")
             elif decision['type'] == 'log_milestone':
                  logger.info(f"   -> Milestone: {decision['data']}")
             

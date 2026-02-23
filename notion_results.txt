@@ -1,0 +1,7 @@
+Searching Notion...
+[page] ID: 30cf7a7d-a95e-81a0-9828-d4426c103dab URL: https://www.notion.so/Gemini-3-Pro-Antigravity-n8n-30cf7a7da95e81a09828d4426c103dab
+ Title: 【Gemini 3 Pro】Antigravityを「ただのエディタ」として使うのはやめろ。n8nと連携して「寝ている間にバグを勝手に直す」自律修復パイプライン
+[page] ID: 306f7a7d-a95e-809a-b118-ecb81b3bb047 URL: https://www.notion.so/SAGE-3-0-HP-306f7a7da95e809ab118ecb81b3bb047
+ Title: SAGE 3.0 ホームページ（HP）完全仕様書
+[page] ID: 300f7a7d-a95e-81b1-8b3f-d3782c2be922 URL: https://www.notion.so/Sage-300f7a7da95e81b18b3fd3782c2be922
+Error: 'cp932' codec can't encode character '\U0001f4dd' in position 8: illegal multibyte sequence
