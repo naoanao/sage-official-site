@@ -2182,8 +2182,10 @@ def api_d1_generate():
         # Force Observation
         obs = autonomous._observe_and_log()
         
+        data = request.get_json(silent=True) or {}
+        topic = data.get('topic', 'AI Monetization Trends 2026')
+        
         # Manually trigger a high-value 'D1' Action: Trend Research & Report
-        topic = "AI Monetization Trends 2026"
         decision = {
             'type': 'research_ai_trends',
             'data': {'topic': topic}
