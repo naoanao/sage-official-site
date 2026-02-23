@@ -73,7 +73,7 @@ const Landing = () => {
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
                     SAGE 3.0
                 </div>
-                <div className="flex gap-6 text-sm font-medium text-slate-400">
+                <div className="flex gap-4 sm:gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap">
                     <a href="/blog" className="hover:text-white transition-colors">Blog</a>
                     <a href="/offer" className="hover:text-white transition-colors">Store</a>
                     <a href="https://bsky.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">SNS</a>
