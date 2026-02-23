@@ -77,7 +77,8 @@ const Landing = () => {
                 <div className="flex gap-4 sm:gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap">
                     <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
                     <a href="/offer" className="hover:text-white transition-colors">Store</a>
-                    <a href="https://bsky.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">SNS</a>
+                    <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
+                    <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
                 </div>
             </nav>
 
