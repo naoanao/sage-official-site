@@ -91,7 +91,10 @@ class SICALoop:
         try:
             response = self.llm.invoke([HumanMessage(content=prompt)])
             print("DEBUG: LLM Response Received.")
-            content = response.content.replace("```json", "").replace("```", "").strip()
+            raw = response.content
+            if isinstance(raw, list):
+                raw = "".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in raw)
+            content = raw.replace("```json", "").replace("```", "").strip()
             print(f"DEBUG: Parsed Content: {content[:100]}...")
             
             proposal = json.loads(content)
@@ -100,7 +103,7 @@ class SICALoop:
             print(f"DEBUG: Saving proposal to {self.proposals_path}")
             self._save_proposal(proposal)
             logger.info(f"✅ SICA: Generated Proposal - {proposal['title']}")
-            print(f"DEBUG: Proposal Generated: {json.dumps(proposal, indent=2, ensure_ascii=False)}")
+            print(f"DEBUG: Proposal Generated: {json.dumps(proposal, indent=2, ensure_ascii=True)}")
             return proposal
             
         except Exception as e:
@@ -119,7 +122,9 @@ class SICALoop:
 
     def _save_proposal(self, proposal):
         proposal['timestamp'] = datetime.now().isoformat()
-        
+
+        os.makedirs(os.path.dirname(self.proposals_path), exist_ok=True)
+
         existing = []
         if os.path.exists(self.proposals_path):
             with open(self.proposals_path, 'r') as f:
@@ -129,8 +134,8 @@ class SICALoop:
         
         existing.append(proposal)
         
-        with open(self.proposals_path, 'w') as f:
-            json.dump(existing, f, indent=2)
+        with open(self.proposals_path, 'w', encoding='utf-8') as f:
+            json.dump(existing, f, indent=2, ensure_ascii=False)
 
 if __name__ == "__main__":
     # Test Run
