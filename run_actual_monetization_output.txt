@@ -1,0 +1,8 @@
+2026-02-23 10:38:53,968 - backend.modules.api_monitor - INFO - üõ°ÅEÅEAPIMonitor initialized. tracking usage in backend/logs/api_usage.db
+2026-02-23 10:38:53,970 - backend.modules.auto_regulator - INFO - \U0001f6e1\ufe0f [BRAKE] AutoRegulator initialized. Limits: 500000 tokens, 2000 calls.
+Traceback (most recent call last):
+  File "C:\Users\nao\Desktop\Sage_Final_Unified\run_actual_monetization.py", line 108, in <module>
+    run_actual_monetization_experiment()
+  File "C:\Users\nao\Desktop\Sage_Final_Unified\run_actual_monetization.py", line 22, in run_actual_monetization_experiment
+    print("\n--- \U0001f3c1 STARTING PHASE 1 EXPERIMENT: SAGE SELF-VERIFICATION ---")
+UnicodeEncodeError: 'cp932' codec can't encode character '\U0001f3c1' in position 6: illegal multibyte sequence

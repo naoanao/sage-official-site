@@ -34,34 +34,38 @@ const BlogPost = () => {
 
                 let foundPath = null;
                 let rawContent = null;
+                let frontmatter = {};
+                let content = "";
 
+                // Iterate through all posts to find a match by slug field or filename
                 for (const path in posts) {
-                    if (path.includes(slug)) {
+                    const raw = posts[path];
+                    const parts = raw.split('---');
+                    let currentFM = {};
+
+                    if (parts.length >= 3) {
+                        const rawFM = parts[1];
+                        rawFM.split('\n').forEach(line => {
+                            const [key, ...valueParts] = line.split(':');
+                            if (key && valueParts.length > 0) {
+                                currentFM[key.trim()] = valueParts.join(':').trim().replace(/^["']|["']$/g, '');
+                            }
+                        });
+                    }
+
+                    // Check if slug matches frontmatter OR filename
+                    const filename = path.split('/').pop().replace('.mdx', '');
+                    if (currentFM.slug === slug || filename === slug || path.includes(slug)) {
                         foundPath = path;
-                        rawContent = posts[path];
+                        rawContent = raw;
+                        frontmatter = currentFM;
+                        content = parts.length >= 3 ? parts.slice(2).join('---') : raw;
                         break;
                     }
                 }
 
                 if (!rawContent) {
                     throw new Error('Post not found');
-                }
-
-                // Extremely simple frontmatter parser
-                const parts = rawContent.split('---');
-                let frontmatter = {};
-                let content = rawContent;
-
-                if (parts.length >= 3) {
-                    const rawFrontmatter = parts[1];
-                    content = parts.slice(2).join('---');
-
-                    rawFrontmatter.split('\n').forEach(line => {
-                        const [key, ...valueParts] = line.split(':');
-                        if (key && valueParts.length > 0) {
-                            frontmatter[key.trim()] = valueParts.join(':').trim().replace(/^["']|["']$/g, '');
-                        }
-                    });
                 }
 
                 // Sanitized Markdown to HTML
