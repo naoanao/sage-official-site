@@ -3,35 +3,36 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { STRIPE_LINKS, addUTM } from '../config/stripe';
 
+// Dynamically load all MDX files from src/blog/posts/
+const postModules = import.meta.glob('../blog/posts/*.mdx', { eager: true, query: '?raw', import: 'default' });
+
+const loadedPosts = Object.entries(postModules).map(([path, raw]) => {
+    const parts = raw.split('---');
+    let fm = {};
+    if (parts.length >= 3) {
+        parts[1].split('\n').forEach(line => {
+            const [key, ...vals] = line.split(':');
+            if (key && vals.length > 0) {
+                fm[key.trim()] = vals.join(':').trim().replace(/^["']|["']$/g, '');
+            }
+        });
+    }
+    const filename = path.split('/').pop().replace('.mdx', '');
+    const keywords = fm.keywords
+        ? fm.keywords.split(',').map(k => k.trim())
+        : [];
+    return {
+        slug: fm.slug || filename,
+        title: fm.title || filename,
+        excerpt: fm.excerpt || '',
+        date: fm.date || '',
+        keywords,
+        readTime: '8 min read',
+    };
+}).sort((a, b) => new Date(b.date) - new Date(a.date));
+
 const Blog = () => {
-    // In production, this would fetch from API or server-side
-    // For now, hardcoded example posts
-    const posts = [
-        {
-            slug: '2026-02-23-ai-automation',
-            title: '中小企業向けAI導入のステップとROI: ビジネス効率化のための実践的なアプローチ',
-            excerpt: '中小企業向けにAIを導入するための実践的なステップとROIの計算方法を紹介します。実際の導入事例を通じて、AIの効果的な活用方法を学びましょう。',
-            date: '2026-02-23',
-            keywords: ['中小企業向けAI導入', 'ビジネス効率化', 'AI自動化'],
-            readTime: '10 min read'
-        },
-        {
-            slug: '2026-02-06-ai-automation',
-            title: '中小企業がAI導入で収益を倍増させる5つの具体的ステップ',
-            excerpt: '生成AIを活用した業務自動化は、もはや大企業だけのものではありません。中小企業が月間数百時間のコスト削減を実現し、ROIを最大化するためのロードマップを解説します。',
-            date: '2026-02-06',
-            keywords: ['AI 業務効率化', '中小企業 DX', '生成AI ROI'],
-            readTime: '8 min read'
-        },
-        {
-            slug: 'automate-business-with-ai',
-            title: 'How to Automate Your Entire Business with AI: Complete Guide',
-            excerpt: 'Discover how Sage AI can revolutionize your workflow by automating social media, email, content creation, and more—completely hands-free.',
-            date: '2026-02-06',
-            keywords: ['AI automation', 'business automation', 'AI agents'],
-            readTime: '8 min read'
-        }
-    ];
+    const posts = loadedPosts;
 
     return (
         <div className="min-h-screen bg-black text-white">
@@ -128,7 +129,7 @@ const Blog = () => {
                         ))}
                     </div>
 
-                    {/* Empty State (when we have no posts yet) */}
+                    {/* Empty State */}
                     {posts.length === 0 && (
                         <div className="text-center py-20">
                             <div className="text-6xl mb-4">📝</div>
