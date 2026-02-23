@@ -1,8 +1,9 @@
 import React from 'react';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
 import { useParams } from 'react-router-dom';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github-dark.css';
 
 const BlogPost = () => {
     const { slug } = useParams();
@@ -10,16 +11,45 @@ const BlogPost = () => {
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        // In production, this would fetch from API or pre-rendered pages
-        // For now, using direct file read (works in dev mode with Node backend)
         const loadPost = async () => {
             try {
-                const postsDirectory = path.join(process.cwd(), 'src/blog/posts');
-                const filePath = path.join(postsDirectory, `${slug}.mdx`);
-                const fileContents = fs.readFileSync(filePath, 'utf8');
-                const { data, content } = matter(fileContents);
+                // Dynamically load all MDX files in the posts directory
+                const posts = import.meta.glob('../blog/posts/*.mdx', { as: 'raw', eager: true });
 
-                setPost({ frontmatter: data, content });
+                let rawContent = null;
+                let frontmatter = {};
+                let content = "";
+
+                // Find the post that matches the current slug
+                for (const path in posts) {
+                    const raw = posts[path];
+                    const parts = raw.split('---');
+                    let currentFM = {};
+
+                    if (parts.length >= 3) {
+                        const rawFM = parts[1];
+                        rawFM.split('\n').forEach(line => {
+                            const [key, ...valueParts] = line.split(':');
+                            if (key && valueParts.length > 0) {
+                                currentFM[key.trim()] = valueParts.join(':').trim().replace(/^["']|["']$/g, '');
+                            }
+                        });
+                    }
+
+                    const filename = path.split('/').pop().replace('.mdx', '');
+                    if (currentFM.slug === slug || filename === slug || path.includes(slug)) {
+                        rawContent = raw;
+                        frontmatter = currentFM;
+                        content = parts.length >= 3 ? parts.slice(2).join('---') : raw;
+                        break;
+                    }
+                }
+
+                const htmlContent = DOMPurify.sanitize(marked.parse(content));
+
+                if (rawContent) {
+                    setPost({ frontmatter, content: htmlContent });
+                }
                 setLoading(false);
             } catch (error) {
                 console.error('Error loading post:', error);
@@ -29,6 +59,12 @@ const BlogPost = () => {
 
         loadPost();
     }, [slug]);
+
+    React.useEffect(() => {
+        if (post) {
+            hljs.highlightAll();
+        }
+    }, [post]);
 
     if (loading) {
         return (

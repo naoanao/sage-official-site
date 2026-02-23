@@ -8,6 +8,14 @@ const Blog = () => {
     // For now, hardcoded example posts
     const posts = [
         {
+            slug: '2026-02-23-ai-automation',
+            title: '中小企業がAI導入で収益を倍増させる5つの具体的ステップ',
+            excerpt: '2026年のビジネス環境において、AIは大企業だけのものではありません。小規模事業者が実際に収益を上げるための具体的なロードマップを解説します。',
+            date: '2026-02-23',
+            keywords: ['AI導入', '中小企業', '自動化収益'],
+            readTime: '10 min read'
+        },
+        {
             slug: 'automate-business-with-ai',
             title: 'How to Automate Your Entire Business with AI: Complete Guide',
             excerpt: 'Discover how Sage AI can revolutionize your workflow by automating social media, email, content creation, and more—completely hands-free.',
