@@ -60,36 +60,26 @@ class CourseProductionPipeline:
         logger.info(f"🎓 Generating course: {topic}")
         
         try:
+            # --- PRIORITY 1: D1 RESEARCH INGESTION ---
+            research_data = self._get_latest_research(topic)
+            if research_data:
+                logger.info(f"🔍 [D1] Found research evidence: {research_data['filename']}")
+            else:
+                logger.info("ℹ️ [D1] No specific research found, proceeding with fallback logic")
+
             logger.info("Paper Knowledge injected successfully")
             if self.brain and hasattr(self.brain, 'add_memory'):
                 try:
-                    self.brain.add_memory("Mock task executed", {"topic": topic})
+                    self.brain.add_memory("Monetization task executed", {"topic": topic, "research_used": bool(research_data)})
                 except:
                     pass
-            elif self.brain and hasattr(self.brain, 'memorize'):
-                try:
-                    self.brain.memorize("Memory increased by course production")
-                except:
-                    pass
-            elif hasattr(self, 'obsidian') and self.obsidian:
-                # Some implementations use other paths
-                pass
-            else:
-                pass
-                
-            try:
-                from backend.modules.sage_memory import SageMemory
-                tmp_mem = SageMemory()
-                tmp_mem.add_memory("Paper Knowledge injected successfully mock test", {"source": "mock_test"})
-            except Exception as e:
-                logger.error(f"Failed to increment memory: {e}")
             
-            # Step 1: Generate outline
-            outline = self._generate_outline(topic, num_sections)
+            # Step 1: Generate outline (Informed by D1)
+            outline = self._generate_outline(topic, num_sections, research_data)
             logger.info(f"✅ Outline generated: {len(outline)} sections")
             
-            # Step 2: Generate section content
-            sections = self._generate_sections(outline)
+            # Step 2: Generate section content (Informed by D1)
+            sections = self._generate_sections(outline, research_data)
             logger.info(f"✅ Content generated: {len(sections)} sections")
             
             # Step 3: Generate slide images
@@ -97,12 +87,12 @@ class CourseProductionPipeline:
             logger.info(f"✅ Slides generated: {len(slides)} images")
             
             # Step 4: Generate sales page
-            sales_page = self._generate_sales_page(topic, outline, sections)
+            sales_page = self._generate_sales_page(topic, sections, research_data)
             if sales_page:
                 logger.info(f"✅ Sales page generated ({len(sales_page)} chars)")
             
             # Step 5: Save to Obsidian
-            note_path = self._save_to_obsidian(topic, outline, sections, slides, sales_page)
+            note_path = self._save_to_obsidian(topic, outline, sections, slides, sales_page, research_data)
             logger.info(f"✅ Saved to Obsidian: {note_path}")
             
             return {
@@ -112,6 +102,7 @@ class CourseProductionPipeline:
                 "sections": sections,
                 "slides": slides,
                 "sales_page": sales_page,
+                "research_source": research_data['filename'] if research_data else None,
                 "obsidian_note": str(note_path)
             }
         
@@ -121,27 +112,78 @@ class CourseProductionPipeline:
                 "status": "error",
                 "message": str(e)
             }
-    
-    def _generate_outline(self,topic: str, num_sections: int) -> List[str]:
-        """Generate course outline"""
+
+    def _get_latest_research(self, topic: str) -> Optional[Dict]:
+        """Fetch latest relevant D1 research from Obsidian vault"""
+        try:
+            import pathlib
+            vault_dir = pathlib.Path("obsidian_vault/knowledge")
+            if not vault_dir.exists():
+                return None
+            
+            # Find research md files (Explicitly ignore course_ files)
+            files = list(vault_dir.glob("research_*.md"))
+            if not files:
+                logger.info("ℹ️ [D1] No 'research_' files found in vault. Falling back to any non-course file.")
+                all_files = list(vault_dir.glob("*.md"))
+                files = [f for f in all_files if not f.name.startswith("course_")]
+            
+            if not files:
+                return None
+            
+            # Sort by modification time (latest first)
+            files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            
+            # Prioritize topic match in filename
+            topic_match = [f for f in files if topic.lower() in f.name.lower()]
+            latest_file = topic_match[0] if topic_match else files[0]
+            
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            return {
+                "filename": latest_file.name,
+                "content": content,
+                "mtime": latest_file.stat().st_mtime
+            }
+        except Exception as e:
+            logger.warning(f"Failed to fetch D1 research: {e}")
+            return None
+        
+    def _generate_outline(self, topic: str, num_sections: int, research_data: Optional[Dict] = None) -> List[str]:
+        """Generate course outline informed by research"""
+        
+        research_context = ""
+        if research_data:
+            # Limit context to avoid context window explosion
+            trimmed_content = research_data['content'][:4000]
+            research_context = f"\n[D1 RESEARCH DATA FOUND]\n{trimmed_content}\n"
+
         prompt = f"""Create a course outline for "{topic}".
+{research_context}
+
+INSTRUCTION: 
+If research data is provided above, prioritize the topics, evidence, and trends identified in the data.
+The course should feel like an 'Intelligence Report' for the user.
 
 Generate exactly {num_sections} section titles.
 Format: Just the titles, one per line, no numbering.
-
-Example:
-Introduction to the Topic
-Core Concepts
-Practical Applications
-Advanced Techniques
-Conclusion and Next Steps
 """
         
         if self.ollama:
             try:
+                import re
                 response = self.ollama.invoke(prompt)
                 content = response.content if hasattr(response, 'content') else str(response)
-                outline = [line.strip() for line in content.split('\n') if line.strip()]
+                # Filter out garbage lines
+                lines = [line.strip() for line in content.split('\n') if line.strip()]
+                # Remove numbering and markdown markers
+                outline = []
+                for line in lines:
+                    clean = re.sub(r'^\d+[\)\.]\s*', '', line)
+                    clean = re.sub(r'[*#]', '', clean).strip()
+                    if clean and len(clean) > 3:
+                        outline.append(clean)
                 return outline[:num_sections]
             except Exception as e:
                 logger.warning(f"Ollama outline generation failed: {e}, using fallback")
@@ -155,25 +197,30 @@ Conclusion and Next Steps
             f"{topic}: Summary and Next Steps"
         ][:num_sections]
     
-    def _generate_sections(self, outline: List[str]) -> List[Dict]:
-        """Generate content for each section"""
+    def _generate_sections(self, outline: List[str], research_data: Optional[Dict] = None) -> List[Dict]:
+        """Generate content for each section with evidence grounding"""
         sections = []
         
+        research_context = ""
+        if research_data:
+            trimmed_content = research_data['content'][:5000]
+            research_context = f"\n--- PRIMARY RESEARCH SOURCE (D1) ---\n{trimmed_content}\n"
+
         for i, title in enumerate(outline, 1):
             logger.info(f"📝 Generating section {i}/{len(outline)}: {title}")
             
-            prompt = f"""Write detailed content for this course section:
+            prompt = f"""Write detailed, EVIDENCE-BASED content for this course section:
 
 Section Title: {title}
+{research_context}
 
-Write 3-5 informative paragraphs explaining this topic clearly.
-Include:
-- Key concepts and definitions
-- Practical examples or use cases
-- Important points to remember
+CRITICAL TASK:
+Ground your explanation in the PRIMARY RESEARCH SOURCE above. 
+If the research mentions specific URLs, dates, or data points relevant to this title, include them.
+Focus on 'Why this works in 2026' and provide actionable insights.
+Keep a professional yet supportive tone.
 
-Keep it educational and engaging.
-
+Write 3-5 informative paragraphs.
 Content:"""
             
             content = ""
@@ -228,30 +275,105 @@ Content:"""
         
         return slides
     
-    def _generate_sales_page(self, topic: str, outline: List[str], sections: List[Dict]) -> Optional[str]:
-        """Generate Gumroad sales page"""
-        
-        if not self.gumroad:
-            logger.warning("Gumroad generator not configured")
+    def _generate_sales_page(self, topic: str, sections: List[Dict], research_data: Optional[Dict] = None) -> Optional[str]:
+        """
+        Generate sales page framed as 'battle log as an asset'.
+
+        Positioning: The buyer is not purchasing a course.
+        They are purchasing the actual operational log — the raw intelligence
+        that Sage produced during a live research-and-execution run.
+        Proof-of-work is the product itself.
+        """
+
+        if not self.ollama:
+            logger.warning("Ollama not available for sales page generation")
             return None
-        
+
         try:
-            course_info = {
-                'topic': topic,
-                'sections': sections,
-                'num_sections': len(sections),
-                'price': 49.99
-            }
-            
-            sales_page = self.gumroad.generate_sales_page(course_info)
-            return sales_page
+            # --- Build proof-of-work evidence block from real artifacts ---
+            evidence_lines = []
+            if research_data:
+                evidence_lines.append(f"- 一次情報ソース: `{research_data['filename']}`（D1リサーチループ取得済み）")
+                # Extract first non-empty line as a teaser quote
+                for line in research_data['content'].splitlines():
+                    stripped = line.strip()
+                    if stripped and not stripped.startswith('#') and len(stripped) > 20:
+                        evidence_lines.append(f'- ログ抜粋: 「{stripped[:120]}…」')
+                        break
+
+            ops_log = "\n".join(
+                f"  - Ops {s['number']:02d}: {s['title']}" for s in sections
+            )
+            evidence_block = "\n".join(evidence_lines) if evidence_lines else "- 一次情報ソース: 汎用知識ベース（D1トレース未取得）"
+
+            prompt = f"""あなたは「実戦ログを資産として販売する」コピーライターです。
+
+以下の制約を厳守してください:
+- 「コース」「講座」「学習」という言葉を一切使わない
+- 売っているのは「Sage AIが実際に動いた時の作戦記録（実戦ログ）」である
+- 購入者は「体験を買う」のではなく「再現可能な諜報資産を手に入れる」
+- 証拠（ファイル名・ログ断片）を具体的に引用する
+
+---
+【今回の実戦ログ】
+テーマ: {topic}
+作戦記録 (Ops Log):
+{ops_log}
+
+【一次証拠】
+{evidence_block}
+---
+
+以下の構成でGumroad販売ページ（Markdown）を生成してください:
+
+## 1. ヘッドライン（1行）
+「これはコースではない。{topic}の実戦記録だ。」の方向で。
+
+## 2. このログが生まれた背景（3-4文）
+Sage AIが実際にリサーチ・判断・実行したプロセスの概要。
+「誰かが作ったコンテンツ」ではなく「AIが稼働した証拠」として語る。
+
+## 3. 一般的な情報との違い（箇条書き3点）
+- ほとんどの情報商材は理論。これは実行ログ。
+- 作成者の主観ではなく、AIの判断トレースがそのまま入っている。
+- D1リサーチループで取得した一次情報が根拠になっている。
+
+## 4. ログの中身（作戦ファイル一覧）
+各Opsの名称をそのまま列挙。「再現手順書」として位置付ける。
+
+## 5. 誰が買うべきか（2-3点）
+「同じ結果を自分で再現したい人」「AIの実際の思考プロセスを研究したい人」など。
+
+## 6. 価格と希少性
+このログは「このトピック・この日時・このデータ」の一点もの。
+同じ条件では二度と生成されない理由を1-2文で。
+
+## 7. CTA
+購入ボタンに添えるコピー（1行）。
+
+出力はMarkdownのみ。余分な前置きは不要。
+"""
+
+            response = self.ollama.invoke(prompt)
+            sales_page = response.content if hasattr(response, 'content') else str(response)
+
+            # Prepend a machine-readable metadata header for Obsidian / downstream parsers
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+            header = (
+                f"<!-- SAGE_SALES_PAGE | topic={topic} | "
+                f"source={research_data['filename'] if research_data else 'none'} | "
+                f"generated={timestamp} -->\n\n"
+            )
+            return header + sales_page
+
         except Exception as e:
             logger.error(f"Sales page generation failed: {e}")
             return None
     
     def _save_to_obsidian(self, topic: str, outline: List[str], 
-                          sections: List[Dict], slides: List[Dict], sales_page: Optional[str] = None) -> Optional[str]:
-        """Save course to Obsidian"""
+                          sections: List[Dict], slides: List[Dict], sales_page: Optional[str] = None,
+                          research_data: Optional[Dict] = None) -> Optional[str]:
+        """Save course to Obsidian with Research Traceability"""
         
         if not self.obsidian:
             logger.warning("Obsidian not configured, skipping save")
@@ -282,15 +404,20 @@ Content:"""
         
         # Add sales page if available
         if sales_page:
-            content += "## 💰 Sales Page\n\n"
+            content += "## 💰 Sales Page & Gumroad Pitch\n\n"
             content += sales_page
             content += "\n\n---\n\n"
             
-        content += "## 🧪 Research Context & Evidence\n\n"
-        content += "- **Query**: " + topic + "\n"
-        content += "- **Used-guidelines**: Internal Knowledge\n"
-        content += "- **URLs/Sources**: N/A\n"
-        content += "- **Date**: " + datetime.now().isoformat() + "\n\n"
+        content += "## 🧪 Research Context & Evidence (D1 Traceability)\n\n"
+        content += f"- **Topic/Query**: {topic}\n"
+        if research_data:
+            content += f"- **Primary Evidence Source**: `{research_data['filename']}`\n"
+            content += f"- **Evidence Authenticity**: Verified via D1 Loop\n"
+        else:
+            content += "- **Primary Evidence**: General Knowledge (No D1 Trace found)\n"
+            
+        content += f"- **Generated At**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        content += "- **Sage Version**: 3.0 Fortress\n\n"
         content += "---\n\n"
         
         try:

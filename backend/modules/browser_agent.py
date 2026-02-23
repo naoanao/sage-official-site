@@ -97,13 +97,15 @@ class BrowserAgent:
         # 2. Fallback to DuckDuckGo
         if self.use_ddg:
             try:
-                results = DDGS().text(query, max_results=num_results)
+                with DDGS() as ddgs:
+                    results = [r for r in ddgs.text(query, max_results=num_results)]
+                
                 formatted_results = []
                 for item in results:
                     formatted_results.append({
-                        "title": item.get("title"),
-                        "link": item.get("href"),
-                        "snippet": item.get("body")
+                        "title": item.get('title'),
+                        "link": item.get('href'),
+                        "snippet": item.get('body')
                     })
                 
                 if not formatted_results:
@@ -122,6 +124,117 @@ class BrowserAgent:
             "status": "error",
             "message": "No search backend available. Set SERPAPI_KEY or install duckduckgo-search."
         }
+
+    def validate_url(self, url: str) -> Dict[str, Any]:
+        """
+        Check if a URL is valid and reachable.
+        Returns status code and basic info.
+        """
+        try:
+            import requests
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            return {
+                "status": "success",
+                "reachable": response.status_code == 200,
+                "status_code": response.status_code,
+                "url": url,
+                "domain": url.split('/')[2] if '/' in url else url
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "reachable": False,
+                "message": str(e),
+                "url": url
+            }
+
+    def verify_url_content(self, url: str, search_terms: List[str]) -> Dict[str, Any]:
+        """
+        Advanced Verification (D1.5 Ground Truth): 
+        Fetches the URL content and checks if specified numeric terms/facts exist in the text.
+        """
+        try:
+            import requests
+            import re
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            response = requests.get(url, headers=headers, timeout=15)
+            
+            if response.status_code != 200:
+                return {"status": "error", "reachable": False, "verified": False}
+
+            # Simple HTML tag removal (crude but effective for search)
+            text_content = re.sub(r'<[^>]+>', ' ', response.text).lower()
+            
+            results = {}
+            for term in search_terms:
+                term_clean = str(term).lower().strip()
+                # Check for exact string match
+                found = term_clean in text_content
+                results[term] = found
+
+            return {
+                "status": "success",
+                "reachable": True,
+                "verified": all(results.values()),
+                "match_map": results,
+                "url": url
+            }
+        except Exception as e:
+            logger.error(f"❌ Verification Error at {url}: {e}")
+            return {"status": "error", "message": str(e), "url": url}
+
+    def get_google_trends(self, keyword: str) -> Dict[str, Any]:
+        """
+        Fetch Google Trends data using pytrends.
+        Provides 'Real Water' evidence of search interest.
+        """
+        try:
+            from pytrends.request import TrendReq
+            # hl='ja-JP', tz=540 for Japan time (UTC+9)
+            pytrends = TrendReq(hl='ja-JP', tz=540)
+            
+            # 1. Build Payload
+            pytrends.build_payload([keyword], cat=0, timeframe='today 3-m', geo='JP')
+            
+            # 2. Interest Over Time
+            iot_df = pytrends.interest_over_time()
+            iot_data = []
+            if not iot_df.empty:
+                # Take last 5 points for conciseness
+                recent = iot_df.tail(5)
+                for index, row in recent.iterrows():
+                    iot_data.append({
+                        "date": index.strftime('%Y-%m-%d'),
+                        "value": int(row[keyword])
+                    })
+            
+            # 3. Related Queries
+            related = pytrends.related_queries()
+            top_related = []
+            rising_related = []
+            
+            if keyword in related:
+                top_df = related[keyword].get('top')
+                rising_df = related[keyword].get('rising')
+                
+                if top_df is not None and not top_df.empty:
+                    top_related = top_df.head(5).to_dict('records')
+                if rising_df is not None and not rising_df.empty:
+                    rising_related = rising_df.head(5).to_dict('records')
+
+            return {
+                "status": "success",
+                "keyword": keyword,
+                "interest_over_time": iot_data,
+                "related_top": top_related,
+                "related_rising": rising_related,
+                "backend": "Google Trends (Pytrends)"
+            }
+        except Exception as e:
+            logger.error(f"❌ Google Trends Error: {e}")
+            return {"status": "error", "message": str(e)}
 
     # Keep compatibility with old methods if needed, but direct them to search_google
     def search(self, query: str):
