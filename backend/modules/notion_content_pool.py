@@ -1,8 +1,11 @@
 import os
 import logging
+import requests as _requests
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from backend.modules.notion_agent import NotionAgent
+
+NOTION_API_VERSION = "2022-06-28"
 
 logger = logging.getLogger("NotionContentPool")
 
@@ -24,33 +27,28 @@ class NotionContentPool:
 
         try:
             # Querying for Status that marks content as ready for SNS
-            query = {
-                "database_id": self.db_id,
+            query_body = {
                 "filter": {
                     "or": [
-                        { "property": "Status", "select": { "equals": "予約済み" } },
-                        { "property": "ステータス", "select": { "equals": "予約済み" } },
-                        { "property": "Status", "select": { "equals": "Ready" } }
+                        {"property": "Status", "select": {"equals": "予約済み"}},
+                        {"property": "Status", "select": {"equals": "Ready"}},
                     ]
                 },
-                "page_size": limit
+                "page_size": limit,
             }
-            
-            # Check if query method exists (handling specific library issues observed)
-            if hasattr(self.notion.client.databases, "query"):
-                response = self.notion.client.databases.query(**query)
-            else:
-                logger.warning("DatabasesEndpoint missing 'query' method. Falling back to low-level client.request().")
-                # Prepare query body for direct request (database_id is in path)
-                query_body = {
-                    "filter": query.get("filter", {}),
-                    "page_size": query.get("page_size", limit)
-                }
-                response = self.notion.client.request(
-                    path=f"databases/{self.db_id}/query",
-                    method="POST",
-                    body=query_body
-                )
+            api_key = os.getenv("NOTION_API_KEY")
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Notion-Version": NOTION_API_VERSION,
+                "Content-Type": "application/json",
+            }
+            resp = _requests.post(
+                f"https://api.notion.com/v1/databases/{self.db_id}/query",
+                headers=headers,
+                json=query_body,
+            )
+            resp.raise_for_status()
+            response = resp.json()
             results = []
             
             for page in response.get("results", []):

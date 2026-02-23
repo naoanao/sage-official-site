@@ -50,7 +50,7 @@ class SNSDailyScheduler:
             raise RuntimeError("GROQ_API_KEY not set.")
         return Groq(api_key=api_key)
 
-    def _generate_content(self, topic: str, content: str, category: str, motif: str) -> dict:
+    def _generate_content(self, topic: str, content: str, motif: str) -> dict:
         """LLM generates ig_caption, bs_text, image_prompt in one JSON call."""
         prompt = (
             "You are the Sage AI Marketing CEO. Generate high-performing content for BOTH Instagram and Bluesky.\n\n"
@@ -72,8 +72,9 @@ class SNSDailyScheduler:
         raw = response.choices[0].message.content.strip()
 
         try:
-            if '`' in raw:
-                raw = raw.split('`')[1]
+            # Strip code fences (```json ... ``` or ``` ... ```)
+            if "```" in raw:
+                raw = raw.split("```")[1]
                 if raw.startswith("json\n"):
                     raw = raw[5:]
             return json.loads(raw)
@@ -148,12 +149,15 @@ class SNSDailyScheduler:
         except Exception as e:
             logger.error(f"Failed to write job: {e}")
 
-    def _post_now(self, ig_caption: str, bs_text: str, image_path: str) -> None:
-        ig_result = self.instagram.post_image(image_url=image_path, caption=ig_caption)
-        if ig_result.get("success"):
-            logger.info(f"📸 Instagram posted: {ig_result.get('id')}")
+    def _post_now(self, ig_caption: str, bs_text: str, image_path: str | None) -> None:
+        if image_path:
+            ig_result = self.instagram.post_image(image_url=image_path, caption=ig_caption)
+            if ig_result.get("success"):
+                logger.info(f"📸 Instagram posted: {ig_result.get('id')}")
+            else:
+                logger.error(f"❌ Instagram post failed: {ig_result.get('error')}")
         else:
-            logger.error(f"❌ Instagram post failed: {ig_result.get('error')}")
+            logger.info("⏭️ Instagram skipped (no image).")
 
         try:
             bs_result = self.bluesky.post_skeet(bs_text)
@@ -203,7 +207,7 @@ class SNSDailyScheduler:
             image_prompt = item.get("image_prompt", topic)
             logger.info("♻️ Using pre-existing optimized content from Notion/Test Item.")
         else:
-            generated = self._generate_content(topic, content, category, motif)
+            generated = self._generate_content(topic, content, motif)
             ig_caption = generated.get("ig_caption", content)
             bs_text = generated.get("bs_text", topic)
             image_prompt = generated.get("image_prompt", topic)
@@ -223,13 +227,14 @@ class SNSDailyScheduler:
 
         # --- PRODUCTION: generate image then post ---
         img_result = self._generate_image(image_prompt)
-        if img_result.get("status") != "success":
-            logger.error("🚫 [IMAGE GATE] Image generation returned error metadata. Aborting.")
-            return
+        if img_result.get("status") == "success":
+            image_path = img_result["path"]
+        else:
+            logger.warning("🚫 [IMAGE GATE] Image generation failed. Posting Bluesky text-only; skipping Instagram.")
+            image_path = None
 
-        image_path = img_result["path"]
         self._post_now(ig_caption, bs_text, image_path)
-        self._write_job(item_id, topic, ig_caption, bs_text, image_path, status="pending")
+        self._write_job(item_id, topic, ig_caption, bs_text, image_path or "", status="pending")
 
         if item.get("id"):
             self.notion_pool.mark_as_posted(item["id"])
