@@ -114,10 +114,10 @@ def run_test():
             # --- STRICT VERIFICATION (統合B) ---
             heading = "## 🧪 Research Context & Evidence"
             mandatory_keys = [
-                "- **Query**",
-                "- **Used-guidelines**",
-                "- **URLs/Sources**",
-                "- **Date**"
+                "- **Topic/Query**",
+                "- **Evidence Authenticity**",
+                "- **Primary Evidence Source**",
+                "- **Generated At**"
             ]
             
             heading_found_line = -1
