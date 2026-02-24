@@ -5,6 +5,7 @@ import SageOS from './pages/SageOS'
 import Blog from './pages/Blog'
 import BlogPost from './pages/BlogPost'
 import ThankYou from './pages/ThankYou'
+import Shop from './pages/Shop'
 import './App.css'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/thank-you" element={<ThankYou />} />
+        <Route path="/shop" element={<Shop />} />
       </Routes>
     </Router>
   )
