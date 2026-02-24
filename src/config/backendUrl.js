@@ -1,3 +1,2 @@
-// Auto-updated by run_sage.ps1 on PC startup (Cloudflare Tunnel URL)
-// DO NOT add secrets here — this file is committed to git.
-export const BACKEND_URL = "https://technician-bumper-odds-came.trycloudflare.com";
+﻿// Auto-updated by run_sage.ps1 on 2026-02-25 06:45:43
+export const BACKEND_URL = "https://symbols-atlas-configuration-patterns.trycloudflare.com";
