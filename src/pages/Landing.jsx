@@ -1,13 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiMessageSquare, FiCpu, FiShare2, FiDollarSign, FiLayout, FiArrowRight, FiActivity, FiShield, FiGlobe, FiDatabase } from 'react-icons/fi';
+import { FiMessageSquare, FiArrowRight, FiSend, FiRss, FiShoppingCart, FiClock } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
+
+// ── Blog posts (latest 3) ──────────────────────────────────────────────────
+const postModules = import.meta.glob('../blog/posts/*.mdx', { eager: true, query: '?raw', import: 'default' });
+const allPosts = Object.entries(postModules).map(([path, raw]) => {
+    const parts = raw.split('---');
+    let fm = {};
+    if (parts.length >= 3) {
+        parts[1].split('\n').forEach(line => {
+            const [key, ...vals] = line.split(':');
+            if (key && vals.length > 0) fm[key.trim()] = vals.join(':').trim().replace(/^["']|["']$/g, '');
+        });
+    }
+    const filename = path.split('/').pop().replace('.mdx', '');
+    return { slug: fm.slug || filename, title: fm.title || filename, excerpt: fm.excerpt || '', date: fm.date || '' };
+}).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
 
 const Landing = () => {
     const [snsStats, setSnsStats] = useState({ total_posts: 27, success_rate: '100%' });
 
+    // ── Chat state ──
+    const [chatInput, setChatInput] = useState('');
+    const [chatReply, setChatReply] = useState('');
+    const [chatStatus, setChatStatus] = useState('idle'); // idle | loading | offline
+
+    // ── Bluesky feed ──
+    const [bskyPosts, setBskyPosts] = useState([]);
+    const [bskyLoaded, setBskyLoaded] = useState(false);
+
     useEffect(() => {
+        // SNS stats
         fetch('/api/sns/stats')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
@@ -18,57 +43,52 @@ const Landing = () => {
                     });
                 }
             })
-            .catch(() => { }); // Fail silently  Efallback values remain
+            .catch(() => {});
+
+        // Bluesky feed
+        fetch('https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=kanagawajapan.bsky.social&limit=3')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.feed) {
+                    const posts = data.feed
+                        .filter(item => item.post?.record?.text)
+                        .slice(0, 3)
+                        .map(item => ({
+                            text: item.post.record.text,
+                            uri: item.post.uri,
+                            indexedAt: item.post.indexedAt,
+                        }));
+                    setBskyPosts(posts);
+                    setBskyLoaded(posts.length > 0);
+                }
+            })
+            .catch(() => {});
     }, []);
 
-    const steps = [
-        {
-            id: '01',
-            title: 'Ideation (Chat Base)',
-            desc: 'Talk to Sage using natural language. Shape your vision from vague thoughts to concrete plans.',
-            icon: FiMessageSquare,
-            color: 'text-blue-400',
-            border: 'border-blue-500/30'
-        },
-        {
-            id: '02',
-            title: 'Creation (AI SEO)',
-            desc: 'Auto-generate high-ranking blog posts and Landing Pages. Validated by real-time data.',
-            icon: FiCpu,
-            color: 'text-purple-400',
-            border: 'border-purple-500/30'
-        },
-        {
-            id: '03',
-            title: 'Diffusion (SNS)',
-            desc: 'Autonomous social posting & engagement on Bluesky and Instagram. Spread the word automatically.',
-            icon: FiShare2,
-            color: 'text-pink-400',
-            border: 'border-pink-500/30'
-        },
-        {
-            id: '04',
-            title: 'Monetization',
-            desc: 'Connect Gumroad, Stripe, or PayPal instantly. Turn your audience into revenue.',
-            icon: FiDollarSign,
-            color: 'text-green-400',
-            border: 'border-green-500/30'
-        },
-        {
-            id: '05',
-            title: 'Cockpit (Dashboard)',
-            desc: 'Visualize your entire empire in one dashboard. Real-time analytics and control.',
-            icon: FiLayout,
-            color: 'text-orange-400',
-            border: 'border-orange-500/30'
+    const handleChat = async (e) => {
+        e.preventDefault();
+        if (!chatInput.trim()) return;
+        setChatStatus('loading');
+        try {
+            const res = await fetch('http://localhost:8080/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: chatInput }),
+            });
+            if (!res.ok) throw new Error('offline');
+            const data = await res.json();
+            setChatReply(data.reply || data.response || data.message || 'Got it.');
+            setChatStatus('idle');
+        } catch {
+            setChatStatus('offline');
         }
-    ];
+    };
 
     return (
         <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
             <SpaceBackground />
 
-            {/* Navbar (Minimal) */}
+            {/* Navbar */}
             <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-sm border-b border-white/5 bg-black/50">
                 <div className="text-xl font-bold tracking-tighter flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
@@ -83,7 +103,7 @@ const Landing = () => {
                 </div>
             </nav>
 
-            {/* Hero Section */}
+            {/* ① Hero ─────────────────────────────────────────────────── */}
             <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-20 z-10 text-center">
                 <Motion.div
                     initial={{ opacity: 0, y: 30 }}
@@ -93,7 +113,7 @@ const Landing = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        FOR SOLOPRENEURS & CREATORS  E{snsStats.total_posts} POSTS SHIPPED AUTONOMOUSLY
+                        FOR SOLOPRENEURS & CREATORS · {snsStats.total_posts} POSTS SHIPPED AUTONOMOUSLY
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
@@ -105,19 +125,18 @@ const Landing = () => {
 
                     <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
                         Stop juggling 10 tools. Sage turns <span className="text-white">one conversation</span> into
-                        <span className="text-white"> SEO blogs</span>, <span className="text-white">social posts</span>, and <span className="text-white">revenue</span>  Ewhile you sleep.
+                        <span className="text-white"> SEO blogs</span>, <span className="text-white">social posts</span>, and <span className="text-white">revenue</span> while you sleep.
                     </p>
 
-                    {/* CTAs */}
                     <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-                        <Motion.a
-                            href="/dashboard"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_50px_rgba(37,99,235,0.4)] flex items-center gap-3 transition-all"
-                        >
-                            Try the Cockpit Free <FiArrowRight />
-                        </Motion.a>
+                        <Motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Link
+                                to="/dashboard"
+                                className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_50px_rgba(37,99,235,0.4)] flex items-center gap-3 transition-all"
+                            >
+                                Try the Cockpit Free <FiArrowRight />
+                            </Link>
+                        </Motion.div>
 
                         <Motion.a
                             href="/offer"
@@ -131,195 +150,231 @@ const Landing = () => {
                 </Motion.div>
             </section>
 
-            {/* How It Works (5 Steps) */}
-            <section className="relative z-10 py-32 px-4 bg-gradient-to-b from-black via-slate-900/20 to-black">
-                <div className="max-w-6xl mx-auto">
-                    <div className="mb-20 text-center">
-                        <h2 className="text-3xl md:text-4xl font-bold mb-4">How SAGE Works</h2>
-                        <p className="text-slate-500">From a single chat to a fully automated business loop.</p>
-                    </div>
+            {/* ② Chat ─────────────────────────────────────────────────── */}
+            <section className="relative z-10 py-24 px-4 bg-gradient-to-b from-black via-slate-900/20 to-black">
+                <div className="max-w-2xl mx-auto">
+                    <Motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <FiMessageSquare className="text-blue-400" size={20} />
+                            <h2 className="text-2xl font-bold">Talk to Sage</h2>
+                        </div>
+                        <p className="text-slate-500 text-sm mb-8">Ask anything. Sage will help you build, post, and monetize.</p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                        {steps.map((step, index) => (
+                        <form onSubmit={handleChat} className="flex gap-3">
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={e => setChatInput(e.target.value)}
+                                placeholder="e.g. Write me a viral Instagram caption about AI..."
+                                className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors"
+                            />
+                            <button
+                                type="submit"
+                                disabled={chatStatus === 'loading'}
+                                className="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all"
+                            >
+                                <FiSend size={16} />
+                                {chatStatus === 'loading' ? 'Thinking...' : 'Send'}
+                            </button>
+                        </form>
+
+                        {chatStatus === 'offline' && (
+                            <div className="mt-4 p-4 rounded-xl bg-white/[0.03] border border-white/10 text-sm text-slate-400">
+                                Sage is currently offline.{' '}
+                                <Link to="/dashboard" className="text-blue-400 hover:text-blue-300 transition-colors">
+                                    Try the Cockpit →
+                                </Link>
+                            </div>
+                        )}
+                        {chatReply && chatStatus === 'idle' && (
+                            <div className="mt-4 p-4 rounded-xl bg-white/[0.03] border border-white/10 text-sm text-slate-300 leading-relaxed">
+                                {chatReply}
+                            </div>
+                        )}
+                    </Motion.div>
+                </div>
+            </section>
+
+            {/* ③ Blog ─────────────────────────────────────────────────── */}
+            {allPosts.length > 0 && (
+                <section className="relative z-10 py-24 px-4 border-t border-white/5">
+                    <div className="max-w-6xl mx-auto">
+                        <Motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="flex items-center justify-between mb-12"
+                        >
+                            <h2 className="text-2xl md:text-3xl font-bold">Latest from Sage</h2>
+                            <Link to="/blog" className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1">
+                                All posts <FiArrowRight size={14} />
+                            </Link>
+                        </Motion.div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {allPosts.map((post, i) => (
+                                <Motion.div
+                                    key={post.slug}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.1 }}
+                                >
+                                    <Link
+                                        to={`/blog/${post.slug}`}
+                                        className="block group p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all h-full"
+                                    >
+                                        {post.date && (
+                                            <div className="text-xs font-mono text-slate-600 mb-3 flex items-center gap-1">
+                                                <FiClock size={10} /> {post.date}
+                                            </div>
+                                        )}
+                                        <h3 className="text-base font-bold text-white group-hover:text-blue-200 transition-colors mb-3 leading-snug">
+                                            {post.title}
+                                        </h3>
+                                        {post.excerpt && (
+                                            <p className="text-xs text-slate-500 leading-relaxed line-clamp-3">
+                                                {post.excerpt}
+                                            </p>
+                                        )}
+                                    </Link>
+                                </Motion.div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
+
+            {/* ④ Bluesky Live Feed ────────────────────────────────────── */}
+            {bskyLoaded && (
+                <section className="relative z-10 py-24 px-4 border-t border-white/5 bg-slate-900/10">
+                    <div className="max-w-4xl mx-auto">
+                        <Motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="flex items-center gap-3 mb-12"
+                        >
+                            <FiRss className="text-sky-400" size={20} />
+                            <h2 className="text-2xl md:text-3xl font-bold">Live Feed</h2>
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+                        </Motion.div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {bskyPosts.map((post, i) => (
+                                <Motion.a
+                                    key={post.uri}
+                                    href={`https://bsky.app/profile/kanagawajapan.bsky.social`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="block group p-5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-sky-500/20 transition-all"
+                                >
+                                    <p className="text-sm text-slate-300 leading-relaxed group-hover:text-white transition-colors">
+                                        {post.text}
+                                    </p>
+                                    {post.indexedAt && (
+                                        <p className="text-xs text-slate-600 mt-3 font-mono">
+                                            {new Date(post.indexedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        </p>
+                                    )}
+                                </Motion.a>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
+
+            {/* ⑤ Shop / Monetization ─────────────────────────────────── */}
+            <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-black to-slate-900/30">
+                <div className="max-w-4xl mx-auto">
+                    <Motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="flex items-center gap-3 mb-4"
+                    >
+                        <FiShoppingCart className="text-emerald-400" size={20} />
+                        <h2 className="text-2xl md:text-3xl font-bold">Get the Blueprint</h2>
+                    </Motion.div>
+                    <p className="text-slate-500 text-sm mb-12">Everything you need to launch an AI-powered influencer business.</p>
+
+                    <Motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="relative group p-8 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] transition-all overflow-hidden max-w-xl"
+                    >
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+                        <div className="text-sm font-mono text-blue-400 mb-4">FEATURED PRODUCT</div>
+                        <h3 className="text-xl font-bold text-white mb-2">2026 AI Influencer Monetization Express</h3>
+                        <div className="text-3xl font-black text-white mb-6">$29.99</div>
+                        <ul className="space-y-2 text-sm text-slate-300 mb-8">
+                            {['Full AI Influencer Blueprint', 'Autonomous SNS posting templates', 'Monetization funnel step-by-step', 'Lifetime access + updates'].map((f, i) => (
+                                <li key={i} className="flex items-center gap-2">
+                                    <span className="text-emerald-400">✓</span> {f}
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex gap-3">
+                            <Link
+                                to="/shop"
+                                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)] flex items-center gap-2"
+                            >
+                                <FiShoppingCart size={16} /> View in Shop
+                            </Link>
+                            <a
+                                href="https://naofumi3.gumroad.com/l/yvzrfjd"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+                            >
+                                Buy on Gumroad <FiArrowRight size={14} />
+                            </a>
+                        </div>
+                    </Motion.div>
+                </div>
+            </section>
+
+            {/* FAQ */}
+            <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-slate-900/10 to-black">
+                <div className="max-w-3xl mx-auto">
+                    <div className="mb-16 text-center">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h2>
+                        <p className="text-slate-500">Everything you need to know before getting started.</p>
+                    </div>
+                    <div className="space-y-6">
+                        {[
+                            { q: "I'm not technical. Can I actually use this?", a: "Yes — that's the whole point. You type what you want in plain English. Sage writes the blog, posts to social media, and tracks the results. No code, no dashboards to configure, no learning curve." },
+                            { q: "What exactly gets automated?", a: "Blog post generation, SEO optimization, social media posting (Bluesky & Instagram), content scheduling, and performance analytics. All running 24/7." },
+                            { q: "Can I cancel anytime?", a: "Yes. No contracts, no lock-in. Cancel your Pro subscription anytime and keep access until the end of your billing period." },
+                            { q: "Is my data safe?", a: "Absolutely. Sage runs a hybrid AI architecture — sensitive data stays on your local machine, only non-private content touches the cloud for speed." },
+                        ].map((item, i) => (
                             <Motion.div
-                                key={step.id}
-                                initial={{ opacity: 0, y: 20 }}
+                                key={i}
+                                initial={{ opacity: 0, y: 10 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                className={`relative group p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all cursor-default overflow-hidden`}
+                                transition={{ delay: i * 0.05 }}
+                                className="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all"
                             >
-                                <div className={`absolute top-0 left-0 w-full h-1 ${step.color.replace('text-', 'bg-')} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
-
-                                <div className="text-5xl font-black text-white/5 absolute top-4 right-4 group-hover:text-white/10 transition-colors">
-                                    {step.id}
-                                </div>
-
-                                <div className={`mb-6 p-4 rounded-xl bg-white/5 w-fit ${step.color}`}>
-                                    <step.icon size={24} />
-                                </div>
-
-                                <h3 className="text-lg font-bold mb-3 text-white group-hover:text-blue-200 transition-colors">
-                                    {step.title}
-                                </h3>
-
-                                <p className="text-sm text-slate-400 leading-relaxed group-hover:text-slate-300">
-                                    {step.desc}
-                                </p>
+                                <h3 className="text-lg font-bold text-white mb-3">{item.q}</h3>
+                                <p className="text-sm text-slate-400 leading-relaxed">{item.a}</p>
                             </Motion.div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* Social Proof */}
-            <section className="relative z-10 py-24 border-t border-white/5 bg-black">
-                <div className="max-w-6xl mx-auto px-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center mb-16">
-                        <div>
-                            <div className="text-4xl md:text-5xl font-black text-blue-500 mb-2">{snsStats.total_posts}</div>
-                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">Autonomous Posts Shipped</div>
-                        </div>
-                        <div>
-                            <div className="text-4xl md:text-5xl font-black text-purple-500 mb-2">24/7</div>
-                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">Active System Uptime</div>
-                        </div>
-                        <div>
-                            <div className="text-4xl md:text-5xl font-black text-emerald-500 mb-2">{snsStats.success_rate}</div>
-                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">Execution Reliability</div>
-                        </div>
-                    </div>
-                    <p className="text-center text-slate-400 italic font-light max-w-2xl mx-auto">
-                        "Sage doesn't just suggest ideas; it builds the evidence of your growing empire in real-time."
-                    </p>
-                </div>
-            </section>
-
-            {/* Pricing */}
-            <section className="relative z-10 py-32 px-4 bg-gradient-to-b from-black to-slate-900/30">
-                <div className="max-w-5xl mx-auto">
-                    <div className="mb-16 text-center">
-                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
-                        <p className="text-slate-500">Start free. Scale when you're ready.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Free */}
-                        <div className="p-8 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all">
-                            <div className="text-sm font-mono text-slate-500 mb-2">TEST DRIVE</div>
-                            <div className="text-4xl font-black mb-1">$0</div>
-                            <div className="text-sm text-slate-500 mb-8">See what Sage can do</div>
-                            <ul className="space-y-3 text-sm text-slate-400 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> AI Chat (unlimited)</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dashboard access</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> 3 blog posts / month</li>
-                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5">✗</span> <span className="text-slate-600">Autonomous SNS posting</span></li>
-                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5">✗</span> <span className="text-slate-600">Monetization tools</span></li>
-                            </ul>
-                            <a href="/dashboard" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
-                                Try It Free
-                            </a>
-                        </div>
-
-                        {/* Pro  EHighlighted */}
-                        <div className="p-8 rounded-2xl bg-blue-600/10 border border-blue-500/30 relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-                            <div className="text-sm font-mono text-blue-400 mb-2">PRO  E{snsStats.total_posts}+ POSTS SHIPPED LAST MONTH</div>
-                            <div className="text-4xl font-black mb-1">$29<span className="text-lg font-normal text-slate-500">/mo</span></div>
-                            <div className="text-sm text-slate-400 mb-8">~<span className="text-white font-medium">$1/day</span> · You sleep. Sage ships.</div>
-                            <ul className="space-y-3 text-sm text-slate-300 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Everything in Starter</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> <span className="text-white font-medium">Unlimited AI blog posts</span></li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> <span className="text-white font-medium">Autonomous SNS (Bluesky + Instagram)</span></li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Monetization dashboard</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Priority support</li>
-                            </ul>
-                            <a href="/offer" className="block w-full text-center py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]">
-                                Go Autopilot  E7 Days Free
-                            </a>
-                        </div>
-
-                        {/* Enterprise */}
-                        <div className="p-8 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all">
-                            <div className="text-sm font-mono text-slate-500 mb-2">SCALE</div>
-                            <div className="text-4xl font-black mb-1">Custom</div>
-                            <div className="text-sm text-slate-500 mb-8">Your AI, your brand</div>
-                            <ul className="space-y-3 text-sm text-slate-400 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Everything in Pro</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Custom AI model tuning</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> White-label deployment</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> API access</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dedicated support</li>
-                            </ul>
-                            <a href="mailto:sage@onelovepeople.com" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
-                                Book a Demo
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* System Intelligence (Etc) */}
-            <section className="relative z-10 py-24 px-4 border-t border-white/5 bg-slate-900/10">
-                <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-2xl font-bold mb-12 text-slate-300">System Intelligence Core</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                            { name: "Neuromorphic Brain", icon: FiCpu },
-                            { name: "Self-Healing v2", icon: FiShield },
-                            { name: "System Analytics", icon: FiActivity },
-                            { name: "Global Knowledge", icon: FiGlobe }
-                        ].map((item, i) => (
-                            <div key={i} className="p-4 rounded-xl bg-black/40 border border-white/5 flex flex-col items-center gap-3 text-slate-400 hover:text-white hover:border-white/20 transition-all">
-                                <item.icon size={20} />
-                                <span className="text-xs font-mono uppercase tracking-wider">{item.name}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* FAQ */}
-            <section className="relative z-10 py-32 px-4 bg-gradient-to-b from-slate-900/10 to-black">
-                <div className="max-w-3xl mx-auto">
-                    <div className="mb-16 text-center">
-                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h2>
-                        <p className="text-slate-500">Everything you need to know before getting started.</p>
-                    </div>
-
-                    <div className="space-y-6">
-                        {[
-                            {
-                                q: "I'm not technical. Can I actually use this?",
-                                a: "Yes  Ethat's the whole point. You type what you want in plain English. Sage writes the blog, posts to social media, and tracks the results. No code, no dashboards to configure, no learning curve."
-                            },
-                            {
-                                q: "What exactly gets automated?",
-                                a: "Blog post generation, SEO optimization, social media posting (Bluesky & Instagram), content scheduling, and performance analytics. All running 24/7."
-                            },
-                            {
-                                q: "Can I cancel anytime?",
-                                a: "Yes. No contracts, no lock-in. Cancel your Pro subscription anytime and keep access until the end of your billing period."
-                            },
-                            {
-                                q: "Is my data safe?",
-                                a: "Absolutely. Sage runs a hybrid AI architecture  Esensitive data stays on your local machine, only non-private content touches the cloud for speed."
-                            },
-                            {
-                                q: "What kind of support do I get?",
-                                a: "Starter users get community support. Pro users get priority email support with 24h response time. Enterprise gets a dedicated engineer."
-                            }
-                        ].map((item, i) => (
-                            <div key={i} className="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all">
-                                <h3 className="text-lg font-bold text-white mb-3">{item.q}</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">{item.a}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Detailed Footer */}
+            {/* Footer */}
             <footer className="relative z-10 py-12 px-6 border-t border-white/5 bg-black">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex gap-6 text-xs font-mono text-slate-500">
@@ -327,14 +382,9 @@ const Landing = () => {
                         <a href="https://onelovepeople.com/terms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Terms of Service</a>
                         <a href="mailto:sage@onelovepeople.com" className="hover:text-white transition-colors">Contact</a>
                     </div>
-
                     <div className="text-center md:text-right">
-                        <p className="text-slate-600 text-xs font-mono mb-1">
-                            © 2026 SAGE AI | Autonomous Architect Protocol
-                        </p>
-                        <p className="text-slate-700 text-[10px] font-mono uppercase tracking-widest">
-                            Made with Sage in Yokohama, Japan
-                        </p>
+                        <p className="text-slate-600 text-xs font-mono mb-1">© 2026 SAGE AI | Autonomous Architect Protocol</p>
+                        <p className="text-slate-700 text-[10px] font-mono uppercase tracking-widest">Made with Sage in Yokohama, Japan</p>
                     </div>
                 </div>
             </footer>
