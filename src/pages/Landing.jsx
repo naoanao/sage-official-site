@@ -65,12 +65,14 @@ const Landing = () => {
             .catch(() => {});
     }, []);
 
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
     const handleChat = async (e) => {
         e.preventDefault();
         if (!chatInput.trim()) return;
         setChatStatus('loading');
         try {
-            const res = await fetch('http://localhost:8080/api/chat', {
+            const res = await fetch(`${BACKEND_URL}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: chatInput }),

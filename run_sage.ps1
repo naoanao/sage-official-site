@@ -59,3 +59,15 @@ $proc = Start-Process `
     -PassThru
 
 Add-Content $LogFile "[$ts] flask_server.py started. PID: $($proc.Id)"
+
+# Start Cloudflare Tunnel (updates VITE_BACKEND_URL in .env)
+$cfExe = "C:\Users\nao\AppData\Local\Microsoft\WinGet\Packages\Cloudflare.cloudflared_Microsoft.Winget.Source_8wekyb3d8bbwe\cloudflared.exe"
+if (Test-Path $cfExe) {
+    Add-Content $LogFile "[$ts] Launching Cloudflare Tunnel..."
+    Start-Process -FilePath $cfExe `
+        -ArgumentList "tunnel","--url","http://localhost:8080","--logfile","$SageDir\logs\cloudflared.log" `
+        -WindowStyle Hidden
+    Add-Content $LogFile "[$ts] Cloudflare Tunnel started (URL in logs/cloudflared.log)"
+} else {
+    Add-Content $LogFile "[$ts] WARNING: cloudflared not found, skipping tunnel."
+}

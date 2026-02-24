@@ -168,6 +168,8 @@ try:
     try:
         from backend.scheduler.sns_daily_scheduler import SNSDailyScheduler
         from backend.scripts.job_runner import SageJobRunner
+        from backend.scheduler.blog_scheduler import BlogScheduler
+        from backend.scheduler.gumroad_scheduler import GumroadScheduler
         logger.info("[SUCCESS] SNS Scheduler & Job Runner modules imported.")
     except Exception as e:
         logger.error(f"[ERROR] SNS Startup Import Failure: {e}")
@@ -796,9 +798,27 @@ def init_brain():
                                 except Exception as e:
                                     logger.error(f"[ERROR] SNS Job Runner Thread Error: {e}")
 
+                            # Blog scheduler (JST 09:00 = UTC 00:00)
+                            def run_blog_scheduler():
+                                try:
+                                    blog_sched = BlogScheduler()
+                                    blog_sched.run()
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Blog Scheduler Thread Error: {e}")
+
+                            # Gumroad scheduler (JST 10:00 = UTC 01:00)
+                            def run_gumroad_scheduler():
+                                try:
+                                    gumroad_sched = GumroadScheduler()
+                                    gumroad_sched.run()
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Gumroad Scheduler Thread Error: {e}")
+
                             threading.Thread(target=run_scheduler, daemon=True, name="SageSNSScheduler").start()
                             threading.Thread(target=run_worker, daemon=True, name="SageSNSWorker").start()
-                            logger.info("[SUCCESS] SNS Threads spawned.")
+                            threading.Thread(target=run_blog_scheduler, daemon=True, name="SageBlogScheduler").start()
+                            threading.Thread(target=run_gumroad_scheduler, daemon=True, name="SageGumroadScheduler").start()
+                            logger.info("[SUCCESS] SNS + Blog + Gumroad Threads spawned.")
 
                         run_sns_loops()
                         
