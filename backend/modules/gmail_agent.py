@@ -23,8 +23,13 @@ class GmailAgent:
         try:
             self._authenticate()
             self.enabled = True
+        except FileNotFoundError:
+            pass  # credentials.json not configured — Gmail disabled silently
         except Exception as e:
-            print(f"❌ Gmail Agent Init Failed (Disabled): {e}")
+            if "invalid_grant" in str(e):
+                pass  # Stale OAuth token — Gmail disabled silently
+            else:
+                print(f"❌ Gmail Agent Init Failed (Disabled): {e}")
 
     def _authenticate(self):
         """Authenticates the user using OAuth 2.0."""
