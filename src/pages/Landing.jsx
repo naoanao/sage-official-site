@@ -46,7 +46,7 @@ const Landing = () => {
             .catch(() => {});
 
         // Bluesky feed
-        fetch('https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=kanagawajapan.bsky.social&limit=3')
+        fetch('https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=kanagawajapan.bsky.social&limit=3&filter=posts_no_replies')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data && data.feed) {
