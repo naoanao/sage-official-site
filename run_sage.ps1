@@ -74,8 +74,12 @@ if (-not (Test-Path $CfExe)) {
     exit 0
 }
 
+# Kill existing cloudflared processes before starting new one
+Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+
 # Clear old log so URL search is clean
-if (Test-Path $CfLog) { Remove-Item $CfLog -Force }
+if (Test-Path $CfLog) { Remove-Item $CfLog -Force -ErrorAction SilentlyContinue }
 
 Add-Content $LogFile "[$ts] Launching Cloudflare Tunnel..."
 Start-Process -FilePath $CfExe `
