@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { FiMessageSquare, FiArrowRight, FiSend, FiRss, FiShoppingCart, FiClock } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
+import { BACKEND_URL as CONFIGURED_BACKEND_URL } from '../config/backendUrl';
 
 // ── Blog posts (latest 3) ──────────────────────────────────────────────────
 const postModules = import.meta.glob('../blog/posts/*.mdx', { eager: true, query: '?raw', import: 'default' });
@@ -65,7 +66,7 @@ const Landing = () => {
             .catch(() => {});
     }, []);
 
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+    const BACKEND_URL = CONFIGURED_BACKEND_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 
     const handleChat = async (e) => {
         e.preventDefault();
