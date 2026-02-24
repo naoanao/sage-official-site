@@ -782,7 +782,7 @@ def init_brain():
                                     sched = SNSDailyScheduler()
                                     while True:
                                         logger.info("[SNS] SNS Scheduler: Checking for Ready content in Notion...")
-                                        sched.check_and_queue_all(limit=1)
+                                        sched.run_cycle()
                                         time.sleep(3600) # Once per hour
                                 except Exception as e:
                                     logger.error(f"[ERROR] SNS Scheduler Thread Error: {e}")
