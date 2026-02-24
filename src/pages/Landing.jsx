@@ -210,11 +210,11 @@ const Landing = () => {
                             <div className="text-4xl font-black mb-1">$0</div>
                             <div className="text-sm text-slate-500 mb-8">See what Sage can do</div>
                             <ul className="space-y-3 text-sm text-slate-400 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> AI Chat (unlimited)</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Dashboard access</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> 3 blog posts / month</li>
-                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5"> E/span> <span className="text-slate-600">Autonomous SNS posting</span></li>
-                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5"> E/span> <span className="text-slate-600">Monetization tools</span></li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> AI Chat (unlimited)</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dashboard access</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> 3 blog posts / month</li>
+                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5">✗</span> <span className="text-slate-600">Autonomous SNS posting</span></li>
+                                <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5">✗</span> <span className="text-slate-600">Monetization tools</span></li>
                             </ul>
                             <a href="/dashboard" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
                                 Try It Free
@@ -228,11 +228,11 @@ const Landing = () => {
                             <div className="text-4xl font-black mb-1">$29<span className="text-lg font-normal text-slate-500">/mo</span></div>
                             <div className="text-sm text-slate-400 mb-8">~<span className="text-white font-medium">$1/day</span> · You sleep. Sage ships.</div>
                             <ul className="space-y-3 text-sm text-slate-300 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Everything in Starter</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> <span className="text-white font-medium">Unlimited AI blog posts</span></li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> <span className="text-white font-medium">Autonomous SNS (Bluesky + Instagram)</span></li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Monetization dashboard</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Priority support</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Everything in Starter</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> <span className="text-white font-medium">Unlimited AI blog posts</span></li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> <span className="text-white font-medium">Autonomous SNS (Bluesky + Instagram)</span></li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Monetization dashboard</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Priority support</li>
                             </ul>
                             <a href="/offer" className="block w-full text-center py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]">
                                 Go Autopilot  E7 Days Free
@@ -245,11 +245,11 @@ const Landing = () => {
                             <div className="text-4xl font-black mb-1">Custom</div>
                             <div className="text-sm text-slate-500 mb-8">Your AI, your brand</div>
                             <ul className="space-y-3 text-sm text-slate-400 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Everything in Pro</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Custom AI model tuning</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> White-label deployment</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> API access</li>
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✁E/span> Dedicated support</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Everything in Pro</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Custom AI model tuning</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> White-label deployment</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> API access</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dedicated support</li>
                             </ul>
                             <a href="mailto:sage@onelovepeople.com" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
                                 Book a Demo
