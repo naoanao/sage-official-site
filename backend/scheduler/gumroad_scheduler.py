@@ -48,7 +48,11 @@ class GumroadScheduler:
     # ── Blog post helpers ─────────────────────────────────────────────────────
 
     def _latest_post(self) -> dict | None:
-        files = sorted(glob.glob(f"{POSTS_DIR}/*.mdx"), reverse=True)
+        # Only consider dated files (YYYY-MM-DD-*.mdx) sorted newest first
+        import re as _re
+        all_files = glob.glob(f"{POSTS_DIR}/*.mdx")
+        dated = [f for f in all_files if _re.search(r'\d{4}-\d{2}-\d{2}', os.path.basename(f))]
+        files = sorted(dated, reverse=True)
         for path in files:
             fm = self._parse_frontmatter(path)
             if fm.get("title"):
@@ -180,6 +184,9 @@ Return ONLY valid JSON (no markdown):
             return False
         cutoff = datetime.utcnow() - timedelta(days=within_days)
         for job in jobs:
+            # Only check gumroad promotion jobs (not blog announcement jobs)
+            if not str(job.get("id", "")).startswith("gumroad_"):
+                continue
             if job.get("topic") == title and job.get("status") in ("pending", "posted"):
                 created = job.get("created_at", "")
                 try:

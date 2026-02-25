@@ -427,7 +427,7 @@ class AutonomousAdapter:
                             json={
                                 "parent": {"database_id": _db_id},
                                 "properties": {
-                                    "Title": {"title": [{"text": {"content": topic}}]},
+                                    "Topic": {"title": [{"text": {"content": topic}}]},
                                     "Status": {"select": {"name": "予約済み"}},
                                     "Category": {"select": {"name": "blog"}},
                                 }
@@ -495,7 +495,7 @@ class AutonomousAdapter:
                             json={
                                 "parent": {"database_id": db_id},
                                 "properties": {
-                                    "Title": {"title": [{"text": {"content": new_topic}}]},
+                                    "Topic": {"title": [{"text": {"content": new_topic}}]},
                                     "Status": {"select": {"name": "予約済み"}},
                                     "Category": {"select": {"name": "blog"}},
                                 }

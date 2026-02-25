@@ -86,6 +86,35 @@ class NotionContentPool:
             logger.error(f"Failed to fetch content from Notion: {e}")
             return []
 
+    def add_topic(self, title: str, category: str = "blog", status: str = "予約済み") -> bool:
+        """Add a new topic to the Notion content pool."""
+        try:
+            api_key = os.getenv("NOTION_API_KEY") or os.getenv("NOTION_TOKEN")
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Notion-Version": NOTION_API_VERSION,
+                "Content-Type": "application/json",
+            }
+            resp = _requests.post(
+                "https://api.notion.com/v1/pages",
+                headers=headers,
+                json={
+                    "parent": {"database_id": self.db_id},
+                    "properties": {
+                        "Topic": {"title": [{"text": {"content": title}}]},
+                        "Status": {"select": {"name": status}},
+                        "Category": {"select": {"name": category}},
+                    }
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            logger.info(f"✅ Topic added to Notion: '{title}' [{category}]")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add topic to Notion: {e}")
+            return False
+
     def mark_as_posted(self, page_id: str):
         """Update Status to '完了' or 'Posted'."""
         if not self.notion.enabled: return
