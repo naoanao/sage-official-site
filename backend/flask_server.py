@@ -299,18 +299,21 @@ def get_system_health():
     """
     Returns the TRUE internal state of Sage for 'No Lies' visibility.
     """
-    if orchestrator:
-        status = orchestrator.get_status()
-        return jsonify(status), 200
-    else:
-        # Fallback if orchestrator not loaded
-        from backend.modules.sage_config import config
-        return jsonify({
-            "offline_mode": config.get('privacy', 'offline_mode'),
-            "cloud_inference": "off",
-            "llm_provider": "unknown",
-            "telemetry": "off"
-        }), 200
+    try:
+        auto_obj = autonomous  # may be AutonomousAdapter or None
+        auto_running = bool(getattr(auto_obj, 'running', False)) if auto_obj is not None else False
+        loop_count = int(getattr(auto_obj, 'loop_count', 0)) if auto_obj is not None else 0
+    except Exception:
+        auto_running = False
+        loop_count = 0
+    return jsonify({
+        "status": "online",
+        "brake_enabled": False,
+        "autonomous_running": auto_running,
+        "autonomous_loop": loop_count,
+        "orchestrator_loaded": orchestrator is not None,
+        "llm_provider": "groq",
+    }), 200
 
 @app.route('/api/system/kpi', methods=['GET'])
 def get_system_kpi():
@@ -1524,34 +1527,52 @@ def get_history():
 @app.route('/api/productize', methods=['POST'])
 def productize_endpoint():
     """
-    Extracts needs from chat history and generates a product plan.
+    Generates a product plan from a topic (SageOS form) or from chat history.
     """
     global consultative_gen, memory
-    
+
     data = request.get_json(silent=True) or {}
+    topic = data.get('topic', '').strip()
+    market = data.get('market', 'US')
+    price = data.get('price', '$29')
     session_id = data.get('session_id') or request.headers.get('X-Session-ID') or "global_session"
-    
+
+    # If topic is provided directly (from SageOS monetization form), use Groq to generate product
+    if topic:
+        try:
+            import os as _os
+            from groq import Groq as _Groq
+            _groq = _Groq(api_key=_os.getenv("GROQ_API_KEY"))
+            prompt = (
+                f"You are a digital product strategist. Create a concise product plan for:\n"
+                f"Topic: {topic}\nMarket: {market}\nPrice: {price}\n\n"
+                f"Output: product name, 3-bullet value proposition, target audience, and a Gumroad description (150 words)."
+            )
+            resp = _groq.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=400,
+            )
+            plan_text = resp.choices[0].message.content.strip()
+            logger.info(f"[PRODUCTIZE] Generated plan for topic: {topic}")
+            return jsonify({"status": "ok", "topic": topic, "plan": plan_text}), 200
+        except Exception as e:
+            logger.error(f"[PRODUCTIZE] Groq error: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    # Fallback: use chat history via consultative_gen
     if not consultative_gen:
         return jsonify({"error": "Consultative Generator not initialized"}), 500
-    
     if not memory:
         return jsonify({"error": "Memory system not active"}), 500
-        
     try:
-        # 1. Get recent chat history for this session
         history = memory.get_short_term(limit=20, session_id=session_id)
-        
         if not history:
-             return jsonify({"error": "No chat history found for this session to productize."}), 400
-             
-        # 2. Run generation
+            return jsonify({"error": "No topic or chat history provided."}), 400
         result = consultative_gen.generate_product(history)
-        
         if "error" in result:
             return jsonify({"error": result["error"]}), 500
-            
         return jsonify(result), 200
-        
     except Exception as e:
         logger.error(f"[PRODUCTIZE] Error: {e}")
         return jsonify({"error": str(e)}), 500
