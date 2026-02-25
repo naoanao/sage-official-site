@@ -14,7 +14,7 @@ $Python    = "C:\Users\nao\AppData\Local\Programs\Python\Python311\python.exe"
 $CfExe     = "C:\Users\nao\AppData\Local\Microsoft\WinGet\Packages\Cloudflare.cloudflared_Microsoft.Winget.Source_8wekyb3d8bbwe\cloudflared.exe"
 $LogFile   = "$SageDir\logs\sage_autostart.log"
 $CfLog     = "$SageDir\logs\cloudflared.log"
-$BackendJs = "$SageDir\src\config\backendUrl.js"
+$BackendFn = "$SageDir\functions\_backend.js"
 
 Set-Location $SageDir
 
@@ -121,17 +121,17 @@ if ($envContent -match "VITE_BACKEND_URL=") {
 Set-Content "$SageDir\.env" $envContent -NoNewline
 Add-Content $LogFile "[$ts] .env updated with VITE_BACKEND_URL=$tunnelUrl"
 
-# ── Update src/config/backendUrl.js (committed to git) ───────────────────
+# ── Update functions/_backend.js (Pages Function fallback URL) ───────────
 $jsContent = "// Auto-updated by run_sage.ps1 on $ts`nexport const BACKEND_URL = `"$tunnelUrl`";"
-Set-Content $BackendJs $jsContent -Encoding UTF8 -NoNewline
-Add-Content $LogFile "[$ts] backendUrl.js updated"
+Set-Content $BackendFn $jsContent -Encoding UTF8 -NoNewline
+Add-Content $LogFile "[$ts] functions/_backend.js updated"
 
 # ── Git commit + push → triggers Cloudflare Pages rebuild ────────────────
 $git = "C:\Program Files\Git\bin\git.exe"
 if (-not (Test-Path $git)) { $git = "git" }
 
 try {
-    & $git -C $SageDir add "src/config/backendUrl.js" 2>&1 | Out-Null
+    & $git -C $SageDir add "functions/_backend.js" 2>&1 | Out-Null
     & $git -C $SageDir commit -m "chore: update tunnel URL [$tunnelUrl]" 2>&1 | Out-Null
     & $git -C $SageDir push origin main 2>&1 | Out-Null
     Add-Content $LogFile "[$ts] git push OK — Cloudflare Pages will rebuild."
