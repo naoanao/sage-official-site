@@ -174,13 +174,21 @@ class AutonomousAdapter:
             
             decision = None
             
-            # Rule 1: Self-Improvement (Disabled for Quota Safety - Trigger manually or rarely)
-            if loop == 9999: # loop % 5 == 0: 
+            # Rule 1: Daily D1 research (UTC 03:00 = JST 12:00 noon) once per day
+            if hour == 3 and loop % 60 == 0:
+                import random
+                topics = [
+                    "AI Tools for Solopreneurs to 10x Revenue in 2026",
+                    "How to Build a $5K/Month Digital Product Business with AI",
+                    "Top AI Automation Trends Reshaping Online Business in 2026",
+                    "Passive Income Strategies Using AI Agents and Content Automation",
+                    "How Creators Are Using AI to Replace $10K/Month Teams",
+                ]
                 decision = {
                     "type": "research_ai_trends",
-                    "reason": "Autonomous Self-Improvement Check",
+                    "reason": "Daily D1 Knowledge Loop (JST noon)",
                     "priority": "high",
-                    "data": {"topic": "New AI Agent Capabilities 2025"}
+                    "data": {"topic": random.choice(topics)}
                 }
 
             # Rule 2: High memory threshold
@@ -407,6 +415,29 @@ class AutonomousAdapter:
                     except Exception as ex:
                         logger.error(f"Failed to save research report: {ex}")
 
+                # 4. WRITE TOPIC TO NOTION CONTENT POOL (→ BlogScheduler picks it up)
+                try:
+                    import requests as _req2
+                    _token = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")
+                    _db_id = os.environ.get("NOTION_CONTENT_POOL_DB_ID")
+                    if _token and _db_id:
+                        _req2.post(
+                            "https://api.notion.com/v1/pages",
+                            headers={"Authorization": f"Bearer {_token}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"},
+                            json={
+                                "parent": {"database_id": _db_id},
+                                "properties": {
+                                    "Title": {"title": [{"text": {"content": topic}}]},
+                                    "Status": {"select": {"name": "予約済み"}},
+                                    "Category": {"select": {"name": "blog"}},
+                                }
+                            },
+                            timeout=10,
+                        )
+                        logger.info(f"📝 [D1] Topic queued in Notion: '{topic}'")
+                except Exception as ex:
+                    logger.error(f"Failed to write D1 topic to Notion: {ex}")
+
             elif decision['type'] == 'draft_social_post':
                 # NEW: D3 Human-in-the-loop Distribution
                 topic = decision['data'].get('topic', 'AI Insights')
@@ -439,7 +470,41 @@ class AutonomousAdapter:
                  logger.info(f"   -> Milestone: {decision['data']}")
             
             elif decision['type'] == 'create_notion_summary':
-                 logger.info("   -> Creating Notion summary (simulated)")
+                logger.info("   -> Creating Notion summary: writing new blog topic to Notion content pool")
+                try:
+                    import requests as _req
+                    from groq import Groq as _Groq
+                    _groq = _Groq(api_key=os.environ.get("GROQ_API_KEY"))
+                    _resp = _groq.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": (
+                            "Suggest ONE fresh, specific blog post topic for an AI solopreneur audience in 2026. "
+                            "Focus on AI automation, monetization, or content creation. "
+                            "Reply with ONLY the topic title."
+                        )}],
+                        max_tokens=60,
+                        temperature=0.9,
+                    )
+                    new_topic = _resp.choices[0].message.content.strip().strip('"').strip("'")
+                    token = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")
+                    db_id = os.environ.get("NOTION_CONTENT_POOL_DB_ID")
+                    if token and db_id and new_topic:
+                        _req.post(
+                            "https://api.notion.com/v1/pages",
+                            headers={"Authorization": f"Bearer {token}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"},
+                            json={
+                                "parent": {"database_id": db_id},
+                                "properties": {
+                                    "Title": {"title": [{"text": {"content": new_topic}}]},
+                                    "Status": {"select": {"name": "予約済み"}},
+                                    "Category": {"select": {"name": "blog"}},
+                                }
+                            },
+                            timeout=10,
+                        )
+                        logger.info(f"   -> ✅ New blog topic added to Notion: '{new_topic}'")
+                except Exception as ex:
+                    logger.error(f"   -> create_notion_summary failed: {ex}")
 
             elif decision['type'] == 'optimize_monetization':
                 # 1. Fetch Stats
