@@ -1,4 +1,27 @@
 
+# ── Runtime artifacts (never commit) ─────────────────────────────────────────
+
+# Logs & transient data
+backend/logs/
+backend/data/jobs.json
+
+# Vector / SQLite memory databases
+memorydb/
+
+# Generated images
+generated_images/
+
+# D1 research output (Obsidian vault)
+obsidian_vault/knowledge/
+
+# Process ID files
+*.pid
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
+.claude/settings.json
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Sage 3.0 Protection
 dist/
 *.pickle
