@@ -59,16 +59,19 @@ class NotionEvidenceLedger:
     def log_d1_run(
         self,
         topic: str,
-        status: str,                   # "成功" / "部分成功" / "失敗"
+        status: str,                        # "成功" / "部分成功" / "失敗"
         obsidian_file: str = "",
         commit: str = "",
         api_status: str = "",
         log_excerpt: str = "",
         task_page_ids: Optional[List[str]] = None,
+        evidence_status: str = "",          # "VERIFIED" / "NEEDS_REVIEW" / "FAILED"
+        reasons: Optional[List[str]] = None,
     ) -> Optional[str]:
         """
         Evidence Ledger に D1 実行レコードを 1 件作成する。
         作成した Notion ページ ID を返す（失敗時は None）。
+        evidence_status / reasons はログ抜粋の先頭に付与して記録する。
         """
         self._init()
         if not self.enabled:
@@ -78,6 +81,13 @@ class NotionEvidenceLedger:
         # コミットが渡されなければ HEAD から取得
         if not commit:
             commit = _get_current_commit()
+
+        # evidence_status / reasons をログ抜粋の先頭に付与
+        if evidence_status:
+            prefix = f"[evidence_status: {evidence_status}]"
+            if reasons:
+                prefix += f"\n[reasons: {' | '.join(reasons)}]"
+            log_excerpt = prefix + "\n" + log_excerpt
 
         now_jst = datetime.now(JST)
         run_name = f"D1 Run {now_jst.strftime('%Y-%m-%d %H:%M')} – {topic[:40]}"

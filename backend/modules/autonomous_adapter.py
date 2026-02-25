@@ -313,13 +313,22 @@ class AutonomousAdapter:
                         
                         response = requests.post(url, json=payload, headers=headers, timeout=60)
                         if response.status_code == 200:
-                            res_data = response.json()
-                            research_report = res_data['choices'][0]['message']['content']
-                            logger.info("✅ [D1] Perplexity Research Success (via Requests).")
-                            d1_api_flags.append("Perplexity:OK")
-                            d1_log_lines.append("Perplexity Research Success.")
+                            ct = response.headers.get("content-type", "")
+                            if "application/json" not in ct:
+                                # HTML block page (CloudFlare / Google captcha)
+                                logger.error(f"❌ Perplexity returned non-JSON ({ct[:60]}). Treating as error.")
+                                d1_api_flags.append("Perplexity:ERR(non-json-response)")
+                            else:
+                                res_data = response.json()
+                                research_report = res_data['choices'][0]['message']['content']
+                                logger.info("✅ [D1] Perplexity Research Success (via Requests).")
+                                d1_api_flags.append("Perplexity:OK")
+                                d1_log_lines.append("Perplexity Research Success.")
+                        elif response.status_code == 401:
+                            logger.error("❌ Perplexity 401 Unauthorized — API key invalid or expired.")
+                            d1_api_flags.append("Perplexity:ERR(401-unauthorized)")
                         else:
-                            logger.error(f"❌ Perplexity API Error: {response.status_code} - {response.text}")
+                            logger.error(f"❌ Perplexity API Error: {response.status_code} - {response.text[:200]}")
                             d1_api_flags.append(f"Perplexity:ERR({response.status_code})")
                     except Exception as ex:
                         logger.error(f"❌ Perplexity Request Failed: {ex}")
@@ -341,59 +350,58 @@ class AutonomousAdapter:
                              # Don't set FATAL here, just leave it empty and let the final check handle it
                              logger.warning(f"❌ No search results for {topic}")
                 
-                # --- NEW: EVIDENCE PURIFICATION (D1.5 DEEP VERIFICATION) ---
+                # --- EVIDENCE PURIFICATION (D1.5 DEEP VERIFICATION) ---
+                purification_ok = False
                 if research_report and hasattr(self.orchestrator, 'browser_agent'):
-                    logger.info("🛡️ [D1] PURIFYING EVIDENCE: Cross-referencing all numbers with cited sources...")
-                    
-                    # 1. Collect all reachable sources from the report
-                    all_urls = list(set(re.findall(r'https?://[^\s)\]]+', research_report)))
-                    source_contents = {}
-                    for u in all_urls:
-                        # Basic reachability and content fetch
-                        res = self.orchestrator.browser_agent.verify_url_content(u, []) # Fetch text
-                        if res.get('status') == 'success' and res.get('reachable'):
-                            # Fetch again with no search terms to get full text once
-                            import requests
-                            try:
-                                h = {'User-Agent': 'Mozilla/5.0'}
-                                source_contents[u] = re.sub(r'<[^>]+>', ' ', requests.get(u, headers=h, timeout=10).text).lower()
-                            except:
-                                continue
-                    
-                    # 2. Extract and verify every fact in the report
-                    raw_lines = research_report.split('\n')
-                    purified_lines = []
-                    for line in raw_lines:
-                        new_line = line
-                        
-                        # Year Check
-                        if "2025" in line and "2026" not in line:
-                             new_line = f"⚠️ [YEAR MISMATCH] {new_line}"
-                        
-                        # Look for facts in this line
-                        found_facts = re.findall(r'(\$?\d+(?:\.\d+)?\s*(?:billion|million|trillion|%))', line, re.IGNORECASE)
-                        for fact in found_facts:
-                            fact_clean = fact.lower().strip()
-                            is_verified = False
-                            for s_url, s_text in source_contents.items():
-                                if fact_clean in s_text:
-                                    is_verified = True
-                                    break
-                            
-                            tag = " [🔍 Verified in Sources]" if is_verified else " [⚠️ Unverified Number]"
-                            if tag not in new_line:
-                                new_line = new_line.replace(fact, f"{fact}{tag}")
-                        
-                        # URL tag (basic reachability/status)
-                        found_urls = re.findall(r'https?://[^\s)\]]+', line)
-                        for u in found_urls:
-                            status = " [✅ Reachable]" if u in source_contents else " [❌ UNREACHABLE/HALLUCINATED URL]"
-                            new_line = new_line.replace(u, f"{u}{status}")
-                            
-                        purified_lines.append(new_line)
-                    
-                    research_report = "\n".join(purified_lines)
-                    logger.info("✅ [D1] Evidence Purification (Cross-Reference) complete.")
+                    try:
+                        logger.info("🛡️ [D1] PURIFYING EVIDENCE: Cross-referencing all numbers with cited sources...")
+
+                        # 1. Collect all reachable sources from the report
+                        all_urls = list(set(re.findall(r'https?://[^\s)\]]+', research_report)))
+                        source_contents = {}
+                        for u in all_urls:
+                            res = self.orchestrator.browser_agent.verify_url_content(u, [])
+                            if res.get('status') == 'success' and res.get('reachable'):
+                                import requests
+                                try:
+                                    h = {'User-Agent': 'Mozilla/5.0'}
+                                    source_contents[u] = re.sub(r'<[^>]+>', ' ', requests.get(u, headers=h, timeout=10).text).lower()
+                                except Exception:
+                                    continue
+
+                        # 2. Extract and verify every fact in the report
+                        raw_lines = research_report.split('\n')
+                        purified_lines = []
+                        for line in raw_lines:
+                            new_line = line
+
+                            # Year Check
+                            if "2025" in line and "2026" not in line:
+                                new_line = f"[YEAR MISMATCH] {new_line}"
+
+                            # Look for facts in this line
+                            found_facts = re.findall(r'(\$?\d+(?:\.\d+)?\s*(?:billion|million|trillion|%))', line, re.IGNORECASE)
+                            for fact in found_facts:
+                                fact_clean = fact.lower().strip()
+                                is_verified = any(fact_clean in s_text for s_text in source_contents.values())
+                                tag = " [Verified in Sources]" if is_verified else " [Unverified Number]"
+                                if tag not in new_line:
+                                    new_line = new_line.replace(fact, f"{fact}{tag}")
+
+                            # URL reachability tag
+                            found_urls = re.findall(r'https?://[^\s)\]]+', line)
+                            for u in found_urls:
+                                tag = " [Reachable]" if u in source_contents else " [UNREACHABLE/HALLUCINATED URL]"
+                                new_line = new_line.replace(u, f"{u}{tag}")
+
+                            purified_lines.append(new_line)
+
+                        research_report = "\n".join(purified_lines)
+                        purification_ok = True
+                        logger.info("✅ [D1] Evidence Purification (Cross-Reference) complete.")
+                    except Exception as purif_err:
+                        logger.error(f"❌ [D1] Evidence purification failed (non-fatal): {purif_err}")
+                        d1_log_lines.append(f"Purification error: {purif_err}")
 
                 # Groq fallback — synthesize from internal knowledge when external data unavailable
                 if not research_report and not trend_evidence:
@@ -427,8 +435,40 @@ class AutonomousAdapter:
                     clean_report = research_report.replace(f"# Intelligence Report: {topic}\n", "")
                     research_report = f"# Intelligence Report (Verified): {topic}\n" + trend_evidence + "\n---\n" + clean_report
 
-                # Add explicit footer (Fixing typo)
-                research_report += "\n\n---\n*Verified via Sage Internal Grounding (D1 Knowledge Loop). Citations validated for reachability.*"
+                # Add footer
+                research_report += "\n\n---\n*Sage D1 Knowledge Loop. Citations validated for reachability.*"
+
+                # ── Determine evidence_status ──────────────────────────────────
+                has_perplexity_ok = "Perplexity:OK" in d1_api_flags
+                has_unverified    = "[Unverified Number]" in research_report
+                has_unreachable   = "[UNREACHABLE/HALLUCINATED URL]" in research_report
+                has_year_mismatch = "[YEAR MISMATCH]" in research_report
+                used_groq_fallback = "Groq:OK(fallback)" in d1_api_flags
+
+                ev_reasons: list = []
+                if has_perplexity_ok and not has_unverified and not has_unreachable:
+                    evidence_status = "VERIFIED"
+                elif research_report and "FATAL" not in research_report:
+                    evidence_status = "NEEDS_REVIEW"
+                    if used_groq_fallback:
+                        ev_reasons.append("LLM synthesis used — no real-world data")
+                    if has_unverified:
+                        ev_reasons.append("unverified statistics in report")
+                    if has_unreachable:
+                        ev_reasons.append("unreachable/hallucinated URLs")
+                    if has_year_mismatch:
+                        ev_reasons.append("year mismatch detected (2025 data)")
+                    if not has_perplexity_ok:
+                        pplx_errs = [f for f in d1_api_flags if "Perplexity:ERR" in f]
+                        ev_reasons.append(pplx_errs[0] if pplx_errs else "Perplexity unavailable")
+                    if not purification_ok:
+                        ev_reasons.append("evidence purification did not run")
+                else:
+                    evidence_status = "FAILED"
+                    ev_reasons.append("no usable research data obtained")
+
+                logger.info(f"[D1] evidence_status={evidence_status} reasons={ev_reasons}")
+                d1_log_lines.append(f"evidence_status: {evidence_status}")
 
                 # 3. SAVE TO OBSIDIAN
                 if research_report:
@@ -446,33 +486,36 @@ class AutonomousAdapter:
                     except Exception as ex:
                         logger.error(f"Failed to save research report: {ex}")
 
-                # 4. WRITE TOPIC TO NOTION CONTENT POOL (→ BlogScheduler picks it up)
-                try:
-                    import requests as _req2
-                    _token = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")
-                    _db_id = os.environ.get("NOTION_CONTENT_POOL_DB_ID")
-                    if _token and _db_id:
-                        _req2.post(
-                            "https://api.notion.com/v1/pages",
-                            headers={"Authorization": f"Bearer {_token}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"},
-                            json={
-                                "parent": {"database_id": _db_id},
-                                "properties": {
-                                    "Topic": {"title": [{"text": {"content": topic}}]},
-                                    "Status": {"select": {"name": "予約済み"}},
-                                    "Category": {"select": {"name": "blog"}},
-                                }
-                            },
-                            timeout=10,
-                        )
-                        logger.info(f"📝 [D1] Topic queued in Notion: '{topic}'")
-                except Exception as ex:
-                    logger.error(f"Failed to write D1 topic to Notion: {ex}")
+                # 4. WRITE TOPIC TO NOTION CONTENT POOL — ONLY when VERIFIED
+                if evidence_status == "VERIFIED":
+                    try:
+                        import requests as _req2
+                        _token = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")
+                        _db_id = os.environ.get("NOTION_CONTENT_POOL_DB_ID")
+                        if _token and _db_id:
+                            _req2.post(
+                                "https://api.notion.com/v1/pages",
+                                headers={"Authorization": f"Bearer {_token}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"},
+                                json={
+                                    "parent": {"database_id": _db_id},
+                                    "properties": {
+                                        "Topic": {"title": [{"text": {"content": topic}}]},
+                                        "Status": {"select": {"name": "予約済み"}},
+                                        "Category": {"select": {"name": "blog"}},
+                                    }
+                                },
+                                timeout=10,
+                            )
+                            logger.info(f"📝 [D1] Topic queued in Notion: '{topic}'")
+                    except Exception as ex:
+                        logger.error(f"Failed to write D1 topic to Notion: {ex}")
+                else:
+                    logger.warning(f"[D1] Notion publish SKIPPED (evidence_status={evidence_status}). Reasons: {ev_reasons}")
 
                 # 5. LOG TO EVIDENCE LEDGER
                 try:
                     from backend.modules.notion_evidence_ledger import evidence_ledger
-                    d1_status = "成功" if d1_obsidian_file and "Perplexity:OK" in d1_api_flags else \
+                    d1_status = "成功" if d1_obsidian_file and evidence_status == "VERIFIED" else \
                                 "部分成功" if d1_obsidian_file else "失敗"
                     evidence_ledger.log_d1_run(
                         topic=topic,
@@ -480,6 +523,8 @@ class AutonomousAdapter:
                         obsidian_file=d1_obsidian_file,
                         api_status="  ".join(d1_api_flags) or "no API",
                         log_excerpt="\n".join(d1_log_lines)[-1800:],
+                        evidence_status=evidence_status,
+                        reasons=ev_reasons,
                     )
                 except Exception as ev_ex:
                     logger.error(f"[D1] Evidence Ledger log failed: {ev_ex}")

@@ -5,6 +5,8 @@ import random
 from datetime import datetime
 from dotenv import load_dotenv
 
+from backend.data.jobs_store import append as _jobs_append
+
 load_dotenv('.env')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,8 +19,6 @@ class SNSDailyScheduler:
     Target: Global Market (JST Noon / EST Morning & Night).
     Applies 'Wise Person' Strategy and 'No Lies' Verification.
     """
-
-    JOBS_FILE = "backend/data/jobs.json"
 
     def __init__(self):
         from backend.modules.notion_content_pool import NotionContentPool
@@ -120,17 +120,8 @@ class SNSDailyScheduler:
 
     def _write_job(self, item_id: str, topic: str, ig_caption: str,
                    bs_text: str, image_path: str, status: str = "pending") -> None:
-        os.makedirs(os.path.dirname(self.JOBS_FILE), exist_ok=True)
-        jobs = []
-        if os.path.exists(self.JOBS_FILE):
-            try:
-                with open(self.JOBS_FILE, 'r', encoding='utf-8') as f:
-                    jobs = json.load(f)
-            except Exception:
-                jobs = []
-
         job_id = f"sns_{item_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-        jobs.append({
+        _jobs_append({
             "id": job_id,
             "type": "pr_post",
             "targets": ["instagram", "bluesky"],
@@ -142,12 +133,7 @@ class SNSDailyScheduler:
             "status": status,
             "created_at": datetime.utcnow().isoformat(),
         })
-        try:
-            with open(self.JOBS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(jobs, f, ensure_ascii=False, indent=2)
-            logger.info(f"💾 Job Queued: {job_id}")
-        except Exception as e:
-            logger.error(f"Failed to write job: {e}")
+        logger.info(f"💾 Job Queued: {job_id}")
 
     def _post_now(self, ig_caption: str, bs_text: str, image_path: str | None) -> None:
         if image_path:

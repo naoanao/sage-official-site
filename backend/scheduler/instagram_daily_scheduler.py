@@ -5,6 +5,8 @@ import random
 from datetime import datetime
 from dotenv import load_dotenv
 
+from backend.data.jobs_store import append as _jobs_append
+
 load_dotenv('.env')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -30,8 +32,6 @@ class InstagramDailyScheduler:
     Target: 12:00 JST Daily.
     Ensures visual variety and applies Wise Person Strategy.
     """
-
-    JOBS_FILE = "backend/data/jobs.json"
 
     def __init__(self):
         from backend.modules.notion_content_pool import NotionContentPool
@@ -113,17 +113,8 @@ class InstagramDailyScheduler:
 
     def _write_job(self, item_id: str, topic: str, caption: str,
                    image_path: str, status: str = "pending") -> None:
-        os.makedirs(os.path.dirname(self.JOBS_FILE), exist_ok=True)
-        jobs = []
-        if os.path.exists(self.JOBS_FILE):
-            try:
-                with open(self.JOBS_FILE, 'r', encoding='utf-8') as f:
-                    jobs = json.load(f)
-            except Exception:
-                jobs = []
-
         job_id = f"insta_val_{item_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-        jobs.append({
+        _jobs_append({
             "id": job_id,
             "type": "pr_post",
             "targets": ["instagram"],
@@ -134,12 +125,7 @@ class InstagramDailyScheduler:
             "status": status,
             "created_at": datetime.utcnow().isoformat(),
         })
-        try:
-            with open(self.JOBS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(jobs, f, ensure_ascii=False, indent=2)
-            logger.info(f"✅ Instagram Job {job_id} queued successfully.")
-        except Exception as e:
-            logger.error(f"Failed to write to jobs.json: {e}")
+        logger.info(f"✅ Instagram Job {job_id} queued successfully.")
 
     def run_cycle(self) -> None:
         """Check if we have ready content and queue it for the job_runner."""
