@@ -120,7 +120,16 @@ class BlogScheduler:
                     return rich[0].get("plain_text", "")
         return ""
 
-    def _generate_article(self, topic: str) -> dict:
+    def _extract_evidence_status(self, notion_page: dict) -> str:
+        """Return EvidenceStatus rich_text value, or '' if not present."""
+        prop = notion_page.get("properties", {}).get("EvidenceStatus", {})
+        if prop.get("type") == "rich_text":
+            rich = prop.get("rich_text", [])
+            if rich:
+                return rich[0].get("plain_text", "")
+        return ""
+
+    def _generate_article(self, topic: str, evidence_status: str = "") -> dict:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         slug_base = re.sub(r"[^a-z0-9]+", "-", topic.lower())[:50].strip("-")
         slug = f"{today}-{slug_base}"
@@ -160,7 +169,7 @@ Then write the full article body in Markdown. Use ## for sections, include bulle
         title_match = re.search(r'^title:\s*["\']?(.+?)["\']?\s*$', raw, re.MULTILINE)
         title = title_match.group(1) if title_match else topic
 
-        return {"slug": slug, "title": title, "body": raw, "date": today}
+        return {"slug": slug, "title": title, "body": raw, "date": today, "evidence_status": evidence_status}
 
     # ── File / git helpers ────────────────────────────────────────────────────
 
@@ -168,8 +177,15 @@ Then write the full article body in Markdown. Use ## for sections, include bulle
         os.makedirs(POSTS_DIR, exist_ok=True)
         filename = f"{article['slug']}.mdx"
         filepath = os.path.join(POSTS_DIR, filename)
+        body = article["body"]
+        ev = article.get("evidence_status", "")
+        if ev and body.startswith("---"):
+            # Inject evidence_status into frontmatter before closing ---
+            parts = body.split("---", 2)
+            if len(parts) == 3:
+                body = f"---{parts[1]}evidence_status: {ev}\n---{parts[2]}"
         with open(filepath, "w", encoding="utf-8") as f:
-            f.write(article["body"])
+            f.write(body)
         logger.info(f"[BLOG] Saved: {filepath}")
         return filepath
 
@@ -242,6 +258,7 @@ Respond with ONLY the topic title, nothing else. Make it specific and compelling
         items = self._get_blog_topics(limit=1)
 
         page_id = None
+        ev_status = ""
         if not items:
             logger.info("[BLOG] No blog topics in Notion queue. Trying auto-topic generation...")
             topic = self._auto_topic()
@@ -252,6 +269,11 @@ Respond with ONLY the topic title, nothing else. Make it specific and compelling
             page = items[0]
             page_id = page["id"]
             topic = self._extract_topic(page)
+            # Phase C: evidence_status gate — skip FAILED topics
+            ev_status = self._extract_evidence_status(page)
+            if ev_status == "FAILED":
+                logger.warning(f"[BLOG] Skipping '{topic}' (evidence_status=FAILED)")
+                return
         if not topic:
             logger.warning("[BLOG] Could not extract topic from Notion page.")
             return
@@ -262,7 +284,7 @@ Respond with ONLY the topic title, nothing else. Make it specific and compelling
             logger.info(f"[BLOG][DRY_RUN] Would generate article for '{topic}'. Skipping.")
             return
 
-        article = self._generate_article(topic)
+        article = self._generate_article(topic, evidence_status=ev_status)
         filepath = self._save_mdx(article)
         pushed = self._git_push(filepath, article["title"])
 

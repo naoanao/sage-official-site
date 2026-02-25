@@ -189,6 +189,12 @@ Return ONLY valid JSON (no markdown):
             logger.info("[GUMROAD] No blog post found. Idle.")
             return
 
+        # Phase C: evidence_status gate — skip FAILED topics
+        ev_status = post.get("evidence_status", "")
+        if ev_status == "FAILED":
+            logger.warning(f"[GUMROAD] Skipping post (evidence_status=FAILED): {post.get('title', '?')}")
+            return
+
         title = post.get("title", "")
         excerpt = post.get("excerpt", "")
         logger.info(f"[GUMROAD] Blog: '{title}'")

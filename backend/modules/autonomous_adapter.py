@@ -254,6 +254,7 @@ class AutonomousAdapter:
             if decision['type'] == 'research_ai_trends':
                 # Trigger Research Tool via Perplexity (Direct Requests for robustness)
                 topic = decision['data'].get('topic', 'AI Trends')
+                logger.info(f"[D1] START topic={topic}")
                 logger.info(f"⚡ [D1] LIVE HARVESTING: Researching '{topic}' via Perplexity API...")
 
                 # Evidence Ledger tracking vars
@@ -322,6 +323,7 @@ class AutonomousAdapter:
                                 res_data = response.json()
                                 research_report = res_data['choices'][0]['message']['content']
                                 logger.info("✅ [D1] Perplexity Research Success (via Requests).")
+                                logger.info("[D1] SOURCE=Perplexity")
                                 d1_api_flags.append("Perplexity:OK")
                                 d1_log_lines.append("Perplexity Research Success.")
                         elif response.status_code == 401:
@@ -421,6 +423,7 @@ class AutonomousAdapter:
                         research_report += "> ⚠️ Note: Generated from LLM internal knowledge — external search unavailable.\n\n"
                         research_report += groq_resp.choices[0].message.content.strip()
                         logger.info("✅ [D1] Groq fallback synthesis complete.")
+                        logger.info("[D1] SOURCE=Groq fallback")
                         d1_api_flags.append("Groq:OK(fallback)")
                         d1_log_lines.append("Groq fallback synthesis complete.")
                     except Exception as groq_err:
@@ -482,31 +485,42 @@ class AutonomousAdapter:
                             f.write(research_report)
                         d1_obsidian_file = report_name
                         d1_log_lines.append(f"Obsidian saved: {report_name}")
-                        logger.info(f"[D1] Final Intelligence Report stored at {report_path}")
+                        logger.info(f"[D1] OBSIDIAN saved: obsidian_vault/knowledge/{report_name}")
                     except Exception as ex:
                         logger.error(f"Failed to save research report: {ex}")
 
-                # 4. WRITE TOPIC TO NOTION CONTENT POOL — ONLY when VERIFIED
-                if evidence_status == "VERIFIED":
+                # 4. WRITE TOPIC TO NOTION CONTENT POOL — VERIFIED or NEEDS_REVIEW
+                if evidence_status in ("VERIFIED", "NEEDS_REVIEW"):
                     try:
                         import requests as _req2
                         _token = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")
                         _db_id = os.environ.get("NOTION_CONTENT_POOL_DB_ID")
                         if _token and _db_id:
-                            _req2.post(
+                            _headers = {"Authorization": f"Bearer {_token}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"}
+                            _props_full = {
+                                "Topic": {"title": [{"text": {"content": topic}}]},
+                                "Status": {"select": {"name": "予約済み"}},
+                                "Category": {"select": {"name": "blog"}},
+                                "EvidenceStatus": {"rich_text": [{"text": {"content": evidence_status}}]},
+                            }
+                            _resp = _req2.post(
                                 "https://api.notion.com/v1/pages",
-                                headers={"Authorization": f"Bearer {_token}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"},
-                                json={
-                                    "parent": {"database_id": _db_id},
-                                    "properties": {
-                                        "Topic": {"title": [{"text": {"content": topic}}]},
-                                        "Status": {"select": {"name": "予約済み"}},
-                                        "Category": {"select": {"name": "blog"}},
-                                    }
-                                },
+                                headers=_headers,
+                                json={"parent": {"database_id": _db_id}, "properties": _props_full},
                                 timeout=10,
                             )
-                            logger.info(f"📝 [D1] Topic queued in Notion: '{topic}'")
+                            if _resp.status_code == 400 and "EvidenceStatus" in _resp.text:
+                                # DB schema doesn't have EvidenceStatus yet — retry without it
+                                logger.warning("[D1] EvidenceStatus not in Notion DB schema, writing without it")
+                                _props_base = {k: v for k, v in _props_full.items() if k != "EvidenceStatus"}
+                                _resp = _req2.post(
+                                    "https://api.notion.com/v1/pages",
+                                    headers=_headers,
+                                    json={"parent": {"database_id": _db_id}, "properties": _props_base},
+                                    timeout=10,
+                                )
+                            _resp.raise_for_status()
+                            logger.info(f"[D1] NOTION queued: title={topic} status=予約済み")
                     except Exception as ex:
                         logger.error(f"Failed to write D1 topic to Notion: {ex}")
                 else:
