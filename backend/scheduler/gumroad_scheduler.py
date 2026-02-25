@@ -15,7 +15,7 @@ import json
 import logging
 import re
 import glob
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger("GumroadScheduler")
 
@@ -169,6 +169,26 @@ Return ONLY valid JSON (no markdown):
 
     # ── Main ──────────────────────────────────────────────────────────────────
 
+    def _already_promoted(self, title: str, within_days: int = 7) -> bool:
+        """Return True if this blog title was already promoted within the last N days."""
+        if not os.path.exists(JOBS_FILE):
+            return False
+        try:
+            with open(JOBS_FILE, encoding="utf-8") as f:
+                jobs = json.load(f)
+        except Exception:
+            return False
+        cutoff = datetime.utcnow() - timedelta(days=within_days)
+        for job in jobs:
+            if job.get("topic") == title and job.get("status") in ("pending", "posted"):
+                created = job.get("created_at", "")
+                try:
+                    if datetime.fromisoformat(created) > cutoff:
+                        return True
+                except Exception:
+                    pass
+        return False
+
     def run_once(self) -> None:
         logger.info("[GUMROAD] run_once() started.")
 
@@ -180,6 +200,10 @@ Return ONLY valid JSON (no markdown):
         title = post.get("title", "")
         excerpt = post.get("excerpt", "")
         logger.info(f"[GUMROAD] Blog: '{title}'")
+
+        if self._already_promoted(title):
+            logger.info(f"[GUMROAD] '{title}' was promoted within last 7 days. Skipping duplicate.")
+            return
 
         products = self._get_products()
         product = self._pick_product(products)
