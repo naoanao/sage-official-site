@@ -255,7 +255,12 @@ class AutonomousAdapter:
                 # Trigger Research Tool via Perplexity (Direct Requests for robustness)
                 topic = decision['data'].get('topic', 'AI Trends')
                 logger.info(f"⚡ [D1] LIVE HARVESTING: Researching '{topic}' via Perplexity API...")
-                
+
+                # Evidence Ledger tracking vars
+                d1_api_flags: list = []   # e.g. ["Perplexity:OK", "Groq:standby"]
+                d1_obsidian_file: str = ""
+                d1_log_lines: list = []
+
                 research_report = ""
                 
                 # --- NEW: SEARCH TREND EVIDENCE (FREE REAL WATER) ---
@@ -311,8 +316,11 @@ class AutonomousAdapter:
                             res_data = response.json()
                             research_report = res_data['choices'][0]['message']['content']
                             logger.info("✅ [D1] Perplexity Research Success (via Requests).")
+                            d1_api_flags.append("Perplexity:OK")
+                            d1_log_lines.append("Perplexity Research Success.")
                         else:
                             logger.error(f"❌ Perplexity API Error: {response.status_code} - {response.text}")
+                            d1_api_flags.append(f"Perplexity:ERR({response.status_code})")
                     except Exception as ex:
                         logger.error(f"❌ Perplexity Request Failed: {ex}")
                 
@@ -405,6 +413,8 @@ class AutonomousAdapter:
                         research_report += "> ⚠️ Note: Generated from LLM internal knowledge — external search unavailable.\n\n"
                         research_report += groq_resp.choices[0].message.content.strip()
                         logger.info("✅ [D1] Groq fallback synthesis complete.")
+                        d1_api_flags.append("Groq:OK(fallback)")
+                        d1_log_lines.append("Groq fallback synthesis complete.")
                     except Exception as groq_err:
                         logger.error(f"❌ Groq fallback failed: {groq_err}")
                         research_report = f"# D1 Failure Report: {topic}\n⚠️ FATAL: No external data (Trends or Search) could be harvested."
@@ -430,7 +440,9 @@ class AutonomousAdapter:
                         report_path = vault_dir / report_name
                         with open(report_path, 'w', encoding='utf-8') as f:
                             f.write(research_report)
-                        logger.info(f"💾 [D1] Final Intelligence Report stored at {report_path}")
+                        d1_obsidian_file = report_name
+                        d1_log_lines.append(f"Obsidian saved: {report_name}")
+                        logger.info(f"[D1] Final Intelligence Report stored at {report_path}")
                     except Exception as ex:
                         logger.error(f"Failed to save research report: {ex}")
 
@@ -456,6 +468,21 @@ class AutonomousAdapter:
                         logger.info(f"📝 [D1] Topic queued in Notion: '{topic}'")
                 except Exception as ex:
                     logger.error(f"Failed to write D1 topic to Notion: {ex}")
+
+                # 5. LOG TO EVIDENCE LEDGER
+                try:
+                    from backend.modules.notion_evidence_ledger import evidence_ledger
+                    d1_status = "成功" if d1_obsidian_file and "Perplexity:OK" in d1_api_flags else \
+                                "部分成功" if d1_obsidian_file else "失敗"
+                    evidence_ledger.log_d1_run(
+                        topic=topic,
+                        status=d1_status,
+                        obsidian_file=d1_obsidian_file,
+                        api_status="  ".join(d1_api_flags) or "no API",
+                        log_excerpt="\n".join(d1_log_lines)[-1800:],
+                    )
+                except Exception as ev_ex:
+                    logger.error(f"[D1] Evidence Ledger log failed: {ev_ex}")
 
             elif decision['type'] == 'draft_social_post':
                 # NEW: D3 Human-in-the-loop Distribution
