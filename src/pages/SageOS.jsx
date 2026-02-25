@@ -17,6 +17,7 @@ const SageOS = () => {
     const [market, setMarket] = useState('US');
     const [price, setPrice] = useState('$29');
     const [monetizeStatus, setMonetizeStatus] = useState('idle');
+    const [monetizeResult, setMonetizeResult] = useState(null);
 
     // Chat state
     const [messages, setMessages] = useState([
@@ -56,17 +57,38 @@ const SageOS = () => {
     const handleMonetize = async () => {
         if (!monetizeTopic) return;
         setMonetizeStatus('running');
+        setMonetizeResult(null);
         try {
-            await api.post('/api/productize', {
+            // Step 1: Generate the plan
+            const planRes = await api.post('/api/productize', {
                 topic: monetizeTopic,
                 market,
                 price
             });
+            if (!planRes.data || planRes.data.error) {
+                throw new Error(planRes.data?.error || 'Plan generation failed');
+            }
+
+            // Step 2: Execute and generate the actual course file
+            const execRes = await api.post('/api/productize/execute', {
+                topic: monetizeTopic,
+                type: 'COURSE',
+                plan: planRes.data.plan
+            });
+            if (!execRes.data || execRes.data.error) {
+                throw new Error(execRes.data?.error || 'Course generation failed');
+            }
+
+            // Show where the file was saved
+            const savedPath = execRes.data.obsidian_note || execRes.data.file_path || '生成完了';
+            setMonetizeResult(savedPath);
             setMonetizeStatus('complete');
-            setTimeout(() => setMonetizeStatus('idle'), 3000);
+            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 12000);
         } catch (e) {
+            console.error("Monetization failed", e);
+            setMonetizeResult(e.message || 'エラーが発生しました');
             setMonetizeStatus('error');
-            setTimeout(() => setMonetizeStatus('idle'), 3000);
+            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
         }
     };
 
@@ -100,12 +122,12 @@ const SageOS = () => {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-hidden flex">
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-hidden flex" translate="no">
             {/* Sidebar */}
             <div className="w-64 bg-slate-900/50 border-r border-white/5 flex flex-col p-4 backdrop-blur-md z-10">
                 <div className="text-xl font-bold tracking-tighter mb-8 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                    SAGE COCKPIT
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" translate="no"></span>
+                    <span>SAGE COCKPIT</span>
                 </div>
 
                 <div className="space-y-2 flex-grow">
@@ -113,39 +135,39 @@ const SageOS = () => {
                         onClick={() => setActiveTab('dashboard')}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === 'dashboard' ? 'bg-blue-600 border border-blue-500 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                     >
-                        <FiActivity /> Dashboard
+                        <FiActivity /> <span>Dashboard</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('monetization')}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === 'monetization' ? 'bg-purple-600 border border-purple-500 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                     >
-                        <FiDollarSign /> Monetization
+                        <FiDollarSign /> <span>Monetization</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('chat')}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === 'chat' ? 'bg-emerald-600 border border-emerald-500 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                     >
-                        <FiMessageSquare /> AI Chat
+                        <FiMessageSquare /> <span>AI Chat</span>
                     </button>
                 </div>
 
                 {/* Sage Brake Widget in Sidebar */}
                 <div className="mt-auto p-4 bg-black/40 border border-white/5 rounded-xl">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-mono text-slate-400 flex items-center gap-2"><FiShield /> SAGE BRAKE</span>
+                        <span className="text-xs font-mono text-slate-400 flex items-center gap-2"><FiShield /> <span>SAGE BRAKE</span></span>
                         <div className={`w-2 h-2 rounded-full ${brakeEnabled ? 'bg-red-500 animate-pulse' : 'bg-slate-600'}`}></div>
                     </div>
                     <button
                         onClick={toggleBrake}
                         className={`w-full py-2 rounded-lg text-xs font-bold uppercase transition-all flex justify-center items-center gap-2 ${brakeEnabled ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'}`}
                     >
-                        {brakeEnabled ? <><FiXCircle /> BRAKE ACTIVE</> : <><FiCheckCircle /> NORMAl OPERATION</>}
+                        {brakeEnabled ? <><FiXCircle /> <span>BRAKE ACTIVE</span></> : <><FiCheckCircle /> <span>NORMAL OPERATION</span></>}
                     </button>
                 </div>
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 p-8 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-black to-black overflow-y-auto">
+            <div className="flex-1 p-8 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-black to-black overflow-y-auto" translate="no">
 
                 {activeTab === 'dashboard' && (
                     <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
@@ -176,9 +198,9 @@ const SageOS = () => {
                                 onClick={handleD1Run}
                                 disabled={d1Status === 'running'}
                                 className={`px-6 py-3 rounded-xl font-bold flex items-center gap-3 transition-all ${d1Status === 'running' ? 'bg-slate-700 text-slate-400' :
-                                        d1Status === 'error' ? 'bg-red-600 text-white' :
-                                            d1Status === 'complete' ? 'bg-emerald-600 text-white' :
-                                                'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_30px_rgba(37,99,235,0.3)]'
+                                    d1Status === 'error' ? 'bg-red-600 text-white' :
+                                        d1Status === 'complete' ? 'bg-emerald-600 text-white' :
+                                            'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_30px_rgba(37,99,235,0.3)]'
                                     }`}
                             >
                                 {d1Status === 'idle' && <><FiPlay /> Execute D1 Loop</>}
@@ -241,8 +263,9 @@ const SageOS = () => {
                                 onClick={handleMonetize}
                                 disabled={!monetizeTopic || monetizeStatus === 'running'}
                                 className={`w-full py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-3 transition-all ${!monetizeTopic ? 'bg-slate-800 text-slate-500 cursor-not-allowed' :
-                                        monetizeStatus === 'running' ? 'bg-slate-700 text-slate-400' :
-                                            monetizeStatus === 'complete' ? 'bg-emerald-600 text-white' :
+                                    monetizeStatus === 'running' ? 'bg-slate-700 text-slate-400' :
+                                        monetizeStatus === 'complete' ? 'bg-emerald-600 text-white' :
+                                            monetizeStatus === 'error' ? 'bg-red-700 text-white' :
                                                 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white shadow-[0_0_40px_rgba(147,51,234,0.4)]'
                                     }`}
                             >
@@ -251,6 +274,21 @@ const SageOS = () => {
                                 {monetizeStatus === 'complete' && <><FiCheck /> Product Ready for Upload</>}
                                 {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed</>}
                             </button>
+
+                            {/* Result display */}
+                            {monetizeResult && monetizeStatus === 'complete' && (
+                                <div className="mt-4 p-4 bg-emerald-900/30 border border-emerald-500/30 rounded-xl text-sm">
+                                    <div className="text-emerald-400 font-bold mb-1">✅ 保存完了</div>
+                                    <div className="text-slate-300 font-mono text-xs break-all">{monetizeResult}</div>
+                                </div>
+                            )}
+                            {monetizeResult && monetizeStatus === 'error' && (
+                                <div className="mt-4 p-4 bg-red-900/30 border border-red-500/30 rounded-xl text-sm">
+                                    <div className="text-red-400 font-bold mb-1">❌ エラー詳細</div>
+                                    <div className="text-slate-300 text-xs break-all">{monetizeResult}</div>
+                                </div>
+                            )}
+
                         </div>
                     </Motion.div>
                 )}
@@ -261,8 +299,8 @@ const SageOS = () => {
                             {messages.map(msg => (
                                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 rounded-tr-none' :
-                                            msg.role === 'system' ? 'bg-white/5 border border-white/10 text-slate-400 text-center mx-auto text-xs font-mono uppercase' :
-                                                'bg-slate-800 rounded-tl-none border border-slate-700'
+                                        msg.role === 'system' ? 'bg-white/5 border border-white/10 text-slate-400 text-center mx-auto text-xs font-mono uppercase' :
+                                            'bg-slate-800 rounded-tl-none border border-slate-700'
                                         }`}>
                                         {msg.content}
                                         {msg.role === 'sage' && (
