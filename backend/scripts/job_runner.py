@@ -1,12 +1,11 @@
 import os
-import json
 import logging
 import time
 from datetime import datetime
 
-logger = logging.getLogger("SageJobRunner")
+from backend.data.jobs_store import load as _jobs_load, save as _jobs_save
 
-JOBS_FILE = "backend/data/jobs.json"
+logger = logging.getLogger("SageJobRunner")
 
 
 class SageJobRunner:
@@ -27,21 +26,10 @@ class SageJobRunner:
         logger.info(f"[JOB] SageJobRunner initialized. dry_run={self.dry_run}")
 
     def _load_jobs(self) -> list:
-        if not os.path.exists(JOBS_FILE):
-            return []
-        try:
-            with open(JOBS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"[JOB] Failed to load jobs.json: {e}")
-            return []
+        return _jobs_load()
 
     def _save_jobs(self, jobs: list) -> None:
-        try:
-            with open(JOBS_FILE, "w", encoding="utf-8") as f:
-                json.dump(jobs, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"[JOB] Failed to save jobs.json: {e}")
+        _jobs_save(jobs)
 
     def _process_job(self, job: dict) -> bool:
         """Execute a single pending job. Returns True on success."""

@@ -9,7 +9,6 @@ Sage Blog Auto-Scheduler
 """
 
 import os
-import json
 import logging
 import re
 import subprocess
@@ -17,9 +16,10 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger("BlogScheduler")
 
+from backend.data.jobs_store import append as _jobs_append
+
 GROQ_MODEL = "llama-3.3-70b-versatile"
 POSTS_DIR = "src/blog/posts"
-JOBS_FILE = "backend/data/jobs.json"
 SAGE_BASE_URL = os.getenv("SAGE_BASE_URL", "https://sage-official-site.pages.dev")
 
 
@@ -203,17 +203,7 @@ Then write the full article body in Markdown. Use ## for sections, include bulle
             "status": "pending",
             "created_at": datetime.utcnow().isoformat(),
         }
-        os.makedirs(os.path.dirname(JOBS_FILE), exist_ok=True)
-        jobs = []
-        if os.path.exists(JOBS_FILE):
-            try:
-                with open(JOBS_FILE, encoding="utf-8") as f:
-                    jobs = json.load(f)
-            except Exception:
-                pass
-        jobs.append(job)
-        with open(JOBS_FILE, "w", encoding="utf-8") as f:
-            json.dump(jobs, f, ensure_ascii=False, indent=2)
+        _jobs_append(job)
         logger.info(f"[BLOG] Queued SNS post for blog: {url}")
 
     # ── Main ──────────────────────────────────────────────────────────────────

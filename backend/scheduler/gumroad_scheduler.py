@@ -19,9 +19,10 @@ from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger("GumroadScheduler")
 
+from backend.data.jobs_store import load as _jobs_load, append as _jobs_append
+
 GROQ_MODEL = "llama-3.3-70b-versatile"
 POSTS_DIR = "src/blog/posts"
-JOBS_FILE = "backend/data/jobs.json"
 GUMROAD_PRODUCTS_API = "https://api.gumroad.com/v2/products"
 
 # Fallback product if API is unreachable
@@ -158,30 +159,14 @@ Return ONLY valid JSON (no markdown):
             "status": "pending",
             "created_at": datetime.utcnow().isoformat(),
         }
-        os.makedirs(os.path.dirname(JOBS_FILE), exist_ok=True)
-        jobs = []
-        if os.path.exists(JOBS_FILE):
-            try:
-                with open(JOBS_FILE, encoding="utf-8") as f:
-                    jobs = json.load(f)
-            except Exception:
-                pass
-        jobs.append(job)
-        with open(JOBS_FILE, "w", encoding="utf-8") as f:
-            json.dump(jobs, f, ensure_ascii=False, indent=2)
+        _jobs_append(job)
         logger.info(f"[GUMROAD] SNS post queued: {bs_text[:60]}...")
 
     # ── Main ──────────────────────────────────────────────────────────────────
 
     def _already_promoted(self, title: str, within_days: int = 7) -> bool:
         """Return True if this blog title was already promoted within the last N days."""
-        if not os.path.exists(JOBS_FILE):
-            return False
-        try:
-            with open(JOBS_FILE, encoding="utf-8") as f:
-                jobs = json.load(f)
-        except Exception:
-            return False
+        jobs = _jobs_load()
         cutoff = datetime.utcnow() - timedelta(days=within_days)
         for job in jobs:
             # Only check gumroad promotion jobs (not blog announcement jobs)
