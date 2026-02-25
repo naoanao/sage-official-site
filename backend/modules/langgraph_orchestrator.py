@@ -120,8 +120,14 @@ MastodonBot = None
 # from backend.modules.browser_agent import BrowserAgent
 from backend.modules.sage_brain import SageBrain
 from backend.modules.neuromorphic_brain import NeuromorphicBrain  # STDP Brain (Phase 1.2)
-from backend.pipelines.notebooklm_pipeline import notebooklm
-from backend.pipelines.nano_banana_pipeline import nano_banana
+try:
+    from backend.pipelines.notebooklm_pipeline import notebooklm
+except ImportError:
+    notebooklm = None
+try:
+    from backend.pipelines.nano_banana_pipeline import nano_banana
+except ImportError:
+    nano_banana = None
 from backend.modules.sage_memory import SageMemory
 from backend.modules.slack_agent import SlackAgent
 from backend.modules.gmail_agent import GmailAgent
@@ -462,9 +468,9 @@ class LangGraphOrchestrator:
         
         # Initialize Course Production Pipeline
         if CourseProductionPipeline:
-            from backend.obsidian_connector import ObsidianConnector
-            from backend.integrations.gumroad_generator import GumroadPageGenerator
             try:
+                from backend.obsidian_connector import ObsidianConnector
+                from backend.integrations.gumroad_generator import GumroadPageGenerator
                 gumroad_gen = GumroadPageGenerator(ollama_client=self.ollama_llm)
                 self.course_pipeline = CourseProductionPipeline(
                     ollama_client=self.ollama_llm,

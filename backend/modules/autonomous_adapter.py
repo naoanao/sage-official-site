@@ -386,9 +386,27 @@ class AutonomousAdapter:
                     research_report = "\n".join(purified_lines)
                     logger.info("✅ [D1] Evidence Purification (Cross-Reference) complete.")
 
-                # Final fallback if absolutely everything failed
+                # Groq fallback — synthesize from internal knowledge when external data unavailable
                 if not research_report and not trend_evidence:
-                    research_report = f"# D1 Failure Report: {topic}\n⚠️ FATAL: No external data (Trends or Search) could be harvested."
+                    logger.info("🤖 [D1] Groq fallback: synthesizing from internal LLM knowledge...")
+                    try:
+                        from groq import Groq as _Groq
+                        _groq = _Groq(api_key=os.getenv("GROQ_API_KEY"))
+                        groq_resp = _groq.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=[
+                                {"role": "system", "content": "You are an expert market researcher. Write a detailed intelligence report in Markdown with specific trends, tools, revenue numbers, and actionable insights for 2026."},
+                                {"role": "user", "content": f"Write a comprehensive research report on: {topic}\nInclude: key tools, revenue potential, market trends, actionable steps, and 2026 projections."}
+                            ],
+                            max_tokens=1200,
+                        )
+                        research_report = f"# Intelligence Report (Groq Synthesis): {topic}\n"
+                        research_report += "> ⚠️ Note: Generated from LLM internal knowledge — external search unavailable.\n\n"
+                        research_report += groq_resp.choices[0].message.content.strip()
+                        logger.info("✅ [D1] Groq fallback synthesis complete.")
+                    except Exception as groq_err:
+                        logger.error(f"❌ Groq fallback failed: {groq_err}")
+                        research_report = f"# D1 Failure Report: {topic}\n⚠️ FATAL: No external data (Trends or Search) could be harvested."
                 
                 # Ensure we have at least trend evidence even if main research failed
                 if not research_report and trend_evidence:
