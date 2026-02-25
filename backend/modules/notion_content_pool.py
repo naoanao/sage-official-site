@@ -15,7 +15,7 @@ class NotionContentPool:
     """
     def __init__(self, database_id: Optional[str] = None):
         self.notion = NotionAgent()
-        self.db_id = database_id or os.getenv("NOTION_CONTENT_POOL_DB_ID", "8d8c383a61274721817da0abc065d35c")
+        self.db_id = database_id or os.getenv("NOTION_CONTENT_POOL_DB_ID", "911034c12d2a4e52ab7a4fd27db423b0")
         
     def get_ready_content(self, limit: int = 1) -> List[Dict[str, Any]]:
         """
