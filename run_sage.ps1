@@ -126,17 +126,56 @@ $jsContent = "// Auto-updated by run_sage.ps1 on $ts`nexport const BACKEND_URL =
 Set-Content $BackendFn $jsContent -Encoding UTF8 -NoNewline
 Add-Content $LogFile "[$ts] functions/_backend.js updated"
 
-# ── Git commit + push → triggers Cloudflare Pages rebuild ────────────────
-$git = "C:\Program Files\Git\bin\git.exe"
-if (-not (Test-Path $git)) { $git = "git" }
+# ── Update CF Pages BACKEND_URL env var via API (instant, no rebuild needed) ──
+$cfToken     = [System.Environment]::GetEnvironmentVariable("CF_API_TOKEN",     'Process')
+$cfAccountId = [System.Environment]::GetEnvironmentVariable("CF_ACCOUNT_ID",    'Process')
+$cfProject   = [System.Environment]::GetEnvironmentVariable("CF_PAGES_PROJECT_NAME", 'Process')
+if (-not $cfProject) { $cfProject = "sage-official-site" }
 
-try {
-    & $git -C $SageDir add "functions/_backend.js" 2>&1 | Out-Null
-    & $git -C $SageDir commit -m "chore: update tunnel URL [$tunnelUrl]" 2>&1 | Out-Null
-    & $git -C $SageDir push origin main 2>&1 | Out-Null
-    Add-Content $LogFile "[$ts] git push OK — Cloudflare Pages will rebuild."
-} catch {
-    Add-Content $LogFile "[$ts] WARNING: git push failed: $_"
+$cfApiUpdated = $false
+if ($cfToken -and $cfAccountId) {
+    try {
+        $apiUrl = "https://api.cloudflare.com/client/v4/accounts/$cfAccountId/pages/projects/$cfProject"
+        $body = @{
+            deployment_configs = @{
+                production = @{
+                    env_vars = @{
+                        BACKEND_URL = @{ value = $tunnelUrl }
+                    }
+                }
+            }
+        } | ConvertTo-Json -Depth 5
+
+        $resp = Invoke-RestMethod -Uri $apiUrl -Method PATCH `
+            -Headers @{ "Authorization" = "Bearer $cfToken"; "Content-Type" = "application/json" } `
+            -Body $body -ErrorAction Stop
+
+        if ($resp.success) {
+            Add-Content $LogFile "[$ts] CF Pages BACKEND_URL updated via API (no rebuild needed)."
+            $cfApiUpdated = $true
+        } else {
+            Add-Content $LogFile "[$ts] CF API responded but success=false: $($resp.errors | ConvertTo-Json)"
+        }
+    } catch {
+        Add-Content $LogFile "[$ts] CF API update failed: $_ — falling back to git push."
+    }
+} else {
+    Add-Content $LogFile "[$ts] CF_API_TOKEN/CF_ACCOUNT_ID not set — using git push fallback."
+}
+
+# ── Git commit + push (fallback: only if CF API update didn't work) ───────
+if (-not $cfApiUpdated) {
+    $git = "C:\Program Files\Git\bin\git.exe"
+    if (-not (Test-Path $git)) { $git = "git" }
+
+    try {
+        & $git -C $SageDir add "functions/_backend.js" 2>&1 | Out-Null
+        & $git -C $SageDir commit -m "chore: update tunnel URL [$tunnelUrl]" 2>&1 | Out-Null
+        & $git -C $SageDir push origin main 2>&1 | Out-Null
+        Add-Content $LogFile "[$ts] git push OK — Cloudflare Pages will rebuild."
+    } catch {
+        Add-Content $LogFile "[$ts] WARNING: git push failed: $_"
+    }
 }
 
 Add-Content $LogFile "[$ts] === Sage 3.0 startup complete. Tunnel: $tunnelUrl ==="
