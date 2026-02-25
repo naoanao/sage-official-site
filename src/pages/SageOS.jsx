@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { FiPlay, FiShield, FiDollarSign, FiCpu, FiMessageSquare, FiActivity, FiXCircle, FiCheckCircle, FiBox, FiCheck } from 'react-icons/fi';
 import axios from 'axios';
+import { BACKEND_URL } from '../config/backendUrl';
+
+const api = axios.create({ baseURL: BACKEND_URL });
 
 const SageOS = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -25,10 +28,10 @@ const SageOS = () => {
         // Fetch initial Sage Brake status and System Stats
         const init = async () => {
             try {
-                const res = await axios.get('/api/brake/status');
-                setBrakeEnabled(res.data.enabled);
+                const res = await api.get('/api/system/health');
+                setBrakeEnabled(res.data?.brake_enabled ?? false);
             } catch (e) {
-                console.log("Could not fetch brake status");
+                console.log("Could not fetch system status");
             }
         };
         init();
@@ -37,7 +40,7 @@ const SageOS = () => {
     const handleD1Run = async () => {
         setD1Status('running');
         try {
-            await axios.post('/api/d1/generate');
+            await api.post('/api/chat', { message: 'Run D1 knowledge loop: synthesize recent observations and generate insights.' });
             setD1Status('complete');
             setTimeout(() => setD1Status('idle'), 3000);
         } catch (e) {
@@ -46,22 +49,15 @@ const SageOS = () => {
         }
     };
 
-    const toggleBrake = async () => {
-        const newValue = !brakeEnabled;
-        setBrakeEnabled(newValue);
-        try {
-            await axios.post('/api/brake/toggle', { enabled: newValue });
-        } catch (e) {
-            console.error("Failed to toggle brake");
-            setBrakeEnabled(!newValue); // revert
-        }
+    const toggleBrake = () => {
+        setBrakeEnabled(prev => !prev);
     };
 
     const handleMonetize = async () => {
         if (!monetizeTopic) return;
         setMonetizeStatus('running');
         try {
-            await axios.post('/api/monetize', {
+            await api.post('/api/productize', {
                 topic: monetizeTopic,
                 market,
                 price
@@ -74,7 +70,7 @@ const SageOS = () => {
         }
     };
 
-    const sendMessage = (e) => {
+    const sendMessage = async (e) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
 
@@ -82,14 +78,20 @@ const SageOS = () => {
         setMessages(prev => [...prev, newMsg]);
         setInputValue('');
 
-        // Mock response
-        setTimeout(() => {
+        try {
+            const res = await api.post('/api/chat', { message: newMsg.content });
             setMessages(prev => [...prev, {
                 id: Date.now() + 1,
                 role: 'sage',
-                content: `Analyzing "${newMsg.content}"... I can create a comprehensive guide on this.`
+                content: res.data.response || 'No response.'
             }]);
-        }, 1000);
+        } catch (e) {
+            setMessages(prev => [...prev, {
+                id: Date.now() + 1,
+                role: 'sage',
+                content: 'Backend unreachable. Check server status.'
+            }]);
+        }
     };
 
     const convertToProduct = (content) => {
