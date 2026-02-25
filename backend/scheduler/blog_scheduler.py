@@ -218,16 +218,50 @@ Then write the full article body in Markdown. Use ## for sections, include bulle
 
     # ── Main ──────────────────────────────────────────────────────────────────
 
+    def _auto_topic(self) -> str | None:
+        """Use Groq to generate a trending blog topic when Notion queue is empty."""
+        existing = []
+        posts_dir = POSTS_DIR
+        if os.path.isdir(posts_dir):
+            existing = [os.path.splitext(f)[0] for f in os.listdir(posts_dir) if f.endswith(".mdx")]
+
+        existing_str = "\n".join(existing[-10:]) if existing else "(none)"
+        prompt = f"""You are a content strategist for an AI solopreneur blog targeting English-speaking creators.
+Suggest ONE fresh, specific, high-value blog post topic about AI automation, monetization, or solopreneur growth for 2026.
+The topic must be different from these recent posts:
+{existing_str}
+
+Respond with ONLY the topic title, nothing else. Make it specific and compelling (e.g. "5 AI Tools That Replace a $10K/Month VA in 2026")."""
+
+        try:
+            resp = self.groq.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=80,
+                temperature=0.9,
+            )
+            topic = resp.choices[0].message.content.strip().strip('"').strip("'")
+            logger.info(f"[BLOG] Auto-generated topic: '{topic}'")
+            return topic
+        except Exception as e:
+            logger.error(f"[BLOG] Auto-topic generation failed: {e}")
+            return None
+
     def run_once(self) -> None:
         logger.info("[BLOG] run_once() started.")
         items = self._get_blog_topics(limit=1)
-        if not items:
-            logger.info("[BLOG] No blog topics in Notion queue. Idle.")
-            return
 
-        page = items[0]
-        page_id = page["id"]
-        topic = self._extract_topic(page)
+        page_id = None
+        if not items:
+            logger.info("[BLOG] No blog topics in Notion queue. Trying auto-topic generation...")
+            topic = self._auto_topic()
+            if not topic:
+                logger.info("[BLOG] Auto-topic failed. Idle.")
+                return
+        else:
+            page = items[0]
+            page_id = page["id"]
+            topic = self._extract_topic(page)
         if not topic:
             logger.warning("[BLOG] Could not extract topic from Notion page.")
             return
@@ -243,7 +277,8 @@ Then write the full article body in Markdown. Use ## for sections, include bulle
         pushed = self._git_push(filepath, article["title"])
 
         if pushed:
-            self._update_notion_status(page_id, "完了")
+            if page_id:
+                self._update_notion_status(page_id, "完了")
             self._queue_sns_post(article["title"], article["slug"])
             logger.info(f"[BLOG] ✅ Article published: {article['slug']}")
         else:
