@@ -2276,6 +2276,24 @@ def check_research_for_topic():
 
     return jsonify({"has_research": False, "file": None})
 
+@app.route('/api/niche/validate', methods=['POST'])
+def niche_validate():
+    """5-axis niche validation before product generation."""
+    data = request.get_json(silent=True) or {}
+    topic = data.get('topic', '').strip()
+    if not topic:
+        return jsonify({"status": "error", "error": "topic required"}), 400
+    try:
+        from backend.pipelines.niche_validator import NicheValidator
+        import os as _os
+        validator = NicheValidator(groq_api_key=_os.getenv("GROQ_API_KEY"))
+        result = validator.validate(topic)
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"[NICHE VALIDATE] {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @app.route('/api/productize/rewrite', methods=['POST'])
 def productize_rewrite():
     """Rewrite a single section's content using Groq with a user-supplied instruction."""
@@ -2287,17 +2305,40 @@ def productize_rewrite():
     if not content or not instruction:
         return jsonify({"error": "content and instruction are required"}), 400
 
-    lang_note = "日本語で書いてください。" if language == 'ja' else "Write in English."
-    prompt = (
-        f"以下のコンテンツを、指示に従って書き直してください。\n\n"
-        f"【指示】{instruction}\n\n"
-        f"【元のコンテンツ】\n{content}\n\n"
-        f"【出力ルール】\n"
-        f"- 元の情報・事実は保持してください（削除しないこと）\n"
-        f"- 指示の口調・形式に合わせて書き直してください\n"
-        f"- {lang_note}\n"
-        f"- 前置きや説明は不要。書き直した本文のみを出力してください。"
-    )
+    # Detect compression/shortening instructions — preservation rule conflicts with these
+    compression_keywords = ['要約', '短く', '半分', '簡潔', 'まとめ', 'summarize', 'shorten', 'brief', 'condense', 'shorter', 'compress']
+    is_compression = any(kw in instruction.lower() for kw in compression_keywords)
+
+    if language == 'ja':
+        preservation_rule = (
+            "- 要点は保ちながら指示に従って圧縮・簡潔にしてください。\n" if is_compression
+            else "- 元の情報・事実は保持してください（重要な内容を削除しないこと）\n"
+        )
+        prompt = (
+            f"以下のコンテンツを、指示に従って書き直してください。\n\n"
+            f"【指示】{instruction}\n\n"
+            f"【元のコンテンツ】\n{content}\n\n"
+            f"【出力ルール】\n"
+            f"{preservation_rule}"
+            f"- 指示の口調・形式に合わせて書き直してください\n"
+            f"- 日本語で書いてください。\n"
+            f"- 前置きや説明は不要。書き直した本文のみを出力してください。"
+        )
+    else:
+        preservation_rule = (
+            "- Compress to the key points while following the instruction.\n" if is_compression
+            else "- Preserve the original facts and information (do not delete important content).\n"
+        )
+        prompt = (
+            f"Rewrite the following content according to the instruction.\n\n"
+            f"[INSTRUCTION] {instruction}\n\n"
+            f"[ORIGINAL CONTENT]\n{content}\n\n"
+            f"[OUTPUT RULES]\n"
+            f"{preservation_rule}"
+            f"- Rewrite in the tone/format requested by the instruction.\n"
+            f"- Write in English.\n"
+            f"- Output only the rewritten content — no preamble, no explanation."
+        )
     try:
         import os as _os
         from groq import Groq as _Groq
@@ -2305,7 +2346,7 @@ def productize_rewrite():
         resp = _groq.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,
+            max_tokens=2000,
         )
         rewritten = resp.choices[0].message.content.strip()
         return jsonify({"status": "success", "rewritten": rewritten}), 200
