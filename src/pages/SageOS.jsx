@@ -18,11 +18,21 @@ const SageOS = () => {
     const [price, setPrice] = useState('$29');
     const [lang, setLang] = useState('auto'); // 'auto' | 'ja' | 'en'
     const [monetizeStatus, setMonetizeStatus] = useState('idle');
-    // idle | checking_research | needs_research | running_d1 | running | complete | error
+    // idle | checking_research | needs_research | running_d1 | running | review | finalizing | finalized | error
     const [monetizeResult, setMonetizeResult] = useState(null);
     const [researchCheck, setResearchCheck] = useState({ status: 'idle', file: null });
     // idle | checking | found | missing
     const researchDebounce = useRef(null);
+
+    // Review & Edit state
+    const [generateData, setGenerateData] = useState(null);
+    const [editedSections, setEditedSections] = useState([]);
+    const [editedSalesPage, setEditedSalesPage] = useState('');
+    const [globalInstruction, setGlobalInstruction] = useState('');
+    const [sectionInstructions, setSectionInstructions] = useState({});
+    const [rewritingIdx, setRewritingIdx] = useState(null); // which section is being rewritten
+    const [globalRewriting, setGlobalRewriting] = useState(false);
+    const [expandedSection, setExpandedSection] = useState(null); // index or 'sales'
 
     // Sage Metrics states
     const [brainStats, setBrainStats] = useState({ learned_patterns: 0, accuracy: 0 });
@@ -137,15 +147,92 @@ const SageOS = () => {
             });
             if (!execRes.data || execRes.data.error) throw new Error(execRes.data?.error || 'Course generation failed');
 
-            const savedPath = execRes.data.obsidian_note || execRes.data.file_path || '生成完了';
-            setMonetizeResult(savedPath);
-            setMonetizeStatus('complete');
-            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 12000);
+            // Store full data and enter Review & Edit mode
+            const courseData = execRes.data;
+            setGenerateData(courseData);
+            setEditedSections((courseData.sections || []).map(s => ({ ...s })));
+            setEditedSalesPage(courseData.sales_page || '');
+            setSectionInstructions({});
+            setExpandedSection(0);
+            setMonetizeStatus('review');
         } catch (e) {
             console.error("Monetization failed", e);
             setMonetizeResult(e.message || 'エラーが発生しました');
             setMonetizeStatus('error');
             setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
+        }
+    };
+
+    // Rewrite a single section with an instruction
+    const handleRewriteSection = async (idx) => {
+        const instruction = sectionInstructions[idx] || '';
+        if (!instruction.trim()) return;
+        setRewritingIdx(idx);
+        try {
+            const res = await api.post('/api/productize/rewrite', {
+                content: editedSections[idx].content,
+                instruction,
+                language: lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang
+            });
+            if (res.data?.status === 'success') {
+                setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, content: res.data.rewritten } : s));
+                setSectionInstructions(prev => ({ ...prev, [idx]: '' }));
+            }
+        } catch (e) {
+            console.error('Rewrite failed', e);
+        } finally {
+            setRewritingIdx(null);
+        }
+    };
+
+    // Apply global instruction to all sections + sales page
+    const handleRewriteAll = async () => {
+        if (!globalInstruction.trim()) return;
+        setGlobalRewriting(true);
+        try {
+            const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
+            const rewrites = await Promise.all(
+                editedSections.map(s =>
+                    api.post('/api/productize/rewrite', { content: s.content, instruction: globalInstruction, language: resolvedLang })
+                )
+            );
+            setEditedSections(prev => prev.map((s, i) =>
+                rewrites[i]?.data?.status === 'success' ? { ...s, content: rewrites[i].data.rewritten } : s
+            ));
+            if (editedSalesPage) {
+                const spRes = await api.post('/api/productize/rewrite', {
+                    content: editedSalesPage, instruction: globalInstruction, language: resolvedLang
+                });
+                if (spRes.data?.status === 'success') setEditedSalesPage(spRes.data.rewritten);
+            }
+            setGlobalInstruction('');
+        } catch (e) {
+            console.error('Global rewrite failed', e);
+        } finally {
+            setGlobalRewriting(false);
+        }
+    };
+
+    // Save finalized content back to Obsidian
+    const handleFinalize = async () => {
+        setMonetizeStatus('finalizing');
+        try {
+            const res = await api.post('/api/productize/finalize', {
+                topic: monetizeTopic,
+                sections: editedSections,
+                sales_page: editedSalesPage,
+                obsidian_note: generateData?.obsidian_note || ''
+            });
+            if (res.data?.status === 'success') {
+                setMonetizeResult(res.data.saved_path);
+                setMonetizeStatus('finalized');
+            } else {
+                throw new Error(res.data?.error || 'Finalize failed');
+            }
+        } catch (e) {
+            setMonetizeResult(e.message);
+            setMonetizeStatus('error');
+            setTimeout(() => { setMonetizeStatus('review'); setMonetizeResult(null); }, 6000);
         }
     };
 
@@ -400,42 +487,235 @@ const SageOS = () => {
                                 </div>
                             )}
 
-                            {/* Generate button — hidden while needs_research prompt is shown */}
-                            {monetizeStatus !== 'needs_research' && (
+                            {/* Generate button */}
+                            {!['needs_research', 'review', 'finalizing', 'finalized'].includes(monetizeStatus) && (
                             <button
                                 onClick={handleMonetize}
-                                disabled={!monetizeTopic || ['running', 'running_d1', 'checking_research'].includes(monetizeStatus)}
+                                disabled={!monetizeTopic || ['running', 'running_d1'].includes(monetizeStatus)}
                                 className={`w-full py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-3 transition-all ${!monetizeTopic ? 'bg-slate-800 text-slate-500 cursor-not-allowed' :
                                     monetizeStatus === 'running' ? 'bg-slate-700 text-slate-400' :
                                     monetizeStatus === 'running_d1' ? 'bg-amber-800 text-amber-200' :
-                                        monetizeStatus === 'complete' ? 'bg-emerald-600 text-white' :
-                                            monetizeStatus === 'error' ? 'bg-red-700 text-white' :
-                                                'bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white shadow-[0_0_40px_rgba(147,51,234,0.4)]'
+                                        monetizeStatus === 'error' ? 'bg-red-700 text-white' :
+                                            'bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white shadow-[0_0_40px_rgba(147,51,234,0.4)]'
                                     }`}
                             >
                                 {monetizeStatus === 'idle' && <><FiBox /> Format Product & Generate Gumroad ZIP</>}
                                 {monetizeStatus === 'running_d1' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-amber-400 border-t-white" /> D1リサーチ実行中...</>}
                                 {monetizeStatus === 'running' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-slate-400 border-t-white"></div> Running Pipeline...</>}
-                                {monetizeStatus === 'complete' && <><FiCheck /> Product Ready for Upload</>}
-                                {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed</>}
+                                {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed — Retry</>}
                             </button>
                             )}
 
-                            {/* Result display */}
-                            {monetizeResult && monetizeStatus === 'complete' && (
-                                <div className="mt-4 p-4 bg-emerald-900/30 border border-emerald-500/30 rounded-xl text-sm">
-                                    <div className="text-emerald-400 font-bold mb-1">✅ 保存完了</div>
-                                    <div className="text-slate-300 font-mono text-xs break-all">{monetizeResult}</div>
-                                </div>
-                            )}
                             {monetizeResult && monetizeStatus === 'error' && (
                                 <div className="mt-4 p-4 bg-red-900/30 border border-red-500/30 rounded-xl text-sm">
                                     <div className="text-red-400 font-bold mb-1">❌ エラー詳細</div>
                                     <div className="text-slate-300 text-xs break-all">{monetizeResult}</div>
                                 </div>
                             )}
-
                         </div>
+
+                        {/* ── Review & Edit Panel ─────────────────────────────── */}
+                        {['review', 'finalizing', 'finalized'].includes(monetizeStatus) && generateData && (
+                        <div className="space-y-4">
+
+                            {/* Header bar */}
+                            <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-xs font-bold px-2 py-1 rounded ${generateData.qa_status === 'PASS' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                            QA {generateData.qa_status || 'WARN'}
+                                        </span>
+                                        <span className="text-white font-bold truncate max-w-xs">{monetizeTopic}</span>
+                                    </div>
+                                    {generateData.research_source && (
+                                        <div className="text-xs text-slate-500 mt-1">D1: {generateData.research_source}</div>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => { setMonetizeStatus('idle'); setGenerateData(null); }}
+                                    className="text-xs text-slate-500 hover:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all"
+                                >
+                                    ← やり直す
+                                </button>
+                            </div>
+
+                            {/* Global tone rewrite */}
+                            <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl">
+                                <div className="text-xs font-bold text-purple-300 mb-2 uppercase tracking-widest">全体の口調・スタイルを一括変更</div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={globalInstruction}
+                                        onChange={e => setGlobalInstruction(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
+                                        placeholder="例: もっとカジュアルに / 箇条書きにして / 英語に翻訳 / 短くまとめて"
+                                        className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
+                                    />
+                                    <button
+                                        onClick={handleRewriteAll}
+                                        disabled={!globalInstruction.trim() || globalRewriting}
+                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
+                                    >
+                                        {globalRewriting
+                                            ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> 書き直し中</>
+                                            : <><FiPlay /> 全部書き直す</>}
+                                    </button>
+                                </div>
+                                <div className="flex gap-2 mt-2">
+                                    {['もっとカジュアルに', '専門的・権威ある口調で', '箇条書きにして', '半分の長さに要約'].map(preset => (
+                                        <button key={preset} onClick={() => setGlobalInstruction(preset)}
+                                            className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg transition-all">
+                                            {preset}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Section editors */}
+                            <div className="space-y-3">
+                                {editedSections.map((section, idx) => (
+                                    <div key={idx} className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
+                                        {/* Section header */}
+                                        <button
+                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-all"
+                                            onClick={() => setExpandedSection(expandedSection === idx ? null : idx)}
+                                        >
+                                            <div className="flex items-center gap-3 text-left">
+                                                <span className="text-xs text-slate-500 font-mono w-5">{idx + 1}</span>
+                                                <span className="text-sm font-semibold text-white">{section.title}</span>
+                                                <span className="text-xs text-slate-500">{section.content?.length || 0} 文字</span>
+                                            </div>
+                                            <span className="text-slate-500 text-xs">{expandedSection === idx ? '▲' : '▼'}</span>
+                                        </button>
+
+                                        {/* Expanded editor */}
+                                        {expandedSection === idx && (
+                                            <div className="px-5 pb-5 space-y-3 border-t border-white/5">
+                                                {/* Title edit */}
+                                                <input
+                                                    type="text"
+                                                    value={section.title}
+                                                    onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, title: e.target.value } : s))}
+                                                    className="w-full mt-3 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-semibold text-sm focus:outline-none focus:border-blue-400"
+                                                    placeholder="セクションタイトル"
+                                                />
+                                                {/* Content textarea */}
+                                                <textarea
+                                                    value={section.content}
+                                                    onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, content: e.target.value } : s))}
+                                                    rows={10}
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 text-sm leading-relaxed focus:outline-none focus:border-blue-400 resize-y font-mono"
+                                                />
+                                                {/* Per-section rewrite */}
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={sectionInstructions[idx] || ''}
+                                                        onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
+                                                        onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
+                                                        placeholder="このセクションだけ書き直す（例: もっと具体的な数字を入れて）"
+                                                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600"
+                                                    />
+                                                    <button
+                                                        onClick={() => handleRewriteSection(idx)}
+                                                        disabled={!sectionInstructions[idx]?.trim() || rewritingIdx === idx}
+                                                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all whitespace-nowrap"
+                                                    >
+                                                        {rewritingIdx === idx
+                                                            ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
+                                                            : <FiPlay />}
+                                                        書き直す
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Sales page editor */}
+                            {editedSalesPage && (
+                                <div className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
+                                    <button
+                                        className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-all"
+                                        onClick={() => setExpandedSection(expandedSection === 'sales' ? null : 'sales')}
+                                    >
+                                        <span className="text-sm font-semibold text-emerald-300">💰 セールスページ</span>
+                                        <span className="text-slate-500 text-xs">{expandedSection === 'sales' ? '▲' : '▼'}</span>
+                                    </button>
+                                    {expandedSection === 'sales' && (
+                                        <div className="px-5 pb-5 space-y-3 border-t border-white/5">
+                                            <textarea
+                                                value={editedSalesPage}
+                                                onChange={e => setEditedSalesPage(e.target.value)}
+                                                rows={14}
+                                                className="w-full mt-3 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 text-sm leading-relaxed focus:outline-none focus:border-emerald-400 resize-y font-mono"
+                                            />
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={sectionInstructions['sales'] || ''}
+                                                    onChange={e => setSectionInstructions(prev => ({ ...prev, sales: e.target.value }))}
+                                                    onKeyDown={async e => {
+                                                        if (e.key !== 'Enter' || !sectionInstructions['sales']?.trim()) return;
+                                                        setRewritingIdx('sales');
+                                                        const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
+                                                        const res = await api.post('/api/productize/rewrite', { content: editedSalesPage, instruction: sectionInstructions['sales'], language: resolvedLang });
+                                                        if (res.data?.status === 'success') { setEditedSalesPage(res.data.rewritten); setSectionInstructions(p => ({ ...p, sales: '' })); }
+                                                        setRewritingIdx(null);
+                                                    }}
+                                                    placeholder="セールスページを書き直す（例: もっと煽り文句を入れて、CTAを強調して）"
+                                                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400 placeholder:text-slate-600"
+                                                />
+                                                <button
+                                                    disabled={!sectionInstructions['sales']?.trim() || rewritingIdx === 'sales'}
+                                                    onClick={async () => {
+                                                        if (!sectionInstructions['sales']?.trim()) return;
+                                                        setRewritingIdx('sales');
+                                                        const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
+                                                        const res = await api.post('/api/productize/rewrite', { content: editedSalesPage, instruction: sectionInstructions['sales'], language: resolvedLang });
+                                                        if (res.data?.status === 'success') { setEditedSalesPage(res.data.rewritten); setSectionInstructions(p => ({ ...p, sales: '' })); }
+                                                        setRewritingIdx(null);
+                                                    }}
+                                                    className="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all whitespace-nowrap"
+                                                >
+                                                    {rewritingIdx === 'sales' ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" /> : <FiPlay />}
+                                                    書き直す
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Finalize bar */}
+                            {monetizeStatus !== 'finalized' ? (
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        onClick={handleFinalize}
+                                        disabled={monetizeStatus === 'finalizing'}
+                                        className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 disabled:opacity-50 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]"
+                                    >
+                                        {monetizeStatus === 'finalizing'
+                                            ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> 保存中...</>
+                                            : <><FiCheckCircle /> 確認完了 → Obsidianに保存</>}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="p-5 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl space-y-2">
+                                    <div className="text-emerald-400 font-bold text-lg flex items-center gap-2"><FiCheck /> 最終版を保存しました</div>
+                                    <div className="text-slate-300 font-mono text-xs break-all">{monetizeResult}</div>
+                                    <button
+                                        onClick={() => { setMonetizeStatus('idle'); setGenerateData(null); setMonetizeResult(null); }}
+                                        className="mt-2 text-sm text-slate-400 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+                                    >
+                                        新しい商品を生成する
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        )}
+
                     </Motion.div>
                 )}
 
