@@ -1,20 +1,22 @@
 # ============================================================
-# Sage 3.0 Auto-Launcher (PowerShell)
+# Sage 3.0 Auto-Launcher (PowerShell) - ngrok Edition
 # Runs flask_server.py hidden at Windows startup/login.
 # On each start:
 #   1. Kill stale processes / PID file
 #   2. Start Flask backend (port 8080)
-#   3. Start Cloudflare Tunnel (trycloudflare.com)
-#   4. Wait for tunnel URL, update src/config/backendUrl.js
-#   5. git commit + push → triggers Cloudflare Pages auto-rebuild
+#   3. Start ngrok Tunnel (Static Domain)
+#   4. Update .env and functions/_backend.js
+#   5. git commit + push (first time/if needed)
 # ============================================================
 
 $SageDir   = "C:\Users\nao\Desktop\Sage_Final_Unified"
 $Python    = "C:\Users\nao\AppData\Local\Programs\Python\Python311\python.exe"
-$CfExe     = "C:\Users\nao\AppData\Local\Microsoft\WinGet\Packages\Cloudflare.cloudflared_Microsoft.Winget.Source_8wekyb3d8bbwe\cloudflared.exe"
+$NgrokExe  = "ngrok"
 $LogFile   = "$SageDir\logs\sage_autostart.log"
-$CfLog     = "$SageDir\logs\cloudflared.log"
+$NgrokLog  = "$SageDir\logs\ngrok.log"
 $BackendFn = "$SageDir\functions\_backend.js"
+$StaticDomain = "tetchy-byssal-katherin.ngrok-free.dev"
+$TunnelUrl = "https://$StaticDomain"
 
 Set-Location $SageDir
 
@@ -24,9 +26,9 @@ if (-not (Test-Path "$SageDir\logs")) {
 }
 
 $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-Add-Content $LogFile "[$ts] === Sage 3.0 AutoStart ================================"
+Add-Content $LogFile "[$ts] === Sage 3.0 AutoStart (ngrok) ================================"
 
-# ── Load .env into process environment ───────────────────────────────────
+# ── Load .env ────────────────────────────────────────────────────────────
 Get-Content "$SageDir\.env" | ForEach-Object {
     if ($_ -match '^\s*([^#][^=]+)=(.+)$') {
         $key   = $matches[1].Trim()
@@ -36,9 +38,10 @@ Get-Content "$SageDir\.env" | ForEach-Object {
 }
 Add-Content $LogFile "[$ts] .env loaded"
 
-# ── Kill any process already listening on port 8080 ───────────────────────
-$existing = netstat -ano | Select-String ":8080 " | Select-String "LISTENING"
-foreach ($line in $existing) {
+# ── Kill stale processes ──────────────────────────────────────────────────
+# Port 8080 (Flask)
+$existing8080 = netstat -ano | Select-String ":8080 " | Select-String "LISTENING"
+foreach ($line in $existing8080) {
     $pid8080 = ($line -split '\s+')[-1]
     if ($pid8080 -match '^\d+$') {
         Stop-Process -Id $pid8080 -Force -ErrorAction SilentlyContinue
@@ -46,16 +49,14 @@ foreach ($line in $existing) {
     }
 }
 
-Start-Sleep -Seconds 2
-
-# ── Remove stale PID file ─────────────────────────────────────────────────
-$pidFile = "$SageDir\sage_server_8080.pid"
-if (Test-Path $pidFile) {
-    Remove-Item $pidFile -Force
-    Add-Content $LogFile "[$ts] Removed stale PID file"
-}
+# ngrok
+Get-Process -Name "ngrok" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
 
 # ── Start Flask backend (hidden) ──────────────────────────────────────────
+$pidFile = "$SageDir\sage_server_8080.pid"
+if (Test-Path $pidFile) { Remove-Item $pidFile -Force }
+
 Add-Content $LogFile "[$ts] Launching flask_server.py ..."
 $proc = Start-Process `
     -FilePath $Python `
@@ -68,114 +69,69 @@ $proc = Start-Process `
 
 Add-Content $LogFile "[$ts] flask_server.py started. PID: $($proc.Id)"
 
-# ── Start Cloudflare Tunnel ───────────────────────────────────────────────
-if (-not (Test-Path $CfExe)) {
-    Add-Content $LogFile "[$ts] WARNING: cloudflared not found at $CfExe"
-    exit 0
-}
+# ── Start ngrok Tunnel ────────────────────────────────────────────────────
+Add-Content $LogFile "[$ts] Launching ngrok Tunnel with domain: $StaticDomain"
+if (Test-Path $NgrokLog) { Remove-Item $NgrokLog -Force -ErrorAction SilentlyContinue }
 
-# Kill existing cloudflared processes before starting new one
-Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
-
-# Clear old log so URL search is clean
-if (Test-Path $CfLog) { Remove-Item $CfLog -Force -ErrorAction SilentlyContinue }
-
-Add-Content $LogFile "[$ts] Launching Cloudflare Tunnel..."
-Start-Process -FilePath $CfExe `
-    -ArgumentList "tunnel","--url","http://localhost:8080","--logfile",$CfLog `
+Start-Process -FilePath $NgrokExe `
+    -ArgumentList "http", "8080", "--domain=$StaticDomain", "--log=$NgrokLog" `
     -WindowStyle Hidden
 
-# ── Wait for tunnel URL (up to 30s) ──────────────────────────────────────
-$tunnelUrl = ""
-$waited = 0
-while ($waited -lt 30) {
-    Start-Sleep -Seconds 2
-    $waited += 2
-    if (Test-Path $CfLog) {
-        $match = Select-String "trycloudflare.com" $CfLog -ErrorAction SilentlyContinue | Select-Object -Last 1
-        if ($match) {
-            $found = [regex]::Match($match.Line, "https://[a-z0-9\-]+\.trycloudflare\.com").Value
-            if ($found) {
-                $tunnelUrl = $found
-                break
-            }
-        }
-    }
-}
+Start-Sleep -Seconds 3
 
-if (-not $tunnelUrl) {
-    Add-Content $LogFile "[$ts] WARNING: Tunnel URL not detected after 30s — using previous URL."
-    exit 0
-}
-
-Add-Content $LogFile "[$ts] Tunnel URL: $tunnelUrl"
-
-# ── Update .env (local reference) ────────────────────────────────────────
+# ── Update configurations ────────────────────────────────────────────────
+# Update .env
 $envContent = Get-Content "$SageDir\.env" -Raw
 if ($envContent -match "VITE_BACKEND_URL=") {
-    $envContent = $envContent -replace "VITE_BACKEND_URL=.*", "VITE_BACKEND_URL=$tunnelUrl"
+    $envContent = $envContent -replace "VITE_BACKEND_URL=.*", "VITE_BACKEND_URL=$TunnelUrl"
 } else {
-    $envContent += "`nVITE_BACKEND_URL=$tunnelUrl"
+    $envContent += "`nVITE_BACKEND_URL=$TunnelUrl"
 }
 Set-Content "$SageDir\.env" $envContent -NoNewline
-Add-Content $LogFile "[$ts] .env updated with VITE_BACKEND_URL=$tunnelUrl"
+Add-Content $LogFile "[$ts] .env updated with VITE_BACKEND_URL=$TunnelUrl"
 
-# ── Update functions/_backend.js (Pages Function fallback URL) ───────────
-$jsContent = "// Auto-updated by run_sage.ps1 on $ts`nexport const BACKEND_URL = `"$tunnelUrl`";"
+# Update functions/_backend.js
+$jsContent = "// Auto-updated by run_sage.ps1 (ngrok) on $ts`nexport const BACKEND_URL = `"$TunnelUrl`";"
 Set-Content $BackendFn $jsContent -Encoding UTF8 -NoNewline
 Add-Content $LogFile "[$ts] functions/_backend.js updated"
 
-# ── Update CF Pages BACKEND_URL env var via API (instant, no rebuild needed) ──
+# ── Update CF Pages env via API ──────────────────────────────────────────
 $cfToken     = [System.Environment]::GetEnvironmentVariable("CF_API_TOKEN",     'Process')
 $cfAccountId = [System.Environment]::GetEnvironmentVariable("CF_ACCOUNT_ID",    'Process')
-$cfProject   = [System.Environment]::GetEnvironmentVariable("CF_PAGES_PROJECT_NAME", 'Process')
-if (-not $cfProject) { $cfProject = "sage-official-site" }
+$cfProject   = "sage-official-site"
 
-$cfApiUpdated = $false
 if ($cfToken -and $cfAccountId) {
     try {
         $apiUrl = "https://api.cloudflare.com/client/v4/accounts/$cfAccountId/pages/projects/$cfProject"
         $body = @{
             deployment_configs = @{
-                production = @{
-                    env_vars = @{
-                        BACKEND_URL = @{ value = $tunnelUrl }
-                    }
-                }
+                production = @{ env_vars = @{ BACKEND_URL = @{ value = $TunnelUrl } } }
             }
         } | ConvertTo-Json -Depth 5
 
         $resp = Invoke-RestMethod -Uri $apiUrl -Method PATCH `
             -Headers @{ "Authorization" = "Bearer $cfToken"; "Content-Type" = "application/json" } `
             -Body $body -ErrorAction Stop
-
+        
         if ($resp.success) {
-            Add-Content $LogFile "[$ts] CF Pages BACKEND_URL updated via API (no rebuild needed)."
-            $cfApiUpdated = $true
-        } else {
-            Add-Content $LogFile "[$ts] CF API responded but success=false: $($resp.errors | ConvertTo-Json)"
+            Add-Content $LogFile "[$ts] CF Pages BACKEND_URL updated via API."
         }
     } catch {
-        Add-Content $LogFile "[$ts] CF API update failed: $_ — falling back to git push."
-    }
-} else {
-    Add-Content $LogFile "[$ts] CF_API_TOKEN/CF_ACCOUNT_ID not set — using git push fallback."
-}
-
-# ── Git commit + push (fallback: only if CF API update didn't work) ───────
-if (-not $cfApiUpdated) {
-    $git = "C:\Program Files\Git\bin\git.exe"
-    if (-not (Test-Path $git)) { $git = "git" }
-
-    try {
-        & $git -C $SageDir add "functions/_backend.js" 2>&1 | Out-Null
-        & $git -C $SageDir commit -m "chore: update tunnel URL [$tunnelUrl]" 2>&1 | Out-Null
-        & $git -C $SageDir push origin main 2>&1 | Out-Null
-        Add-Content $LogFile "[$ts] git push OK — Cloudflare Pages will rebuild."
-    } catch {
-        Add-Content $LogFile "[$ts] WARNING: git push failed: $_"
+        Add-Content $LogFile "[$ts] CF API update failed: $_"
     }
 }
 
-Add-Content $LogFile "[$ts] === Sage 3.0 startup complete. Tunnel: $tunnelUrl ==="
+# ── Git Push (only if explicitly needed or first migration) ──────────────
+# We'll do one final push to ensure the frontend code is synced with ngrok URL
+$git = "git"
+try {
+    & $git -C $SageDir add "functions/_backend.js" 2>&1 | Out-Null
+    & $git -C $SageDir commit -m "feat: permanent migration to ngrok static domain" 2>&1 | Out-Null
+    & $git -C $SageDir push origin main 2>&1 | Out-Null
+    Add-Content $LogFile "[$ts] git push OK."
+} catch {
+    Add-Content $LogFile "[$ts] git push skipped or failed (likely no changes)."
+}
+
+Add-Content $LogFile "[$ts] === Sage 3.0 startup complete. Tunnel: $TunnelUrl ==="
+

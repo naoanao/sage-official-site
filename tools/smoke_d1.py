@@ -27,6 +27,15 @@ import sys
 ROOT = pathlib.Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
+# Reconfigure stdout for utf-8 on Windows to prevent cp932 errors
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # Python < 3.7
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 try:
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")

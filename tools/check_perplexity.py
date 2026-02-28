@@ -63,7 +63,12 @@ def main() -> None:
         print("[OK] Perplexity API is healthy")
         sys.exit(0)
     elif resp.status_code == 401:
-        print("[FAIL] 401 Unauthorized — API key is invalid or expired. Re-obtain key.")
+        # Distinguish CF WAF block (text/html) from real Perplexity auth error (application/json)
+        if "text/html" in ct:
+            print("[FAIL] 401 from Cloudflare WAF (not Perplexity) -- IP rate-limited or banned.")
+            print("       Wait 30-60 min, or try from a different network. Key may still be valid.")
+        else:
+            print("[FAIL] 401 Unauthorized -- API key is invalid or expired. Re-obtain key.")
         sys.exit(1)
     else:
         print(f"[FAIL] Unexpected status {resp.status_code}")

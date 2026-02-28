@@ -30,11 +30,16 @@ class BrowserAgent:
     """
     def __init__(self):
         self.serpapi_key = os.getenv("SERPAPI_KEY")
+        self.perplexity_key = os.getenv("PERPLEXITY_API_KEY")
+        
         self.use_serpapi = bool(self.serpapi_key and SERPAPI_AVAILABLE)
+        self.use_perplexity = bool(self.perplexity_key)
         self.use_ddg = DDG_AVAILABLE
         
         if self.use_serpapi:
             logger.info("✅ BrowserAgent initialized with SerpAPI")
+        elif self.use_perplexity:
+            logger.info("✅ BrowserAgent initialized with Perplexity (Robust Search)")
         elif self.use_ddg:
             logger.info("✅ BrowserAgent initialized with DuckDuckGo (Fallback)")
         else:
@@ -42,9 +47,9 @@ class BrowserAgent:
 
     def search_google(self, query: str, num_results: int = 5) -> Dict[str, Any]:
         """
-        Perform a Google Search using SerpApi or fallback to DDG.
+        Perform a Google Search using SerpApi, Perplexity, or fallback to DDG.
         """
-        # 1. Try SerpAPI first
+        # 1. Try SerpAPI first (Direct Google results)
         if self.use_serpapi:
             try:
                 params = {
@@ -58,11 +63,8 @@ class BrowserAgent:
                 
                 search = GoogleSearch(params)
                 results = search.get_dict()
-                
-                # Extract organic results
                 organic_results = results.get("organic_results", [])
                 
-                # Format simply for LLM consumption
                 formatted_results = []
                 for item in organic_results:
                     formatted_results.append({
@@ -71,7 +73,6 @@ class BrowserAgent:
                         "snippet": item.get("snippet")
                     })
                 
-                # Check for answer box (instant answer)
                 answer_box = results.get("answer_box", {})
                 if answer_box:
                      formatted_results.insert(0, {
@@ -80,24 +81,54 @@ class BrowserAgent:
                         "snippet": answer_box.get("snippet") or answer_box.get("answer") or "See specific result."
                     })
 
-                if not formatted_results:
-                    return {"status": "success", "results": [], "message": "No results found (SerpAPI)."}
-                    
-                return {
-                    "status": "success",
-                    "results": formatted_results,
-                    "backend": "SerpAPI"
-                }
-
+                if formatted_results:
+                    return {"status": "success", "results": formatted_results, "backend": "SerpAPI"}
             except Exception as e:
                 logger.error(f"❌ SerpAPI Search Error: {e}")
-                # Fallthrough to DDG if SerpAPI fails
-                pass
 
-        # 2. Fallback to DuckDuckGo
+        # 2. Try Perplexity (Highly reliable for up-to-date and Japanese facts)
+        if self.use_perplexity:
+            try:
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {self.perplexity_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "sonar", # Fast and up-to-date
+                    "messages": [
+                        {"role": "system", "content": "You are a research assistant. Provide concise facts with citations if possible. Focus on Japanese context if the query is in Japanese."},
+                        {"role": "user", "content": f"Provide up-to-date information for this query: {query}"}
+                    ],
+                    "max_tokens": 1000
+                }
+                
+                response = requests.post("https://api.perplexity.ai/chat/completions", headers=headers, json=payload, timeout=20)
+                if response.status_code == 200:
+                    data = response.json()
+                    answer = data['choices'][0]['message']['content']
+                    citations = data.get('citations', [])
+                    
+                    return {
+                        "status": "success",
+                        "results": [{
+                            "title": "Perplexity Dynamic Search Result",
+                            "link": citations[0] if citations else "https://perplexity.ai",
+                            "snippet": answer
+                        }],
+                        "backend": "Perplexity API"
+                    }
+                else:
+                    logger.warning(f"⚠️ Perplexity API responded with status {response.status_code}")
+            except Exception as e:
+                logger.error(f"❌ Perplexity Search Error: {e}")
+
+        # 3. Fallback to DuckDuckGo (Basic search)
         if self.use_ddg:
             try:
+                from duckduckgo_search import DDGS
                 with DDGS() as ddgs:
+                    # Try using 'text' with simplified params
                     results = [r for r in ddgs.text(query, max_results=num_results)]
                 
                 formatted_results = []
@@ -108,21 +139,18 @@ class BrowserAgent:
                         "snippet": item.get('body')
                     })
                 
-                if not formatted_results:
-                     return {"status": "success", "results": [], "message": "No results found (DDG)."}
+                if formatted_results:
+                    return {"status": "success", "results": formatted_results, "backend": "DuckDuckGo"}
+                else:
+                    return {"status": "success", "results": [], "message": "No results found even with fallback."}
 
-                return {
-                    "status": "success",
-                    "results": formatted_results,
-                    "backend": "DuckDuckGo"
-                }
             except Exception as e:
                 logger.error(f"❌ DuckDuckGo Search Error: {e}")
-                return {"status": "error", "message": f"Search failed: {e}"}
+                return {"status": "error", "message": f"Search failed on all backends: {e}"}
 
         return {
             "status": "error",
-            "message": "No search backend available. Set SERPAPI_KEY or install duckduckgo-search."
+            "message": "No search backend available. Please configure API keys or install dependencies."
         }
 
     def validate_url(self, url: str) -> Dict[str, Any]:
@@ -239,3 +267,60 @@ class BrowserAgent:
     # Keep compatibility with old methods if needed, but direct them to search_google
     def search(self, query: str):
         return self.search_google(query)
+
+    def browse_url(self, url: str) -> Dict[str, Any]:
+        """
+        Fetches the content of a URL and extracts readable text.
+        """
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            import urllib3
+            
+            # Suppress insecure request warning as we might disable SSL verification for resilience
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3'
+            }
+            
+            logger.info(f"🌐 Browsing URL: {url}")
+            # Use verify=False to handle sites with expired/bad certificates (common in search results)
+            response = requests.get(url, headers=headers, timeout=15, verify=False)
+            response.raise_for_status()
+            
+            # Detect encoding
+            encoding = response.encoding if response.encoding else 'utf-8'
+            
+            # Use BeautifulSoup to clean content
+            soup = BeautifulSoup(response.content, 'html.parser', from_encoding=encoding)
+            
+            # Remove scripts, styles, nav, footer to get clean text
+            for script_or_style in soup(["script", "style", "nav", "footer", "header"]):
+                script_or_style.decompose()
+            
+            text = soup.get_text(separator='\n')
+            
+            # Basic cleanup: remove extra whitespace
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            clean_text = '\n'.join(chunk for chunk in chunks if chunk)
+            
+            # Truncate if too long (Sage context limit)
+            max_chars = 15000
+            if len(clean_text) > max_chars:
+                clean_text = clean_text[:max_chars] + "\n\n... (Content truncated for context) ..."
+
+            return {
+                "status": "success",
+                "url": url,
+                "title": soup.title.string if soup.title else "No Title",
+                "content": clean_text,
+                "length": len(clean_text)
+            }
+        except Exception as e:
+            logger.error(f"❌ Browse Error at {url}: {e}")
+            return {"status": "error", "message": f"Failed to browse {url}: {str(e)}"}
+

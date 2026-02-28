@@ -69,6 +69,16 @@ try:
 except ImportError:
     RobotAgent = None
 
+try:
+    from backend.modules.file_operations_agent import FileOperationsAgent
+except ImportError:
+    FileOperationsAgent = None
+
+try:
+    from backend.modules.deploy_agent import DeployAgent
+except ImportError:
+    DeployAgent = None
+
 # Logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("LangGraphOrchestrator")
@@ -190,14 +200,26 @@ class LangGraphOrchestrator:
         self.video_agent = VideoAgent() if VideoAgent else None
         self.jira_agent = JiraAgent() if JiraAgent else None
         self.sheets_agent = SheetsAgent() if SheetsAgent else None
-        self.sheets_agent = SheetsAgent() if SheetsAgent else None
         self.gmail_agent = GmailAgent() if GmailAgent else None
         self.robot_agent = RobotAgent(self.jira_agent) if RobotAgent else None
+
+        # 🖐 File Operations Agent (Sage's Hands)
+        if FileOperationsAgent:
+            try:
+                desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+                self.file_ops = FileOperationsAgent(base_path=desktop)
+                logger.info("✅ FileOperationsAgent initialized (base: Desktop)")
+            except Exception as e:
+                logger.error(f"FileOperationsAgent init failed: {e}")
+                self.file_ops = None
+        else:
+            self.file_ops = None
         
         # Brain & Memory
         self.neuromorphic_brain = NeuromorphicBrain() if NeuromorphicBrain else None
         self.brain = self.neuromorphic_brain
         self.memory_agent = SageMemory() if SageMemory else None
+        self.deploy_agent = DeployAgent() if DeployAgent else None
 
         # State Graph
         workflow = StateGraph(AgentState)
@@ -276,13 +298,69 @@ class LangGraphOrchestrator:
              logger.info(f"DEBUG RETURN: {ret_val}")
              return ret_val
 
+        # FILE CREATION OVERRIDE (Sage's Hands)
+        if any(k in req for k in ["ファイル", "作成して", "書き込んで", "create file", "write file", "save file", "作って", "保存して"]):
+             # Extract filename and content from request
+             import re
+             # Try to extract quoted filename
+             fname_match = re.search(r'[「\'"](.*?\.[a-zA-Z]{2,4})[」\'"\s]', user_request)
+             filename = fname_match.group(1) if fname_match else "sage_output.txt"
+             # Determine location (desktop default)
+             location = "desktop"
+             if "document" in req or "ドキュメント" in req:
+                 location = "documents"
+             # Extract content between 「」or quotes if present
+             content_match = re.search(r'[「\'"](.*?)[」\'"$]', user_request)
+             content = content_match.group(1) if content_match and content_match.group(1) != filename else user_request
+             override_plan = [{"step_id": 1, "tool": "create_file", "params": {"filename": filename, "content": content, "location": location, "overwrite": True}}]
+             ret_val = {"plan": override_plan, "context": context}
+             logger.info(f"DEBUG RETURN (create_file): {ret_val}")
+             return ret_val
+
+        # FILE LIST OVERRIDE
+        if any(k in req for k in ["一覧", "ファイルを見て", "list files", "ls", "dir", "what files", "ファイル一覧"]):
+             path = "."
+             if "desktop" in req or "デスクトップ" in req:
+                 path = os.path.join(os.path.expanduser("~"), "Desktop")
+             elif "document" in req or "ドキュメント" in req:
+                 path = os.path.join(os.path.expanduser("~"), "Documents")
+             override_plan = [{"step_id": 1, "tool": "list_files", "params": {"path": path}}]
+             ret_val = {"plan": override_plan, "context": context}
+             logger.info(f"DEBUG RETURN (list_files): {ret_val}")
+             return ret_val
+
         # WEB SEARCH OVERRIDE (News / Weather / Facts)
         if any(k in req for k in ["search", "weather", "news", "price", "who is", "what is", "検索", "天気", "株価", "ニュース", "誰", "何", "教えて", "調べ"]):
-             override_plan = [{"step_id": 1, "tool": "browser_search", "params": {"query": user_request}}]
+             query = user_request
+             # Clean up common fillers to improve search accuracy
+             for filler in ["教えて", "調べて", "って何", "を検索", "下さい", "ください", "tell me", "search for"]:
+                 query = query.replace(filler, "").strip()
+             
+             override_plan = [{"step_id": 1, "tool": "browser_search", "params": {"query": query}}]
              ret_val = {"plan": override_plan, "context": context}
              logger.info(f"DEBUG RETURN: {ret_val}")
              return ret_val
             
+        # WEB BROWSE OVERRIDE (Specific URL)
+        url_match = re.search(r'(https?://[^\s]+)', user_request)
+        if url_match or any(k in req for k in ["browse", "view", "read page", "ページを見て", "内容を読んで", "閲覧"]):
+             target_url = url_match.group(1) if url_match else None
+             if target_url:
+                 override_plan = [{"step_id": 1, "tool": "browser_browse", "params": {"url": target_url}}]
+                 ret_val = {"plan": override_plan, "context": context}
+                 logger.info(f"DEBUG RETURN: {ret_val}")
+                 return ret_val
+            
+        # WEB DEPLOY OVERRIDE (Publish to Blog)
+        if any(k in req for k in ["publish", "deploy", "公開", "デプロイ", "ブログ投稿"]):
+             title_match = re.search(r'[「\'"](.*?)[」\'"]', user_request)
+             title = title_match.group(1) if title_match else "Sage Update"
+             content = user_request.replace(title, "").replace("publish", "").replace("公開", "").strip()
+             override_plan = [{"step_id": 1, "tool": "deploy_web_blog", "params": {"title": title, "content": content, "category": "General"}}]
+             ret_val = {"plan": override_plan, "context": context}
+             logger.info(f"DEBUG RETURN (deploy): {ret_val}")
+             return ret_val
+
         # DEFAULT: Empty plan (will trigger LLM/Chat in execute/report)
         ret_val = {"plan": [], "context": context, "current_step_index": 0}
         logger.info(f"DEBUG RETURN: {ret_val}")
@@ -327,11 +405,74 @@ class LangGraphOrchestrator:
                 elif tool == "browser_search":
                     if self.browser_agent: res = self.browser_agent.search_google(params.get("query"))
                     else: res = "BrowserAgent missing"
+                elif tool == "browser_browse":
+                    if self.browser_agent: res = self.browser_agent.browse_url(params.get("url"))
+                    else: res = "BrowserAgent missing"
                 elif tool == "robot_action":
                     if self.robot_agent: res = self.robot_agent.run_gr00t_inference(params)
                     else: res = "RobotAgent missing - Install 'lerobot' first."
+
+                # 🖐 FILE OPERATIONS (Sage's Hands)
+                elif tool == "create_file":
+                    if self.file_ops:
+                        fname = params.get("filename", "sage_output.txt")
+                        content = params.get("content", "")
+                        location = params.get("location", "desktop")
+                        overwrite = params.get("overwrite", True)
+                        # Resolve full path
+                        if location == "desktop":
+                            base = os.path.join(os.path.expanduser("~"), "Desktop")
+                        elif location == "documents":
+                            base = os.path.join(os.path.expanduser("~"), "Documents")
+                        else:
+                            base = location
+                        full_path = os.path.join(base, fname)
+                        try:
+                            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                            with open(full_path, 'w', encoding='utf-8') as f:
+                                f.write(content)
+                            res = f"✅ File created: {full_path}"
+                            context['last_created_file'] = full_path
+                        except Exception as fe:
+                            res = f"❌ Failed to create file: {str(fe)}"
+                    else:
+                        res = "FileOperationsAgent not available"
+
+                elif tool == "list_files":
+                    path = params.get("path", os.path.join(os.path.expanduser("~"), "Desktop"))
+                    try:
+                        if os.path.exists(path):
+                            files = sorted(os.listdir(path))[:30]
+                            res = f"📂 Files in {path}:\n" + "\n".join(f"  - {f}" for f in files)
+                        else:
+                            res = f"❌ Path not found: {path}"
+                    except Exception as fe:
+                        res = f"❌ Error listing: {str(fe)}"
+
+                elif tool == "deploy_web_blog":
+                    if self.deploy_agent:
+                        res = str(self.deploy_agent.publish_blog(
+                            title=params.get("title", "Update"),
+                            content=params.get("content", ""),
+                            category=params.get("category", "General")
+                        ))
+                    else:
+                        res = "DeployAgent not ready"
+
+                elif tool == "move_file":
+                    if self.file_ops:
+                        res = self.file_ops.move_file(params.get("source", ""), params.get("destination", ""))
+                    else:
+                        res = "FileOperationsAgent not available"
+
+                elif tool == "run_command":
+                    if self.file_ops:
+                        res = self.file_ops.execute_command(params.get("command", ""))
+                    else:
+                        res = "FileOperationsAgent (execute_command) not available"
+
                 else:
-                    res = f"Tool {tool} not implemented"
+                    res = f"Tool '{tool}' not implemented in v2 engine"
             except Exception as e:
                 res = f"Error: {e}"
             results.append(f"{tool}: {res}")
@@ -358,7 +499,13 @@ class LangGraphOrchestrator:
             step_results = context.get("step_results", [])
             results_str = "\n".join(step_results) if step_results else "No tools executed."
             
-            system_msg = f"""You are Sage, an advanced AI OS.
+            system_msg = f"""You are Sage, a super-intelligent AI OS that is fully equipped with internet browsing and search capabilities.
+            
+IMPORTANT: You have the ability to browse the real-time internet, search Google/Perplexity, and visit URLs. 
+If a tool returned 'No results found', it simply means that specific search yielded nothing, NOT that you lack the capability.
+NEVER say 'I don't have the capability to access the internet' or 'I am a text-based model and cannot browse'.
+Instead, if results are empty, say: 'I searched for that but couldn't find specific details' and provide information from your memory or ask for a different query.
+
 Context of actions taken:
 {results_str}
 
@@ -368,11 +515,9 @@ Additional Context:
 User Request: {user_msg}
 
 Synthesize a helpful response for the user based on the actions taken. 
-If a robot task was performed, describe the movement and status clearly.
-If an anomaly was detected, highlight it.
+If a search was conducted, summarize the findings accurately.
 If an image was generated, respond with: ![Generated Image](/files/<filename>)
-NOTE: The tool returns a local absolute path. You MUST convert it to a web-accessible relative path '/files/<filename>' for the user.
-Example: 'C:\\Users\\nao\\...\\img_123.jpg' -> '/files/img_123.jpg'
+NOTE: The tool returns a local absolute path. You MUST convert it to '/files/<filename>' for the user.
 """
             # [FIX] Pass FULL HISTORY to LLM, not just the last message
             # messages contains [Human, AI, Human, AI, ... Human(current)]

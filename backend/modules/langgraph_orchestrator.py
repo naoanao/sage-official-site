@@ -476,7 +476,9 @@ class LangGraphOrchestrator:
                     ollama_client=self.ollama_llm,
                     image_agent=self.image_agent,
                     obsidian=ObsidianConnector(),
-                    gumroad_generator=gumroad_gen
+                    gumroad_generator=gumroad_gen,
+                    brain=self.neuromorphic_brain,
+                    memory=self.memory_agent,
                 )
                 logger.info("✅ Course Production Pipeline initialized (with Gumroad)")
             except Exception as e:
