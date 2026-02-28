@@ -11,8 +11,6 @@ const SageOS = () => {
     const [d1Status, setD1Status] = useState('idle'); // idle, running, complete, error
     const [brakeEnabled, setBrakeEnabled] = useState(false);
     const [stats, setStats] = useState({ cpu: '3%', memory: '2GB', upTime: '144:20:10' });
-    const [brainStats, setBrainStats] = useState({ learned_patterns: 0, hit_rate: '0%' });
-    const [pipelineStats, setPipelineStats] = useState({ qa_pass: 0, qa_warn: 0, total_blocked: 0, pass_rate: '0%' });
 
     // Monetization state
     const [monetizeTopic, setMonetizeTopic] = useState('');
@@ -20,8 +18,10 @@ const SageOS = () => {
     const [price, setPrice] = useState('$29');
     const [monetizeStatus, setMonetizeStatus] = useState('idle');
     const [monetizeResult, setMonetizeResult] = useState(null);
-    const [generateData, setGenerateData] = useState(null);
-    const [qaResult, setQaResult] = useState(null);
+
+    // Sage Metrics states
+    const [brainStats, setBrainStats] = useState({ learned_patterns: 0, accuracy: 0 });
+    const [monetizationStats, setMonetizationStats] = useState({ qa_pass: 0, qa_warn: 0, safety: 0 });
 
     // Chat state
     const [messages, setMessages] = useState([
@@ -33,37 +33,29 @@ const SageOS = () => {
         // Fetch initial Sage Brake status and System Stats
         const init = async () => {
             try {
-                const health = await api.get('/api/system/health');
-                setBrakeEnabled(health.data?.brake_enabled ?? false);
-
-                // Fetch Metrics
-                const bStats = await api.get('/api/brain/stats');
-                if (bStats.data?.data) {
-                    const d = bStats.data.data;
-                    const total = (d.total_queries || 0);
-                    const hits = (d.learned_patterns || 0);
-                    setBrainStats({
-                        learned_patterns: hits,
-                        hit_rate: total > 0 ? Math.round((hits / total) * 100) + '%' : '0%'
-                    });
-                }
-
-                const mStats = await api.get('/api/monetization/stats');
-                if (mStats.data?.data) {
-                    const d = mStats.data.data;
-                    const totalQa = (d.qa_pass || 0) + (d.qa_warn || 0);
-                    setPipelineStats({
-                        qa_pass: d.qa_pass || 0,
-                        qa_warn: d.qa_warn || 0,
-                        total_blocked: d.contamination_blocked || 0,
-                        pass_rate: totalQa > 0 ? Math.round(((d.qa_pass || 0) / totalQa) * 100) + '%' : '100%'
-                    });
-                }
+                const res = await api.get('/api/system/health');
+                setBrakeEnabled(res.data?.brake_enabled ?? false);
             } catch (e) {
-                console.log("Could not fetch system metrics");
+                console.log("Could not fetch system status");
             }
         };
+
+        const fetchSageMetrics = async () => {
+            try {
+                const bRes = await api.get('/api/brain/stats');
+                if (bRes.data?.status === 'success') setBrainStats(bRes.data.data);
+
+                const mRes = await api.get('/api/monetization/stats');
+                if (mRes.data?.status === 'success') setMonetizationStats(mRes.data.data);
+            } catch (e) {
+                console.log("Sage metrics fetch idle");
+            }
+        };
+
         init();
+        fetchSageMetrics();
+        const timer = setInterval(fetchSageMetrics, 10000);
+        return () => clearInterval(timer);
     }, []);
 
     const handleD1Run = async () => {
@@ -86,8 +78,6 @@ const SageOS = () => {
         if (!monetizeTopic) return;
         setMonetizeStatus('running');
         setMonetizeResult(null);
-        setGenerateData(null);
-        setQaResult(null);
         try {
             // Step 1: Generate the plan
             const planRes = await api.post('/api/productize', {
@@ -109,39 +99,16 @@ const SageOS = () => {
                 throw new Error(execRes.data?.error || 'Course generation failed');
             }
 
-            const data = execRes.data;
-            setGenerateData(data);
-            setQaResult(data.qa ?? null);
-
-            const savedPath = data.obsidian_note || data.file_path || '生成完了';
+            // Show where the file was saved
+            const savedPath = execRes.data.obsidian_note || execRes.data.file_path || '生成完了';
             setMonetizeResult(savedPath);
             setMonetizeStatus('complete');
+            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 12000);
         } catch (e) {
             console.error("Monetization failed", e);
             setMonetizeResult(e.message || 'エラーが発生しました');
             setMonetizeStatus('error');
             setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
-        }
-    };
-
-    const handleManualApprove = async () => {
-        if (!generateData) return;
-        const issueList = qaResult?.issues ?? [];
-        const confirmed = window.confirm(
-            `QA issues found:\n${issueList.join('\n')}\n\nPublish anyway?`
-        );
-        if (!confirmed) return;
-
-        try {
-            await api.post('/api/monetization/approve', {
-                topic: generateData.topic,
-                product_summary: (generateData.sections ?? []).map(s => s.title).join(', '),
-                qa_issues: issueList,
-            });
-            // After approval, unlock publish flow
-            setQaResult(prev => ({ ...prev, can_publish: true, status: 'APPROVED' }));
-        } catch (e) {
-            console.error('Approve failed', e);
         }
     };
 
@@ -242,23 +209,27 @@ const SageOS = () => {
                             </div>
                         </div>
 
-                        {/* Knowledge Integration Metrics */}
-                        <div className="grid grid-cols-4 gap-4 mb-6">
-                            <div className="bg-blue-900/10 border border-blue-500/20 p-5 rounded-2xl">
-                                <div className="text-blue-400 text-xs font-bold uppercase mb-1">Learned Patterns</div>
-                                <div className="text-2xl font-mono">{brainStats.learned_patterns}</div>
+                        {/* Sage 3.0 Engine Metrics - Row 2 (Requested) */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
+                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiActivity /> Learned Patterns</div>
+                                <div className="text-2xl font-mono text-purple-400">{brainStats.learned_patterns || 0}</div>
                             </div>
-                            <div className="bg-purple-900/10 border border-purple-500/20 p-5 rounded-2xl">
-                                <div className="text-purple-400 text-xs font-bold uppercase mb-1">Brain Hit Rate</div>
-                                <div className="text-2xl font-mono">{brainStats.hit_rate}</div>
+                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
+                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiCpu /> Brain Hit Rate</div>
+                                <div className="text-2xl font-mono text-blue-400">{(brainStats.accuracy * 100).toFixed(1)}%</div>
                             </div>
-                            <div className="bg-emerald-900/10 border border-emerald-500/20 p-5 rounded-2xl">
-                                <div className="text-emerald-400 text-xs font-bold uppercase mb-1">QA Pass Rate</div>
-                                <div className="text-2xl font-mono">{pipelineStats.pass_rate}</div>
+                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
+                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiCheckCircle /> QA Pass Rate</div>
+                                <div className="text-2xl font-mono text-emerald-400">
+                                    {monetizationStats.qa_pass + monetizationStats.qa_warn > 0
+                                        ? Math.round((monetizationStats.qa_pass / (monetizationStats.qa_pass + monetizationStats.qa_warn)) * 100)
+                                        : 0}%
+                                </div>
                             </div>
-                            <div className="bg-red-900/10 border border-red-500/20 p-5 rounded-2xl">
-                                <div className="text-red-400 text-xs font-bold uppercase mb-1">Contamination Blocked</div>
-                                <div className="text-2xl font-mono">{pipelineStats.total_blocked}</div>
+                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
+                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiShield /> Guard Blocks</div>
+                                <div className="text-2xl font-mono text-red-400">{monetizationStats.contamination_blocked || 0}</div>
                             </div>
                         </div>
 
@@ -348,83 +319,17 @@ const SageOS = () => {
                                 {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed</>}
                             </button>
 
-                            {/* Saved path */}
+                            {/* Result display */}
                             {monetizeResult && monetizeStatus === 'complete' && (
                                 <div className="mt-4 p-4 bg-emerald-900/30 border border-emerald-500/30 rounded-xl text-sm">
-                                    <div className="text-emerald-400 font-bold mb-1">Saved</div>
+                                    <div className="text-emerald-400 font-bold mb-1">✅ 保存完了</div>
                                     <div className="text-slate-300 font-mono text-xs break-all">{monetizeResult}</div>
                                 </div>
                             )}
                             {monetizeResult && monetizeStatus === 'error' && (
                                 <div className="mt-4 p-4 bg-red-900/30 border border-red-500/30 rounded-xl text-sm">
-                                    <div className="text-red-400 font-bold mb-1">Error</div>
+                                    <div className="text-red-400 font-bold mb-1">❌ エラー詳細</div>
                                     <div className="text-slate-300 text-xs break-all">{monetizeResult}</div>
-                                </div>
-                            )}
-
-                            {/* QA Badge */}
-                            {qaResult && (
-                                <div className={`mt-4 p-3 rounded-lg border ${qaResult.status === 'PASS' || qaResult.status === 'APPROVED'
-                                        ? 'border-green-500 bg-green-950'
-                                        : 'border-yellow-500 bg-yellow-950'
-                                    }`}>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${qaResult.status === 'PASS' || qaResult.status === 'APPROVED'
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-yellow-600 text-black'
-                                            }`}>
-                                            QA {qaResult.status}
-                                        </span>
-                                        <span className="text-gray-300 text-sm">
-                                            {qaResult.status === 'PASS' || qaResult.status === 'APPROVED'
-                                                ? 'Ready to publish'
-                                                : `${qaResult.warn_count} issue(s) — review before publishing`}
-                                        </span>
-                                    </div>
-                                    {qaResult.status === 'WARN' && qaResult.issues.length > 0 && (
-                                        <ul className="mt-2 space-y-1">
-                                            {qaResult.issues.map((issue, i) => (
-                                                <li key={i} className="text-yellow-300 text-xs flex items-start gap-1">
-                                                    <span className="mt-0.5">!</span>
-                                                    <span>{issue}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Action buttons (appear after generation) */}
-                            {generateData && (
-                                <div className="mt-4 space-y-2">
-                                    <button
-                                        onClick={() => window.alert('ZIP download: ' + (generateData.obsidian_note || 'see saved path above'))}
-                                        className="w-full py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold"
-                                    >
-                                        <FiBox className="inline mr-2" />Download ZIP (Draft)
-                                    </button>
-
-                                    <button
-                                        disabled={!qaResult?.can_publish}
-                                        onClick={() => window.alert('Gumroad guide: upload ZIP + paste sales page')}
-                                        className={`w-full py-2 rounded text-sm font-bold ${qaResult?.can_publish
-                                                ? 'bg-purple-600 hover:bg-purple-700 text-white cursor-pointer'
-                                                : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                            }`}
-                                    >
-                                        {qaResult?.can_publish
-                                            ? 'Publish to Gumroad (3-step guide)'
-                                            : 'Fix QA issues to unlock publishing'}
-                                    </button>
-
-                                    {qaResult?.status === 'WARN' && (
-                                        <button
-                                            onClick={handleManualApprove}
-                                            className="w-full py-2 rounded border border-yellow-600 text-yellow-400 text-xs hover:bg-yellow-950"
-                                        >
-                                            Override QA and publish anyway (manual review confirmed)
-                                        </button>
-                                    )}
                                 </div>
                             )}
 
