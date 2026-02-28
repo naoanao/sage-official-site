@@ -703,6 +703,7 @@ Content:"""
             return None
 
         try:
+            import os as _os
             # --- Build proof-of-work evidence block from real artifacts ---
             evidence_lines = []
             if research_data:
@@ -786,7 +787,7 @@ Sage AIが実際にリサーチ・判断・実行したプロセスの概要。
 
 ## 7. CTA
 
-[今すぐ購入して資産を手に入れる]({os.getenv('GUMROAD_PAY_URL', 'https://paypal.me/japanletgo')})
+[今すぐ購入して資産を手に入れる]({_os.getenv('GUMROAD_PAY_URL', 'https://paypal.me/japanletgo')})
 
 出力はMarkdownのみ。余分な前置き、解説、挨拶などは一切不要。
 """
