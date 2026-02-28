@@ -1592,18 +1592,19 @@ def productize_execute_endpoint():
     product_type = data.get('type') # 'COURSE' or 'ARTICLE'
     topic = data.get('topic')
     plan = data.get('plan') # Optional: The whole plan object
-    
+    language = data.get('language', 'auto')  # 'auto' | 'ja' | 'en'
+
     if not topic or not product_type:
         return jsonify({"error": "Topic and Type are required"}), 400
-        
+
     try:
         if product_type == 'COURSE':
             if not course_gen_ref:
                 return jsonify({"error": "Course Production Pipeline not initialized"}), 500
-            
+
             # Run Course Generation
-            logger.info(f"[SCHOLAR] Production Started: COURSE for {topic}")
-            result = course_gen_ref.generate_course(topic=topic)
+            logger.info(f"[SCHOLAR] Production Started: COURSE for {topic} (lang={language})")
+            result = course_gen_ref.generate_course(topic=topic, language=language)
             return jsonify(result), 200
             
         elif product_type == 'ARTICLE':
@@ -2247,6 +2248,33 @@ def api_d1_generate():
     except Exception as e:
         logger.error(f"D1 trigger error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/research/check', methods=['GET'])
+def check_research_for_topic():
+    """Check if D1 research files exist for a given topic."""
+    import pathlib
+    topic = request.args.get('topic', '').strip()
+    if not topic:
+        return jsonify({"has_research": False, "file": None}), 400
+
+    vault_dir = pathlib.Path("obsidian_vault/knowledge")
+    if not vault_dir.exists():
+        return jsonify({"has_research": False, "file": None})
+
+    files = sorted(vault_dir.glob("research_*.md"), key=lambda x: x.stat().st_mtime, reverse=True)
+    keywords = [k.lower() for k in topic.split() if len(k) > 1] or [topic.lower()]
+
+    for f in files[:20]:
+        try:
+            content = f.read_text(encoding='utf-8', errors='ignore')
+            if len(content) < 300:
+                continue
+            if any(kw in content.lower() for kw in keywords):
+                return jsonify({"has_research": True, "file": f.name})
+        except Exception:
+            continue
+
+    return jsonify({"has_research": False, "file": None})
 
 @app.route('/api/monetization/approve', methods=['POST'])
 def approve_warn_product():

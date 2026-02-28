@@ -51,17 +51,23 @@ class CourseProductionPipeline:
         self.memory = memory
         logger.info("CourseProductionPipeline initialized")
     
-    def generate_course(self, topic: str, num_sections: int = 5, generate_narration: bool = False, reference_audio: str = None, **kwargs) -> Dict:
+    def generate_course(self, topic: str, num_sections: int = 5, generate_narration: bool = False, reference_audio: str = None, language: str = 'auto', **kwargs) -> Dict:
         """
         Generate complete course
-        
+
         Args:
             topic: Course topic
             num_sections: Number of sections (default: 5)
-        
+            language: 'auto' (detect from topic chars) | 'ja' | 'en'
+
         Returns:
             Dictionary with generation results
         """
+        # Resolve language: auto-detect from topic characters
+        if language == 'auto':
+            language = 'ja' if any(ord(c) > 0x3000 for c in topic) else 'en'
+        logger.info(f"🌐 Language resolved: {language}")
+
         # --- PRIORITY 0: LEGAL SCRUBBING ---
         safe_topic = self._scrub_ip_risks(topic)
         if safe_topic != topic:
@@ -88,19 +94,19 @@ class CourseProductionPipeline:
                     logger.warning(f"Memory store failed (non-critical): {e}")
             
             # Step 1: Generate outline
-            outline = self._generate_outline(safe_topic, num_sections, research_data)
+            outline = self._generate_outline(safe_topic, num_sections, research_data, language=language)
             logger.info(f"✅ Outline generated: {len(outline)} sections")
-            
+
             # Step 2: Generate section content
-            sections = self._generate_sections(outline, safe_topic)
+            sections = self._generate_sections(outline, safe_topic, language=language)
             logger.info(f"✅ Content generated: {len(sections)} sections")
-            
+
             # Step 3: Generate slide images
             slides = self._generate_slides(sections)
             logger.info(f"✅ Slides generated: {len(slides)} images")
-            
+
             # Step 4: Generate sales page
-            sales_page = self._generate_sales_page(safe_topic, sections, research_data)
+            sales_page = self._generate_sales_page(safe_topic, sections, research_data, language=language)
             if sales_page:
                 logger.info(f"✅ Sales page generated ({len(sales_page)} chars)")
             
@@ -347,7 +353,7 @@ class CourseProductionPipeline:
                 scrubbed = scrubbed.lower().replace(key, f"{val} style")
         return scrubbed.title()
         
-    def _generate_outline(self, topic: str, num_sections: int, research_data=None, target_market: str = "us") -> List[str]:
+    def _generate_outline(self, topic: str, num_sections: int, research_data=None, target_market: str = "us", language: str = "en") -> List[str]:
         """Generate course outline using unified knowledge context"""
 
         kc = self._get_knowledge_context(topic)
@@ -371,6 +377,8 @@ class CourseProductionPipeline:
         if not context_block:
             logger.warning(f"[OUTLINE] No knowledge context for '{topic}'. Output will be generic.")
 
+        lang_instruction = "\n## OUTPUT LANGUAGE\n日本語でセクションタイトルを書いてください。" if language == "ja" else ""
+
         prompt = f"""Create a targeted course outline for "{topic}".
 {context_block}
 
@@ -379,7 +387,7 @@ INSTRUCTION:
 2. If PRIMARY RESEARCH is provided, prioritize specific findings, dates, and evidence-based trends.
 3. If SEMANTIC MEMORY is provided, incorporate relevant past knowledge.
 4. Ground the course in 2026 commercial reality.
-
+{lang_instruction}
 Generate exactly {num_sections} section titles.
 Format: Just the titles, one per line, no numbering.
 """
@@ -411,7 +419,7 @@ Format: Just the titles, one per line, no numbering.
             f"{topic}: Summary and Next Steps"
         ][:num_sections]
     
-    def _generate_sections(self, outline: List[str], topic: str = "", research_data=None) -> List[Dict]:
+    def _generate_sections(self, outline: List[str], topic: str = "", research_data=None, language: str = "en") -> List[Dict]:
         """Generate content for each section using unified knowledge context"""
         sections = []
 
@@ -420,6 +428,7 @@ Format: Just the titles, one per line, no numbering.
         research_context = f"\n--- PRIMARY RESEARCH SOURCE (D1) ---\n{kc['research']}\n" if kc["research"] else ""
         brain_context = f"\n--- BRAIN SUCCESSFUL PATTERN ---\n{kc['brain']}\n" if kc["brain"] else ""
         semantic_context = f"\n--- SEMANTIC MEMORY ---\n{kc['semantic']}\n" if kc["semantic"] else ""
+        lang_instruction = "\n6. 日本語で本文を書いてください（Write all content in Japanese）。" if language == "ja" else ""
 
         for i, title in enumerate(outline, 1):
             logger.info(f"📝 Generating section {i}/{len(outline)}: {title}")
@@ -436,7 +445,7 @@ CRITICAL TASK:
 2. If the RESEARCH SOURCE is NOT relevant (e.g., technical tests instead of the actual topic), DO NOT talk about it. Instead, use your internal expertise to write a world-class educational section on {title}.
 3. If SEMANTIC MEMORY is provided, incorporate relevant past knowledge.
 4. Avoid generic fluff. Provide 2026 relevance and actionable insights.
-5. If you mention tools, suggest modern 2026 tools (AI agents, etc).
+5. If you mention tools, suggest modern 2026 tools (AI agents, etc).{lang_instruction}
 
 Write 3-5 informative paragraphs.
 Content:"""
@@ -493,7 +502,7 @@ Content:"""
         
         return slides
     
-    def _generate_sales_page(self, topic: str, sections: List[Dict], research_data: Optional[Dict] = None) -> Optional[str]:
+    def _generate_sales_page(self, topic: str, sections: List[Dict], research_data: Optional[Dict] = None, language: str = "ja") -> Optional[str]:
         """
         Generate sales page framed as 'battle log as an asset'.
 
@@ -540,12 +549,13 @@ Content:"""
                 - 購入者は「再現可能な諜報資産」を期待している
                 """
 
+            lang_line = "- 執筆言語：日本語" if language == "ja" else "- Output language: English"
             prompt = f"""あなたは「AIによって生成された高付加価値資産」を販売するプロのコピーライターです。
 
 構成案:
 {positioning_instruction}
 - 証拠（ファイル名・ログ断片）を具体的に引用して信頼性を高める
-- 執筆言語：日本語
+{lang_line}
 
 ---
 【今回の商品内容】
