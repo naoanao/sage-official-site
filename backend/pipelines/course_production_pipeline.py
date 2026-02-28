@@ -105,6 +105,21 @@ class CourseProductionPipeline:
             slides = self._generate_slides(sections)
             logger.info(f"✅ Slides generated: {len(slides)} images")
 
+            # Step 3b: Generate image prompts and actual images
+            target_market = kwargs.get('target_market', 'us')
+            output_dir = self._get_output_dir(safe_topic)
+            
+            # Generate prompts and try to generate images
+            image_results = self._generate_section_images(
+                sections=sections,
+                topic=safe_topic,
+                target_market=target_market
+            )
+
+            # Save image prompts to a file for the purchaser
+            self._write_image_prompts_file(image_results, output_dir)
+            logger.info(f"✅ Visual assets processed: {len(image_results)} items")
+
             # Step 4: Generate sales page
             sales_page = self._generate_sales_page(safe_topic, sections, research_data, language=language)
             if sales_page:
@@ -120,6 +135,7 @@ class CourseProductionPipeline:
                 "outline": outline,
                 "sections": sections,
                 "slides": slides,
+                "images": image_results,
                 "sales_page": sales_page,
                 "research_source": research_data['filename'] if research_data else None,
                 "obsidian_note": str(note_path)
@@ -379,9 +395,35 @@ class CourseProductionPipeline:
 
         lang_instruction = "\n## OUTPUT LANGUAGE\n日本語でセクションタイトルを書いてください。" if language == "ja" else ""
 
+        # Topic-specific structure hints
+        structure_hint = ""
+        topic_lower = topic.lower()
+        if any(kw in topic_lower for kw in ["ufo", "uap", "alien", "extraterrestrial", "disclosure", "宇宙人", "未確認"]):
+            structure_hint = """
+## CRITICAL STRUCTURE FOR UFO/UAP CONTENT (English Market Best-Sellers Pattern):
+Use this proven structure that top-selling UFO products on Amazon/Gumroad follow:
+
+1. "What's Been Officially Confirmed" — Facts only (Pentagon admissions, AARO reports, Congressional testimony) — builds credibility. NO speculation.
+2. "The Timeline They Don't Show You" — Key events from 1947 Roswell → 2026 Trump disclosure order — narrative hook. Ensure the reader understands the sequence of events.
+3. "The Witnesses: Names, Ranks, and What They Saw" — Jeffrey Nuccetelli (Air Force), David Grusch (Intelligence), Karl Nell (Army/Northrop) with specific quotes, dates, and locations.
+4. "Why Now: The Political and Economic Forces Behind Disclosure" — Defense budget ($900B/yr), "The Age of Disclosure" film breaking Amazon records = mainstream shift.
+5. "Your Action Plan: How to Stay Ahead of This Story" — Where to watch congressional hearings, government databases (AARO.mil), communities, how to monetize knowledge.
+
+Adapt section titles to match the topic language and tone.
+"""
+        elif any(kw in topic_lower for kw in ["釣り", "fishing", "angling"]):
+            structure_hint = """
+## STRUCTURE HINT FOR FISHING CONTENT:
+1. 場所・時間・条件の選び方 (When/Where/Conditions)
+2. 必要な道具と準備 (Gear & Preparation)
+3. 実際の釣り方・テクニック (Techniques)
+4. よくある失敗とその回避法 (Common Mistakes)
+5. 上達のための次のステップ (Next Steps)
+"""
+
         prompt = f"""Create a targeted course outline for "{topic}".
 {context_block}
-
+{structure_hint}
 INSTRUCTION:
 1. If SAGE BRAIN pattern is provided, ensure consistency with previous successful structures.
 2. If PRIMARY RESEARCH is provided, prioritize specific findings, dates, and evidence-based trends.
@@ -428,26 +470,60 @@ Format: Just the titles, one per line, no numbering.
         research_context = f"\n--- PRIMARY RESEARCH SOURCE (D1) ---\n{kc['research']}\n" if kc["research"] else ""
         brain_context = f"\n--- BRAIN SUCCESSFUL PATTERN ---\n{kc['brain']}\n" if kc["brain"] else ""
         semantic_context = f"\n--- SEMANTIC MEMORY ---\n{kc['semantic']}\n" if kc["semantic"] else ""
-        lang_instruction = "\n6. 日本語で本文を書いてください（Write all content in Japanese）。" if language == "ja" else ""
+        if language == "ja":
+            lang_instruction = "\n6. 日本語で本文を書いてください（Write all content in Japanese）。"
+            section_structure = """## REQUIRED STRUCTURE:
+**導入（2-3文）**: このセクションのトピックに固有の課題を述べる。
+**メインコンテンツ**: 具体的なデータ・事例・方法を含む3-4段落。
+**今すぐできること**:
+1. [Action] — 所要時間: X分
+2. [Action] — 所要時間: X分
+3. [Action] — 所要時間: X分
+**よくある失敗**:
+- 失敗1: [specific mistake] → 対策: [specific fix]
+- 失敗2: [specific mistake] → 対策: [specific fix]"""
+        else:
+            lang_instruction = "\n6. Write all content in English. Use English section headers only."
+            section_structure = """## REQUIRED STRUCTURE:
+**Introduction (2-3 sentences)**: Problem statement specific to this section's topic.
+**Core Content**: 3-4 paragraphs with specific data, examples, and methods.
+**Take Action Now**:
+1. [Action] — Time required: X minutes
+2. [Action] — Time required: X minutes
+3. [Action] — Time required: X minutes
+**Common Mistakes**:
+- Mistake 1: [specific mistake] → Fix: [specific fix]
+- Mistake 2: [specific mistake] → Fix: [specific fix]"""
 
         for i, title in enumerate(outline, 1):
             logger.info(f"📝 Generating section {i}/{len(outline)}: {title}")
 
-            prompt = f"""Write detailed, SPECIFIC, and EDUCATIONAL content for this course section:
+            prompt = f"""You are writing a high-converting digital course section. The reader bought this product to solve a real problem — give them immediately usable, specific knowledge.
 
-Section Title: {title}
+COURSE TOPIC: {topic}
+SECTION ({i}/{len(outline)}): {title}
 {brain_context}
 {research_context}
 {semantic_context}
 
-CRITICAL TASK:
-1. If the PRIMARY RESEARCH SOURCE is topically relevant to "{title}", use its specific data, URLs, and evidence.
-2. If the RESEARCH SOURCE is NOT relevant (e.g., technical tests instead of the actual topic), DO NOT talk about it. Instead, use your internal expertise to write a world-class educational section on {title}.
-3. If SEMANTIC MEMORY is provided, incorporate relevant past knowledge.
-4. Avoid generic fluff. Provide 2026 relevance and actionable insights.
-5. If you mention tools, suggest modern 2026 tools (AI agents, etc).{lang_instruction}
+## CONTENT RULES (strictly enforced)
 
-Write 3-5 informative paragraphs.
+### What TO include:
+1. RESEARCH MATCH: If PRIMARY RESEARCH covers "{title}", cite specific data, dates, and place names from it directly.
+   If research is off-topic, ignore it and use your own expertise.
+2. REAL NUMBERS: Include at least 2 specific data points (percentages, times, prices, distances, counts).
+3. ACTIONABLE STEPS: A numbered action list (3-5 items), each with estimated time required.
+4. COMMON MISTAKES: List 2-3 mistakes beginners make and how to avoid them.
+5. QUICK WIN: One thing the reader can do in under 10 minutes to see immediate progress.
+
+### What NOT to include:
+- Generic statements like "important", "essential", "you should know..."
+- AI productivity tools, automation, virtual assistants (unless topic is AI-related)
+- Filler paragraphs without specific information
+- Theoretical content without practical application{lang_instruction}
+
+{section_structure}
+
 Content:"""
             
             content = ""
@@ -502,6 +578,116 @@ Content:"""
         
         return slides
     
+    # ──────────────────────────────────────────────────────────────────────────
+    # IMAGE PROMPT GENERATION (works without image_agent — always produces prompts)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _generate_image_prompt(self, section_title: str, topic: str, target_market: str = "us") -> str:
+        """セクションタイトルから最適な画像プロンプトを生成"""
+        ufo_visual_map = {
+            "基礎知識":   "documentary-style infographic showing UFO sighting timeline from 1940s to 2026, clean dark background, data visualization, government seals",
+            "最新":       "US Congress hearing room, officials testifying, C-SPAN style photography, overhead lighting, serious atmosphere",
+            "議会":       "US Capitol building at night with dramatic lighting, official government seal overlays, newspaper headline style",
+            "真実":       "declassified document aesthetic, redacted text visible, official stamps, freedom of information act style",
+            "影響":       "world map with UAP incident markers, globe perspective, dark blue background, data points glowing",
+            "役割":       "person looking at night sky through telescope, stars and one mysterious light, cinematic mood",
+            "商品化":     "digital creator workspace, laptop showing UFO content, Gumroad interface visible",
+            "証拠":       "radar screen with unidentified blip, military control room aesthetic, green phosphor display",
+            "証人":       "press conference microphone in front of blurred official, dramatic side lighting, documentary style",
+            "公開":       "government file boxes being opened, sunlight streaming in, official seal visible",
+            "timeline":   "dramatic infographic timeline on dark background, military green and white text",
+            "confirmed":  "official government seal and document overlay, high contrast black and white photography",
+            "witnesses":  "silhouette of person against starfield, documentary interview style lighting",
+            "political":  "Capitol building reflection in water, twilight blue hour, political drama aesthetic",
+            "action":     "person at desk with multiple screens showing government data, focused determination",
+        }
+        prompt_base = "photorealistic, high quality, editorial style, 16:9 aspect ratio"
+        if target_market == "us":
+            prompt_base += ", American documentary style, professional journalism photography"
+        for keyword, visual in ufo_visual_map.items():
+            if keyword in section_title:
+                return f"{visual}, {prompt_base}"
+        return f"dramatic documentary photography related to: {section_title}, dark moody atmosphere, cinematic, {prompt_base}"
+
+    def _generate_section_images(self, sections: list, topic: str, 
+                                   target_market: str = "us") -> dict:
+        """
+        各セクションに対応するAI画像プロンプトを生成し、
+        画像ファイルをZIPに含める準備をする。
+        
+        Returns: {section_title: {type, path, prompt}}
+        """
+        import os as _os
+        image_results = {}
+        output_dir = self._get_output_dir(topic)
+        
+        for section in sections:
+            title = section.get("title", "")
+            
+            # 画像プロンプト生成（英語）
+            prompt = self._generate_image_prompt(title, topic, target_market)
+            
+            # 画像生成を試みる（image_agentがある場合）
+            if self.image_agent and hasattr(self.image_agent, 'generate'):
+                try:
+                    image_path = self.image_agent.generate(
+                        prompt=prompt,
+                        output_dir=output_dir,
+                        filename=f"section_{sections.index(section)+1}_visual"
+                    )
+                    image_results[title] = {
+                        "type": "generated",
+                        "path": image_path,
+                        "prompt": prompt
+                    }
+                    logger.info(f"[IMAGE] Generated for: {title}")
+                except Exception as e:
+                    logger.warning(f"[IMAGE] Generation failed ({e}), saving prompt only")
+                    image_results[title] = {
+                        "type": "prompt_only",
+                        "prompt": prompt
+                    }
+            else:
+                # image_agentがない場合：プロンプトをファイルとして保存
+                image_results[title] = {
+                    "type": "prompt_only", 
+                    "prompt": prompt
+                }
+        
+        return image_results
+
+    def _write_image_prompts_file(self, image_results: dict, output_dir: str):
+        """
+        画像生成できなかった場合でも、
+        購入者がMidjourney/DALL-Eで生成できるよう
+        プロンプト集をimage_prompts.mdとして出力する。
+        """
+        import os as _os
+        content = "# AI Image Prompts for This Product\n\n"
+        content += "Use these prompts with Midjourney, DALL-E 3, or Stable Diffusion to generate visuals.\n\n"
+        
+        for section_title, data in image_results.items():
+            content += f"## {section_title}\n"
+            content += f"```\n{data['prompt']}\n```\n\n"
+        
+        filepath = _os.path.join(output_dir, "image_prompts.md")
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(content)
+            logger.info(f"[IMAGE] Prompts saved: {filepath}")
+        except Exception as e:
+            logger.warning(f"[IMAGE] Could not save prompts file: {e}")
+
+    def _get_output_dir(self, topic: str) -> str:
+        """生成物の出力ディレクトリ（ZIP用の一時フォルダ）を管理"""
+        import os as _os
+        import re
+        safe_name = re.sub(r'[^\w\s-]', '', topic.lower()).replace(' ', '_')
+        output_dir = _os.path.join("output", safe_name)
+        if not _os.path.exists(output_dir):
+            _os.makedirs(output_dir, exist_ok=True)
+        return output_dir
+
     def _generate_sales_page(self, topic: str, sections: List[Dict], research_data: Optional[Dict] = None, language: str = "ja") -> Optional[str]:
         """
         Generate sales page framed as 'battle log as an asset'.
