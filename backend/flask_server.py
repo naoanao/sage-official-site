@@ -2276,6 +2276,98 @@ def check_research_for_topic():
 
     return jsonify({"has_research": False, "file": None})
 
+@app.route('/api/productize/rewrite', methods=['POST'])
+def productize_rewrite():
+    """Rewrite a single section's content using Groq with a user-supplied instruction."""
+    data = request.get_json(silent=True) or {}
+    content = data.get('content', '').strip()
+    instruction = data.get('instruction', '').strip()
+    language = data.get('language', 'ja')
+
+    if not content or not instruction:
+        return jsonify({"error": "content and instruction are required"}), 400
+
+    lang_note = "日本語で書いてください。" if language == 'ja' else "Write in English."
+    prompt = (
+        f"以下のコンテンツを、指示に従って書き直してください。\n\n"
+        f"【指示】{instruction}\n\n"
+        f"【元のコンテンツ】\n{content}\n\n"
+        f"【出力ルール】\n"
+        f"- 元の情報・事実は保持してください（削除しないこと）\n"
+        f"- 指示の口調・形式に合わせて書き直してください\n"
+        f"- {lang_note}\n"
+        f"- 前置きや説明は不要。書き直した本文のみを出力してください。"
+    )
+    try:
+        import os as _os
+        from groq import Groq as _Groq
+        _groq = _Groq(api_key=_os.getenv("GROQ_API_KEY"))
+        resp = _groq.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+        )
+        rewritten = resp.choices[0].message.content.strip()
+        return jsonify({"status": "success", "rewritten": rewritten}), 200
+    except Exception as e:
+        logger.error(f"[REWRITE] Groq error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/productize/finalize', methods=['POST'])
+def productize_finalize():
+    """Save user-edited course content back to Obsidian vault."""
+    import pathlib
+    data = request.get_json(silent=True) or {}
+    topic = data.get('topic', 'Untitled')
+    sections = data.get('sections', [])
+    sales_page = data.get('sales_page', '')
+    original_note = data.get('obsidian_note', '')
+
+    if not sections:
+        return jsonify({"error": "sections required"}), 400
+
+    from datetime import datetime
+    ts = datetime.now().strftime('%Y-%m-%d %H:%M')
+
+    # Build markdown
+    lines = [f"# {topic} - Final Edition\n", f"**Finalized**: {ts}\n", ""]
+    lines.append("## 📋 Course Outline\n")
+    for i, s in enumerate(sections, 1):
+        lines.append(f"{i}. {s.get('title', '')}")
+    lines.append("\n---\n")
+
+    for i, s in enumerate(sections, 1):
+        lines.append(f"## {i}. {s.get('title', '')}\n")
+        lines.append(s.get('content', ''))
+        lines.append("\n---\n")
+
+    if sales_page:
+        lines.append("## 💰 Sales Page\n")
+        lines.append(sales_page)
+        lines.append("\n")
+
+    final_md = "\n".join(lines)
+
+    # Save — overwrite original or create _final variant
+    try:
+        vault_dir = pathlib.Path("obsidian_vault/knowledge")
+        vault_dir.mkdir(parents=True, exist_ok=True)
+        if original_note:
+            orig = pathlib.Path(original_note)
+            save_path = orig if orig.exists() else vault_dir / orig.name
+        else:
+            import time
+            save_path = vault_dir / f"course_{int(time.time())}_final.md"
+
+        save_path.write_text(final_md, encoding='utf-8')
+        logger.info(f"[FINALIZE] Saved edited course: {save_path}")
+        return jsonify({"status": "success", "saved_path": str(save_path)}), 200
+    except Exception as e:
+        logger.error(f"[FINALIZE] Save error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/monetization/approve', methods=['POST'])
 def approve_warn_product():
     """Manual approval of QA WARN."""
