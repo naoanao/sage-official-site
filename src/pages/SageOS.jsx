@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { FiPlay, FiShield, FiDollarSign, FiCpu, FiMessageSquare, FiActivity, FiXCircle, FiCheckCircle, FiBox, FiCheck } from 'react-icons/fi';
+import { FiPlay, FiShield, FiDollarSign, FiCpu, FiMessageSquare, FiActivity, FiXCircle, FiCheckCircle, FiBox, FiCheck, FiSearch, FiAlertTriangle } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 
@@ -16,8 +16,13 @@ const SageOS = () => {
     const [monetizeTopic, setMonetizeTopic] = useState('');
     const [market, setMarket] = useState('US');
     const [price, setPrice] = useState('$29');
+    const [lang, setLang] = useState('auto'); // 'auto' | 'ja' | 'en'
     const [monetizeStatus, setMonetizeStatus] = useState('idle');
+    // idle | checking_research | needs_research | running_d1 | running | complete | error
     const [monetizeResult, setMonetizeResult] = useState(null);
+    const [researchCheck, setResearchCheck] = useState({ status: 'idle', file: null });
+    // idle | checking | found | missing
+    const researchDebounce = useRef(null);
 
     // Sage Metrics states
     const [brainStats, setBrainStats] = useState({ learned_patterns: 0, accuracy: 0 });
@@ -58,6 +63,28 @@ const SageOS = () => {
         return () => clearInterval(timer);
     }, []);
 
+    // Debounced research check when topic changes
+    useEffect(() => {
+        if (!monetizeTopic.trim()) {
+            setResearchCheck({ status: 'idle', file: null });
+            return;
+        }
+        setResearchCheck({ status: 'checking', file: null });
+        clearTimeout(researchDebounce.current);
+        researchDebounce.current = setTimeout(async () => {
+            try {
+                const res = await api.get(`/api/research/check?topic=${encodeURIComponent(monetizeTopic)}`);
+                setResearchCheck({
+                    status: res.data?.has_research ? 'found' : 'missing',
+                    file: res.data?.file || null
+                });
+            } catch {
+                setResearchCheck({ status: 'idle', file: null });
+            }
+        }, 600);
+        return () => clearTimeout(researchDebounce.current);
+    }, [monetizeTopic]);
+
     const handleD1Run = async () => {
         setD1Status('running');
         try {
@@ -70,36 +97,46 @@ const SageOS = () => {
         }
     };
 
+    // Run D1 research for the current topic, then auto-proceed to generate
+    const handleD1ForTopic = async () => {
+        setMonetizeStatus('running_d1');
+        try {
+            await api.post('/api/d1/generate', { topic: monetizeTopic });
+            // Re-check research after D1
+            const res = await api.get(`/api/research/check?topic=${encodeURIComponent(monetizeTopic)}`);
+            setResearchCheck({
+                status: res.data?.has_research ? 'found' : 'missing',
+                file: res.data?.file || null
+            });
+            // Auto-proceed to generation
+            await runMonetizePipeline();
+        } catch (e) {
+            setMonetizeStatus('error');
+            setMonetizeResult('D1リサーチに失敗しました: ' + (e.message || ''));
+            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
+        }
+    };
+
     const toggleBrake = () => {
         setBrakeEnabled(prev => !prev);
     };
 
-    const handleMonetize = async () => {
-        if (!monetizeTopic) return;
+    // Core pipeline — always runs generation regardless of research status
+    const runMonetizePipeline = async () => {
         setMonetizeStatus('running');
         setMonetizeResult(null);
         try {
-            // Step 1: Generate the plan
-            const planRes = await api.post('/api/productize', {
-                topic: monetizeTopic,
-                market,
-                price
-            });
-            if (!planRes.data || planRes.data.error) {
-                throw new Error(planRes.data?.error || 'Plan generation failed');
-            }
+            const planRes = await api.post('/api/productize', { topic: monetizeTopic, market, price });
+            if (!planRes.data || planRes.data.error) throw new Error(planRes.data?.error || 'Plan generation failed');
 
-            // Step 2: Execute and generate the actual course file
             const execRes = await api.post('/api/productize/execute', {
                 topic: monetizeTopic,
                 type: 'COURSE',
-                plan: planRes.data.plan
+                plan: planRes.data.plan,
+                language: lang
             });
-            if (!execRes.data || execRes.data.error) {
-                throw new Error(execRes.data?.error || 'Course generation failed');
-            }
+            if (!execRes.data || execRes.data.error) throw new Error(execRes.data?.error || 'Course generation failed');
 
-            // Show where the file was saved
             const savedPath = execRes.data.obsidian_note || execRes.data.file_path || '生成完了';
             setMonetizeResult(savedPath);
             setMonetizeStatus('complete');
@@ -110,6 +147,16 @@ const SageOS = () => {
             setMonetizeStatus('error');
             setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
         }
+    };
+
+    // Entry point — checks research first, blocks if missing
+    const handleMonetize = async () => {
+        if (!monetizeTopic) return;
+        if (researchCheck.status === 'missing') {
+            setMonetizeStatus('needs_research');
+            return;
+        }
+        await runMonetizePipeline();
     };
 
     const sendMessage = async (e) => {
@@ -264,15 +311,43 @@ const SageOS = () => {
                         </div>
 
                         <div className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-6 backdrop-blur-sm">
+                            {/* Topic + research status */}
                             <div>
-                                <label className="block text-sm font-bold text-slate-300 mb-2">Topic / Idea</label>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="text-sm font-bold text-slate-300">Topic / Idea</label>
+                                    {researchCheck.status === 'checking' && (
+                                        <span className="text-xs text-slate-400 flex items-center gap-1"><div className="w-3 h-3 rounded-full border border-slate-400 border-t-white animate-spin" /> リサーチ確認中...</span>
+                                    )}
+                                    {researchCheck.status === 'found' && (
+                                        <span className="text-xs text-emerald-400 flex items-center gap-1"><FiCheckCircle /> D1リサーチ済み: {researchCheck.file}</span>
+                                    )}
+                                    {researchCheck.status === 'missing' && (
+                                        <span className="text-xs text-amber-400 flex items-center gap-1"><FiAlertTriangle /> D1リサーチ未実行</span>
+                                    )}
+                                </div>
                                 <input
                                     type="text"
                                     value={monetizeTopic}
-                                    onChange={(e) => setMonetizeTopic(e.target.value)}
-                                    placeholder="e.g. AI Automation for Small Businesses"
-                                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                                    onChange={(e) => { setMonetizeTopic(e.target.value); setMonetizeStatus('idle'); }}
+                                    placeholder="e.g. 早朝釣り完全攻略 小田原港 2026"
+                                    className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors ${researchCheck.status === 'missing' ? 'border-amber-500/50 focus:border-amber-400' : 'border-white/10 focus:border-purple-500'}`}
                                 />
+                            </div>
+
+                            {/* Language selector */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-300 mb-2">出力言語 / Output Language</label>
+                                <div className="flex gap-2">
+                                    {[['auto', '🌐 Auto'], ['ja', '🇯🇵 日本語'], ['en', '🇺🇸 English']].map(([val, label]) => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setLang(val)}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${lang === val ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -303,21 +378,48 @@ const SageOS = () => {
 
                             <hr className="border-white/5 my-6" />
 
+                            {/* D1 research prompt — shown when research is missing and user tried to generate */}
+                            {monetizeStatus === 'needs_research' && (
+                                <div className="p-5 bg-amber-900/20 border border-amber-500/30 rounded-2xl space-y-3">
+                                    <div className="text-amber-300 font-bold flex items-center gap-2"><FiAlertTriangle /> D1リサーチが見つかりません</div>
+                                    <p className="text-slate-300 text-sm">「{monetizeTopic}」に一致するリサーチファイルがありません。汚染リスクを避けるため、先にD1リサーチを実行することを推奨します。</p>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleD1ForTopic}
+                                            className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
+                                        >
+                                            <FiPlay /> D1リサーチを実行してから生成
+                                        </button>
+                                        <button
+                                            onClick={runMonetizePipeline}
+                                            className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-400 text-sm rounded-xl transition-all"
+                                        >
+                                            このまま生成（リスクあり）
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Generate button — hidden while needs_research prompt is shown */}
+                            {monetizeStatus !== 'needs_research' && (
                             <button
                                 onClick={handleMonetize}
-                                disabled={!monetizeTopic || monetizeStatus === 'running'}
+                                disabled={!monetizeTopic || ['running', 'running_d1', 'checking_research'].includes(monetizeStatus)}
                                 className={`w-full py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-3 transition-all ${!monetizeTopic ? 'bg-slate-800 text-slate-500 cursor-not-allowed' :
                                     monetizeStatus === 'running' ? 'bg-slate-700 text-slate-400' :
+                                    monetizeStatus === 'running_d1' ? 'bg-amber-800 text-amber-200' :
                                         monetizeStatus === 'complete' ? 'bg-emerald-600 text-white' :
                                             monetizeStatus === 'error' ? 'bg-red-700 text-white' :
                                                 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white shadow-[0_0_40px_rgba(147,51,234,0.4)]'
                                     }`}
                             >
                                 {monetizeStatus === 'idle' && <><FiBox /> Format Product & Generate Gumroad ZIP</>}
+                                {monetizeStatus === 'running_d1' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-amber-400 border-t-white" /> D1リサーチ実行中...</>}
                                 {monetizeStatus === 'running' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-slate-400 border-t-white"></div> Running Pipeline...</>}
                                 {monetizeStatus === 'complete' && <><FiCheck /> Product Ready for Upload</>}
                                 {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed</>}
                             </button>
+                            )}
 
                             {/* Result display */}
                             {monetizeResult && monetizeStatus === 'complete' && (
