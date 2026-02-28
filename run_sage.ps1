@@ -39,7 +39,11 @@ Get-Content "$SageDir\.env" | ForEach-Object {
 Add-Content $LogFile "[$ts] .env loaded"
 
 # ── Kill stale processes ──────────────────────────────────────────────────
-# Port 8080 (Flask)
+# Kill ALL python processes (handles child/parent Werkzeug reloader pairs)
+Get-Process -Name "python" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Add-Content $LogFile "[$ts] Killed all python.exe processes"
+
+# Port 8080 fallback: kill by PID if socket still held
 $existing8080 = netstat -ano | Select-String ":8080 " | Select-String "LISTENING"
 foreach ($line in $existing8080) {
     $pid8080 = ($line -split '\s+')[-1]
@@ -51,7 +55,7 @@ foreach ($line in $existing8080) {
 
 # ngrok
 Get-Process -Name "ngrok" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
+Start-Sleep -Seconds 2
 
 # ── Start Flask backend (hidden) ──────────────────────────────────────────
 $pidFile = "$SageDir\sage_server_8080.pid"
