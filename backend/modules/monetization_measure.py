@@ -102,18 +102,30 @@ class MonetizationMeasure:
     def get_stats():
         """Aggregates stats from the history file."""
         if not HISTORY_FILE.exists():
-            return {"views": 0, "clicks": 0, "sales": 0, "posts": 0}
+            return {
+                "views": 0, "clicks": 0, "sales": 0, "posts": 0,
+                "qa_pass": 0, "qa_warn": 0, "contamination_blocked": 0
+            }
             
-        stats = {"views": 0, "clicks": 0, "sales": 0, "posts": 0}
+        stats = {
+            "views": 0, "clicks": 0, "sales": 0, "posts": 0,
+            "qa_pass": 0, "qa_warn": 0, "contamination_blocked": 0
+        }
         try:
             with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
                 for line in f:
-                    data = json.loads(line)
-                    evt = data.get('event')
-                    if evt == 'blog_view': stats['views'] += 1
-                    elif evt == 'offer_click': stats['clicks'] += 1
-                    elif evt == 'sale_recorded': stats['sales'] += 1
-                    elif evt == 'sns_post_success': stats['posts'] += 1
+                    try:
+                        data = json.loads(line)
+                        evt = data.get('event')
+                        if evt == 'blog_view': stats['views'] += 1
+                        elif evt == 'offer_click': stats['clicks'] += 1
+                        elif evt == 'sale_recorded': stats['sales'] += 1
+                        elif evt == 'sns_post_success': stats['posts'] += 1
+                        elif evt == 'qa_pass': stats['qa_pass'] += 1
+                        elif evt == 'qa_warn': stats['qa_warn'] += 1
+                        elif evt == 'contamination_blocked': stats['contamination_blocked'] += 1
+                    except json.JSONDecodeError:
+                        continue
         except Exception as e:
             logger.error(f"Failed to read monetization stats: {e}")
             

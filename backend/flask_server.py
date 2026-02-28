@@ -727,7 +727,8 @@ def init_course_pipeline(orchestrator_obj):
             gemini_client=getattr(orchestrator_obj, 'gemini_llm', None),
             image_agent=getattr(orchestrator_obj, 'image_agent', None),
             obsidian=getattr(orchestrator_obj, 'memory_agent', None),
-            brain=getattr(orchestrator_obj, 'neuromorphic_brain', None)
+            brain=getattr(orchestrator_obj, 'neuromorphic_brain', None),
+            memory=getattr(orchestrator_obj, 'memory_agent', None),
         )
         logger.info("[INIT] Course Production Pipeline Ready.")
         return course_gen_global
@@ -1259,9 +1260,21 @@ def api_pilot_generate():
         
         if result.get('status') == 'success':
             result['request_id'] = getattr(g, 'request_id', 'unknown')
+            # Wrap QA result into structured field for frontend
+            qa_status = result.get("qa_status", "UNKNOWN")
+            qa_issues = result.get("qa_issues", [])
+            result["qa"] = {
+                "status": qa_status,
+                "issues": qa_issues,
+                "can_publish": qa_status == "PASS",
+                "warn_count": len(qa_issues),
+            }
+            if qa_status == "WARN":
+                logger.warning(f"[QA] WARN product: topic={topic}, issues={qa_issues}")
             log_structured("pilot_generate_success", {
-                "topic": topic, 
+                "topic": topic,
                 "tier": result.get('tier'),
+                "qa_status": qa_status,
                 "request_id": result['request_id']
             })
             return jsonify(result), 200
@@ -1604,6 +1617,18 @@ def productize_execute_endpoint():
             # Run Course Generation
             logger.info(f"[SCHOLAR] Production Started: COURSE for {topic}")
             result = course_gen_ref.generate_course(topic=topic)
+
+            # Wrap QA result into structured field for frontend
+            qa_status = result.get("qa_status", "UNKNOWN")
+            qa_issues = result.get("qa_issues", [])
+            result["qa"] = {
+                "status": qa_status,
+                "issues": qa_issues,
+                "can_publish": qa_status == "PASS",
+                "warn_count": len(qa_issues),
+            }
+            if qa_status == "WARN":
+                logger.warning(f"[QA] WARN product: topic={topic}, issues={qa_issues}")
             return jsonify(result), 200
             
         elif product_type == 'ARTICLE':
@@ -2115,6 +2140,59 @@ def admin_strategy():
         return jsonify(StrategyManager.get_strategy()), 200
     return jsonify({"status": "error", "message": "StrategyManager not loaded"}), 503
 
+@app.route('/api/monetization/approve', methods=['POST'])
+def approve_warn_product():
+    """
+    Human manually approves a QA WARN product for publishing.
+    Records the override to Brain as HUMAN_APPROVED so it learns
+    from human judgment, not just auto-QA passes.
+    """
+    # Security: Local IP only (prevents remote 'poisoning' of brain)
+    if request.remote_addr not in ['127.0.0.1', 'localhost', '::1']:
+        logger.warning(f"[SECURITY] Blocked non-local approval attempt from {request.remote_addr}")
+        return jsonify({"error": "Unauthorized: Local access only"}), 403
+
+    data = request.get_json(silent=True) or {}
+    topic = data.get("topic", "")
+    product_summary = data.get("product_summary", "")
+    qa_issues = data.get("qa_issues", [])
+
+    if not topic:
+        return jsonify({"error": "topic is required"}), 400
+
+    pipeline = globals().get('course_gen_global')
+
+    # Brain learning: human-approved counts as was_helpful=True
+    if pipeline and pipeline.brain:
+        try:
+            pipeline.brain.provide_feedback(
+                query=topic,
+                correct_response=f"[HUMAN_APPROVED] {product_summary}",
+                was_helpful=True
+            )
+            logger.info(f"[QA] Human-approved brain learning: {topic}")
+        except Exception as e:
+            logger.warning(f"[QA] Brain learning failed: {e}")
+
+    # SageMemory: mark as HUMAN_VERIFIED
+    if pipeline and pipeline.memory:
+        try:
+            pipeline.memory.add_memory(
+                content=f"[HUMAN_APPROVED] {topic}: {product_summary}",
+                metadata={
+                    "topic": topic,
+                    "type": "human_approved",
+                    "qa_issues": str(qa_issues),
+                    "evidence_status": "HUMAN_VERIFIED",
+                }
+            )
+        except Exception as e:
+            logger.warning(f"[QA] Memory save failed: {e}")
+
+    log_structured("qa_human_approved", {"topic": topic, "issues_overridden": qa_issues})
+    return jsonify({"status": "approved", "message": "Learning recorded."}), 200
+
+
 # --- MONETIZATION & TAGS API ---
 @app.route('/api/monetization/tags', methods=['GET'])
 def get_tag_performance():
@@ -2126,11 +2204,23 @@ def get_tag_performance():
 
 @app.route('/api/monetization/stats', methods=['GET'])
 def get_monetization_stats():
-    # Returns overall views, clicks, and sales stats.
+    # Returns overall views, clicks, and sales stats + QA metrics.
     if MonetizationMeasure:
         stats = MonetizationMeasure.get_stats()
         return jsonify({"status": "success", "data": stats}), 200
     return jsonify({"status": "error", "message": "MonetizationMeasure not loaded"}), 503
+
+@app.route('/api/brain/stats', methods=['GET'])
+def get_brain_stats():
+    """Returns neuromorphic brain learning statistics."""
+    pipeline = globals().get('course_gen_global')
+    if pipeline and pipeline.brain:
+        try:
+            stats = pipeline.brain.get_stats()
+            return jsonify({"status": "success", "data": stats}), 200
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": "Brain not initialized"}), 503
 
 # --- PUBLIC BLOG API for Frontend Restoration ---
 @app.route('/api/admin/posts', methods=['GET'])

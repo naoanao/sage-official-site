@@ -1,10 +1,14 @@
 import os
 import pickle
 import io
+import logging
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Scopes required for Drive API
 SCOPES = [
@@ -18,13 +22,12 @@ class DriveAgent:
         self.credentials_path = credentials_path
         self.token_path = token_path
         self.service = None
-        self.service = None
         self.enabled = False
         try:
             self._authenticate()
             self.enabled = True
         except Exception as e:
-            print(f"❌ Drive Agent Init Failed (Disabled): {e}")
+            logger.error(f"[DriveAgent] Init Failed (Disabled): {e}")
 
     def _authenticate(self):
         """Authenticates the user using OAuth 2.0."""
@@ -56,6 +59,7 @@ class DriveAgent:
             items = results.get('files', [])
             return items
         except Exception as e:
+            logger.error(f"[DriveAgent] list_files error: {e}")
             return {'error': str(e)}
 
     def upload_file(self, file_path, mime_type=None):
@@ -70,12 +74,26 @@ class DriveAgent:
             file = self.service.files().create(body=file_metadata, media_body=media, fields='id').execute()
             return {'status': 'success', 'file_id': file.get('id'), 'message': f"Uploaded {os.path.basename(file_path)}"}
         except Exception as e:
+            logger.error(f"[DriveAgent] upload_file error: {e}")
             return {'status': 'error', 'message': str(e)}
 
 if __name__ == '__main__':
-    # Test
+    # Setup basic logging for standalone test
+    import sys
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    
+    # Reconfigure stdout for utf-8 on Windows to prevent cp932 errors
+    if sys.platform == "win32":
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+        except AttributeError:
+            # Python < 3.7
+            import io
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
     try:
         agent = DriveAgent()
-        print("Drive Files:", agent.list_files(5))
+        logger.info(f"Drive Files: {agent.list_files(5)}")
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error in main: {e}")
+
