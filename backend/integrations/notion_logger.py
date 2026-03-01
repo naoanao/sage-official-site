@@ -6,7 +6,7 @@ NotionLogger — 運用イベントをNotion タスク管理DBへ自動記録。
   2. コース生成完了時 — 生成結果・画像URL・コミットハッシュ
   3. エラー発生時 — 即座に通知
 
-DB: Sage 3.0 タスク管理 (c48ea661-def4-4755-be20-7e85cb1ea93c)
+DB: Sage 3.0 タスク管理 (8d8c383a-6127-4721-817d-a0abc065d35c)
 """
 
 import os
@@ -19,7 +19,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 NOTION_API_VERSION = "2022-06-28"
-TASK_DB_ID = "c48ea661-def4-4755-be20-7e85cb1ea93c"  # タスク管理DBのデータソースID
+TASK_DB_ID = "8d8c383a61274721817da0abc065d35c"  # タスク管理DB (Sage 3.0)
 JST = timezone(timedelta(hours=9))
 
 

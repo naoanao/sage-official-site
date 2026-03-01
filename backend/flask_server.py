@@ -203,12 +203,23 @@ if not FRONTEND_DIST.exists():
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path=None)
 
-# Safe CORS for Plan B Ultimate
-allowed_origins = [
-    "http://localhost:3000", "http://localhost:5000", "http://localhost:8080", "http://localhost:5001",
-    "http://127.0.0.1:3000", "http://127.0.0.1:5000", "http://127.0.0.1:8080", "http://127.0.0.1:5001"
-]
-CORS(app, resources={r"/*": {"origins": allowed_origins}})
+# CORS — manual handler (flask-cors 4.x uses WSGI middleware which conflicts)
+_DEV_ORIGINS = {
+    "http://localhost:3000", "http://localhost:5000", "http://localhost:5001",
+    "http://localhost:5173", "http://localhost:5174", "http://localhost:5175",
+    "http://127.0.0.1:3000", "http://127.0.0.1:5000", "http://127.0.0.1:5001",
+    "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175",
+}
+
+@app.after_request
+def add_cors_headers(response):
+    origin = request.headers.get("Origin", "")
+    if origin in _DEV_ORIGINS or not origin:
+        response.headers["Access-Control-Allow-Origin"] = origin or "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Request-ID"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 # --- OBSERVABILITY & STRUCTURED LOGGING (Fortress Rotation) ---
 STRUCTURED_LOG = LOG_DIR / "structured_access.jsonl"
@@ -251,8 +262,8 @@ def start_request_tracking():
 
 @app.after_request
 def finalize_request_tracking(response):
-    duration = time.time() - g.start_time
-    response.headers['X-Request-ID'] = g.request_id
+    duration = time.time() - getattr(g, 'start_time', time.time())
+    response.headers['X-Request-ID'] = getattr(g, 'request_id', 'unknown')
     
     log_structured("http_request_end", {
         "method": request.method,
