@@ -15,9 +15,45 @@ import random
 logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────
-# Technique templates (English)
+# Generic templates (English) — any topic
 # ──────────────────────────────────────────
 _EN_TEMPLATES = {
+    "number": [
+        "Top {n} {title}",
+        "{n} Key Facts About {title}",
+        "{n} Steps to Master {title}",
+        "{n} Things You Need to Know About {title}",
+    ],
+    "authority": [
+        "[Research Backed] {title}",
+        "[Expert Verified] {title}",
+        "[Evidence Based] {title}",
+        "[Clinically Reviewed] {title}",
+    ],
+    "specific": [
+        "{title}: The Evidence-Based Approach in 2026",
+        "{title}: What the Latest Research Actually Shows",
+        "{title}: The Data-Driven Method That Works",
+        "{title}: Expert Consensus and Proven Results",
+    ],
+    "bracket": [
+        "[MUST READ] {title}",
+        "[2026 Guide] {title}",
+        "[Complete Overview] {title}",
+        "[Beginner to Advanced] {title}",
+    ],
+    "benefit": [
+        "How to {title}: A Step-by-Step Action Guide",
+        "{title}: What You Can Do Starting Today",
+        "Understanding {title} - Your Competitive Advantage",
+        "{title}: The Knowledge That Puts You Ahead",
+    ],
+}
+
+# ──────────────────────────────────────────
+# UFO-specific templates (English) — UFO/UAP topics only
+# ──────────────────────────────────────────
+_EN_UFO_TEMPLATES = {
     "number": [
         "Top {n} {title}",
         "{n} Key Facts About {title}",
@@ -37,9 +73,9 @@ _EN_TEMPLATES = {
         "{title} - What Jeffrey Nuccetelli & David Grusch Actually Said",
     ],
     "bracket": [
-        "【Classified Intel】{title}",
+        "[Classified Intel] {title}",
         "[MUST READ] {title}",
-        "【2026 Update】{title}",
+        "[2026 Update] {title}",
         "[Breaking] {title}",
     ],
     "benefit": [
@@ -51,9 +87,45 @@ _EN_TEMPLATES = {
 }
 
 # ──────────────────────────────────────────
-# Technique templates (Japanese)
+# Generic templates (Japanese) — any topic
 # ──────────────────────────────────────────
 _JA_TEMPLATES = {
+    "number": [
+        "知らないと損する{n}つの{title}",
+        "{title}：押さえるべき{n}つのポイント",
+        "{n}分でわかる{title}入門",
+        "{title}で失敗する人の{n}つの共通点",
+    ],
+    "authority": [
+        "【専門家推奨】{title}",
+        "【科学的根拠あり】{title}",
+        "【エビデンスベース】{title}",
+        "【実証済み】{title}",
+    ],
+    "specific": [
+        "{title}：2026年最新エビデンスが示すこと",
+        "{title}：専門家が実際に推奨する方法",
+        "{title}：データが証明する効果的アプローチ",
+        "{title}：実践者が語るリアルな結果",
+    ],
+    "bracket": [
+        "【必読】{title}",
+        "【2026年最新】{title}",
+        "【完全ガイド】{title}",
+        "【初心者〜上級者対応】{title}",
+    ],
+    "benefit": [
+        "{title}を活用する具体的な方法",
+        "今日からできる{title}入門",
+        "{title}をマスターして一歩先へ",
+        "{title}：知識を収益に変える行動計画",
+    ],
+}
+
+# ──────────────────────────────────────────
+# UFO-specific templates (Japanese) — UFO/UAP topics only
+# ──────────────────────────────────────────
+_JA_UFO_TEMPLATES = {
     "number": [
         "知らないと損する{n}つの{title}",
         "{title}：押さえるべき{n}つのポイント",
@@ -87,16 +159,24 @@ _JA_TEMPLATES = {
 }
 
 
+_UFO_KEYWORDS = ["ufo", "uap", "alien", "extraterrestrial", "disclosure", "宇宙人", "未確認", "roswell"]
+
+
 class TitleOptimizer:
     """
     LLMなしでルールベースにタイトルを最適化する。
     各タイトルに5技法のいずれかを適用し、キャッチコピーとして強化する。
+    UFO/UAP トピックのみ UFO 専用テンプレートを使用。それ以外は汎用テンプレート。
     """
 
     def __init__(self, topic: str = "", language: str = "en"):
         self.topic = topic
         self.language = language
-        self._templates = _JA_TEMPLATES if language == "ja" else _EN_TEMPLATES
+        is_ufo = any(kw in topic.lower() for kw in _UFO_KEYWORDS)
+        if language == "ja":
+            self._templates = _JA_UFO_TEMPLATES if is_ufo else _JA_TEMPLATES
+        else:
+            self._templates = _EN_UFO_TEMPLATES if is_ufo else _EN_TEMPLATES
         self._numbers = [3, 5, 7, 10, 47, 12]
 
     def _pick_technique(self, title: str, index: int) -> str:

@@ -55,9 +55,10 @@ class CourseProductionPipeline:
         logger.info("CourseProductionPipeline initialized")
 
     def _invoke_llm(self, prompt: str) -> str:
-        """Call primary LLM (ollama=Groq) with 429 retry, then fall back to Gemini."""
+        """Call primary LLM (Groq) with 429 retry, fall back to Gemini, then Ollama (local)."""
         _rate_limit_keywords = ("429", "rate_limit", "rate limit", "quota", "too many requests")
 
+        # Tier 1: Groq (self.ollama = Groq LangChain client, legacy naming)
         if self.ollama:
             for attempt in range(2):
                 try:
@@ -76,6 +77,7 @@ class CourseProductionPipeline:
                     logger.warning(f"Primary LLM failed (attempt {attempt + 1}): {e}")
                     break
 
+        # Tier 2: Gemini
         if self.gemini_client:
             try:
                 response = self.gemini_client.invoke(prompt)
@@ -85,6 +87,30 @@ class CourseProductionPipeline:
                     return content
             except Exception as e2:
                 logger.warning(f"Gemini fallback also failed: {e2}")
+
+        # Tier 3: Ollama (local, direct REST — 5s connect, 180s read max)
+        # Truncate long prompts to 3000 chars so CPU inference stays within timeout
+        try:
+            import requests as _req, os as _os
+            _ollama_url = f"{_os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/chat"
+            _ollama_prompt = prompt[:3000] if len(prompt) > 3000 else prompt
+            _resp = _req.post(
+                _ollama_url,
+                json={
+                    "model": "llama3",
+                    "messages": [{"role": "user", "content": _ollama_prompt}],
+                    "stream": False,
+                    "options": {"num_ctx": 2048, "temperature": 0.3, "num_predict": 1500},
+                },
+                timeout=(5, 180),
+            )
+            if _resp.status_code == 200:
+                result = _resp.json().get("message", {}).get("content", "")
+                if result and result.strip():
+                    logger.info("Ollama Tier-3 local fallback succeeded")
+                    return result
+        except Exception as e3:
+            logger.warning(f"Ollama Tier-3 fallback also failed: {e3}")
 
         return ""
     
@@ -277,24 +303,42 @@ class CourseProductionPipeline:
                 logger.info("[D1] No 'research_*.md' found. Returning None (contamination guard active).")
                 return None
             
-            # Match topic keywords to check for relevance
-            keywords = [k.lower() for k in topic.split() if len(k) > 1]
+            # Match topic keywords — min length 4 to avoid stop-words like "for","in","the"
+            _stop = {"and","for","the","with","from","that","this","are","its","per"}
+            keywords = [k.lower() for k in topic.split() if len(k) >= 4 and k.lower() not in _stop]
             if not keywords: keywords = [topic.lower()]
+
+            # UFO/cross-topic contamination markers for research file guard
+            _ufo_markers = [
+                "roswell", "ロズウェル", "disclosure", "uap", " ufo", "grusch",
+                "trump", "大統領令", "内部告発", "極秘", "classified", "whistleblower",
+                "top secret", "insider", "リーク", "暴露", "機密", "intelligence report",
+                "pentagon confirmed", "breaking:", "[breaking]",
+            ]
+            ufo_topic = any(kw in topic.lower() for kw in ["ufo", "uap", "alien", "宇宙人", "未確認", "disclosure"])
 
             # Sort by modification time (latest first)
             files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-            
+
             # Check last 10 files for topically relevant content
             for latest_file in files[:10]:
                 with open(latest_file, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    
+
                     # Contamination Guard: Exclude tests, failure reports, or extremely short files
                     is_test = "test" in latest_file.name.lower() or "integration test" in content.lower()[:500]
                     is_failure = "failure report" in content.lower()[:200] or "status: FAILED" in content
                     if is_test or is_failure or len(content) < 300:
                         logger.info(f"[GUARD] Contamination blocked: {latest_file.name} (Test:{is_test}, Fail:{is_failure}, Len:{len(content)})")
                         MonetizationMeasure.log_event("contamination_blocked", {"file": latest_file.name, "reason": "test_or_fail"})
+                        continue
+
+                    # Cross-topic UFO guard: skip UFO research files for non-UFO topics
+                    content_head = content.lower()[:3000]
+                    ufo_in_file = any(m in content_head for m in _ufo_markers)
+                    if ufo_in_file and not ufo_topic:
+                        logger.warning(f"[GUARD] UFO research file blocked for non-UFO topic '{topic}': {latest_file.name}")
+                        MonetizationMeasure.log_event("contamination_blocked", {"file": latest_file.name, "reason": "ufo_cross_topic"})
                         continue
 
                     # Relevance check: Does the filename or content match at least one keyword?
