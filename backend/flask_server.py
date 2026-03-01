@@ -2362,6 +2362,17 @@ def productize_rewrite():
             f"- Write in English.\n"
             f"- Output only the rewritten content — no preamble, no explanation."
         )
+    # Use course_gen_global._invoke_llm() — has Groq→Gemini fallback built in
+    pipeline = get_or_init_pipeline()
+    if pipeline:
+        try:
+            rewritten = pipeline._invoke_llm(prompt)
+            if rewritten and rewritten.strip():
+                return jsonify({"status": "success", "rewritten": rewritten.strip()}), 200
+        except Exception as e:
+            logger.warning(f"[REWRITE] pipeline._invoke_llm failed: {e}")
+
+    # Direct Groq fallback (when pipeline not available)
     try:
         import os as _os
         from groq import Groq as _Groq
@@ -2374,7 +2385,7 @@ def productize_rewrite():
         rewritten = resp.choices[0].message.content.strip()
         return jsonify({"status": "success", "rewritten": rewritten}), 200
     except Exception as e:
-        logger.error(f"[REWRITE] Groq error: {e}")
+        logger.error(f"[REWRITE] All LLMs failed: {e}")
         return jsonify({"error": str(e)}), 500
 
 
