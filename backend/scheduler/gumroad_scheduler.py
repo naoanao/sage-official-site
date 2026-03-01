@@ -148,6 +148,15 @@ Return ONLY valid JSON (no markdown):
     # ── SNS queue ─────────────────────────────────────────────────────────────
 
     def _queue_sns_post(self, bs_text: str, ig_caption: str, topic: str) -> None:
+        # Generate product thumbnail (Gemini → LoremFlickr fallback)
+        image_url = None
+        try:
+            from backend.integrations.image_generation import image_gen_enhanced
+            image_url = image_gen_enhanced.generate_thumbnail(topic)
+            logger.info(f"[GUMROAD] Thumbnail generated: {image_url[:60]}")
+        except Exception as e:
+            logger.warning(f"[GUMROAD] Thumbnail generation skipped: {e}")
+
         job = {
             "id": f"gumroad_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
             "type": "pr_post",
@@ -155,7 +164,7 @@ Return ONLY valid JSON (no markdown):
             "topic": topic,
             "ig_caption": ig_caption,
             "bs_text": bs_text,
-            "image_path": None,
+            "image_path": image_url,
             "status": "pending",
             "created_at": datetime.utcnow().isoformat(),
         }
