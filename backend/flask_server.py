@@ -56,6 +56,13 @@ print(f"[KEY] NOTION_API_KEY={'SET' if os.getenv('NOTION_API_KEY') else 'NOT SET
 print(f"[KEY] TELEGRAM_BOT_TOKEN={'SET' if os.getenv('TELEGRAM_BOT_TOKEN') else 'NOT SET'}")
 print(f"[KEY] BLUESKY_HANDLE={'SET' if os.getenv('BLUESKY_HANDLE') else 'NOT SET'}")
 
+# EnvGuardian: バックアップ & API Key検証
+try:
+    from backend.utils.env_guardian import env_guardian
+    env_guardian.run()
+except Exception as _eg_err:
+    print(f"[WARN] EnvGuardian failed: {_eg_err}")
+
 # パス設定 (モジュールが見つかるように)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 

@@ -583,30 +583,88 @@ Content:"""
     # ──────────────────────────────────────────────────────────────────────────
 
     def _generate_image_prompt(self, section_title: str, topic: str, target_market: str = "us") -> str:
-        """セクションタイトルから最適な画像プロンプトを生成"""
+        """セクションタイトルから最適な画像プロンプトを生成（複数バリエーションからランダム選択）"""
+        import random as _random
         ufo_visual_map = {
-            "基礎知識":   "documentary-style infographic showing UFO sighting timeline from 1940s to 2026, clean dark background, data visualization, government seals",
-            "最新":       "US Congress hearing room, officials testifying, C-SPAN style photography, overhead lighting, serious atmosphere",
-            "議会":       "US Capitol building at night with dramatic lighting, official government seal overlays, newspaper headline style",
-            "真実":       "declassified document aesthetic, redacted text visible, official stamps, freedom of information act style",
-            "影響":       "world map with UAP incident markers, globe perspective, dark blue background, data points glowing",
-            "役割":       "person looking at night sky through telescope, stars and one mysterious light, cinematic mood",
-            "商品化":     "digital creator workspace, laptop showing UFO content, Gumroad interface visible",
-            "証拠":       "radar screen with unidentified blip, military control room aesthetic, green phosphor display",
-            "証人":       "press conference microphone in front of blurred official, dramatic side lighting, documentary style",
-            "公開":       "government file boxes being opened, sunlight streaming in, official seal visible",
-            "timeline":   "dramatic infographic timeline on dark background, military green and white text",
-            "confirmed":  "official government seal and document overlay, high contrast black and white photography",
-            "witnesses":  "silhouette of person against starfield, documentary interview style lighting",
-            "political":  "Capitol building reflection in water, twilight blue hour, political drama aesthetic",
-            "action":     "person at desk with multiple screens showing government data, focused determination",
+            "基礎知識":   [
+                "documentary-style infographic showing UFO sighting timeline from 1940s to 2026, clean dark background, data visualization, government seals",
+                "Pentagon classified documents with redacted text, dramatic lighting, photorealistic, 4K",
+            ],
+            "最新":       [
+                "US Congress hearing room, officials testifying, C-SPAN style photography, overhead lighting, serious atmosphere",
+                "Military officer testifying at Congressional hearing, serious expression, wide angle lens, photorealistic",
+            ],
+            "議会":       [
+                "US Capitol building at night with dramatic lighting, official government seal overlays, newspaper headline style",
+                "Senate chamber during UAP disclosure vote, wide angle, dramatic overhead lighting, photorealistic",
+            ],
+            "真実":       [
+                "declassified document aesthetic, redacted text visible, official stamps, freedom of information act style",
+                "classified file folder labeled TOP SECRET with UAP evidence photos partially visible, cinematic lighting",
+            ],
+            "影響":       [
+                "world map with UAP incident markers, globe perspective, dark blue background, data points glowing",
+                "global news broadcast studio showing UAP disclosure announcement, multiple screens, photorealistic",
+            ],
+            "役割":       [
+                "person looking at night sky through telescope, stars and one mysterious light, cinematic mood",
+                "citizen journalist filming glowing orb in night sky with smartphone, authentic documentary style",
+            ],
+            "商品化":     [
+                "digital creator workspace, laptop showing UFO research content, professional desk setup, warm lighting",
+                "online course dashboard with UFO topic thumbnails, modern UI, laptop screen close-up",
+            ],
+            "証拠":       [
+                "radar screen with unidentified blip, military control room aesthetic, green phosphor display",
+                "Navy FLIR thermal camera footage style showing UAP orb, authentic military video overlay, grainy",
+            ],
+            "証人":       [
+                "press conference microphone in front of blurred official, dramatic side lighting, documentary style",
+                "whistleblower silhouette in front of window, backlit dramatic lighting, anonymous interview aesthetic",
+            ],
+            "公開":       [
+                "government file boxes being opened, sunlight streaming in, official seal visible",
+                "National Archives reading room, researchers examining declassified UFO files, photorealistic",
+            ],
+            "timeline":   [
+                "dramatic infographic timeline on dark background, military green and white text, 1947-2026",
+                "historical newspaper montage showing UFO headlines from 1947 to 2026, sepia to color transition",
+            ],
+            "confirmed":  [
+                "official government seal and document overlay, high contrast black and white photography",
+                "Pentagon press briefing room, official at podium confirming UAP existence, photorealistic",
+            ],
+            "witnesses":  [
+                "silhouette of person against starfield, documentary interview style lighting",
+                "group of military veterans seated at congressional hearing table, serious atmosphere, wide shot",
+            ],
+            "political":  [
+                "Capitol building reflection in water, twilight blue hour, political drama aesthetic",
+                "bipartisan congressional committee meeting on UAP transparency, overhead angle, documentary style",
+            ],
+            "action":     [
+                "person at desk with multiple screens showing government data, focused determination",
+                "researcher pinning UAP evidence to investigation board, thriller movie aesthetic, dramatic lighting",
+            ],
+            "Yemen":      [
+                "military ship radar room at night, operators watching screens, green glow, photorealistic",
+                "Navy vessel in combat zone, night operations, radar display showing unidentified contact",
+            ],
+            "orb":        [
+                "glowing spherical UAP hovering over ocean at night, military vessel in background, authentic footage style",
+                "FLIR thermal camera view of luminous sphere UAP, authentic military overlay graphics",
+            ],
+            "disclosure": [
+                "government facility with classified files being transferred to public archives, sunlight, hopeful",
+                "press conference with 'DECLASSIFIED' stamp overlay, officials announcing UAP transparency, wide shot",
+            ],
         }
         prompt_base = "photorealistic, high quality, editorial style, 16:9 aspect ratio"
         if target_market == "us":
             prompt_base += ", American documentary style, professional journalism photography"
-        for keyword, visual in ufo_visual_map.items():
+        for keyword, visuals in ufo_visual_map.items():
             if keyword in section_title:
-                return f"{visual}, {prompt_base}"
+                return f"{_random.choice(visuals)}, {prompt_base}"
         return f"dramatic documentary photography related to: {section_title}, dark moody atmosphere, cinematic, {prompt_base}"
 
     def _generate_section_images(self, sections: list, topic: str, 
