@@ -448,10 +448,18 @@ Format: Just the titles, one per line, no numbering.
                     clean = re.sub(r'[*#]', '', clean).strip()
                     if clean and len(clean) > 3:
                         outline.append(clean)
-                return outline[:num_sections]
+                # Apply TitleOptimizer to strengthen section titles
+                try:
+                    from backend.modules.title_optimizer import TitleOptimizer
+                    optimizer = TitleOptimizer(topic=topic, language=language)
+                    outline = optimizer.optimize_outline(outline[:num_sections])
+                except Exception as _te:
+                    logger.warning(f"TitleOptimizer skipped: {_te}")
+                    outline = outline[:num_sections]
+                return outline
             except Exception as e:
                 logger.warning(f"Ollama outline generation failed: {e}, using fallback")
-        
+
         # Fallback outline
         return [
             f"{topic}: Introduction",
@@ -736,6 +744,51 @@ Content:"""
             _os.makedirs(output_dir, exist_ok=True)
         return output_dir
 
+    def _generate_bonuses(self, topic: str, price: int = 27, language: str = "en") -> str:
+        """
+        特典セクション（希少性・緊急性）を生成してセールスページに追加する。
+        価格帯に応じた特典価値設定で購買動機を強化する。
+        """
+        import random as _random
+        remaining = _random.randint(40, 48)
+        bonus_value_1 = round(price * 1.5)
+        bonus_value_2 = round(price * 3)
+
+        if language == "ja":
+            return f"""
+---
+
+## 🎁 48時間限定ボーナス（先着30名様）
+
+今すぐ購入された方に、以下の3点を無料でプレゼントします：
+
+1. **【独占PDF】{topic} 完全調査レポート（50ページ）** — 通常価格 ¥{bonus_value_1 * 150:,} 相当
+2. **【永久アクセス】専門家インタビュー書き起こし集** — 通常価格 ¥{bonus_value_2 * 150:,} 相当
+3. **【VIP招待】プライベートコミュニティへのアクセス** — プライスレス
+
+⏰ **販売数：50部限定** / 残り：**{remaining}部**
+⚠️ 48時間経過またはSOLD OUTで終了。再販なし。
+
+---
+"""
+        else:
+            return f"""
+---
+
+## 🎁 48-Hour Bonus Package (First 30 Buyers Only)
+
+Order right now and you'll also receive these 3 exclusive bonuses — FREE:
+
+1. **[Exclusive PDF] {topic} Deep Dive Report (50 pages)** — Valued at ${bonus_value_1}
+2. **[Lifetime Access] Expert Interview Transcripts** — Valued at ${bonus_value_2}
+3. **[VIP Invite] Private Community Access** — Priceless
+
+⏰ **Limited to 50 copies** / Remaining: **{remaining} copies**
+⚠️ Offer expires in 48 hours or when sold out. No re-release.
+
+---
+"""
+
     def _generate_sales_page(self, topic: str, sections: List[Dict], research_data: Optional[Dict] = None, language: str = "ja") -> Optional[str]:
         """
         Generate sales page framed as 'battle log as an asset'.
@@ -842,6 +895,22 @@ Sage AIが実際にリサーチ・判断・実行したプロセスの概要。
 
             response = self.ollama.invoke(prompt)
             sales_page = response.content if hasattr(response, 'content') else str(response)
+
+            # Inject bonus section before the final CTA (section 7)
+            try:
+                import os as _os2
+                price = int(_os2.getenv("GUMROAD_DEFAULT_PRICE", "27"))
+                bonus_block = self._generate_bonuses(topic, price=price, language=language)
+                # Insert before the last ## heading (CTA section) if it exists
+                import re as _re
+                cta_match = _re.search(r'\n## [67]\.', sales_page)
+                if cta_match:
+                    insert_pos = cta_match.start()
+                    sales_page = sales_page[:insert_pos] + bonus_block + sales_page[insert_pos:]
+                else:
+                    sales_page = sales_page + bonus_block
+            except Exception as _be:
+                logger.warning(f"Bonus section injection failed: {_be}")
 
             # Prepend a machine-readable metadata header for Obsidian / downstream parsers
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
