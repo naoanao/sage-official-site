@@ -27,18 +27,19 @@ class CourseProductionPipeline:
     - Obsid ian storage
     """
     
-    def __init__(self, ollama_client=None, image_agent=None, obsidian=None, gumroad_generator=None, fish_audio=None, brain=None, groq_client=None, memory=None, **kwargs):
+    def __init__(self, ollama_client=None, image_agent=None, obsidian=None, gumroad_generator=None, fish_audio=None, brain=None, groq_client=None, memory=None, gemini_client=None, **kwargs):
         """
         Initialize with existing components
 
         Args:
-            ollama_client: Ollama LLM client (from orchestrator)
+            ollama_client: Primary LLM client (Groq/Ollama via orchestrator)
             image_agent: ImageAgent instance
             obsidian: ObsidianConnector instance
             gumroad_generator: GumroadPageGenerator instance
             fish_audio: FishAudioIntegration instance
             brain: NeuromorphicBrain instance
-            groq_client: Groq LLM client
+            groq_client: Groq LLM client (direct)
+            gemini_client: Gemini LLM client (fallback when Groq 429)
             memory: SageMemory instance for semantic search and storage
         """
         self.ollama = ollama_client
@@ -48,8 +49,30 @@ class CourseProductionPipeline:
         self.fish_audio = fish_audio
         self.brain = brain
         self.groq_client = groq_client
+        self.gemini_client = gemini_client
         self.memory = memory
         logger.info("CourseProductionPipeline initialized")
+
+    def _invoke_llm(self, prompt: str) -> str:
+        """Call primary LLM (ollama=Groq), fall back to Gemini on 429."""
+        if self.ollama:
+            try:
+                response = self.ollama.invoke(prompt)
+                return response.content if hasattr(response, 'content') else str(response)
+            except Exception as e:
+                if "429" in str(e) or "rate_limit" in str(e).lower():
+                    logger.warning(f"Primary LLM rate-limited (429), trying Gemini fallback")
+                else:
+                    logger.warning(f"Primary LLM failed: {e}, trying Gemini fallback")
+        if self.gemini_client:
+            try:
+                response = self.gemini_client.invoke(prompt)
+                content = response.content if hasattr(response, 'content') else str(response)
+                logger.info("Gemini fallback LLM succeeded")
+                return content
+            except Exception as e2:
+                logger.warning(f"Gemini fallback also failed: {e2}")
+        return ""
     
     def generate_course(self, topic: str, num_sections: int = 5, generate_narration: bool = False, reference_audio: str = None, language: str = 'auto', **kwargs) -> Dict:
         """
@@ -456,11 +479,10 @@ Generate exactly {num_sections} section titles.
 Format: Just the titles, one per line, no numbering.
 """
         
-        if self.ollama:
+        import re
+        content = self._invoke_llm(prompt)
+        if content:
             try:
-                import re
-                response = self.ollama.invoke(prompt)
-                content = response.content if hasattr(response, 'content') else str(response)
                 # Filter out garbage lines
                 lines = [line.strip() for line in content.split('\n') if line.strip()]
                 # Remove numbering and markdown markers
@@ -480,7 +502,7 @@ Format: Just the titles, one per line, no numbering.
                     outline = outline[:num_sections]
                 return outline
             except Exception as e:
-                logger.warning(f"Ollama outline generation failed: {e}, using fallback")
+                logger.warning(f"Outline parse failed: {e}, using fallback")
 
         # Fallback outline
         return [
@@ -556,13 +578,7 @@ SECTION ({i}/{len(outline)}): {title}
 
 Content:"""
             
-            content = ""
-            if self.ollama:
-                try:
-                    response = self.ollama.invoke(prompt)
-                    content = response.content if hasattr(response, 'content') else str(response)
-                except Exception as e:
-                    logger.warning(f"Ollama section generation failed: {e}")
+            content = self._invoke_llm(prompt)
             
             if not content:
                 content = f"**{title}**\n\nThis section covers important aspects of {title}. Key concepts will be explained with practical examples and real-world applications."
@@ -821,8 +837,8 @@ Order right now and you'll also receive these 3 exclusive bonuses — FREE:
         Proof-of-work is the product itself.
         """
 
-        if not self.ollama:
-            logger.warning("Ollama not available for sales page generation")
+        if not self.ollama and not self.gemini_client:
+            logger.warning("No LLM available for sales page generation")
             return None
 
         try:
@@ -915,8 +931,9 @@ Sage AIが実際にリサーチ・判断・実行したプロセスの概要。
 出力はMarkdownのみ。余分な前置き、解説、挨拶などは一切不要。
 """
 
-            response = self.ollama.invoke(prompt)
-            sales_page = response.content if hasattr(response, 'content') else str(response)
+            sales_page = self._invoke_llm(prompt)
+            if not sales_page:
+                raise RuntimeError("All LLMs returned empty for sales page")
 
             # Inject bonus section before the final CTA (section 7)
             try:
