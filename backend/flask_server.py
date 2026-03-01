@@ -2429,7 +2429,13 @@ def productize_regenerate_images():
         images = {}
         for section in sections:
             title = section.get('title', '')
-            prompt = f"{title}, {base_style}, photorealistic, high quality, 16:9"
+            # Use pipeline's topic-aware image prompt so LoremFlickr gets English topic keywords
+            # (prevents Japanese section titles from becoming useless LoremFlickr keywords)
+            if course_gen_global and hasattr(course_gen_global, '_generate_image_prompt'):
+                base_prompt = course_gen_global._generate_image_prompt(title, topic)
+                prompt = f"{base_prompt}, {base_style}" if base_style else base_prompt
+            else:
+                prompt = f"{base_style}, photorealistic, high quality, 16:9" if base_style else f"{title}, photorealistic, high quality, 16:9"
             try:
                 url = image_gen_enhanced.generate_social_media_image(prompt, platform="twitter")
                 images[title] = {"type": "generated", "url": url, "prompt": prompt}
