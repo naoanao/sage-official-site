@@ -648,29 +648,41 @@ const SageOS = () => {
                                     </button>
                                 </div>
 
-                                {/* Visual Assets status */}
-                                {generateData.images && (
-                                    <div className="p-4 bg-slate-900/60 border border-white/10 rounded-2xl transition-all">
+                                {/* Visual Assets */}
+                                {generateData.images && Object.keys(generateData.images).length > 0 && (
+                                    <div className="p-4 bg-slate-900/60 border border-white/10 rounded-2xl">
                                         <div className="text-slate-400 text-xs font-bold mb-3 uppercase tracking-widest flex items-center gap-2">
-                                            <FiActivity className="text-blue-400" /> Visual Assets Status
+                                            <FiActivity className="text-blue-400" /> Visual Assets
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="grid grid-cols-2 gap-3">
                                             {Object.entries(generateData.images).map(([title, data]) => (
-                                                <div key={title} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
-                                                    <span className="text-slate-300 text-xs truncate max-w-[240px]">{title}</span>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-tighter ${data.type === 'generated'
-                                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                                        }`}>
-                                                        {data.type === 'generated' ? '✓ Image Generated' : 'Prompt Ready'}
-                                                    </span>
+                                                <div key={title} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                                                    {data.type === 'generated' && data.url ? (
+                                                        <a href={data.url} target="_blank" rel="noopener noreferrer">
+                                                            <img
+                                                                src={data.url}
+                                                                alt={title}
+                                                                className="w-full h-28 object-cover hover:opacity-90 transition-opacity"
+                                                                onError={e => { e.target.style.display = 'none'; }}
+                                                            />
+                                                        </a>
+                                                    ) : (
+                                                        <div className="w-full h-28 flex items-center justify-center bg-slate-800/60">
+                                                            <span className="text-slate-500 text-xs">Prompt Only</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="px-2 py-1.5">
+                                                        <p className="text-slate-300 text-[10px] truncate">{title}</p>
+                                                        {data.prompt && (
+                                                            <p className="text-slate-600 text-[9px] truncate mt-0.5">{data.prompt}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
-                                        {/* Guidance for prompt-only assets */}
                                         {Object.values(generateData.images).some(d => d.type === 'prompt_only') && (
                                             <p className="text-slate-500 text-[10px] mt-3 italic">
-                                                Tip: プロンプト集(image_prompts.md)が生成されました。Midjourney等で利用可能です。
+                                                ※ 一部の画像はプロンプトのみ。image_prompts.md をMidjourney等で利用可能。
                                             </p>
                                         )}
                                     </div>

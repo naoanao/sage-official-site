@@ -618,42 +618,32 @@ Content:"""
         Returns: {section_title: {type, path, prompt}}
         """
         import os as _os
+        from backend.integrations.image_generation import image_gen_enhanced
         image_results = {}
         output_dir = self._get_output_dir(topic)
-        
+
         for section in sections:
             title = section.get("title", "")
-            
+
             # 画像プロンプト生成（英語）
             prompt = self._generate_image_prompt(title, topic, target_market)
-            
-            # 画像生成を試みる（image_agentがある場合）
-            if self.image_agent and hasattr(self.image_agent, 'generate'):
-                try:
-                    image_path = self.image_agent.generate(
-                        prompt=prompt,
-                        output_dir=output_dir,
-                        filename=f"section_{sections.index(section)+1}_visual"
-                    )
-                    image_results[title] = {
-                        "type": "generated",
-                        "path": image_path,
-                        "prompt": prompt
-                    }
-                    logger.info(f"[IMAGE] Generated for: {title}")
-                except Exception as e:
-                    logger.warning(f"[IMAGE] Generation failed ({e}), saving prompt only")
-                    image_results[title] = {
-                        "type": "prompt_only",
-                        "prompt": prompt
-                    }
-            else:
-                # image_agentがない場合：プロンプトをファイルとして保存
+
+            # Gemini → Imgur → LoremFlickr の既存パイプラインで画像生成
+            try:
+                public_url = image_gen_enhanced.generate_social_media_image(prompt, platform="twitter")
                 image_results[title] = {
-                    "type": "prompt_only", 
+                    "type": "generated",
+                    "url": public_url,
                     "prompt": prompt
                 }
-        
+                logger.info(f"[IMAGE] Generated for: {title[:50]} → {public_url[:60]}")
+            except Exception as e:
+                logger.warning(f"[IMAGE] Generation failed ({e}), saving prompt only")
+                image_results[title] = {
+                    "type": "prompt_only",
+                    "prompt": prompt
+                }
+
         return image_results
 
     def _write_image_prompts_file(self, image_results: dict, output_dir: str):
