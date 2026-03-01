@@ -697,9 +697,48 @@ Content:"""
     # IMAGE PROMPT GENERATION (works without image_agent — always produces prompts)
     # ──────────────────────────────────────────────────────────────────────────
 
+    def _get_topic_visual_keywords(self, topic: str) -> str:
+        """Return LoremFlickr-friendly English keywords based on topic category."""
+        t = topic.lower()
+        if any(k in t for k in ["money","finance","invest","revenue","profit","income","sales","business","startup","entrepreneur","お金","投資","収益","マネー","利益","資産","売上","稼"]):
+            return "money finance business success wealth"
+        if any(k in t for k in ["health","cbd","wellness","supplement","diet","yoga","meditation","fitness","exercise","gym","weight","muscle","protein","健康","サプリ","ダイエット","筋肉","ヨガ"]):
+            return "health wellness nature lifestyle green"
+        if any(k in t for k in ["ai","artificial","automation","programming","code","software","tech","computer","digital","robot","machine","データ","テクノロジー","プログラミング","自動"]):
+            return "technology computer digital innovation future"
+        if any(k in t for k in ["real estate","property","house","apartment","rent","mortgage","不動産","物件","マンション","住宅"]):
+            return "architecture building home urban modern"
+        if any(k in t for k in ["travel","trip","vacation","journey","adventure","旅行","観光","旅"]):
+            return "travel adventure landscape nature tourism"
+        if any(k in t for k in ["food","cooking","recipe","restaurant","cuisine","料理","食","グルメ","レシピ"]):
+            return "food cooking recipe kitchen cuisine"
+        if any(k in t for k in ["beauty","fashion","makeup","skincare","cosmetic","美容","ファッション","スキンケア"]):
+            return "beauty fashion lifestyle cosmetic elegant"
+        if any(k in t for k in ["learn","study","course","teach","education","skill","training","学習","スキル","教育","学ぶ"]):
+            return "education study books knowledge learning"
+        return "business professional success modern lifestyle"
+
     def _generate_image_prompt(self, section_title: str, topic: str, target_market: str = "us") -> str:
         """セクションタイトルから最適な画像プロンプトを生成（複数バリエーションからランダム選択）"""
         import random as _random
+
+        # UFO/UAP トピックのみ UFO ビジュアルマップを使用
+        _is_ufo = any(kw in topic.lower() for kw in ["ufo", "uap", "alien", "extraterrestrial", "disclosure", "宇宙人", "未確認"])
+        if not _is_ufo:
+            # Non-UFO: トピック関連キーワード + セクション番号で異なる構図
+            _kw = self._get_topic_visual_keywords(topic)
+            _styles = [
+                f"{_kw}, professional photography, bright modern background",
+                f"{_kw}, clean minimal style, soft lighting, editorial",
+                f"{_kw}, lifestyle photography, natural light, aspirational",
+                f"{_kw}, flat lay composition, white background, commercial",
+                f"{_kw}, documentary style, authentic real world setting",
+            ]
+            _idx = hash(section_title) % len(_styles)
+            prompt_base = "photorealistic, high quality, 16:9 aspect ratio"
+            # Include section title so each section gets a unique MD5 seed in LoremFlickr
+            return f"{_styles[_idx]}, subject: {section_title[:40]}, {prompt_base}"
+
         ufo_visual_map = {
             "基礎知識":   [
                 "documentary-style infographic showing UFO sighting timeline from 1940s to 2026, clean dark background, data visualization, government seals",

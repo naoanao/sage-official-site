@@ -146,10 +146,21 @@ class ImageGenerationEnhanced:
         import hashlib
         # Skip generic/technical prompt terms, extract topic keywords
         noise_words = {
-            'a', 'an', 'the', 'and', 'or', 'for', 'in', 'on', 'at', 'of', 'to', 'with',
+            # Articles / prepositions
+            'a', 'an', 'the', 'and', 'or', 'for', 'in', 'on', 'at', 'of', 'to', 'with', 'its', 'are', 'this', 'that',
+            # Generic image style descriptors (not topic-relevant)
             'high', 'quality', 'style', 'professional', 'scene', 'related', 'photorealistic',
             'dramatic', 'lighting', 'image', 'photo', 'picture', 'add', 'please', 'make',
-            'generate', 'create', '16:9', 'x675', 'x1080', 'x1200', 'aesthetic', 'vibrant',
+            'generate', 'create', 'aesthetic', 'vibrant', 'colors', 'color',
+            'cinematic', 'documentary', 'photography', 'editorial', 'realistic',
+            'moody', 'dark', 'clean', 'minimal', 'modern', 'background', 'natural',
+            'bright', 'soft', 'flat', 'lay', 'composition', 'white', 'light',
+            'commercial', 'authentic', 'real', 'world', 'setting', 'ratio',
+            'aspect', 'resolution', 'format', 'shot', 'view', 'angle', 'wide',
+            'social', 'media', 'course', 'slide', 'title', 'text', 'design',
+            'educational', 'minimal', 'twitter', 'instagram', 'platform',
+            # Size strings
+            '16:9', 'x675', 'x1080', 'x1200', '1200', '675', '1080',
         }
         words = re.sub(r'[^\w\s]', ' ', text.lower()).split()
         keywords = [w for w in words if len(w) >= 3 and w not in noise_words][:3]
