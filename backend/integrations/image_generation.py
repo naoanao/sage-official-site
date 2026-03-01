@@ -5,11 +5,11 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-IMGUR_CLIENT_ID = "546c25a424d6a62"
 GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation"
 # Hugging Face Flux — requires HF_TOKEN (router.huggingface.co requires auth as of 2026-03)
 HF_FLUX_MODEL = "black-forest-labs/FLUX.1-schnell"
 HF_INFERENCE_URL = f"https://router.huggingface.co/hf-inference/models/{HF_FLUX_MODEL}"
+IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload"
 
 PLATFORM_SIZES = {
     "instagram": (1080, 1080),
@@ -22,20 +22,20 @@ PLATFORM_SIZES = {
 class ImageGenerationEnhanced:
     """
     Sage Image Generation.
-    Pipeline: HuggingFace Flux → Imgur  |  Gemini → Imgur  |  LoremFlickr fallback.
+    Pipeline: HuggingFace Flux → imgbb  |  Gemini → imgbb
 
     Tier 1: HuggingFace Inference API (FLUX.1-schnell)
-      - Free, no billing quota, token optional (anonymous works with rate limit)
-      - Returns raw PNG bytes → upload to Imgur → public URL
+      - Requires HF_TOKEN (router.huggingface.co requires auth as of 2026-03)
+      - Returns raw PNG bytes → upload to imgbb → permanent public URL
     Tier 2: Gemini REST API (gemini-2.0-flash-exp-image-generation)
       - Falls back when HF is slow/rate-limited
-    Tier 3: LoremFlickr (stock photo URL, always works, no upload needed)
     """
 
     def __init__(self):
         self.name = "Sage Image Gen Enhanced"
         self.gemini_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         self.hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
+        self.imgbb_api_key = os.getenv("IMGBB_API_KEY")
 
     # ------------------------------------------------------------------
     # Tier 1: HuggingFace Flux
@@ -57,7 +57,6 @@ class ImageGenerationEnhanced:
             if resp.status_code == 200 and resp.headers.get("content-type", "").startswith("image"):
                 logger.info(f"HF Flux OK ({len(resp.content)} bytes)")
                 return resp.content
-            # Model loading — retry not worth it in scheduler context
             body = resp.json() if resp.content else {}
             logger.warning(f"HF Flux returned {resp.status_code}: {str(body)[:120]}")
         except Exception as e:
@@ -103,51 +102,41 @@ class ImageGenerationEnhanced:
         return None
 
     # ------------------------------------------------------------------
-    # Imgur upload
+    # imgbb upload (replaces Imgur — permanent public URLs)
     # ------------------------------------------------------------------
 
-    def _upload_to_imgur(self, image_bytes: bytes) -> str | None:
-        """Upload image bytes to Imgur anonymously. Returns public URL or None."""
+    def _upload_to_imgbb(self, image_bytes: bytes) -> str | None:
+        """Upload image bytes to imgbb. Returns permanent public URL or None."""
+        if not self.imgbb_api_key:
+            logger.warning("imgbb upload skipped: IMGBB_API_KEY not set")
+            return None
         try:
             b64 = base64.b64encode(image_bytes).decode("utf-8")
             resp = requests.post(
-                "https://api.imgur.com/3/image",
-                headers={"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"},
-                data={"image": b64, "type": "base64"},
+                IMGBB_UPLOAD_URL,
+                data={"key": self.imgbb_api_key, "image": b64},
                 timeout=30,
             )
             data = resp.json()
             if data.get("success"):
-                url = data["data"]["link"]
-                logger.info(f"Imgur upload OK: {url}")
+                url = data["data"]["url"]
+                logger.info(f"imgbb upload OK: {url}")
                 return url
-            logger.warning(f"Imgur upload failed: {data.get('data', {}).get('error')}")
+            logger.warning(f"imgbb upload failed: {data.get('error', {})}")
         except Exception as e:
-            logger.warning(f"Imgur upload error: {e}")
+            logger.warning(f"imgbb upload error: {e}")
         return None
-
-    # ------------------------------------------------------------------
-    # Tier 3: LoremFlickr fallback
-    # ------------------------------------------------------------------
-
-    def _loremflickr_url(self, keyword: str, width: int, height: int) -> str:
-        """Return a LoremFlickr URL (always public, always works). Uses up to 3 keywords for relevance."""
-        STOP_WORDS = {'a', 'an', 'the', 'and', 'or', 'for', 'in', 'on', 'at', 'to', 'of', 'with', 'high', 'quality', 'style', 'professional'}
-        words = [w.lower().strip('.,!?') for w in (keyword or 'technology').split()]
-        keywords = [w for w in words if w and w not in STOP_WORDS and w.isalpha()][:3]
-        safe = ','.join(keywords) if keywords else 'technology'
-        return f"https://loremflickr.com/{width}/{height}/{safe}"
 
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
 
-    def generate_social_media_image(self, text: str, platform: str = "instagram") -> str:
+    def generate_social_media_image(self, text: str, platform: str = "instagram") -> str | None:
         """
-        Generate a social media image and return a public URL.
-        1. HuggingFace Flux (HF_TOKEN required) → Imgur
-        2. Gemini → Imgur
-        3. LoremFlickr fallback (topic keywords for relevance)
+        Generate a social media image and return a permanent public URL.
+        1. HuggingFace Flux (HF_TOKEN required) → imgbb
+        2. Gemini → imgbb
+        Returns None if both tiers fail.
         """
         width, height = PLATFORM_SIZES.get(platform.lower(), (1080, 1080))
         prompt = (
@@ -160,30 +149,28 @@ class ImageGenerationEnhanced:
         # Tier 1: HuggingFace Flux (requires HF_TOKEN)
         img_bytes = self._hf_flux_generate_bytes(prompt)
         if img_bytes:
-            public_url = self._upload_to_imgur(img_bytes)
+            public_url = self._upload_to_imgbb(img_bytes)
             if public_url:
-                logger.info(f"Image ready (HF Flux+Imgur): {public_url}")
+                logger.info(f"Image ready (HF Flux+imgbb): {public_url}")
                 return public_url
 
         # Tier 2: Gemini
         img_bytes = self._gemini_generate_bytes(prompt)
         if img_bytes:
-            public_url = self._upload_to_imgur(img_bytes)
+            public_url = self._upload_to_imgbb(img_bytes)
             if public_url:
-                logger.info(f"Image ready (Gemini+Imgur): {public_url}")
+                logger.info(f"Image ready (Gemini+imgbb): {public_url}")
                 return public_url
-            logger.warning("Imgur upload failed; falling back to LoremFlickr.")
+            logger.warning("imgbb upload failed after Gemini generation.")
 
-        # Tier 3: LoremFlickr fallback — use original topic text for keyword relevance
-        url = self._loremflickr_url(text, width, height)
-        logger.info(f"Image ready (LoremFlickr fallback): {url}")
-        return url
+        logger.warning(f"All image generation tiers failed for: {text[:60]}")
+        return None
 
-    def generate_blog_image(self, topic: str, style: str = "realistic") -> str:
+    def generate_blog_image(self, topic: str, style: str = "realistic") -> str | None:
         prompt = f"{topic}, high quality, professional, {style}, 8k resolution, detailed"
         return self.generate_social_media_image(prompt, platform="twitter")
 
-    def generate_thumbnail(self, video_topic: str) -> str:
+    def generate_thumbnail(self, video_topic: str) -> str | None:
         prompt = f"YouTube thumbnail for {video_topic}, catchy, high contrast, 4k, vibrant colors"
         return self.generate_social_media_image(prompt, platform="twitter")
 
