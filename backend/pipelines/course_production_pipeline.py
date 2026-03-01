@@ -378,9 +378,22 @@ class CourseProductionPipeline:
             try:
                 brain_recall = self.brain.infer(query=topic)
                 if brain_recall and brain_recall.get("response"):
-                    context["brain"] = brain_recall["response"]
-                    logger.info(f"[KNOWLEDGE] Brain pattern recalled "
-                                f"(confidence={brain_recall.get('confidence', '?')})")
+                    brain_text = brain_recall["response"]
+                    # Guard: skip brain context if it contains UFO-specific references
+                    # but the current topic is NOT UFO-related (cross-topic contamination)
+                    ufo_markers = [
+                        "roswell", "ロズウェル", "disclosure", "uap", "ufo", "grusch", "nuccetelli",
+                        "trump", "大統領令", "内部告発", "極秘", "classified", "whistleblower",
+                        "top secret", "insider", "leak", "リーク", "暴露", "機密",
+                    ]
+                    ufo_in_brain = any(m in brain_text.lower() for m in ufo_markers)
+                    ufo_topic = any(kw in topic.lower() for kw in ["ufo", "uap", "alien", "宇宙人", "未確認", "disclosure"])
+                    if ufo_in_brain and not ufo_topic:
+                        logger.warning(f"[KNOWLEDGE] Brain recall contains UFO content but topic='{topic}' is not UFO — skipping to prevent contamination")
+                    else:
+                        context["brain"] = brain_text
+                        logger.info(f"[KNOWLEDGE] Brain pattern recalled "
+                                    f"(confidence={brain_recall.get('confidence', '?')})")
             except Exception as e:
                 logger.warning(f"[KNOWLEDGE] Brain recall failed: {e}")
 
@@ -470,9 +483,11 @@ Adapt section titles to match the topic language and tone.
 {context_block}
 {structure_hint}
 INSTRUCTION:
-1. If SAGE BRAIN pattern is provided, ensure consistency with previous successful structures.
-2. If PRIMARY RESEARCH is provided, prioritize specific findings, dates, and evidence-based trends.
-3. If SEMANTIC MEMORY is provided, incorporate relevant past knowledge.
+1. ALL {num_sections} section titles MUST be directly and specifically about "{topic}".
+   - Do NOT apply narrative structures, dates, names, or events from unrelated topics.
+   - SAGE BRAIN patterns are for STRUCTURAL INSPIRATION only — replace any topic-specific details with "{topic}" equivalents.
+2. If PRIMARY RESEARCH is provided, prioritize specific findings, dates, and evidence-based trends about "{topic}".
+3. If SEMANTIC MEMORY is provided, incorporate only knowledge directly relevant to "{topic}".
 4. Ground the course in 2026 commercial reality.
 {lang_instruction}
 Generate exactly {num_sections} section titles.
@@ -592,36 +607,32 @@ Content:"""
         return sections
     
     def _generate_slides(self, sections: List[Dict]) -> List[Dict]:
-        """Generate slide images"""
+        """Generate slide images using image_gen_enhanced (HF Flux → Gemini → LoremFlickr)"""
+        from backend.integrations.image_generation import image_gen_enhanced
         slides = []
-        
+
         for section in sections:
             logger.info(f"🖼️  Generating slide {section['number']}: {section['title']}")
-            
-            # Professional slide prompt
-            prompt = f"Professional course slide with title '{section['title']}', minimal text, clean design, educational style, high quality"
-            
+
+            prompt = f"Professional course slide, title: '{section['title']}', minimal text, clean educational design, high quality, 16:9"
+
             try:
-                if self.image_agent:
-                    result = self.image_agent.generate_image(prompt)
-                    if result and result.get("status") == "success":
-                        slides.append({
-                            "section": section['number'],
-                            "title": section['title'],
-                            "image_path": result.get("path"),
-                            "image_url": result.get("url")
-                        })
-                        continue
+                url = image_gen_enhanced.generate_social_media_image(prompt, platform="twitter")
+                slides.append({
+                    "section": section['number'],
+                    "title": section['title'],
+                    "image_url": url,
+                    "image_path": None
+                })
+                logger.info(f"[SLIDE] Generated: {section['title'][:40]} → {url[:60] if url else 'None'}")
             except Exception as e:
-                logger.error(f"Slide generation error: {e}")
-            
-            # If image generation fails, still record the section
-            slides.append({
-                "section": section['number'],
-                "title": section['title'],
-                "status": "image_generation_skipped"
-            })
-        
+                logger.warning(f"[SLIDE] Generation failed ({e}), skipping")
+                slides.append({
+                    "section": section['number'],
+                    "title": section['title'],
+                    "status": "image_generation_skipped"
+                })
+
         return slides
     
     # ──────────────────────────────────────────────────────────────────────────
@@ -991,8 +1002,8 @@ Sage AIが実際にリサーチ・判断・実行したプロセスの概要。
             
             # Add slide image reference if available
             slide = next((s for s in slides if s['section'] == section['number']), None)
-            if slide and 'image_path' in slide:
-                content += f"**Slide**: `{slide['image_path']}`\n\n"
+            if slide and slide.get('image_url'):
+                content += f"**Slide**: {slide['image_url']}\n\n"
             
             content += "---\n\n"
         
