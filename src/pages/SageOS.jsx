@@ -4,7 +4,7 @@ import { FiPlay, FiShield, FiDollarSign, FiCpu, FiMessageSquare, FiActivity, FiX
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 
-const api = axios.create({ baseURL: BACKEND_URL });
+const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
 
 const SageOS = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
