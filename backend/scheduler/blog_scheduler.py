@@ -208,6 +208,16 @@ Then write the full article body in Markdown. Use ## for sections, include bulle
     def _queue_sns_post(self, title: str, slug: str) -> None:
         url = f"{SAGE_BASE_URL}/blog/{slug}"
         bs_text = f"📖 New post: {title}\n{url}"
+
+        # Generate blog header image (Gemini → LoremFlickr fallback)
+        image_url = None
+        try:
+            from backend.integrations.image_generation import image_gen_enhanced
+            image_url = image_gen_enhanced.generate_blog_image(title)
+            logger.info(f"[BLOG] Image generated: {image_url[:60]}")
+        except Exception as e:
+            logger.warning(f"[BLOG] Image generation skipped: {e}")
+
         job = {
             "id": f"blog_{slug}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
             "type": "pr_post",
@@ -215,7 +225,7 @@ Then write the full article body in Markdown. Use ## for sections, include bulle
             "topic": title,
             "ig_caption": "",
             "bs_text": bs_text,
-            "image_path": None,
+            "image_path": image_url,
             "status": "pending",
             "created_at": datetime.utcnow().isoformat(),
         }
