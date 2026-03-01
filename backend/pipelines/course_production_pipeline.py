@@ -9,6 +9,7 @@ Features:
 - Obsidian note saving
 """
 import logging
+import time
 from typing import Dict, List, Optional
 from datetime import datetime
 from backend.modules.monetization_measure import MonetizationMeasure
@@ -54,24 +55,37 @@ class CourseProductionPipeline:
         logger.info("CourseProductionPipeline initialized")
 
     def _invoke_llm(self, prompt: str) -> str:
-        """Call primary LLM (ollama=Groq), fall back to Gemini on 429."""
+        """Call primary LLM (ollama=Groq) with 429 retry, then fall back to Gemini."""
+        _rate_limit_keywords = ("429", "rate_limit", "rate limit", "quota", "too many requests")
+
         if self.ollama:
-            try:
-                response = self.ollama.invoke(prompt)
-                return response.content if hasattr(response, 'content') else str(response)
-            except Exception as e:
-                if "429" in str(e) or "rate_limit" in str(e).lower():
-                    logger.warning(f"Primary LLM rate-limited (429), trying Gemini fallback")
-                else:
-                    logger.warning(f"Primary LLM failed: {e}, trying Gemini fallback")
+            for attempt in range(2):
+                try:
+                    response = self.ollama.invoke(prompt)
+                    content = response.content if hasattr(response, 'content') else str(response)
+                    if content and content.strip():
+                        return content
+                    logger.warning(f"Primary LLM returned empty (attempt {attempt + 1})")
+                except Exception as e:
+                    err = str(e).lower()
+                    is_rate_limit = any(k in err for k in _rate_limit_keywords)
+                    if is_rate_limit and attempt == 0:
+                        logger.warning("Groq TPM/quota limit — waiting 15s then retrying once")
+                        time.sleep(15)
+                        continue
+                    logger.warning(f"Primary LLM failed (attempt {attempt + 1}): {e}")
+                    break
+
         if self.gemini_client:
             try:
                 response = self.gemini_client.invoke(prompt)
                 content = response.content if hasattr(response, 'content') else str(response)
-                logger.info("Gemini fallback LLM succeeded")
-                return content
+                if content and content.strip():
+                    logger.info("Gemini fallback LLM succeeded")
+                    return content
             except Exception as e2:
                 logger.warning(f"Gemini fallback also failed: {e2}")
+
         return ""
     
     def generate_course(self, topic: str, num_sections: int = 5, generate_narration: bool = False, reference_audio: str = None, language: str = 'auto', **kwargs) -> Dict:
