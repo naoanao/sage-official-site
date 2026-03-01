@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 IMGUR_CLIENT_ID = "546c25a424d6a62"
 GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation"
-# Hugging Face Flux — free inference, no quota issues (rate-limited but no billing)
+# Hugging Face Flux — requires HF_TOKEN (router.huggingface.co requires auth as of 2026-03)
 HF_FLUX_MODEL = "black-forest-labs/FLUX.1-schnell"
-HF_INFERENCE_URL = f"https://api-inference.huggingface.co/models/{HF_FLUX_MODEL}"
+HF_INFERENCE_URL = f"https://router.huggingface.co/hf-inference/models/{HF_FLUX_MODEL}"
 
 PLATFORM_SIZES = {
     "instagram": (1080, 1080),
@@ -42,10 +42,11 @@ class ImageGenerationEnhanced:
     # ------------------------------------------------------------------
 
     def _hf_flux_generate_bytes(self, prompt: str) -> bytes | None:
-        """Call HuggingFace Inference API (FLUX.1-schnell). Returns PNG bytes or None."""
-        headers = {"Content-Type": "application/json"}
-        if self.hf_token:
-            headers["Authorization"] = f"Bearer {self.hf_token}"
+        """Call HuggingFace Router API (FLUX.1-schnell). Requires HF_TOKEN. Returns PNG bytes or None."""
+        if not self.hf_token:
+            logger.info("HF Flux skipped: HF_TOKEN not set (required since 2026-03)")
+            return None
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.hf_token}"}
         try:
             resp = requests.post(
                 HF_INFERENCE_URL,
@@ -130,9 +131,12 @@ class ImageGenerationEnhanced:
     # ------------------------------------------------------------------
 
     def _loremflickr_url(self, keyword: str, width: int, height: int) -> str:
-        """Return a LoremFlickr URL (always public, always works)."""
-        safe_keyword = keyword.split()[0].lower() if keyword else "technology"
-        return f"https://loremflickr.com/{width}/{height}/{safe_keyword}"
+        """Return a LoremFlickr URL (always public, always works). Uses up to 3 keywords for relevance."""
+        STOP_WORDS = {'a', 'an', 'the', 'and', 'or', 'for', 'in', 'on', 'at', 'to', 'of', 'with', 'high', 'quality', 'style', 'professional'}
+        words = [w.lower().strip('.,!?') for w in (keyword or 'technology').split()]
+        keywords = [w for w in words if w and w not in STOP_WORDS and w.isalpha()][:3]
+        safe = ','.join(keywords) if keywords else 'technology'
+        return f"https://loremflickr.com/{width}/{height}/{safe}"
 
     # ------------------------------------------------------------------
     # Public interface
@@ -141,9 +145,9 @@ class ImageGenerationEnhanced:
     def generate_social_media_image(self, text: str, platform: str = "instagram") -> str:
         """
         Generate a social media image and return a public URL.
-        1. HuggingFace Flux (free, no quota) → Imgur
+        1. HuggingFace Flux (HF_TOKEN required) → Imgur
         2. Gemini → Imgur
-        3. LoremFlickr fallback
+        3. LoremFlickr fallback (topic keywords for relevance)
         """
         width, height = PLATFORM_SIZES.get(platform.lower(), (1080, 1080))
         prompt = (
@@ -153,7 +157,7 @@ class ImageGenerationEnhanced:
 
         logger.info(f"Generating image for: {text[:60]}...")
 
-        # Tier 1: HuggingFace Flux
+        # Tier 1: HuggingFace Flux (requires HF_TOKEN)
         img_bytes = self._hf_flux_generate_bytes(prompt)
         if img_bytes:
             public_url = self._upload_to_imgur(img_bytes)
@@ -170,9 +174,8 @@ class ImageGenerationEnhanced:
                 return public_url
             logger.warning("Imgur upload failed; falling back to LoremFlickr.")
 
-        # Tier 3: LoremFlickr fallback
-        keyword = text.split()[0] if text else "ai"
-        url = self._loremflickr_url(keyword, width, height)
+        # Tier 3: LoremFlickr fallback — use original topic text for keyword relevance
+        url = self._loremflickr_url(text, width, height)
         logger.info(f"Image ready (LoremFlickr fallback): {url}")
         return url
 

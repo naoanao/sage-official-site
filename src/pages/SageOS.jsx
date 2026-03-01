@@ -188,14 +188,17 @@ const SageOS = () => {
     };
 
     // Apply global instruction to all sections + sales page
-    const handleRewriteAll = async () => {
-        if (!globalInstruction.trim()) return;
+    // Can be called with an explicit instruction (preset click) or reads from globalInstruction state
+    const handleRewriteAll = async (overrideInstruction) => {
+        const instruction = overrideInstruction || globalInstruction;
+        if (!instruction.trim()) return;
+        if (overrideInstruction) setGlobalInstruction(overrideInstruction);
         setGlobalRewriting(true);
         try {
             const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
             const rewrites = await Promise.all(
                 editedSections.map(s =>
-                    api.post('/api/productize/rewrite', { content: s.content, instruction: globalInstruction, language: resolvedLang })
+                    api.post('/api/productize/rewrite', { content: s.content, instruction, language: resolvedLang })
                 )
             );
             setEditedSections(prev => prev.map((s, i) =>
@@ -203,7 +206,7 @@ const SageOS = () => {
             ));
             if (editedSalesPage) {
                 const spRes = await api.post('/api/productize/rewrite', {
-                    content: editedSalesPage, instruction: globalInstruction, language: resolvedLang
+                    content: editedSalesPage, instruction, language: resolvedLang
                 });
                 if (spRes.data?.status === 'success') setEditedSalesPage(spRes.data.rewritten);
             }
@@ -721,8 +724,10 @@ const SageOS = () => {
                                             '今すぐできるアクションに変換',
                                             'ありがち失敗パターンを削除'
                                         ].map(preset => (
-                                            <button key={preset} onClick={() => setGlobalInstruction(preset)}
-                                                className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg transition-all">
+                                            <button key={preset}
+                                                onClick={() => handleRewriteAll(preset)}
+                                                disabled={globalRewriting}
+                                                className="text-xs px-2 py-1 bg-white/5 hover:bg-purple-600/30 hover:text-white disabled:opacity-40 text-slate-400 rounded-lg transition-all">
                                                 {preset}
                                             </button>
                                         ))}
