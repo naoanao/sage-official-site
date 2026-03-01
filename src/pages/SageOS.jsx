@@ -187,8 +187,8 @@ const SageOS = () => {
         }
     };
 
-    // Apply global instruction to all sections + sales page
-    // Can be called with an explicit instruction (preset click) or reads from globalInstruction state
+    // Apply global instruction to all sections + sales page + images (always)
+    // LLM on the backend translates the instruction into image style keywords automatically
     const handleRewriteAll = async (overrideInstruction) => {
         const instruction = overrideInstruction || globalInstruction;
         if (!instruction.trim()) return;
@@ -196,19 +196,40 @@ const SageOS = () => {
         setGlobalRewriting(true);
         try {
             const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
-            const rewrites = await Promise.all(
+
+            // Run text rewrites, sales page rewrite, and image regen all in parallel
+            const textRewritePromise = Promise.all(
                 editedSections.map(s =>
                     api.post('/api/productize/rewrite', { content: s.content, instruction, language: resolvedLang })
                 )
             );
+            const salesPageRewritePromise = editedSalesPage
+                ? api.post('/api/productize/rewrite', { content: editedSalesPage, instruction, language: resolvedLang })
+                : Promise.resolve(null);
+            const imageRegenPromise = editedSections.length > 0
+                ? api.post('/api/productize/regenerate_images', {
+                    sections: editedSections,
+                    custom_instruction: instruction,
+                    topic: monetizeTopic
+                })
+                : Promise.resolve(null);
+
+            const [rewritesResult, salesPageResult, imageResult] = await Promise.allSettled([
+                textRewritePromise, salesPageRewritePromise, imageRegenPromise
+            ]);
+            const rewrites = rewritesResult.status === 'fulfilled' ? rewritesResult.value : [];
+            const salesPageRes = salesPageResult.status === 'fulfilled' ? salesPageResult.value : null;
+            const imageRes = imageResult.status === 'fulfilled' ? imageResult.value : null;
+            if (rewritesResult.status === 'rejected') console.error('Text rewrite failed', rewritesResult.reason);
+            if (salesPageResult.status === 'rejected') console.error('Sales page rewrite failed', salesPageResult.reason);
+            if (imageResult.status === 'rejected') console.error('Image regen failed', imageResult.reason);
+
             setEditedSections(prev => prev.map((s, i) =>
                 rewrites[i]?.data?.status === 'success' ? { ...s, content: rewrites[i].data.rewritten } : s
             ));
-            if (editedSalesPage) {
-                const spRes = await api.post('/api/productize/rewrite', {
-                    content: editedSalesPage, instruction, language: resolvedLang
-                });
-                if (spRes.data?.status === 'success') setEditedSalesPage(spRes.data.rewritten);
+            if (salesPageRes?.data?.status === 'success') setEditedSalesPage(salesPageRes.data.rewritten);
+            if (imageRes?.data?.status === 'success' && imageRes.data.images) {
+                setGenerateData(prev => ({ ...prev, images: imageRes.data.images }));
             }
             setGlobalInstruction('');
         } catch (e) {

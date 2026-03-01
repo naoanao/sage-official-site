@@ -2378,6 +2378,61 @@ def productize_rewrite():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/productize/regenerate_images', methods=['POST'])
+def productize_regenerate_images():
+    """Regenerate course images. Uses LLM to translate any user instruction into image style keywords."""
+    data = request.get_json(silent=True) or {}
+    sections = data.get('sections', [])
+    custom_instruction = data.get('custom_instruction', '').strip()
+    topic = data.get('topic', '')
+
+    if not sections:
+        return jsonify({"error": "sections required"}), 400
+
+    try:
+        from backend.integrations.image_generation import image_gen_enhanced
+
+        # --- LLM style translation (Groq → Gemini fallback via course_gen_global) ---
+        image_style = None
+        style_applied = None
+        if course_gen_global and custom_instruction:
+            style_prompt = (
+                f"Generate a concise image style description (max 30 words) for this course.\n"
+                f"Topic: {topic}\n"
+                f"User instruction: {custom_instruction}\n\n"
+                f"Output ONLY image style keywords, e.g.: "
+                f"\"modern office, AI technology, blue tones, professional\"\n"
+                f"No explanations, no punctuation other than commas."
+            )
+            try:
+                raw = course_gen_global._invoke_llm(style_prompt).strip()
+                # Strip markdown/quotes if LLM wraps the output
+                image_style = raw.strip('`"\' \n').split('\n')[0][:120]
+                style_applied = image_style
+                logger.info(f"[REGEN_IMG] LLM style: {image_style}")
+            except Exception as _se:
+                logger.warning(f"[REGEN_IMG] LLM style failed, using raw instruction: {_se}")
+
+        base_style = image_style or custom_instruction or f"{topic} professional course illustration"
+
+        images = {}
+        for section in sections:
+            title = section.get('title', '')
+            prompt = f"{title}, {base_style}, photorealistic, high quality, 16:9"
+            try:
+                url = image_gen_enhanced.generate_social_media_image(prompt, platform="twitter")
+                images[title] = {"type": "generated", "url": url, "prompt": prompt}
+                logger.info(f"[REGEN_IMG] {title[:40]} → {url[:60] if url else 'None'}")
+            except Exception as e:
+                logger.warning(f"[REGEN_IMG] Failed for '{title}': {e}")
+                images[title] = {"type": "prompt_only", "prompt": prompt}
+
+        return jsonify({"status": "success", "images": images, "style_applied": style_applied}), 200
+    except Exception as e:
+        logger.error(f"[REGEN_IMG] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/productize/finalize', methods=['POST'])
 def productize_finalize():
     """Save user-edited course content back to Obsidian vault."""

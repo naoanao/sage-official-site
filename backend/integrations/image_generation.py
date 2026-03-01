@@ -33,9 +33,18 @@ class ImageGenerationEnhanced:
 
     def __init__(self):
         self.name = "Sage Image Gen Enhanced"
-        self.gemini_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        self.hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
-        self.imgbb_api_key = os.getenv("IMGBB_API_KEY")
+
+    @property
+    def gemini_api_key(self):
+        return os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+    @property
+    def hf_token(self):
+        return os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
+
+    @property
+    def imgbb_api_key(self):
+        return os.getenv("IMGBB_API_KEY")
 
     # ------------------------------------------------------------------
     # Tier 1: HuggingFace Flux
@@ -131,12 +140,32 @@ class ImageGenerationEnhanced:
     # Public interface
     # ------------------------------------------------------------------
 
+    def _loremflickr_url(self, text: str, width: int = 1200, height: int = 675) -> str:
+        """Tier 3 fallback: LoremFlickr keyword URL (no API key required, always works)."""
+        import re
+        import hashlib
+        # Skip generic/technical prompt terms, extract topic keywords
+        noise_words = {
+            'a', 'an', 'the', 'and', 'or', 'for', 'in', 'on', 'at', 'of', 'to', 'with',
+            'high', 'quality', 'style', 'professional', 'scene', 'related', 'photorealistic',
+            'dramatic', 'lighting', 'image', 'photo', 'picture', 'add', 'please', 'make',
+            'generate', 'create', '16:9', 'x675', 'x1080', 'x1200', 'aesthetic', 'vibrant',
+        }
+        words = re.sub(r'[^\w\s]', ' ', text.lower()).split()
+        keywords = [w for w in words if len(w) >= 3 and w not in noise_words][:3]
+        kw = ','.join(keywords) if keywords else 'nature'
+        # Use title hash as ?lock= seed so each section gets a unique but reproducible image
+        seed = int(hashlib.md5(text.encode()).hexdigest(), 16) % 10000
+        url = f"https://loremflickr.com/{width}/{height}/{kw}?lock={seed}"
+        logger.info(f"Image ready (LoremFlickr): {url} (keywords: {kw}, seed: {seed})")
+        return url
+
     def generate_social_media_image(self, text: str, platform: str = "instagram") -> str | None:
         """
         Generate a social media image and return a permanent public URL.
         1. HuggingFace Flux (HF_TOKEN required) → imgbb
         2. Gemini → imgbb
-        Returns None if both tiers fail.
+        3. LoremFlickr keyword URL (always succeeds)
         """
         width, height = PLATFORM_SIZES.get(platform.lower(), (1080, 1080))
         prompt = (
@@ -163,8 +192,9 @@ class ImageGenerationEnhanced:
                 return public_url
             logger.warning("imgbb upload failed after Gemini generation.")
 
-        logger.warning(f"All image generation tiers failed for: {text[:60]}")
-        return None
+        # Tier 3: LoremFlickr (always returns a URL — keyword-based)
+        logger.warning(f"HF+Gemini failed, falling back to LoremFlickr for: {text[:40]}")
+        return self._loremflickr_url(text, width, height)
 
     def generate_blog_image(self, topic: str, style: str = "realistic") -> str | None:
         prompt = f"{topic}, high quality, professional, {style}, 8k resolution, detailed"
