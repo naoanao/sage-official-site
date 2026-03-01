@@ -193,10 +193,32 @@ class CourseProductionPipeline:
                 except Exception as e:
                     logger.warning(f"[MEMORY] Memory save failed (non-critical): {e}")
 
+            # NotionLogger: コース生成完了を記録
+            try:
+                from backend.integrations.notion_logger import notion_logger
+                image_urls = [
+                    v.get("url") for v in image_results.values()
+                    if isinstance(v, dict) and v.get("url")
+                ]
+                notion_logger.log_course_generation(
+                    topic=safe_topic,
+                    sections_count=len(sections),
+                    image_urls=image_urls,
+                    sales_page_len=len(sales_page) if sales_page else 0,
+                    has_bonus="48-Hour" in (sales_page or "") or "48時間" in (sales_page or ""),
+                )
+            except Exception as _nle:
+                logger.warning(f"[NOTION_LOG] Course log failed (non-critical): {_nle}")
+
             return result
-        
+
         except Exception as e:
             logger.error(f"❌ Course generation failed: {e}", exc_info=True)
+            try:
+                from backend.integrations.notion_logger import notion_logger
+                notion_logger.log_error(f"course generation: {topic}", str(e))
+            except Exception:
+                pass
             return {
                 "status": "error",
                 "message": str(e)
