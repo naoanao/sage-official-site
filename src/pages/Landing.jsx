@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiMessageSquare, FiArrowRight, FiSend, FiRss, FiShoppingCart, FiClock } from 'react-icons/fi';
+import { FiArrowRight, FiRss, FiShoppingCart, FiClock, FiZap } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
-import { BACKEND_URL as CONFIGURED_BACKEND_URL } from '../config/backendUrl';
 
 // ── Blog posts (latest 3) ──────────────────────────────────────────────────
 const postModules = import.meta.glob('../blog/posts/*.mdx', { eager: true, query: '?raw', import: 'default' });
@@ -20,13 +19,16 @@ const allPosts = Object.entries(postModules).map(([path, raw]) => {
     return { slug: fm.slug || filename, title: fm.title || filename, excerpt: fm.excerpt || '', date: fm.date || '' };
 }).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
 
+const DEMO_RESULTS = [
+    { icon: '📝', label: 'Blog post published', detail: '1,200 words · SEO optimized · live on site' },
+    { icon: '📱', label: '5 social captions ready', detail: 'Bluesky · Instagram · formatted & scheduled' },
+    { icon: '💰', label: 'Gumroad product created', detail: 'Sales page · ZIP bundle · payment link live' },
+    { icon: '🚀', label: 'Posted to Bluesky & Instagram', detail: 'Auto-published · engagement tracking on' },
+];
+
 const Landing = () => {
     const [snsStats, setSnsStats] = useState({ total_posts: 27, success_rate: '100%' });
-
-    // ── Chat state ──
-    const [chatInput, setChatInput] = useState('');
-    const [chatReply, setChatReply] = useState('');
-    const [chatStatus, setChatStatus] = useState('idle'); // idle | loading | offline
+    const [demoVisible, setDemoVisible] = useState(false);
 
     // ── Bluesky feed ──
     const [bskyPosts, setBskyPosts] = useState([]);
@@ -65,27 +67,6 @@ const Landing = () => {
             })
             .catch(() => {});
     }, []);
-
-    const BACKEND_URL = CONFIGURED_BACKEND_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
-
-    const handleChat = async (e) => {
-        e.preventDefault();
-        if (!chatInput.trim()) return;
-        setChatStatus('loading');
-        try {
-            const res = await fetch(`${BACKEND_URL}/api/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: chatInput }),
-            });
-            if (!res.ok) throw new Error('offline');
-            const data = await res.json();
-            setChatReply(data.reply || data.response || data.message || 'Got it.');
-            setChatStatus('idle');
-        } catch {
-            setChatStatus('offline');
-        }
-    };
 
     return (
         <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
@@ -153,7 +134,7 @@ const Landing = () => {
                 </Motion.div>
             </section>
 
-            {/* ② Chat ─────────────────────────────────────────────────── */}
+            {/* ② Before → After Demo ──────────────────────────────────── */}
             <section className="relative z-10 py-24 px-4 bg-gradient-to-b from-black via-slate-900/20 to-black">
                 <div className="max-w-2xl mx-auto">
                     <Motion.div
@@ -161,44 +142,74 @@ const Landing = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.6 }}
+                        onViewportEnter={() => setDemoVisible(true)}
                     >
                         <div className="flex items-center gap-3 mb-3">
-                            <FiMessageSquare className="text-blue-400" size={20} />
-                            <h2 className="text-2xl font-bold">Talk to Sage</h2>
+                            <FiZap className="text-blue-400" size={20} />
+                            <h2 className="text-2xl font-bold">One input. Full pipeline.</h2>
                         </div>
-                        <p className="text-slate-500 text-sm mb-8">Ask anything. Sage will help you build, post, and monetize.</p>
+                        <p className="text-slate-500 text-sm mb-8">This is what happens 90 seconds after you hit send.</p>
 
-                        <form onSubmit={handleChat} className="flex gap-3">
-                            <input
-                                type="text"
-                                value={chatInput}
-                                onChange={e => setChatInput(e.target.value)}
-                                placeholder="e.g. Write me a viral Instagram caption about AI..."
-                                className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors"
-                            />
-                            <button
-                                type="submit"
-                                disabled={chatStatus === 'loading'}
-                                className="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all"
+                        {/* Input mockup */}
+                        <div className="flex gap-3 mb-6">
+                            <div className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono">
+                                <span className="text-slate-600 select-none">$ </span>
+                                <span className="text-white">I want to sell AI tips for solopreneurs</span>
+                                <span className="inline-block w-2 h-4 bg-blue-400 ml-0.5 align-text-bottom animate-pulse" />
+                            </div>
+                            <div className="px-5 py-3 bg-blue-600/80 text-white rounded-xl font-bold text-sm flex items-center gap-2 cursor-default select-none">
+                                <FiZap size={16} /> Running
+                            </div>
+                        </div>
+
+                        {/* Results — cascade in */}
+                        <div className="space-y-3">
+                            {DEMO_RESULTS.map((r, i) => (
+                                <Motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, x: -16 }}
+                                    animate={demoVisible ? { opacity: 1, x: 0 } : {}}
+                                    transition={{ delay: 0.3 + i * 0.25, duration: 0.5 }}
+                                    className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/5"
+                                >
+                                    <span className="text-2xl flex-shrink-0">{r.icon}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                                            {r.label}
+                                        </div>
+                                        <div className="text-xs text-slate-500 mt-0.5 truncate">{r.detail}</div>
+                                    </div>
+                                    <Motion.span
+                                        initial={{ scale: 0 }}
+                                        animate={demoVisible ? { scale: 1 } : {}}
+                                        transition={{ delay: 0.5 + i * 0.25, type: 'spring', stiffness: 300 }}
+                                        className="text-emerald-400 text-lg flex-shrink-0"
+                                    >✓</Motion.span>
+                                </Motion.div>
+                            ))}
+                        </div>
+
+                        {/* CTAs */}
+                        <Motion.div
+                            initial={{ opacity: 0 }}
+                            animate={demoVisible ? { opacity: 1 } : {}}
+                            transition={{ delay: 1.6 }}
+                            className="flex flex-col sm:flex-row gap-3 mt-8"
+                        >
+                            <Link
+                                to="/dashboard"
+                                className="flex-1 text-center px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
                             >
-                                <FiSend size={16} />
-                                {chatStatus === 'loading' ? 'Thinking...' : 'Send'}
-                            </button>
-                        </form>
-
-                        {chatStatus === 'offline' && (
-                            <div className="mt-4 p-4 rounded-xl bg-white/[0.03] border border-white/10 text-sm text-slate-400">
-                                Sage is currently offline.{' '}
-                                <Link to="/dashboard" className="text-blue-400 hover:text-blue-300 transition-colors">
-                                    Try the Cockpit →
-                                </Link>
-                            </div>
-                        )}
-                        {chatReply && chatStatus === 'idle' && (
-                            <div className="mt-4 p-4 rounded-xl bg-white/[0.03] border border-white/10 text-sm text-slate-300 leading-relaxed">
-                                {chatReply}
-                            </div>
-                        )}
+                                Try the Cockpit Free →
+                            </Link>
+                            <a
+                                href="/offer"
+                                className="flex-1 text-center px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold text-sm transition-all"
+                            >
+                                Get the Full Blueprint <span className="text-xs opacity-60">$29</span>
+                            </a>
+                        </Motion.div>
                     </Motion.div>
                 </div>
             </section>
