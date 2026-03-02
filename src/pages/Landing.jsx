@@ -81,7 +81,7 @@ const Landing = () => {
                 <div className="flex gap-4 sm:gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap">
                     <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
                     <Link to="/shop" className="hover:text-white transition-colors">Shop</Link>
-                    <a href="/offer" className="hover:text-white transition-colors">Store</a>
+                    <a href="https://naofumi3.gumroad.com/l/yvzrfjd" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Store</a>
                     <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
                     <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
                 </div>
@@ -112,7 +112,7 @@ const Landing = () => {
                         <span className="text-white"> SEO blogs</span>, <span className="text-white">social posts</span>, and <span className="text-white">revenue</span> while you sleep.
                     </p>
 
-                    <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+                    <div className="flex items-center justify-center">
                         <Motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                             <Link
                                 to="/dashboard"
@@ -121,15 +121,6 @@ const Landing = () => {
                                 Try the Cockpit Free <FiArrowRight />
                             </Link>
                         </Motion.div>
-
-                        <Motion.a
-                            href="/offer"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-10 py-5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl text-lg font-bold backdrop-blur-md transition-all flex items-center gap-3"
-                        >
-                            Get the Full Blueprint <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-white/70">$29</span>
-                        </Motion.a>
                     </div>
                 </Motion.div>
             </section>
