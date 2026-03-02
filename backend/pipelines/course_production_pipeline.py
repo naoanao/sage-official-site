@@ -608,10 +608,17 @@ Format: Just the titles, one per line, no numbering.
 - 失敗1: [specific mistake] → 対策: [specific fix]
 - 失敗2: [specific mistake] → 対策: [specific fix]"""
         else:
-            lang_instruction = "\n6. Write all content in English. Use English section headers only."
+            lang_instruction = (
+                "\n6. Write all content in English. Use English section headers only."
+                "\n7. TONE: Write like a smart, direct mentor — conversational, not academic."
+                "\n   - Use contractions (you're, it's, don't, here's)"
+                "\n   - Replace 'Furthermore/Moreover/In addition' with 'And here's the thing / And get this / Plus'"
+                "\n   - No passive voice. No corporate-speak."
+                "\n   - Max 1 formal citation per paragraph (e.g., '1.3B tons wasted annually' — no 'According to the 2019 UN report...' preamble)"
+            )
             section_structure = """## REQUIRED STRUCTURE:
-**Introduction (2-3 sentences)**: Problem statement specific to this section's topic.
-**Core Content**: 3-4 paragraphs with specific data, examples, and methods.
+**Introduction (2-3 sentences)**: Hook with a specific pain point or surprising fact — no "In this section we will cover..." openers.
+**Core Content**: 3-4 paragraphs. Mix short punchy sentences with medium ones. Data comes with context, not as a list of citations.
 **Take Action Now**:
 1. [Action] — Time required: X minutes
 2. [Action] — Time required: X minutes
@@ -652,17 +659,48 @@ SECTION ({i}/{len(outline)}): {title}
 Content:"""
             
             content = self._invoke_llm(prompt)
-            
+
             if not content:
                 content = f"**{title}**\n\nThis section covers important aspects of {title}. Key concepts will be explained with practical examples and real-world applications."
-            
+
+            content = self._reduce_data_overload(content, language)
+
             sections.append({
                 "number": i,
                 "title": title,
                 "content": content
             })
-        
+
         return sections
+
+    @staticmethod
+    def _reduce_data_overload(content: str, language: str = "en") -> str:
+        """Limit formal citation phrases to max 2 per paragraph to avoid stat-dump fatigue."""
+        import re as _re
+        if language == "ja":
+            # 「XXXX年の〇〇調査によると」「XXXX年、〇〇省が」などの書き出しパターン
+            stat_pattern = _re.compile(r'\d{4}年[のにの]?[^\s]{0,10}(調査|研究|報告|統計|データ|省|庁|機関|大学)[^\s。]*[によると、：:は]?')
+        else:
+            # "According to a 2019 X report" / "A 2020 study by X shows" / "In 2018, X found"
+            stat_pattern = _re.compile(
+                r'(According to (a |the )?\d{4}[^\.]{0,70}[,\.]|'
+                r'[Aa] \d{4} [^\.]{0,20}(study|survey|report|analysis|research)[^\.]{0,60}[,\.]|'
+                r'In \d{4}[^\.]{0,50}(found|showed|revealed|reported|published)[^\.]{0,60}[,\.])',
+                _re.IGNORECASE
+            )
+
+        paragraphs = content.split('\n\n')
+        cleaned = []
+        for para in paragraphs:
+            matches = stat_pattern.findall(para)
+            # findall returns tuples for groups — count unique full match positions
+            all_spans = list(stat_pattern.finditer(para))
+            if len(all_spans) > 2:
+                # Keep first 2, remove the rest
+                for m in reversed(all_spans[2:]):
+                    para = para[:m.start()] + para[m.end():]
+            cleaned.append(para)
+        return '\n\n'.join(cleaned)
     
     def _generate_slides(self, sections: List[Dict]) -> List[Dict]:
         """Generate slide images using image_gen_enhanced (HF Flux → Gemini → LoremFlickr)"""

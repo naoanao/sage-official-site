@@ -2317,13 +2317,80 @@ def niche_validate():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
+_TONE_PROMPTS_EN = {
+    'conversational': (
+        "Rewrite this in a conversational, engaging tone — like a smart friend explaining it.\n\n"
+        "Rules:\n"
+        "- Use contractions (you're, it's, don't, here's)\n"
+        "- Start sentences with 'And,' 'But,' 'So,' 'Here's the thing:'\n"
+        "- Add rhetorical questions to pull the reader in\n"
+        "- Replace formal transitions: 'Furthermore' → 'And get this', 'Therefore' → 'So here's what this means'\n"
+        "- Power words: crazy, wild, game-changer, massive, ridiculously\n"
+        "- Reader asides like '(yeah, I know)' or '(trust me on this)'\n"
+        "- Paragraphs max 2-3 sentences. Keep it punchy."
+    ),
+    'storytelling_us': (
+        "Rewrite this using American storytelling structure. Lead with a scene, not a fact.\n\n"
+        "Rules:\n"
+        "- Open with 'Picture this:' or 'Imagine...' — a specific micro-scenario\n"
+        "- Use a real-feeling character with a name (not 'a person' or 'someone')\n"
+        "- Add sensory detail: what they saw, felt, heard\n"
+        "- Build tension → resolution arc\n"
+        "- Data and stats come AFTER the story, never before\n"
+        "- End with a transformation: 'Three months later...'\n"
+        "- Conversational, warm tone throughout."
+    ),
+    'pasona': (
+        "Rewrite this using the PASONA sales framework. Make the reader feel seen, then solve their problem.\n\n"
+        "Structure (in order):\n"
+        "1. Problem — Open with a specific, visceral pain point. Make it concrete.\n"
+        "2. Agitate — Amplify the cost of doing nothing. What does inaction cost them?\n"
+        "3. Solution — Present the method as the answer. Be specific, not vague.\n"
+        "4. Narrow — Define exactly who this is for (income level, situation, stage).\n"
+        "5. Action — End with a strong, urgent CTA.\n\n"
+        "Style:\n"
+        "- Direct. Benefit-focused. Address reader as 'you'.\n"
+        "- Numbers for credibility (use sparingly).\n"
+        "- Short punchy sentences mixed with medium ones."
+    ),
+    'quest': (
+        "Rewrite this using the QUEST sales framework. Consultative, empathetic, logical.\n\n"
+        "Structure (in order):\n"
+        "1. Qualify — Who exactly is this for? Be specific and exclusive.\n"
+        "2. Understand — Show deep empathy for their struggle. They must feel heard.\n"
+        "3. Educate — Explain why current approaches fail. Make them rethink.\n"
+        "4. Stimulate — Paint the after-picture vividly. Transformation, not features.\n"
+        "5. Transition — Smooth, low-friction CTA ('Ready to start?' or 'Here's your next step').\n\n"
+        "Style:\n"
+        "- Lead with questions. Warm consultant tone.\n"
+        "- Logic AND emotional triggers together.\n"
+        "- Use brief case study or example in step 3 or 4."
+    ),
+}
+
+_TONE_PROMPTS_JA = {
+    'casual': "もっとカジュアルで親しみやすい口調で書き直してください。友達に話しかけるような文体で。",
+    'professional': "専門的・権威のある口調に書き直してください。信頼感と説得力を最大化してください。",
+    'story': "物語形式で書き直してください。読者が主人公で、課題→解決の旅路として展開してください。",
+    'persuasive': "説得力の高いセールスライティングに書き直してください。痛みを明確にし、解決策を提示し、行動を促してください。",
+}
+
+
 @app.route('/api/productize/rewrite', methods=['POST'])
 def productize_rewrite():
     """Rewrite a single section's content using Groq with a user-supplied instruction."""
     data = request.get_json(silent=True) or {}
     content = data.get('content', '').strip()
     instruction = data.get('instruction', '').strip()
+    tone_preset = data.get('tone_preset', '').strip()
     language = data.get('language', 'ja')
+
+    # tone_preset takes priority over raw instruction
+    if tone_preset:
+        if language == 'en' and tone_preset in _TONE_PROMPTS_EN:
+            instruction = _TONE_PROMPTS_EN[tone_preset]
+        elif language == 'ja' and tone_preset in _TONE_PROMPTS_JA:
+            instruction = _TONE_PROMPTS_JA[tone_preset]
 
     if not content or not instruction:
         return jsonify({"error": "content and instruction are required"}), 400

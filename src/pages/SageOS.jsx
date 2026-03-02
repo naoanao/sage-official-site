@@ -189,22 +189,26 @@ const SageOS = () => {
 
     // Apply global instruction to all sections + sales page + images (always)
     // LLM on the backend translates the instruction into image style keywords automatically
-    const handleRewriteAll = async (overrideInstruction) => {
+    // tonePreset: optional preset ID (e.g. 'conversational', 'pasona') — backend uses full template
+    const handleRewriteAll = async (overrideInstruction, tonePreset) => {
         const instruction = overrideInstruction || globalInstruction;
-        if (!instruction.trim()) return;
-        if (overrideInstruction) setGlobalInstruction(overrideInstruction);
+        if (!tonePreset && !instruction.trim()) return;
+        if (overrideInstruction && !tonePreset) setGlobalInstruction(overrideInstruction);
         setGlobalRewriting(true);
         try {
             const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
+            const rewritePayload = (content) => tonePreset
+                ? { content, tone_preset: tonePreset, instruction: '', language: resolvedLang }
+                : { content, instruction, language: resolvedLang };
 
             // Run text rewrites, sales page rewrite, and image regen all in parallel
             const textRewritePromise = Promise.all(
                 editedSections.map(s =>
-                    api.post('/api/productize/rewrite', { content: s.content, instruction, language: resolvedLang })
+                    api.post('/api/productize/rewrite', rewritePayload(s.content))
                 )
             );
             const salesPageRewritePromise = editedSalesPage
-                ? api.post('/api/productize/rewrite', { content: editedSalesPage, instruction, language: resolvedLang })
+                ? api.post('/api/productize/rewrite', rewritePayload(editedSalesPage))
                 : Promise.resolve(null);
             const imageRegenPromise = editedSections.length > 0
                 ? api.post('/api/productize/regenerate_images', {
@@ -713,47 +717,73 @@ const SageOS = () => {
                                 )}
 
                                 {/* Global tone rewrite */}
-                                <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl">
-                                    <div className="text-xs font-bold text-purple-300 mb-2 uppercase tracking-widest">全体の口調・スタイルを一括変更</div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={globalInstruction}
-                                            onChange={e => setGlobalInstruction(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
-                                            placeholder="例: もっとカジュアルに / 箇条書きにして / 英語に翻訳 / 短くまとめて"
-                                            className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
-                                        />
-                                        <button
-                                            onClick={handleRewriteAll}
-                                            disabled={!globalInstruction.trim() || globalRewriting}
-                                            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
-                                        >
-                                            {globalRewriting
-                                                ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> 書き直し中</>
-                                                : <><FiPlay /> 全部書き直す</>}
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {[
-                                            'もっとカジュアルに',
-                                            '専門的・権威ある口調で',
-                                            '箇条書きにして',
-                                            '半分の長さに要約',
-                                            '超ニッチ特化（地域・対象者を限定）',
-                                            'データ・事例を具体的に追加',
-                                            '今すぐできるアクションに変換',
-                                            'ありがち失敗パターンを削除'
-                                        ].map(preset => (
-                                            <button key={preset}
-                                                onClick={() => handleRewriteAll(preset)}
-                                                disabled={globalRewriting}
-                                                className="text-xs px-2 py-1 bg-white/5 hover:bg-purple-600/30 hover:text-white disabled:opacity-40 text-slate-400 rounded-lg transition-all">
-                                                {preset}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                                {(() => {
+                                    const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
+                                    const isEn = resolvedLang === 'en';
+                                    const enPresets = [
+                                        { id: 'conversational', label: '💬 Conversational', desc: 'Like a smart friend' },
+                                        { id: 'storytelling_us', label: '📖 Story-Driven', desc: 'US storytelling style' },
+                                        { id: 'pasona', label: '💰 PASONA', desc: 'Problem→Action sales' },
+                                        { id: 'quest', label: '🎯 QUEST', desc: 'Consultant persuasion' },
+                                    ];
+                                    const jaPresets = [
+                                        'もっとカジュアルに',
+                                        '専門的・権威ある口調で',
+                                        '箇条書きにして',
+                                        '半分の長さに要約',
+                                        '超ニッチ特化（地域・対象者を限定）',
+                                        'データ・事例を具体的に追加',
+                                        '今すぐできるアクションに変換',
+                                        'ありがち失敗パターンを削除',
+                                    ];
+                                    return (
+                                        <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl">
+                                            <div className="text-xs font-bold text-purple-300 mb-2 uppercase tracking-widest">
+                                                {isEn ? 'Rewrite Tone & Style (All Sections)' : '全体の口調・スタイルを一括変更'}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={globalInstruction}
+                                                    onChange={e => setGlobalInstruction(e.target.value)}
+                                                    onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
+                                                    placeholder={isEn ? 'e.g. Make it shorter / Add more examples / Bullet points' : '例: もっとカジュアルに / 箇条書きにして / 英語に翻訳 / 短くまとめて'}
+                                                    className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
+                                                />
+                                                <button
+                                                    onClick={handleRewriteAll}
+                                                    disabled={!globalInstruction.trim() || globalRewriting}
+                                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
+                                                >
+                                                    {globalRewriting
+                                                        ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> {isEn ? 'Rewriting...' : '書き直し中'}</>
+                                                        : <><FiPlay /> {isEn ? 'Rewrite All' : '全部書き直す'}</>}
+                                                </button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {isEn
+                                                    ? enPresets.map(p => (
+                                                        <button key={p.id}
+                                                            onClick={() => handleRewriteAll(p.label, p.id)}
+                                                            disabled={globalRewriting}
+                                                            title={p.desc}
+                                                            className="text-xs px-3 py-1.5 bg-white/5 hover:bg-purple-600/40 hover:text-white disabled:opacity-40 text-slate-300 rounded-lg transition-all font-medium border border-white/10 hover:border-purple-400/40">
+                                                            {p.label}
+                                                        </button>
+                                                    ))
+                                                    : jaPresets.map(preset => (
+                                                        <button key={preset}
+                                                            onClick={() => handleRewriteAll(preset)}
+                                                            disabled={globalRewriting}
+                                                            className="text-xs px-2 py-1 bg-white/5 hover:bg-purple-600/30 hover:text-white disabled:opacity-40 text-slate-400 rounded-lg transition-all">
+                                                            {preset}
+                                                        </button>
+                                                    ))
+                                                }
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
 
                                 {/* Section editors */}
                                 <div className="space-y-3">
