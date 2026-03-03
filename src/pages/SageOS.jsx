@@ -1200,12 +1200,25 @@ const IdentityPanel = () => {
     });
     const [saving, setSaving] = React.useState(false);
     const [saved, setSaved] = React.useState(false);
+    const [resetting, setResetting] = React.useState(false);
 
     React.useEffect(() => {
         api.get('/api/identity')
             .then(res => setIdentity(res.data))
             .catch(() => {});
     }, []);
+
+    const handleReset = async () => {
+        setResetting(true);
+        try {
+            const res = await api.post('/api/identity/reset');
+            setIdentity(res.data.identity);
+        } catch (err) {
+            console.error('[Identity] Reset failed:', err);
+        } finally {
+            setResetting(false);
+        }
+    };
 
     const handleSave = async () => {
         setSaving(true);
@@ -1244,13 +1257,22 @@ const IdentityPanel = () => {
                     </div>
                 ))}
             </div>
-            <button
-                onClick={handleSave}
-                disabled={saving}
-                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all ${saved ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50'}`}
-            >
-                {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save Identity'}
-            </button>
+            <div className="flex gap-2">
+                <button
+                    onClick={handleReset}
+                    disabled={resetting}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10 disabled:opacity-50"
+                >
+                    {resetting ? '↩ Resetting...' : '↩ Reset to Default'}
+                </button>
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${saved ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50'}`}
+                >
+                    {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save Identity'}
+                </button>
+            </div>
         </div>
     );
 };
