@@ -57,7 +57,7 @@ const Landing = () => {
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
                     SAGE 3.0
                 </div>
-                <div className="flex gap-6 text-sm font-medium text-slate-400">
+                <div className="flex gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap pr-2">
                     <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
                     <Link to="/shop" className="hover:text-white transition-colors">Shop</Link>
                 </div>
