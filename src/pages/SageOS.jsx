@@ -65,6 +65,29 @@ const SageOS = () => {
     ]);
     const [inputValue, setInputValue] = useState('');
 
+    // Fetch automations from backend (fallback to defaults if unavailable)
+    const fetchAutomations = async () => {
+        try {
+            const res = await api.get('/api/automations');
+            const data = Array.isArray(res.data) ? res.data : res.data?.automations;
+            if (data?.length) setAutomations(data);
+        } catch { /* use defaults */ }
+    };
+
+    // Toggle automation ON/OFF via backend, then refresh state
+    const handleToggle = async (id, currentActive) => {
+        try {
+            await api.post('/api/automations/toggle', { id, active: !currentActive });
+            await fetchAutomations();
+        } catch (err) {
+            console.error('[Toggle] Failed:', err);
+            // Optimistic UI update on error
+            setAutomations(prev => prev.map(a =>
+                a.id === id ? { ...a, active: !currentActive } : a
+            ));
+        }
+    };
+
     useEffect(() => {
         // Fetch initial Sage Brake status and System Stats
         const init = async () => {
@@ -88,20 +111,12 @@ const SageOS = () => {
             }
         };
 
-        // Fetch automations (fallback to defaults if API unavailable)
-        const fetchAutomations = async () => {
-            try {
-                const res = await api.get('/api/automations');
-                const data = Array.isArray(res.data) ? res.data : res.data?.automations;
-                if (data?.length) setAutomations(data);
-            } catch { /* use defaults */ }
-        };
-
         init();
         fetchSageMetrics();
         fetchAutomations();
         const timer = setInterval(fetchSageMetrics, 10000);
         return () => clearInterval(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Debounced research check when topic changes
@@ -525,6 +540,9 @@ const SageOS = () => {
                                 {d1Status === 'error' && <><FiXCircle /> Error</>}
                             </button>
                         </div>
+
+                        {/* Identity Panel */}
+                        <IdentityPanel />
                     </Motion.div>
                 )}
 
@@ -1110,9 +1128,9 @@ const SageOS = () => {
                                         </div>
                                         <div className="text-sm font-semibold text-white mb-0.5">{a.name}</div>
                                         <div className="text-xs text-slate-500">{a.schedule}</div>
-                                        <div className="text-xs text-slate-500 mb-3">{a.lastRun}</div>
+                                        <div className="text-xs text-slate-500 mb-3">{a.lastRun || a.last_run || 'Never'}</div>
                                         <button
-                                            onClick={() => setAutomations(prev => prev.map(item => item.id === a.id ? { ...item, active: !item.active } : item))}
+                                            onClick={() => handleToggle(a.id, a.active)}
                                             className={`w-full text-xs py-1.5 rounded-lg transition-all ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}
                                         >
                                             {a.active ? 'Stop' : 'Start'}
@@ -1171,6 +1189,68 @@ const SageOS = () => {
                     </Motion.div>
                 )}
             </div>
+        </div>
+    );
+};
+
+// ── Identity Panel ──────────────────────────────────────────────────────────
+const IdentityPanel = () => {
+    const [identity, setIdentity] = React.useState({
+        role: '', niche: '', tone: '', visual_style: '', language: 'ja'
+    });
+    const [saving, setSaving] = React.useState(false);
+    const [saved, setSaved] = React.useState(false);
+
+    React.useEffect(() => {
+        api.get('/api/identity')
+            .then(res => setIdentity(res.data))
+            .catch(() => {});
+    }, []);
+
+    const handleSave = async () => {
+        setSaving(true);
+        setSaved(false);
+        try {
+            await api.post('/api/identity', identity);
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+        } catch (err) {
+            console.error('[Identity] Save failed:', err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const fields = [
+        { key: 'role', label: 'Role / Persona', placeholder: 'e.g. オカルト研究家、猫好き投資家' },
+        { key: 'niche', label: 'Niche / Topic', placeholder: 'e.g. 霊的覚醒・神秘体験、猫と資産形成' },
+        { key: 'tone', label: 'Tone / Voice', placeholder: 'e.g. mysterious and profound, friendly and warm' },
+        { key: 'visual_style', label: 'Visual Style', placeholder: 'e.g. dark mystical aesthetic, cute pastel colors' },
+    ];
+
+    return (
+        <div className="p-5 bg-white/3 border border-white/8 rounded-2xl space-y-4">
+            <div className="text-sm font-bold text-slate-300 flex items-center gap-2">🎭 Your AI Clone Identity</div>
+            <div className="grid grid-cols-2 gap-3">
+                {fields.map(({ key, label, placeholder }) => (
+                    <div key={key} className="space-y-1">
+                        <label className="text-xs text-slate-500 uppercase tracking-widest">{label}</label>
+                        <input
+                            value={identity[key] || ''}
+                            onChange={e => setIdentity(prev => ({ ...prev, [key]: e.target.value }))}
+                            placeholder={placeholder}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors"
+                        />
+                    </div>
+                ))}
+            </div>
+            <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all ${saved ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50'}`}
+            >
+                {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save Identity'}
+            </button>
         </div>
     );
 };
