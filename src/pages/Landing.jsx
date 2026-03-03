@@ -26,6 +26,18 @@ const DEMO_RESULTS = [
     { icon: '🚀', label: 'Posted to Bluesky', detail: 'Auto-published · Instagram draft ready' },
 ];
 
+const DEMO_INPUTS = [
+    "I want to sell AI tips for solopreneurs",
+    "I'm a fitness coach looking for new clients",
+    "I create digital art and want to monetize it",
+];
+
+const HOW_IT_WORKS = [
+    { step: '01', icon: '💬', title: 'Type your idea', desc: 'Tell Sage what you want to build or sell. Plain English. No setup.' },
+    { step: '02', icon: '⚡', title: 'Sage builds it', desc: 'Blog post, 5 social captions, and a Gumroad package. In 90 seconds.' },
+    { step: '03', icon: '💰', title: 'Publish & earn', desc: 'Review the output, hit publish. Bluesky posts automatically.' },
+];
+
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -35,6 +47,7 @@ const formatDate = (dateStr) => {
 const Landing = () => {
     const [snsStats, setSnsStats] = useState({ total_posts: 27 });
     const [demoVisible, setDemoVisible] = useState(false);
+    const [inputIndex, setInputIndex] = useState(0);
 
     useEffect(() => {
         fetch('/api/sns/stats')
@@ -45,6 +58,11 @@ const Landing = () => {
                 }
             })
             .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        const t = setInterval(() => setInputIndex(i => (i + 1) % DEMO_INPUTS.length), 3000);
+        return () => clearInterval(t);
     }, []);
 
     return (
@@ -121,7 +139,38 @@ const Landing = () => {
                 </div>
             </div>
 
-            {/* ② Before → After Demo ──────────────────────────────────── */}
+            {/* ② How It Works ──────────────────────────────────────────── */}
+            <section className="relative z-10 py-24 px-4 border-t border-white/5">
+                <div className="max-w-4xl mx-auto text-center">
+                    <Motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                    >
+                        <h2 className="text-3xl md:text-4xl font-bold mb-16">How It Works</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                            {HOW_IT_WORKS.map(({ step, icon, title, desc }, i) => (
+                                <Motion.div
+                                    key={step}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.15 }}
+                                    className="flex flex-col items-center"
+                                >
+                                    <div className="text-xs font-mono text-purple-400 tracking-widest mb-4">STEP {step}</div>
+                                    <div className="text-4xl mb-4">{icon}</div>
+                                    <h3 className="text-lg font-bold text-white mb-3">{title}</h3>
+                                    <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
+                                </Motion.div>
+                            ))}
+                        </div>
+                    </Motion.div>
+                </div>
+            </section>
+
+            {/* ③ Before → After Demo ──────────────────────────────────── */}
             <section className="relative z-10 py-24 px-4 bg-gradient-to-b from-black via-slate-900/20 to-black">
                 <div className="max-w-2xl mx-auto">
                     <Motion.div
@@ -139,9 +188,17 @@ const Landing = () => {
 
                         {/* Input mockup */}
                         <div className="flex gap-3 mb-6">
-                            <div className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono">
+                            <div className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono overflow-hidden">
                                 <span className="text-slate-600 select-none">$ </span>
-                                <span className="text-white">I want to sell AI tips for solopreneurs</span>
+                                <Motion.span
+                                    key={inputIndex}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.4 }}
+                                    className="text-white"
+                                >
+                                    {DEMO_INPUTS[inputIndex]}
+                                </Motion.span>
                                 <span className="inline-block w-2 h-4 bg-blue-400 ml-0.5 align-text-bottom animate-pulse" />
                             </div>
                             <div className="px-5 py-3 bg-blue-600/80 text-white rounded-xl font-bold text-sm flex items-center gap-2 cursor-default select-none">
@@ -177,33 +234,25 @@ const Landing = () => {
                             ))}
                         </div>
 
-                        {/* CTAs */}
+                        {/* CTA */}
                         <Motion.div
                             initial={{ opacity: 0 }}
                             animate={demoVisible ? { opacity: 1 } : {}}
                             transition={{ delay: 1.6 }}
-                            className="flex flex-col sm:flex-row gap-3 mt-8"
+                            className="mt-8"
                         >
                             <Link
                                 to="/dashboard"
-                                className="flex-1 text-center px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
+                                className="block text-center px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
                             >
                                 Try Sage Free →
                             </Link>
-                            <a
-                                href="https://naofumi3.gumroad.com/l/yvzrfjd"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 text-center px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold text-sm transition-all"
-                            >
-                                Get the Full Blueprint <span className="text-xs opacity-60">$29.99</span>
-                            </a>
                         </Motion.div>
                     </Motion.div>
                 </div>
             </section>
 
-            {/* ③ Blog ─────────────────────────────────────────────────── */}
+            {/* ④ Blog ─────────────────────────────────────────────────── */}
             {allPosts.length > 0 && (
                 <section className="relative z-10 py-24 px-4 border-t border-white/5">
                     <div className="max-w-6xl mx-auto">
@@ -253,7 +302,7 @@ const Landing = () => {
                 </section>
             )}
 
-            {/* ④ FAQ ───────────────────────────────────────────────────── */}
+            {/* ⑤ FAQ ───────────────────────────────────────────────────── */}
             <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-slate-900/10 to-black">
                 <div className="max-w-3xl mx-auto">
                     <div className="mb-16 text-center">
@@ -284,7 +333,7 @@ const Landing = () => {
                 </div>
             </section>
 
-            {/* ⑤ Shop / Monetization ─────────────────────────────────── */}
+            {/* ⑥ Shop / Monetization ─────────────────────────────────── */}
             <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-black to-slate-900/30">
                 <div className="max-w-4xl mx-auto">
                     <Motion.div
@@ -315,22 +364,14 @@ const Landing = () => {
                                 </li>
                             ))}
                         </ul>
-                        <div className="flex gap-3">
-                            <a
-                                href="https://naofumi3.gumroad.com/l/yvzrfjd"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)] flex items-center gap-2"
-                            >
-                                <FiShoppingCart size={16} /> Buy on Gumroad
-                            </a>
-                            <Link
-                                to="/shop"
-                                className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2"
-                            >
-                                View Details <FiArrowRight size={14} />
-                            </Link>
-                        </div>
+                        <a
+                            href="https://naofumi3.gumroad.com/l/yvzrfjd"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
+                        >
+                            <FiShoppingCart size={16} /> Buy on Gumroad — $29.99 →
+                        </a>
                     </Motion.div>
                 </div>
             </section>
@@ -339,8 +380,8 @@ const Landing = () => {
             <footer className="relative z-10 py-12 px-6 border-t border-white/5 bg-black">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex gap-6 text-xs font-mono text-slate-500">
-                        <a href="https://onelovepeople.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy Policy</a>
-                        <a href="https://onelovepeople.com/terms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Terms of Service</a>
+                        <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                        <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
                         <a href="mailto:sage@onelovepeople.com" className="hover:text-white transition-colors">Contact</a>
                         <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
                         <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>

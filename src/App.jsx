@@ -6,6 +6,8 @@ import Blog from './pages/Blog'
 import BlogPost from './pages/BlogPost'
 import ThankYou from './pages/ThankYou'
 import Shop from './pages/Shop'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 import './App.css'
 
 function App() {
@@ -18,6 +20,8 @@ function App() {
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/thank-you" element={<ThankYou />} />
         <Route path="/shop" element={<Shop />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
       </Routes>
     </Router>
   )
