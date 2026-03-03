@@ -99,22 +99,23 @@ logger.info(f"🚀 [CONFIG] SAGE_BRAIN_STDP_ENABLED: {os.getenv('SAGE_BRAIN_STDP
 # === IDENTITY LOADER ===
 _IDENTITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'identity.json')
 
+_IDENTITY_DEFAULTS = {
+    "role": "AI収益化の専門家",
+    "niche": "AIツールを使った副業・自動化",
+    "tone": "professional yet approachable",
+    "visual_style": "clean minimalist tech aesthetic",
+    "language": "ja",
+    "brand_name": "Sage AI",
+    "target_audience": "AIで副収入を得たいソロプレナー"
+}
+
 def load_identity():
     """identity.jsonを読み込む。存在しない場合はデフォルト値を返す"""
-    defaults = {
-        "role": "AI収益化の専門家",
-        "niche": "AIツールを使った副業・自動化",
-        "tone": "professional yet approachable",
-        "visual_style": "clean minimalist tech aesthetic",
-        "language": "ja",
-        "brand_name": "Sage AI",
-        "target_audience": "AIで副収入を得たいソロプレナー"
-    }
     try:
         with open(_IDENTITY_PATH, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception:
-        return defaults
+        return dict(_IDENTITY_DEFAULTS)
 
 IDENTITY = load_identity()
 logger.info(f"[IDENTITY] Loaded: role={IDENTITY.get('role')}, niche={IDENTITY.get('niche')}")
@@ -580,6 +581,26 @@ def save_identity():
         return jsonify({'status': 'saved', 'identity': data})
     except Exception as e:
         logger.error(f"[IDENTITY] Save error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/identity/default', methods=['GET'])
+def get_identity_default():
+    """デフォルトのidentity設定を返す（ファイルは変更しない）"""
+    return jsonify(_IDENTITY_DEFAULTS)
+
+@app.route('/api/identity/reset', methods=['POST'])
+def reset_identity():
+    """identity.jsonをデフォルト値にリセットする"""
+    try:
+        os.makedirs(os.path.dirname(_IDENTITY_PATH), exist_ok=True)
+        with open(_IDENTITY_PATH, 'w', encoding='utf-8') as f:
+            json.dump(_IDENTITY_DEFAULTS, f, ensure_ascii=False, indent=2)
+        global IDENTITY
+        IDENTITY = dict(_IDENTITY_DEFAULTS)
+        logger.info("[IDENTITY] Reset to defaults")
+        return jsonify({'status': 'reset', 'identity': _IDENTITY_DEFAULTS})
+    except Exception as e:
+        logger.error(f"[IDENTITY] Reset error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/sns/stats', methods=['GET'])
