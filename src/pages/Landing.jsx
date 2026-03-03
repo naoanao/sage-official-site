@@ -26,6 +26,16 @@ const DEMO_RESULTS = [
     { icon: '🚀', label: 'Posted to Bluesky & Instagram', detail: 'Auto-published · engagement tracking on' },
 ];
 
+// Strip bare URLs and trim post text for display
+const cleanPostText = (text) => {
+    return text
+        .replace(/https?:\/\/\S+/g, '')   // remove bare URLs
+        .replace(/\s+/g, ' ')             // collapse whitespace
+        .trim()
+        .slice(0, 200)
+        + (text.replace(/https?:\/\/\S+/g, '').trim().length > 200 ? '…' : '');
+};
+
 const Landing = () => {
     const [snsStats, setSnsStats] = useState({ total_posts: 27, success_rate: '100%' });
     const [demoVisible, setDemoVisible] = useState(false);
@@ -81,7 +91,6 @@ const Landing = () => {
                 <div className="flex gap-4 sm:gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap">
                     <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
                     <Link to="/shop" className="hover:text-white transition-colors">Shop</Link>
-                    <a href="https://naofumi3.gumroad.com/l/yvzrfjd" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Store</a>
                     <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
                     <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
                 </div>
@@ -96,8 +105,8 @@ const Landing = () => {
                     className="max-w-5xl mx-auto"
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        FOR SOLOPRENEURS & CREATORS · {snsStats.total_posts} POSTS SHIPPED AUTONOMOUSLY
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        {snsStats.total_posts}+ POSTS AUTO-PUBLISHED · {snsStats.success_rate} SUCCESS RATE · ZERO HUMAN INPUT
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
@@ -195,7 +204,9 @@ const Landing = () => {
                                 Try the Cockpit Free →
                             </Link>
                             <a
-                                href="/offer"
+                                href="https://naofumi3.gumroad.com/l/yvzrfjd"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="flex-1 text-center px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold text-sm transition-all"
                             >
                                 Get the Full Blueprint <span className="text-xs opacity-60">$29</span>
@@ -239,7 +250,7 @@ const Landing = () => {
                                                 <FiClock size={10} /> {post.date}
                                             </div>
                                         )}
-                                        <h3 className="text-base font-bold text-white group-hover:text-blue-200 transition-colors mb-3 leading-snug">
+                                        <h3 className="text-base font-bold text-white group-hover:text-blue-200 transition-colors mb-3 leading-snug line-clamp-2">
                                             {post.title}
                                         </h3>
                                         {post.excerpt && (
@@ -284,7 +295,11 @@ const Landing = () => {
                                     className="block group p-5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-sky-500/20 transition-all"
                                 >
                                     <p className="text-sm text-slate-300 leading-relaxed group-hover:text-white transition-colors">
-                                        {post.text}
+                                        {cleanPostText(post.text).split(/(#\w+)/g).map((part, j) =>
+                                            part.startsWith('#')
+                                                ? <span key={j} className="text-sky-400">{part}</span>
+                                                : part
+                                        )}
                                     </p>
                                     {post.indexedAt && (
                                         <p className="text-xs text-slate-600 mt-3 font-mono">
