@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiArrowRight, FiRss, FiShoppingCart, FiClock, FiZap } from 'react-icons/fi';
+import { FiArrowRight, FiShoppingCart, FiClock, FiZap } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
 
 // ── Blog posts (latest 3) ──────────────────────────────────────────────────
@@ -26,53 +26,22 @@ const DEMO_RESULTS = [
     { icon: '🚀', label: 'Posted to Bluesky & Instagram', detail: 'Auto-published · engagement tracking on' },
 ];
 
-// Strip bare URLs and trim post text for display
-const cleanPostText = (text) => {
-    return text
-        .replace(/https?:\/\/\S+/g, '')   // remove bare URLs
-        .replace(/\s+/g, ' ')             // collapse whitespace
-        .trim()
-        .slice(0, 200)
-        + (text.replace(/https?:\/\/\S+/g, '').trim().length > 200 ? '…' : '');
+const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return isNaN(d) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
 const Landing = () => {
-    const [snsStats, setSnsStats] = useState({ total_posts: 27, success_rate: '100%' });
+    const [snsStats, setSnsStats] = useState({ total_posts: 27 });
     const [demoVisible, setDemoVisible] = useState(false);
 
-    // ── Bluesky feed ──
-    const [bskyPosts, setBskyPosts] = useState([]);
-    const [bskyLoaded, setBskyLoaded] = useState(false);
-
     useEffect(() => {
-        // SNS stats
         fetch('/api/sns/stats')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data && data.total_posts != null) {
-                    setSnsStats({
-                        total_posts: data.total_posts,
-                        success_rate: data.success_rate === 1.0 ? '100%' : `${Math.round(data.success_rate * 100)}%`
-                    });
-                }
-            })
-            .catch(() => {});
-
-        // Bluesky feed
-        fetch('https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=kanagawajapan.bsky.social&limit=3&filter=posts_no_replies')
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-                if (data && data.feed) {
-                    const posts = data.feed
-                        .filter(item => item.post?.record?.text)
-                        .slice(0, 3)
-                        .map(item => ({
-                            text: item.post.record.text,
-                            uri: item.post.uri,
-                            indexedAt: item.post.indexedAt,
-                        }));
-                    setBskyPosts(posts);
-                    setBskyLoaded(posts.length > 0);
+                    setSnsStats({ total_posts: data.total_posts });
                 }
             })
             .catch(() => {});
@@ -88,11 +57,9 @@ const Landing = () => {
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
                     SAGE 3.0
                 </div>
-                <div className="flex gap-4 sm:gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap">
+                <div className="flex gap-6 text-sm font-medium text-slate-400">
                     <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
                     <Link to="/shop" className="hover:text-white transition-colors">Shop</Link>
-                    <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
-                    <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
                 </div>
             </nav>
 
@@ -106,7 +73,7 @@ const Landing = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        {snsStats.total_posts}+ POSTS AUTO-PUBLISHED · {snsStats.success_rate} SUCCESS RATE · ZERO HUMAN INPUT
+                        {snsStats.total_posts}+ POSTS AUTO-PUBLISHED · $0 MANUAL EFFORT · RUNS WHILE YOU SLEEP
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
@@ -117,8 +84,8 @@ const Landing = () => {
                     </h1>
 
                     <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
-                        Stop juggling 10 tools. Sage turns <span className="text-white">one conversation</span> into
-                        <span className="text-white"> SEO blogs</span>, <span className="text-white">social posts</span>, and <span className="text-white">revenue</span> while you sleep.
+                        Type one idea. Get a <span className="text-white">blog post</span>, <span className="text-white">5 captions</span>,
+                        and a <span className="text-white">Gumroad product</span>. In 90 seconds.
                     </p>
 
                     <div className="flex items-center justify-center">
@@ -127,7 +94,7 @@ const Landing = () => {
                                 to="/dashboard"
                                 className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_50px_rgba(37,99,235,0.4)] flex items-center gap-3 transition-all"
                             >
-                                Try the Cockpit Free <FiArrowRight />
+                                Try Sage Free <FiArrowRight />
                             </Link>
                         </Motion.div>
                     </div>
@@ -146,7 +113,7 @@ const Landing = () => {
                     >
                         <div className="flex items-center gap-3 mb-3">
                             <FiZap className="text-blue-400" size={20} />
-                            <h2 className="text-2xl font-bold">One input. Full pipeline.</h2>
+                            <h2 className="text-2xl font-bold">You type. Sage does everything else.</h2>
                         </div>
                         <p className="text-slate-500 text-sm mb-8">This is what happens 90 seconds after you hit send.</p>
 
@@ -201,7 +168,7 @@ const Landing = () => {
                                 to="/dashboard"
                                 className="flex-1 text-center px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
                             >
-                                Try the Cockpit Free →
+                                Try Sage Free →
                             </Link>
                             <a
                                 href="https://naofumi3.gumroad.com/l/yvzrfjd"
@@ -247,7 +214,7 @@ const Landing = () => {
                                     >
                                         {post.date && (
                                             <div className="text-xs font-mono text-slate-600 mb-3 flex items-center gap-1">
-                                                <FiClock size={10} /> {post.date}
+                                                <FiClock size={10} /> {formatDate(post.date)}
                                             </div>
                                         )}
                                         <h3 className="text-base font-bold text-white group-hover:text-blue-200 transition-colors mb-3 leading-snug line-clamp-2">
@@ -266,105 +233,7 @@ const Landing = () => {
                 </section>
             )}
 
-            {/* ④ Bluesky Live Feed ────────────────────────────────────── */}
-            {bskyLoaded && (
-                <section className="relative z-10 py-24 px-4 border-t border-white/5 bg-slate-900/10">
-                    <div className="max-w-4xl mx-auto">
-                        <Motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            className="flex items-center gap-3 mb-12"
-                        >
-                            <FiRss className="text-sky-400" size={20} />
-                            <h2 className="text-2xl md:text-3xl font-bold">Live Feed</h2>
-                            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
-                        </Motion.div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {bskyPosts.map((post, i) => (
-                                <Motion.a
-                                    key={post.uri}
-                                    href={`https://bsky.app/profile/kanagawajapan.bsky.social`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="block group p-5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-sky-500/20 transition-all"
-                                >
-                                    <p className="text-sm text-slate-300 leading-relaxed group-hover:text-white transition-colors">
-                                        {cleanPostText(post.text).split(/(#\w+)/g).map((part, j) =>
-                                            part.startsWith('#')
-                                                ? <span key={j} className="text-sky-400">{part}</span>
-                                                : part
-                                        )}
-                                    </p>
-                                    {post.indexedAt && (
-                                        <p className="text-xs text-slate-600 mt-3 font-mono">
-                                            {new Date(post.indexedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                        </p>
-                                    )}
-                                </Motion.a>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            )}
-
-            {/* ⑤ Shop / Monetization ─────────────────────────────────── */}
-            <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-black to-slate-900/30">
-                <div className="max-w-4xl mx-auto">
-                    <Motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="flex items-center gap-3 mb-4"
-                    >
-                        <FiShoppingCart className="text-emerald-400" size={20} />
-                        <h2 className="text-2xl md:text-3xl font-bold">Get the Blueprint</h2>
-                    </Motion.div>
-                    <p className="text-slate-500 text-sm mb-12">Everything you need to launch an AI-powered influencer business.</p>
-
-                    <Motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="relative group p-8 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] transition-all overflow-hidden max-w-xl"
-                    >
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-                        <div className="text-sm font-mono text-blue-400 mb-4">FEATURED PRODUCT</div>
-                        <h3 className="text-xl font-bold text-white mb-2">2026 AI Influencer Monetization Express</h3>
-                        <div className="text-3xl font-black text-white mb-6">$29.99</div>
-                        <ul className="space-y-2 text-sm text-slate-300 mb-8">
-                            {['Full AI Influencer Blueprint', 'Autonomous SNS posting templates', 'Monetization funnel step-by-step', 'Lifetime access + updates'].map((f, i) => (
-                                <li key={i} className="flex items-center gap-2">
-                                    <span className="text-emerald-400">✓</span> {f}
-                                </li>
-                            ))}
-                        </ul>
-                        <div className="flex gap-3">
-                            <Link
-                                to="/shop"
-                                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)] flex items-center gap-2"
-                            >
-                                <FiShoppingCart size={16} /> View in Shop
-                            </Link>
-                            <a
-                                href="https://naofumi3.gumroad.com/l/yvzrfjd"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2"
-                            >
-                                Buy on Gumroad <FiArrowRight size={14} />
-                            </a>
-                        </div>
-                    </Motion.div>
-                </div>
-            </section>
-
-            {/* FAQ */}
+            {/* ④ FAQ ───────────────────────────────────────────────────── */}
             <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-slate-900/10 to-black">
                 <div className="max-w-3xl mx-auto">
                     <div className="mb-16 text-center">
@@ -394,6 +263,57 @@ const Landing = () => {
                 </div>
             </section>
 
+            {/* ⑤ Shop / Monetization ─────────────────────────────────── */}
+            <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-black to-slate-900/30">
+                <div className="max-w-4xl mx-auto">
+                    <Motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="flex items-center gap-3 mb-4"
+                    >
+                        <FiShoppingCart className="text-emerald-400" size={20} />
+                        <h2 className="text-2xl md:text-3xl font-bold">Your First AI Income Stream</h2>
+                    </Motion.div>
+                    <p className="text-slate-500 text-sm mb-12">The exact system behind {snsStats.total_posts}+ auto-published posts and counting.</p>
+
+                    <Motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="relative group p-8 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] transition-all overflow-hidden max-w-xl"
+                    >
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+                        <div className="text-sm font-mono text-blue-400 mb-4">FEATURED PRODUCT</div>
+                        <h3 className="text-xl font-bold text-white mb-2">2026 AI Influencer Monetization Express</h3>
+                        <div className="text-3xl font-black text-white mb-6">$29.99</div>
+                        <ul className="space-y-2 text-sm text-slate-300 mb-8">
+                            {['Full AI Influencer Blueprint', 'Autonomous SNS posting templates', 'Monetization funnel step-by-step', 'Lifetime access + updates'].map((f, i) => (
+                                <li key={i} className="flex items-center gap-2">
+                                    <span className="text-emerald-400">✓</span> {f}
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex gap-3">
+                            <a
+                                href="https://naofumi3.gumroad.com/l/yvzrfjd"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)] flex items-center gap-2"
+                            >
+                                <FiShoppingCart size={16} /> Buy on Gumroad
+                            </a>
+                            <Link
+                                to="/shop"
+                                className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+                            >
+                                View Details <FiArrowRight size={14} />
+                            </Link>
+                        </div>
+                    </Motion.div>
+                </div>
+            </section>
+
             {/* Footer */}
             <footer className="relative z-10 py-12 px-6 border-t border-white/5 bg-black">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
@@ -401,6 +321,8 @@ const Landing = () => {
                         <a href="https://onelovepeople.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy Policy</a>
                         <a href="https://onelovepeople.com/terms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Terms of Service</a>
                         <a href="mailto:sage@onelovepeople.com" className="hover:text-white transition-colors">Contact</a>
+                        <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
+                        <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
                     </div>
                     <div className="text-center md:text-right">
                         <p className="text-slate-600 text-xs font-mono mb-1">© 2026 SAGE AI | Autonomous Architect Protocol</p>
