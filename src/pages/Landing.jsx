@@ -20,10 +20,10 @@ const allPosts = Object.entries(postModules).map(([path, raw]) => {
 }).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
 
 const DEMO_RESULTS = [
-    { icon: '📝', label: 'Blog post published', detail: '1,200 words · SEO optimized · live on site' },
-    { icon: '📱', label: '5 social captions ready', detail: 'Bluesky · Instagram · formatted & scheduled' },
-    { icon: '💰', label: 'Gumroad product created', detail: 'Sales page · ZIP bundle · payment link live' },
-    { icon: '🚀', label: 'Posted to Bluesky & Instagram', detail: 'Auto-published · engagement tracking on' },
+    { icon: '📝', label: 'Blog post generated', detail: '1,200 words · SEO optimized · ready to publish' },
+    { icon: '📱', label: '5 social captions ready', detail: 'Bluesky · Instagram · formatted & reviewed' },
+    { icon: '💰', label: 'Gumroad package ready', detail: 'ZIP bundle · sales copy · ready to upload' },
+    { icon: '🚀', label: 'Posted to Bluesky', detail: 'Auto-published · Instagram draft ready' },
 ];
 
 const formatDate = (dateStr) => {
@@ -73,7 +73,7 @@ const Landing = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        {snsStats.total_posts}+ POSTS AUTO-PUBLISHED · $0 MANUAL EFFORT · RUNS WHILE YOU SLEEP
+                        {snsStats.total_posts}+ POSTS SHIPPED · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
@@ -105,18 +105,18 @@ const Landing = () => {
             <div className="relative z-10 py-8 px-4 border-t border-white/5">
                 <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-6 text-center">
                     <div className="flex flex-col items-center gap-1">
-                        <div className="text-yellow-400 text-lg tracking-wide">★★★★★</div>
-                        <p className="text-xs font-mono text-slate-400">Rated 4.9/5 on Gumroad</p>
+                        <p className="text-2xl font-black text-white">{snsStats.total_posts}+</p>
+                        <p className="text-xs font-mono text-slate-400">Posts shipped</p>
                     </div>
                     <div className="hidden sm:block w-px h-8 bg-white/10" />
                     <div className="flex flex-col items-center gap-1">
-                        <p className="text-2xl font-black text-white">200+</p>
-                        <p className="text-xs font-mono text-slate-400">Solopreneurs worldwide</p>
+                        <p className="text-2xl font-black text-white">Feb 2026</p>
+                        <p className="text-xs font-mono text-slate-400">First release</p>
                     </div>
                     <div className="hidden sm:block w-px h-8 bg-white/10" />
                     <div className="flex flex-col items-center gap-1">
-                        <p className="text-2xl font-black text-white">$0</p>
-                        <p className="text-xs font-mono text-slate-400">Manual effort required</p>
+                        <p className="text-2xl font-black text-white">🇯🇵</p>
+                        <p className="text-xs font-mono text-slate-400">Built in Yokohama, Japan</p>
                     </div>
                 </div>
             </div>
@@ -262,10 +262,11 @@ const Landing = () => {
                     </div>
                     <div className="space-y-6">
                         {[
-                            { q: "I'm not technical. Can I actually use this?", a: "Yes — that's the whole point. You type what you want in plain English. Sage writes the blog, posts to social media, and tracks the results. No code, no dashboards to configure, no learning curve." },
-                            { q: "What exactly gets automated?", a: "Blog post generation, SEO optimization, social media posting (Bluesky & Instagram), content scheduling, and performance analytics. All running 24/7." },
-                            { q: "Can I cancel anytime?", a: "Yes. No contracts, no lock-in. Cancel your Pro subscription anytime and keep access until the end of your billing period." },
-                            { q: "Is my data safe?", a: "Absolutely. Sage runs a hybrid AI architecture — sensitive data stays on your local machine, only non-private content touches the cloud for speed." },
+                            { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. That's it. No code, no dashboards, no configuration." },
+                            { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, and Gumroad package creation. Instagram drafts are generated but require manual posting for now." },
+                            { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
+                            { q: "What if it doesn't work for me?", a: "Gumroad's 30-day money-back guarantee. One-click full refund, no questions asked." },
+                            { q: "Do I need to install anything?", a: "The Blueprint ($29.99) is a download-and-run ZIP. No installation needed. Windows only for now." },
                         ].map((item, i) => (
                             <Motion.div
                                 key={i}
