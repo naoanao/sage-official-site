@@ -96,6 +96,30 @@ logger.info(f"🚀 [CONFIG] OFFLINE_MODE: {os.getenv('SAGE_OFFLINE_MODE', 'False
 logger.info(f"🚀 [CONFIG] SAGE_BYPASS_CHROMA: {os.getenv('SAGE_BYPASS_CHROMA', '0')}")
 logger.info(f"🚀 [CONFIG] SAGE_BRAIN_STDP_ENABLED: {os.getenv('SAGE_BRAIN_STDP_ENABLED', '0')}")
 
+# === IDENTITY LOADER ===
+_IDENTITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'identity.json')
+
+def load_identity():
+    """identity.jsonを読み込む。存在しない場合はデフォルト値を返す"""
+    defaults = {
+        "role": "AI収益化の専門家",
+        "niche": "AIツールを使った副業・自動化",
+        "tone": "professional yet approachable",
+        "visual_style": "clean minimalist tech aesthetic",
+        "language": "ja",
+        "brand_name": "Sage AI",
+        "target_audience": "AIで副収入を得たいソロプレナー"
+    }
+    try:
+        with open(_IDENTITY_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return defaults
+
+IDENTITY = load_identity()
+logger.info(f"[IDENTITY] Loaded: role={IDENTITY.get('role')}, niche={IDENTITY.get('niche')}")
+# === END IDENTITY LOADER ===
+
 
 # --- INPUT NORMALIZATION (UX Guardrail) ---
 from functools import wraps
@@ -449,6 +473,114 @@ def get_detailed_stats():
     except Exception as e:
         logger.error(f"Detailed stats error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/automations', methods=['GET'])
+def get_automations():
+    """
+    Returns the real status of background automation threads.
+    """
+    import threading
+    active_threads = [t.name for t in threading.enumerate()]
+    
+    automations = [
+        {
+            "id": "bluesky",
+            "name": "Social Media (Bluesky/IG)",
+            "icon": "📱",
+            "status": "Active" if "SageSNSScheduler" in active_threads else "Paused",
+            "active": "SageSNSScheduler" in active_threads,
+            "schedule": "Every 1 hour",
+            "lastRun": _get_last_run_time("bluesky")
+        },
+        {
+            "id": "blog",
+            "name": "Daily Blog Scheduler",
+            "icon": "📝",
+            "status": "Active" if "SageBlogScheduler" in active_threads else "Paused",
+            "active": "SageBlogScheduler" in active_threads,
+            "schedule": "Daily 09:00 JST",
+            "lastRun": _get_last_run_time("blog")
+        },
+        {
+            "id": "gumroad",
+            "name": "Gumroad Product Prep",
+            "icon": "💰",
+            "status": "Active" if "SageGumroadScheduler" in active_threads else "Paused",
+            "active": "SageGumroadScheduler" in active_threads,
+            "schedule": "Daily 10:00 JST",
+            "lastRun": _get_last_run_time("gumroad")
+        }
+    ]
+    return jsonify(automations)
+
+# --- LAST RUN REGISTRY ---
+_last_run_registry = {}  # {automation_id: datetime_string}
+
+def _get_last_run_time(automation_id: str) -> str:
+    """最終実行時刻を返す。未記録の場合は'Never'"""
+    return _last_run_registry.get(automation_id, "Never")
+
+def _record_run(automation_id: str):
+    """スケジューラーが実行する際に呼び出して時刻を記録する"""
+    _last_run_registry[automation_id] = datetime.now().strftime('%Y-%m-%d %H:%M JST')
+
+# --- AUTOMATION TOGGLE ---
+_automation_stop_events = {}  # {automation_id: threading.Event}
+
+@app.route('/api/automations/toggle', methods=['POST'])
+def toggle_automation():
+    """自動化スレッドをON/OFFする"""
+    try:
+        data = request.json
+        automation_id = data.get('id')
+        active = data.get('active', False)
+
+        if not automation_id:
+            return jsonify({'error': 'id is required'}), 400
+
+        if not active:
+            if automation_id in _automation_stop_events:
+                _automation_stop_events[automation_id].set()
+                logger.info(f"[TOGGLE] Stopped automation: {automation_id}")
+        else:
+            if automation_id in _automation_stop_events:
+                _automation_stop_events[automation_id].clear()
+                logger.info(f"[TOGGLE] Started automation: {automation_id}")
+            else:
+                _automation_stop_events[automation_id] = threading.Event()
+
+        return jsonify({'id': automation_id, 'active': active, 'status': 'ok'})
+    except Exception as e:
+        logger.error(f"[TOGGLE] Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# --- IDENTITY API ---
+@app.route('/api/identity', methods=['GET'])
+def get_identity():
+    """現在のidentity設定を返す"""
+    return jsonify(load_identity())
+
+@app.route('/api/identity', methods=['POST'])
+def save_identity():
+    """identity.jsonを上書き保存する"""
+    try:
+        data = request.json
+        required_keys = ['role', 'niche', 'tone', 'visual_style']
+        for key in required_keys:
+            if key not in data:
+                return jsonify({'error': f'Missing key: {key}'}), 400
+
+        os.makedirs(os.path.dirname(_IDENTITY_PATH), exist_ok=True)
+        with open(_IDENTITY_PATH, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        global IDENTITY
+        IDENTITY = data
+        logger.info(f"[IDENTITY] Saved: role={data.get('role')}, niche={data.get('niche')}")
+        return jsonify({'status': 'saved', 'identity': data})
+    except Exception as e:
+        logger.error(f"[IDENTITY] Save error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/sns/stats', methods=['GET'])
 def get_sns_stats():
