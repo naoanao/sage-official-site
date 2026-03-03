@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion as Motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { FiPlay, FiShield, FiDollarSign, FiCpu, FiMessageSquare, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
@@ -43,6 +43,18 @@ const SageOS = () => {
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
     // 'idle' | 'running' | 'done' | 'error'
 
+    // Content tabs & publish
+    const [contentTab, setContentTab] = useState('blog'); // 'blog' | 'captions' | 'sales' | 'images'
+    const [imageRegenStatus, setImageRegenStatus] = useState('idle');
+    const [publishChecklist, setPublishChecklist] = useState({ bluesky: 'idle', instagram: 'idle', copied: false });
+
+    // Automations
+    const [automations, setAutomations] = useState([
+        { id: 'bluesky', name: 'Bluesky Daily Post', icon: '🦋', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
+        { id: 'instagram', name: 'Instagram Daily Post', icon: '📸', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
+        { id: 'blog', name: 'Blog Weekly Post', icon: '📝', active: false, schedule: 'Weekly · Mon 09:00', lastRun: 'Not connected' },
+    ]);
+
     // Sage Metrics states
     const [brainStats, setBrainStats] = useState({ learned_patterns: 0, accuracy: 0 });
     const [monetizationStats, setMonetizationStats] = useState({ qa_pass: 0, qa_warn: 0, safety: 0 });
@@ -76,8 +88,18 @@ const SageOS = () => {
             }
         };
 
+        // Fetch automations (fallback to defaults if API unavailable)
+        const fetchAutomations = async () => {
+            try {
+                const res = await api.get('/api/automations');
+                const data = Array.isArray(res.data) ? res.data : res.data?.automations;
+                if (data?.length) setAutomations(data);
+            } catch { /* use defaults */ }
+        };
+
         init();
         fetchSageMetrics();
+        fetchAutomations();
         const timer = setInterval(fetchSageMetrics, 10000);
         return () => clearInterval(timer);
     }, []);
@@ -168,6 +190,8 @@ const SageOS = () => {
             setEditedSalesPage(courseData.sales_page || '');
             setSectionInstructions({});
             setExpandedSection(0);
+            setContentTab('blog');
+            setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
             setMonetizeStatus('review');
         } catch (e) {
             console.error("Monetization failed", e);
@@ -200,8 +224,6 @@ const SageOS = () => {
     };
 
     // Apply global instruction to all sections + sales page + images (always)
-    // LLM on the backend translates the instruction into image style keywords automatically
-    // tonePreset: optional preset ID (e.g. 'conversational', 'pasona') — backend uses full template
     const handleRewriteAll = async (overrideInstruction, tonePreset) => {
         const instruction = overrideInstruction || globalInstruction;
         if (!tonePreset && !instruction.trim()) return;
@@ -213,7 +235,6 @@ const SageOS = () => {
                 ? { content, tone_preset: tonePreset, instruction: '', language: resolvedLang }
                 : { content, instruction, language: resolvedLang };
 
-            // Run text rewrites, sales page rewrite, and image regen all in parallel
             const textRewritePromise = Promise.all(
                 editedSections.map(s =>
                     api.post('/api/productize/rewrite', rewritePayload(s.content))
@@ -236,9 +257,6 @@ const SageOS = () => {
             const rewrites = rewritesResult.status === 'fulfilled' ? rewritesResult.value : [];
             const salesPageRes = salesPageResult.status === 'fulfilled' ? salesPageResult.value : null;
             const imageRes = imageResult.status === 'fulfilled' ? imageResult.value : null;
-            if (rewritesResult.status === 'rejected') console.error('Text rewrite failed', rewritesResult.reason);
-            if (salesPageResult.status === 'rejected') console.error('Sales page rewrite failed', salesPageResult.reason);
-            if (imageResult.status === 'rejected') console.error('Image regen failed', imageResult.reason);
 
             setEditedSections(prev => prev.map((s, i) =>
                 rewrites[i]?.data?.status === 'success' ? { ...s, content: rewrites[i].data.rewritten } : s
@@ -276,6 +294,58 @@ const SageOS = () => {
             setMonetizeStatus('error');
             setTimeout(() => { setMonetizeStatus('review'); setMonetizeResult(null); }, 6000);
         }
+    };
+
+    // Image regeneration
+    const handleRegenImages = async () => {
+        setImageRegenStatus('running');
+        try {
+            const res = await api.post('/api/productize/regenerate_images', {
+                sections: editedSections,
+                topic: monetizeTopic
+            });
+            if (res.data?.status === 'success' && res.data.images) {
+                setGenerateData(prev => ({ ...prev, images: res.data.images }));
+            }
+        } catch (e) {
+            console.error('Image regen failed', e);
+        } finally {
+            setImageRegenStatus('idle');
+        }
+    };
+
+    // Publish actions
+    const handlePublishBluesky = async () => {
+        setPublishChecklist(p => ({ ...p, bluesky: 'running' }));
+        try {
+            const text = editedSections.map(s => `${s.title}\n\n${s.content}`).join('\n\n');
+            await api.post('/api/bluesky/post', { content: text });
+            setPublishChecklist(p => ({ ...p, bluesky: 'done' }));
+        } catch { setPublishChecklist(p => ({ ...p, bluesky: 'error' })); }
+    };
+
+    const handlePublishInstagram = async () => {
+        setPublishChecklist(p => ({ ...p, instagram: 'running' }));
+        try {
+            const text = editedSections.map(s => `${s.title}\n\n${s.content}`).join('\n\n');
+            await api.post('/api/instagram/post', { content: text });
+            setPublishChecklist(p => ({ ...p, instagram: 'done' }));
+        } catch { setPublishChecklist(p => ({ ...p, instagram: 'error' })); }
+    };
+
+    const handleCopyBlogPost = () => {
+        const text = editedSections.map(s => `## ${s.title}\n\n${s.content}`).join('\n\n');
+        navigator.clipboard.writeText(text);
+        setPublishChecklist(p => ({ ...p, copied: true }));
+        setTimeout(() => setPublishChecklist(p => ({ ...p, copied: false })), 2000);
+    };
+
+    const handleStartNew = () => {
+        setMonetizeStatus('idle');
+        setGenerateData(null);
+        setMonetizeResult(null);
+        setContentTab('blog');
+        setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
     };
 
     // Content quality heuristic — runs client-side, no API call (JP + EN bilingual)
@@ -690,47 +760,7 @@ const SageOS = () => {
                                     </button>
                                 </div>
 
-                                {/* Visual Assets */}
-                                {generateData.images && Object.keys(generateData.images).length > 0 && (
-                                    <div className="p-4 bg-slate-900/60 border border-white/10 rounded-2xl">
-                                        <div className="text-slate-400 text-xs font-bold mb-3 uppercase tracking-widest flex items-center gap-2">
-                                            <FiActivity className="text-blue-400" /> Visual Assets
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            {Object.entries(generateData.images).map(([title, data]) => (
-                                                <div key={title} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                                                    {data.type === 'generated' && data.url ? (
-                                                        <a href={data.url} target="_blank" rel="noopener noreferrer">
-                                                            <img
-                                                                src={data.url}
-                                                                alt={title}
-                                                                className="w-full h-28 object-cover hover:opacity-90 transition-opacity"
-                                                                onError={e => { e.target.style.display = 'none'; }}
-                                                            />
-                                                        </a>
-                                                    ) : (
-                                                        <div className="w-full h-28 flex items-center justify-center bg-slate-800/60">
-                                                            <span className="text-slate-500 text-xs">Prompt Only</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="px-2 py-1.5">
-                                                        <p className="text-slate-300 text-[10px] truncate">{title}</p>
-                                                        {data.prompt && (
-                                                            <p className="text-slate-600 text-[9px] truncate mt-0.5">{data.prompt}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {Object.values(generateData.images).some(d => d.type === 'prompt_only') && (
-                                            <p className="text-slate-500 text-[10px] mt-3 italic">
-                                                ※ 一部の画像はプロンプトのみ。image_prompts.md をMidjourney等で利用可能。
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Global tone rewrite */}
+                                {/* Global tone rewrite — presets first, custom instruction below */}
                                 {(() => {
                                     const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
                                     const isEn = resolvedLang === 'en';
@@ -752,29 +782,11 @@ const SageOS = () => {
                                     ];
                                     return (
                                         <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl">
-                                            <div className="text-xs font-bold text-purple-300 mb-2 uppercase tracking-widest">
+                                            <div className="text-xs font-bold text-purple-300 mb-3 uppercase tracking-widest">
                                                 {isEn ? 'Rewrite Tone & Style (All Sections)' : '全体の口調・スタイルを一括変更'}
                                             </div>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={globalInstruction}
-                                                    onChange={e => setGlobalInstruction(e.target.value)}
-                                                    onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
-                                                    placeholder={isEn ? 'e.g. Make it shorter / Add more examples / Bullet points' : '例: もっとカジュアルに / 箇条書きにして / 英語に翻訳 / 短くまとめて'}
-                                                    className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
-                                                />
-                                                <button
-                                                    onClick={handleRewriteAll}
-                                                    disabled={!globalInstruction.trim() || globalRewriting}
-                                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
-                                                >
-                                                    {globalRewriting
-                                                        ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> {isEn ? 'Rewriting...' : '書き直し中'}</>
-                                                        : <><FiPlay /> {isEn ? 'Rewrite All' : '全部書き直す'}</>}
-                                                </button>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 mt-2">
+                                            {/* Presets row first */}
+                                            <div className="flex flex-wrap gap-2 mb-3">
                                                 {isEn
                                                     ? enPresets.map(p => (
                                                         <button key={p.id}
@@ -795,131 +807,260 @@ const SageOS = () => {
                                                     ))
                                                 }
                                             </div>
+                                            {/* Custom instruction below presets */}
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={globalInstruction}
+                                                    onChange={e => setGlobalInstruction(e.target.value)}
+                                                    onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
+                                                    placeholder={isEn ? 'Custom instruction: e.g. Make it shorter / Add more examples' : 'カスタム指示: 例: もっとカジュアルに / 英語に翻訳 / 短くまとめて'}
+                                                    className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
+                                                />
+                                                <button
+                                                    onClick={handleRewriteAll}
+                                                    disabled={!globalInstruction.trim() || globalRewriting}
+                                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
+                                                >
+                                                    {globalRewriting
+                                                        ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> {isEn ? 'Rewriting...' : '書き直し中'}</>
+                                                        : <><FiPlay /> {isEn ? 'Apply' : '適用'}</>}
+                                                </button>
+                                            </div>
                                         </div>
                                     );
                                 })()}
 
-                                {/* Section editors */}
-                                <div className="space-y-3">
-                                    {editedSections.map((section, idx) => (
-                                        <div key={idx} className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
-                                            {/* Section header */}
+                                {/* Content Tabs */}
+                                <div>
+                                    <div className="flex gap-1 mb-4 p-1 bg-white/5 rounded-2xl border border-white/10">
+                                        {[['blog', '📝 Blog Post'], ['captions', '📱 Captions'], ['sales', '💰 Sales Page'], ['images', '🖼 Images']].map(([id, label]) => (
                                             <button
-                                                className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-all"
-                                                onClick={() => setExpandedSection(expandedSection === idx ? null : idx)}
+                                                key={id}
+                                                onClick={() => setContentTab(id)}
+                                                className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all ${contentTab === id ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                                             >
-                                                <div className="flex items-center gap-3 text-left flex-wrap">
-                                                    <span className="text-xs text-slate-500 font-mono w-5">{idx + 1}</span>
-                                                    <span className="text-sm font-semibold text-white">{section.title}</span>
-                                                    <span className="text-xs text-slate-500">{section.content?.length || 0} 文字</span>
-                                                    {(() => {
-                                                        const q = analyzeContentQuality(section.content);
-                                                        const scoreColor = q.score >= 75 ? 'text-emerald-400' : q.score >= 50 ? 'text-amber-400' : 'text-red-400';
-                                                        return (
-                                                            <span className={`text-xs font-bold ${scoreColor}`}>Q{q.score}</span>
-                                                        );
-                                                    })()}
-                                                </div>
-                                                <span className="text-slate-500 text-xs">{expandedSection === idx ? '▲' : '▼'}</span>
+                                                {label}
                                             </button>
+                                        ))}
+                                    </div>
 
-                                            {/* Expanded editor */}
-                                            {expandedSection === idx && (
-                                                <div className="px-5 pb-5 space-y-3 border-t border-white/5">
-                                                    {/* Title edit */}
-                                                    <input
-                                                        type="text"
-                                                        value={section.title}
-                                                        onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, title: e.target.value } : s))}
-                                                        className="w-full mt-3 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-semibold text-sm focus:outline-none focus:border-blue-400"
-                                                        placeholder="セクションタイトル"
-                                                    />
-                                                    {/* Content textarea */}
+                                    {/* Blog Post tab */}
+                                    {contentTab === 'blog' && (
+                                        <div className="space-y-3">
+                                            {editedSections.map((section, idx) => (
+                                                <div key={idx} className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
+                                                    <button
+                                                        className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-all"
+                                                        onClick={() => setExpandedSection(expandedSection === idx ? null : idx)}
+                                                    >
+                                                        <div className="flex items-center gap-3 text-left flex-wrap">
+                                                            <span className="text-xs text-slate-500 font-mono w-5">{idx + 1}</span>
+                                                            <span className="text-sm font-semibold text-white">{section.title}</span>
+                                                            <span className="text-xs text-slate-500">{section.content?.length || 0} 文字</span>
+                                                            {(() => {
+                                                                const q = analyzeContentQuality(section.content);
+                                                                const scoreColor = q.score >= 75 ? 'text-emerald-400' : q.score >= 50 ? 'text-amber-400' : 'text-red-400';
+                                                                return <span className={`text-xs font-bold ${scoreColor}`}>Q{q.score}</span>;
+                                                            })()}
+                                                        </div>
+                                                        <span className="text-slate-500 text-xs">{expandedSection === idx ? '▲' : '▼'}</span>
+                                                    </button>
+                                                    {expandedSection === idx && (
+                                                        <div className="px-5 pb-5 space-y-3 border-t border-white/5">
+                                                            <input
+                                                                type="text"
+                                                                value={section.title}
+                                                                onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, title: e.target.value } : s))}
+                                                                className="w-full mt-3 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-semibold text-sm focus:outline-none focus:border-blue-400"
+                                                                placeholder="セクションタイトル"
+                                                            />
+                                                            <textarea
+                                                                value={section.content}
+                                                                onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, content: e.target.value } : s))}
+                                                                rows={10}
+                                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 text-sm leading-relaxed focus:outline-none focus:border-blue-400 resize-y font-mono"
+                                                            />
+                                                            <div className="flex gap-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={sectionInstructions[idx] || ''}
+                                                                    onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
+                                                                    onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
+                                                                    placeholder="このセクションだけ書き直す（例: もっと具体的な数字を入れて）"
+                                                                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600"
+                                                                />
+                                                                <button
+                                                                    onClick={() => handleRewriteSection(idx)}
+                                                                    disabled={!sectionInstructions[idx]?.trim() || rewritingIdx === idx}
+                                                                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all whitespace-nowrap"
+                                                                >
+                                                                    {rewritingIdx === idx
+                                                                        ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
+                                                                        : <FiPlay />}
+                                                                    書き直す
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Captions tab */}
+                                    {contentTab === 'captions' && (
+                                        <div className="space-y-3">
+                                            <p className="text-xs text-slate-500 mb-2">Auto-generated from your blog sections. First 280 chars per caption.</p>
+                                            {editedSections.slice(0, 3).map((s, i) => (
+                                                <div key={i} className="p-4 bg-black/40 rounded-2xl border border-white/10">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-xs text-slate-500 font-mono">📱 Caption {i + 1}</span>
+                                                        <button
+                                                            onClick={() => navigator.clipboard.writeText(s.content?.slice(0, 280) || '')}
+                                                            className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all"
+                                                        >
+                                                            📋 Copy
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-sm text-slate-300 leading-relaxed">
+                                                        {s.content?.slice(0, 280)}{s.content?.length > 280 ? '...' : ''}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                            {editedSections.length === 0 && (
+                                                <div className="p-8 text-center text-slate-500">No sections available for captions.</div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Sales Page tab */}
+                                    {contentTab === 'sales' && (
+                                        <div className="bg-white/3 border border-white/8 rounded-2xl p-5 space-y-3">
+                                            {editedSalesPage ? (
+                                                <>
                                                     <textarea
-                                                        value={section.content}
-                                                        onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, content: e.target.value } : s))}
-                                                        rows={10}
-                                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 text-sm leading-relaxed focus:outline-none focus:border-blue-400 resize-y font-mono"
+                                                        value={editedSalesPage}
+                                                        onChange={e => setEditedSalesPage(e.target.value)}
+                                                        rows={16}
+                                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 text-sm leading-relaxed focus:outline-none focus:border-emerald-400 resize-y font-mono"
                                                     />
-                                                    {/* Per-section rewrite */}
                                                     <div className="flex gap-2">
                                                         <input
                                                             type="text"
-                                                            value={sectionInstructions[idx] || ''}
-                                                            onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
-                                                            onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
-                                                            placeholder="このセクションだけ書き直す（例: もっと具体的な数字を入れて）"
-                                                            className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600"
+                                                            value={sectionInstructions['sales'] || ''}
+                                                            onChange={e => setSectionInstructions(prev => ({ ...prev, sales: e.target.value }))}
+                                                            onKeyDown={async e => {
+                                                                if (e.key !== 'Enter' || !sectionInstructions['sales']?.trim()) return;
+                                                                setRewritingIdx('sales');
+                                                                const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
+                                                                const res = await api.post('/api/productize/rewrite', { content: editedSalesPage, instruction: sectionInstructions['sales'], language: resolvedLang });
+                                                                if (res.data?.status === 'success') { setEditedSalesPage(res.data.rewritten); setSectionInstructions(p => ({ ...p, sales: '' })); }
+                                                                setRewritingIdx(null);
+                                                            }}
+                                                            placeholder="セールスページを書き直す（例: CTAを強調して）"
+                                                            className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400 placeholder:text-slate-600"
                                                         />
                                                         <button
-                                                            onClick={() => handleRewriteSection(idx)}
-                                                            disabled={!sectionInstructions[idx]?.trim() || rewritingIdx === idx}
-                                                            className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all whitespace-nowrap"
+                                                            disabled={!sectionInstructions['sales']?.trim() || rewritingIdx === 'sales'}
+                                                            onClick={async () => {
+                                                                if (!sectionInstructions['sales']?.trim()) return;
+                                                                setRewritingIdx('sales');
+                                                                const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
+                                                                const res = await api.post('/api/productize/rewrite', { content: editedSalesPage, instruction: sectionInstructions['sales'], language: resolvedLang });
+                                                                if (res.data?.status === 'success') { setEditedSalesPage(res.data.rewritten); setSectionInstructions(p => ({ ...p, sales: '' })); }
+                                                                setRewritingIdx(null);
+                                                            }}
+                                                            className="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all whitespace-nowrap"
                                                         >
-                                                            {rewritingIdx === idx
-                                                                ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
-                                                                : <FiPlay />}
+                                                            {rewritingIdx === 'sales' ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" /> : <FiPlay />}
                                                             書き直す
                                                         </button>
                                                     </div>
+                                                </>
+                                            ) : (
+                                                <div className="p-8 text-center text-slate-500">No sales page generated.</div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Images tab */}
+                                    {contentTab === 'images' && (
+                                        <div className="space-y-4">
+                                            <button
+                                                onClick={handleRegenImages}
+                                                disabled={imageRegenStatus === 'running'}
+                                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all"
+                                            >
+                                                {imageRegenStatus === 'running'
+                                                    ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> Regenerating...</>
+                                                    : <>🔄 Regenerate Images</>}
+                                            </button>
+                                            {generateData.images && Object.keys(generateData.images).length > 0 ? (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {Object.entries(generateData.images).map(([title, data]) => (
+                                                        <div key={title} className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                                                            {data.type === 'generated' && data.url ? (
+                                                                <a href={data.url} target="_blank" rel="noopener noreferrer">
+                                                                    <img src={data.url} alt={title} className="w-full h-28 object-cover hover:opacity-90 transition-opacity" onError={e => { e.target.style.display = 'none'; }} />
+                                                                </a>
+                                                            ) : (
+                                                                <div className="w-full h-28 flex items-center justify-center bg-slate-800/60">
+                                                                    <span className="text-slate-500 text-xs">Prompt Only</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="px-2 py-1.5">
+                                                                <p className="text-slate-300 text-[10px] truncate">{title}</p>
+                                                                {data.prompt && <p className="text-slate-600 text-[9px] truncate mt-0.5">{data.prompt}</p>}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="p-8 text-center bg-white/3 border border-white/10 rounded-2xl">
+                                                    <div className="text-slate-500 text-sm">No images yet. Click Regenerate Images to create visuals.</div>
                                                 </div>
                                             )}
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
 
-                                {/* Sales page editor */}
-                                {editedSalesPage && (
-                                    <div className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
-                                        <button
-                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-all"
-                                            onClick={() => setExpandedSection(expandedSection === 'sales' ? null : 'sales')}
-                                        >
-                                            <span className="text-sm font-semibold text-emerald-300">💰 セールスページ</span>
-                                            <span className="text-slate-500 text-xs">{expandedSection === 'sales' ? '▲' : '▼'}</span>
-                                        </button>
-                                        {expandedSection === 'sales' && (
-                                            <div className="px-5 pb-5 space-y-3 border-t border-white/5">
-                                                <textarea
-                                                    value={editedSalesPage}
-                                                    onChange={e => setEditedSalesPage(e.target.value)}
-                                                    rows={14}
-                                                    className="w-full mt-3 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 text-sm leading-relaxed focus:outline-none focus:border-emerald-400 resize-y font-mono"
-                                                />
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="text"
-                                                        value={sectionInstructions['sales'] || ''}
-                                                        onChange={e => setSectionInstructions(prev => ({ ...prev, sales: e.target.value }))}
-                                                        onKeyDown={async e => {
-                                                            if (e.key !== 'Enter' || !sectionInstructions['sales']?.trim()) return;
-                                                            setRewritingIdx('sales');
-                                                            const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
-                                                            const res = await api.post('/api/productize/rewrite', { content: editedSalesPage, instruction: sectionInstructions['sales'], language: resolvedLang });
-                                                            if (res.data?.status === 'success') { setEditedSalesPage(res.data.rewritten); setSectionInstructions(p => ({ ...p, sales: '' })); }
-                                                            setRewritingIdx(null);
-                                                        }}
-                                                        placeholder="セールスページを書き直す（例: もっと煽り文句を入れて、CTAを強調して）"
-                                                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400 placeholder:text-slate-600"
-                                                    />
-                                                    <button
-                                                        disabled={!sectionInstructions['sales']?.trim() || rewritingIdx === 'sales'}
-                                                        onClick={async () => {
-                                                            if (!sectionInstructions['sales']?.trim()) return;
-                                                            setRewritingIdx('sales');
-                                                            const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
-                                                            const res = await api.post('/api/productize/rewrite', { content: editedSalesPage, instruction: sectionInstructions['sales'], language: resolvedLang });
-                                                            if (res.data?.status === 'success') { setEditedSalesPage(res.data.rewritten); setSectionInstructions(p => ({ ...p, sales: '' })); }
-                                                            setRewritingIdx(null);
-                                                        }}
-                                                        className="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all whitespace-nowrap"
-                                                    >
-                                                        {rewritingIdx === 'sales' ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" /> : <FiPlay />}
-                                                        書き直す
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
+                                {/* Publish Checklist */}
+                                {monetizeStatus === 'review' && (
+                                    <div className="p-5 bg-slate-900/60 border border-white/10 rounded-2xl">
+                                        <div className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">📋 Publish Checklist</div>
+                                        <div className="space-y-2">
+                                            {[
+                                                { key: 'bluesky', icon: '🚀', label: 'Post to Bluesky', action: handlePublishBluesky },
+                                                { key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram },
+                                            ].map(({ key, icon, label, action }) => (
+                                                <button
+                                                    key={key}
+                                                    onClick={action}
+                                                    disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
+                                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}
+                                                >
+                                                    <span>{publishChecklist[key] === 'done' ? '✅' : publishChecklist[key] === 'running' ? '⏳' : icon}</span>
+                                                    <span>{label}</span>
+                                                    {publishChecklist[key] === 'done' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
+                                                    {publishChecklist[key] === 'error' && <span className="ml-auto text-xs text-red-400">Failed</span>}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={handleCopyBlogPost}
+                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist.copied ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}
+                                            >
+                                                <span>{publishChecklist.copied ? '✅' : '📝'}</span>
+                                                <span>{publishChecklist.copied ? 'Copied!' : 'Copy Blog Post'}</span>
+                                            </button>
+                                            <button
+                                                onClick={handleStartNew}
+                                                className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-all"
+                                            >
+                                                <span>✅</span>
+                                                <span>Done — Start New</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
 
@@ -941,7 +1082,7 @@ const SageOS = () => {
                                         <div className="text-emerald-400 font-bold text-lg flex items-center gap-2"><FiCheck /> 最終版を保存しました</div>
                                         <div className="text-slate-300 font-mono text-xs break-all">{monetizeResult}</div>
                                         <button
-                                            onClick={() => { setMonetizeStatus('idle'); setGenerateData(null); setMonetizeResult(null); }}
+                                            onClick={handleStartNew}
                                             className="mt-2 text-sm text-slate-400 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"
                                         >
                                             新しい商品を生成する
@@ -955,48 +1096,78 @@ const SageOS = () => {
                 )}
 
                 {activeTab === 'chat' && (
-                    <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto">
-                        <div className="flex-1 overflow-y-auto space-y-4 p-4 no-scrollbar">
-                            {messages.map(msg => (
-                                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 rounded-tr-none' :
-                                        msg.role === 'system' ? 'bg-white/5 border border-white/10 text-slate-400 text-center mx-auto text-xs font-mono uppercase' :
-                                            'bg-slate-800 rounded-tl-none border border-slate-700'
-                                        }`}>
-                                        {msg.content}
-                                        {msg.role === 'sage' && (
-                                            <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
-                                                <button
-                                                    onClick={() => convertToProduct(msg.content)}
-                                                    className="text-xs bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-colors"
-                                                >
-                                                    <FiDollarSign /> Productize This (D2)
-                                                </button>
-                                            </div>
-                                        )}
+                    <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 max-w-4xl mx-auto py-4">
+
+                        {/* Active Automations */}
+                        <div className="p-5 bg-white/3 border border-white/8 rounded-2xl">
+                            <div className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2">⚡ Active Automations</div>
+                            <div className="grid grid-cols-3 gap-3">
+                                {automations.map(a => (
+                                    <div key={a.id} className={`p-4 rounded-xl border transition-all ${a.active ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-white/3 border-white/8'}`}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xl">{a.icon}</span>
+                                            <div className={`w-2 h-2 rounded-full ${a.active ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}></div>
+                                        </div>
+                                        <div className="text-sm font-semibold text-white mb-0.5">{a.name}</div>
+                                        <div className="text-xs text-slate-500">{a.schedule}</div>
+                                        <div className="text-xs text-slate-500 mb-3">{a.lastRun}</div>
+                                        <button
+                                            onClick={() => setAutomations(prev => prev.map(item => item.id === a.id ? { ...item, active: !item.active } : item))}
+                                            className={`w-full text-xs py-1.5 rounded-lg transition-all ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}
+                                        >
+                                            {a.active ? 'Stop' : 'Start'}
+                                        </button>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                        <form onSubmit={sendMessage} className="p-4 bg-black border-t border-white/5">
-                            <div className="flex relative">
-                                <input
-                                    type="text"
-                                    value={inputValue}
-                                    onChange={e => setInputValue(e.target.value)}
-                                    placeholder="Ask Sage anything, or try a quick action below..."
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-14 py-4 focus:outline-none focus:border-blue-500 transition-colors"
-                                />
-                                <button type="submit" className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
-                                    <FiPlay className="w-5 h-5 ml-0.5" />
-                                </button>
+
+                        {/* Chat */}
+                        <div className="flex flex-col bg-white/3 border border-white/8 rounded-2xl overflow-hidden" style={{ height: 'calc(100vh - 26rem)' }}>
+                            <div className="flex-1 overflow-y-auto space-y-4 p-4 no-scrollbar">
+                                {messages.map(msg => (
+                                    <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 rounded-tr-none' :
+                                            msg.role === 'system' ? 'bg-white/5 border border-white/10 text-slate-400 text-center mx-auto text-xs font-mono uppercase' :
+                                                'bg-slate-800 rounded-tl-none border border-slate-700'
+                                            }`}>
+                                            {msg.content}
+                                            {msg.role === 'sage' && (
+                                                <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
+                                                    <button
+                                                        onClick={() => convertToProduct(msg.content)}
+                                                        className="text-xs bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-colors"
+                                                    >
+                                                        <FiDollarSign /> Productize This (D2)
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="flex gap-2 mt-3">
-                                <button type="button" onClick={() => setInputValue('Research a topic for me: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔍 Research a topic</button>
-                                <button type="button" onClick={() => setInputValue('Generate content about: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">⚡ Generate content</button>
-                                <button type="button" onClick={() => setInputValue('Edit my draft: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">✏️ Edit my draft</button>
-                            </div>
-                        </form>
+                            <form onSubmit={sendMessage} className="p-4 bg-black/60 border-t border-white/5">
+                                <div className="flex relative">
+                                    <input
+                                        type="text"
+                                        value={inputValue}
+                                        onChange={e => setInputValue(e.target.value)}
+                                        placeholder="Ask Sage anything, or try a quick action below..."
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-14 py-4 focus:outline-none focus:border-blue-500 transition-colors"
+                                    />
+                                    <button type="submit" className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
+                                        <FiPlay className="w-5 h-5 ml-0.5" />
+                                    </button>
+                                </div>
+                                <div className="flex gap-2 mt-3 flex-wrap">
+                                    <button type="button" onClick={() => setInputValue('Research a topic for me: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔍 Research a topic</button>
+                                    <button type="button" onClick={() => setInputValue('Generate content about: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">⚡ Generate content</button>
+                                    <button type="button" onClick={() => setInputValue('Edit my draft: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">✏️ Edit my draft</button>
+                                    <button type="button" onClick={() => setInputValue('Schedule a post: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">📅 Schedule a post</button>
+                                    <button type="button" onClick={() => setInputValue('Set up automation: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔗 Set up automation</button>
+                                </div>
+                            </form>
+                        </div>
                     </Motion.div>
                 )}
             </div>
