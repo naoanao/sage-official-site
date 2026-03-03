@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { FiPlay, FiShield, FiDollarSign, FiCpu, FiMessageSquare, FiActivity, FiXCircle, FiCheckCircle, FiBox, FiCheck, FiSearch, FiAlertTriangle } from 'react-icons/fi';
+import { FiPlay, FiShield, FiDollarSign, FiCpu, FiMessageSquare, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 
@@ -15,7 +15,7 @@ const SageOS = () => {
     // Monetization state
     const [monetizeTopic, setMonetizeTopic] = useState('');
     const [market, setMarket] = useState('US');
-    const [price, setPrice] = useState('$29');
+    const [price, setPrice] = useState('$29.99');
     const [lang, setLang] = useState('auto'); // 'auto' | 'ja' | 'en'
     const [monetizeStatus, setMonetizeStatus] = useState('idle');
     // idle | checking_research | needs_research | running_d1 | running | review | finalizing | finalized | error
@@ -23,6 +23,13 @@ const SageOS = () => {
     const [researchCheck, setResearchCheck] = useState({ status: 'idle', file: null });
     // idle | checking | found | missing
     const researchDebounce = useRef(null);
+
+    const CREATE_PLACEHOLDERS = [
+        "e.g. Beginner's guide to passive income with AI",
+        "e.g. 10-minute morning routine for busy moms",
+        "e.g. How to start freelancing with no experience",
+    ];
+    const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
     // Review & Edit state
     const [generateData, setGenerateData] = useState(null);
@@ -42,7 +49,7 @@ const SageOS = () => {
 
     // Chat state
     const [messages, setMessages] = useState([
-        { id: 1, role: 'system', content: 'Sage OS Online. Ready for instructions.' }
+        { id: 1, role: 'system', content: 'Hi. What would you like to create today?' }
     ]);
     const [inputValue, setInputValue] = useState('');
 
@@ -96,6 +103,11 @@ const SageOS = () => {
         }, 600);
         return () => clearTimeout(researchDebounce.current);
     }, [monetizeTopic]);
+
+    useEffect(() => {
+        const t = setInterval(() => setPlaceholderIdx(i => (i + 1) % CREATE_PLACEHOLDERS.length), 3000);
+        return () => clearInterval(t);
+    }, []);
 
     const handleD1Run = async () => {
         setD1Status('running');
@@ -343,19 +355,19 @@ const SageOS = () => {
                         onClick={() => setActiveTab('dashboard')}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === 'dashboard' ? 'bg-blue-600 border border-blue-500 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                     >
-                        <FiActivity /> <span>Dashboard</span>
+                        <FiActivity /> <span>Overview</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('monetization')}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === 'monetization' ? 'bg-purple-600 border border-purple-500 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                     >
-                        <FiDollarSign /> <span>Monetization</span>
+                        <FiDollarSign /> <span>Create</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('chat')}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === 'chat' ? 'bg-emerald-600 border border-emerald-500 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                     >
-                        <FiMessageSquare /> <span>AI Chat</span>
+                        <FiMessageSquare /> <span>Ask Sage</span>
                     </button>
                 </div>
 
@@ -369,7 +381,7 @@ const SageOS = () => {
                         onClick={toggleBrake}
                         className={`w-full py-2 rounded-lg text-xs font-bold uppercase transition-all flex justify-center items-center gap-2 ${brakeEnabled ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'}`}
                     >
-                        {brakeEnabled ? <><FiXCircle /> <span>BRAKE ACTIVE</span></> : <><FiCheckCircle /> <span>NORMAL OPERATION</span></>}
+                        {brakeEnabled ? <><FiXCircle /> <span>BRAKE ACTIVE</span></> : <><FiCheckCircle /> <span>● Online</span></>}
                     </button>
                 </div>
             </div>
@@ -379,7 +391,7 @@ const SageOS = () => {
 
                 {activeTab === 'dashboard' && (
                     <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                        <h2 className="text-2xl font-bold mb-6">System Dashboard</h2>
+                        <h2 className="text-2xl font-bold mb-6">Sage Overview</h2>
 
                         {/* Brain Stats Widget */}
                         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -400,15 +412,17 @@ const SageOS = () => {
                         {/* Sage 3.0 Engine Metrics - Row 2 (Requested) */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                             <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiActivity /> Learned Patterns</div>
+                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiActivity /> Patterns Learned</div>
                                 <div className="text-2xl font-mono text-purple-400">{brainStats.learned_patterns || 0}</div>
                             </div>
                             <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiCpu /> Brain Hit Rate</div>
-                                <div className="text-2xl font-mono text-blue-400">{(brainStats.accuracy * 100).toFixed(1)}%</div>
+                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiCpu /> Memory Active</div>
+                                <div className="text-2xl font-mono text-blue-400">
+                                    {(brainStats.accuracy * 100).toFixed(1) === '0.0' ? 'Warming up...' : `${(brainStats.accuracy * 100).toFixed(1)}%`}
+                                </div>
                             </div>
                             <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiCheckCircle /> QA Pass Rate</div>
+                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiCheckCircle /> Content Quality Score</div>
                                 <div className="text-2xl font-mono text-emerald-400">
                                     {monetizationStats.qa_pass + monetizationStats.qa_warn > 0
                                         ? Math.round((monetizationStats.qa_pass / (monetizationStats.qa_pass + monetizationStats.qa_warn)) * 100)
@@ -416,15 +430,15 @@ const SageOS = () => {
                                 </div>
                             </div>
                             <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiShield /> Guard Blocks</div>
+                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiShield /> Safety Checks Passed</div>
                                 <div className="text-2xl font-mono text-red-400">{monetizationStats.contamination_blocked || 0}</div>
                             </div>
                         </div>
 
                         {/* D1 Knowledge Loop */}
                         <div className="bg-gradient-to-br from-blue-900/20 to-black border border-blue-500/20 p-8 rounded-2xl">
-                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">D1 Knowledge Loop <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Observation Phase</span></h3>
-                            <p className="text-slate-400 mb-6 text-sm">Force observation, pattern detection, and generation of Obsidian artifacts independently of human query.</p>
+                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">D1 Knowledge Loop <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">Ready</span></h3>
+                            <p className="text-slate-400 mb-6 text-sm">Research the web and build your knowledge base.</p>
 
                             <button
                                 onClick={handleD1Run}
@@ -435,7 +449,7 @@ const SageOS = () => {
                                             'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_30px_rgba(37,99,235,0.3)]'
                                     }`}
                             >
-                                {d1Status === 'idle' && <><FiPlay /> Execute D1 Loop</>}
+                                {d1Status === 'idle' && <><FiPlay /> Run Research</>}
                                 {d1Status === 'running' && <><div className="animate-spin w-4 h-4 rounded-full border-2 border-slate-400 border-t-white"></div> Processing...</>}
                                 {d1Status === 'complete' && <><FiCheck /> Knowledge Created</>}
                                 {d1Status === 'error' && <><FiXCircle /> Error</>}
@@ -447,8 +461,8 @@ const SageOS = () => {
                 {activeTab === 'monetization' && (
                     <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto py-8">
                         <div className="text-center mb-10">
-                            <h2 className="text-4xl font-black mb-4">Consultative Productization</h2>
-                            <p className="text-slate-400">Generate a full course and Gumroad landing page from a single topic.</p>
+                            <h2 className="text-4xl font-black mb-4">Create Your Product</h2>
+                            <p className="text-slate-400">One topic. Blog post, social captions, and a Gumroad product. In 90 seconds.</p>
                         </div>
 
                         <div className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-6 backdrop-blur-sm">
@@ -463,8 +477,8 @@ const SageOS = () => {
                                             className="text-xs px-3 py-1 bg-indigo-900/40 hover:bg-indigo-800/60 disabled:opacity-40 text-indigo-300 border border-indigo-500/30 rounded-lg flex items-center gap-1.5 transition-all"
                                         >
                                             {nicheValidation.status === 'running'
-                                                ? <><div className="w-3 h-3 rounded-full border border-indigo-300 border-t-transparent animate-spin" /> 検証中</>
-                                                : <>📊 ニッチ検証</>}
+                                                ? <><div className="w-3 h-3 rounded-full border border-indigo-300 border-t-transparent animate-spin" /> Checking...</>
+                                                : <>📊 Check Market Demand</>}
                                         </button>
                                     </div>
                                     {researchCheck.status === 'checking' && (
@@ -481,7 +495,7 @@ const SageOS = () => {
                                     type="text"
                                     value={monetizeTopic}
                                     onChange={(e) => { setMonetizeTopic(e.target.value); setMonetizeStatus('idle'); setNicheValidation({ status: 'idle', data: null }); }}
-                                    placeholder="e.g. 早朝釣り完全攻略 小田原港 2026"
+                                    placeholder={CREATE_PLACEHOLDERS[placeholderIdx]}
                                     className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors ${researchCheck.status === 'missing' ? 'border-amber-500/50 focus:border-amber-400' : 'border-white/10 focus:border-purple-500'}`}
                                 />
                             </div>
@@ -564,7 +578,7 @@ const SageOS = () => {
                                                     'bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white shadow-[0_0_40px_rgba(147,51,234,0.4)]'
                                         }`}
                                 >
-                                    {monetizeStatus === 'idle' && <><FiBox /> Format Product & Generate Gumroad ZIP</>}
+                                    {monetizeStatus === 'idle' && <>⚡ Generate Product</>}
                                     {monetizeStatus === 'running_d1' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-amber-400 border-t-white" /> D1リサーチ実行中...</>}
                                     {monetizeStatus === 'running' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-slate-400 border-t-white"></div> Running Pipeline...</>}
                                     {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed — Retry</>}
@@ -970,12 +984,17 @@ const SageOS = () => {
                                     type="text"
                                     value={inputValue}
                                     onChange={e => setInputValue(e.target.value)}
-                                    placeholder="Tell Sage to research, heal, or generate..."
+                                    placeholder="Ask Sage anything, or try a quick action below..."
                                     className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-14 py-4 focus:outline-none focus:border-blue-500 transition-colors"
                                 />
                                 <button type="submit" className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
                                     <FiPlay className="w-5 h-5 ml-0.5" />
                                 </button>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                                <button type="button" onClick={() => setInputValue('Research a topic for me: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔍 Research a topic</button>
+                                <button type="button" onClick={() => setInputValue('Generate content about: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">⚡ Generate content</button>
+                                <button type="button" onClick={() => setInputValue('Edit my draft: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">✏️ Edit my draft</button>
                             </div>
                         </form>
                     </Motion.div>
