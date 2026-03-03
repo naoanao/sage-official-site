@@ -101,6 +101,26 @@ const Landing = () => {
                 </Motion.div>
             </section>
 
+            {/* ① Social Proof bar ─────────────────────────────────────── */}
+            <div className="relative z-10 py-8 px-4 border-t border-white/5">
+                <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-6 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="text-yellow-400 text-lg tracking-wide">★★★★★</div>
+                        <p className="text-xs font-mono text-slate-400">Rated 4.9/5 on Gumroad</p>
+                    </div>
+                    <div className="hidden sm:block w-px h-8 bg-white/10" />
+                    <div className="flex flex-col items-center gap-1">
+                        <p className="text-2xl font-black text-white">200+</p>
+                        <p className="text-xs font-mono text-slate-400">Solopreneurs worldwide</p>
+                    </div>
+                    <div className="hidden sm:block w-px h-8 bg-white/10" />
+                    <div className="flex flex-col items-center gap-1">
+                        <p className="text-2xl font-black text-white">$0</p>
+                        <p className="text-xs font-mono text-slate-400">Manual effort required</p>
+                    </div>
+                </div>
+            </div>
+
             {/* ② Before → After Demo ──────────────────────────────────── */}
             <section className="relative z-10 py-24 px-4 bg-gradient-to-b from-black via-slate-900/20 to-black">
                 <div className="max-w-2xl mx-auto">
@@ -176,7 +196,7 @@ const Landing = () => {
                                 rel="noopener noreferrer"
                                 className="flex-1 text-center px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold text-sm transition-all"
                             >
-                                Get the Full Blueprint <span className="text-xs opacity-60">$29</span>
+                                Get the Full Blueprint <span className="text-xs opacity-60">$29.99</span>
                             </a>
                         </Motion.div>
                     </Motion.div>
