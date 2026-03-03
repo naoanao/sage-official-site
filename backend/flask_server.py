@@ -2763,8 +2763,12 @@ def serve_react_app(path):
     # 1. Skip API/Files.
     # 2. Serve file if it exists in dist.
     # 3. Else fallback to index.html for React Router.
-    if path.startswith('api/') or path.startswith('files/'):
-         return jsonify({"status": "error", "message": "Resource not found"}), 404
+    if path.startswith('files/'):
+        return jsonify({"status": "error", "message": "Resource not found"}), 404
+    # Note: api/ routes are handled by Flask's own @app.route decorators.
+    # If we reach here with an api/ path, it means no route matched → return 404.
+    if path.startswith('api/'):
+        return jsonify({"status": "error", "message": f"API endpoint not found: /{path}"}), 404
     
     # Check if the requested path is an actual file in the frontend/dist folder
     full_path = os.path.join(app.static_folder, path)

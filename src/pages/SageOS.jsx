@@ -1180,7 +1180,6 @@ const SageOS = () => {
                                 <div className="flex gap-2 mt-3 flex-wrap">
                                     <button type="button" onClick={() => setInputValue('Research a topic for me: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔍 Research a topic</button>
                                     <button type="button" onClick={() => setInputValue('Generate content about: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">⚡ Generate content</button>
-                                    <button type="button" onClick={() => setInputValue('Edit my draft: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">✏️ Edit my draft</button>
                                     <button type="button" onClick={() => setInputValue('Schedule a post: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">📅 Schedule a post</button>
                                     <button type="button" onClick={() => setInputValue('Set up automation: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔗 Set up automation</button>
                                 </div>
@@ -1205,7 +1204,7 @@ const IdentityPanel = () => {
     React.useEffect(() => {
         api.get('/api/identity')
             .then(res => setIdentity(res.data))
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     const handleReset = async () => {
