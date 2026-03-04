@@ -59,3 +59,4 @@ SAGE_STOP
 .claude/worktrees/
 compliance_deploy/
 tmp/notion_*.txt
+test_notion.py\nactivate_notion_spec.py\nrun_actual_monetization_2026_validator.py\ntmp/
