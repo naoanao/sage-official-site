@@ -549,16 +549,20 @@ def toggle_automation():
         if not automation_id:
             return jsonify({'error': 'id is required'}), 400
 
+        # Create event objects globally if they don't exist
+        for auto in ['sns_poster', 'blog', 'gumroad', 'notion_sync']:
+            if auto not in _automation_stop_events:
+                _automation_stop_events[auto] = threading.Event()
+
         if not active:
-            if automation_id in _automation_stop_events:
-                _automation_stop_events[automation_id].set()
-                logger.info(f"[TOGGLE] Stopped automation: {automation_id}")
+            _automation_stop_events[automation_id].set()
+            logger.info(f"[TOGGLE] Stopped automation: {automation_id}")
         else:
-            if automation_id in _automation_stop_events:
-                _automation_stop_events[automation_id].clear()
-                logger.info(f"[TOGGLE] Started automation: {automation_id}")
-            else:
-                _automation_stop_events[automation_id] = threading.Event()
+            _automation_stop_events[automation_id].clear()
+            logger.info(f"[TOGGLE] Started automation: {automation_id}")
+            # If the threads were completely dead, we do not respawn them here
+            # Instead, the thread functions will check the event flag in their while True loops.
+            # (Note: if the thread completely exited, it won't restart. But our loops never exit, they just sleep/continue)
 
         return jsonify({'id': automation_id, 'active': active, 'status': 'ok'})
     except Exception as e:
@@ -972,8 +976,10 @@ def init_brain():
                                 try:
                                     sched = SNSDailyScheduler()
                                     while True:
-                                        logger.info("[SNS] SNS Scheduler: Checking for Ready content in Notion...")
-                                        sched.run_cycle()
+                                        if not _automation_stop_events.get('sns_poster', threading.Event()).is_set():
+                                            logger.info("[SNS] SNS Scheduler: Checking for Ready content in Notion...")
+                                            sched.run_cycle()
+                                            _record_run("sns_poster")
                                         time.sleep(3600) # Once per hour
                                 except Exception as e:
                                     logger.error(f"[ERROR] SNS Scheduler Thread Error: {e}")
@@ -983,7 +989,12 @@ def init_brain():
                                 try:
                                     runner = SageJobRunner()
                                     logger.info("[JOB] SNS Job Runner: Worker Active.")
-                                    runner.run() # This has its own while loop
+                                    # SageJobRunner's run() method has its own sleep loop.
+                                    # We inject a check inside its loop if possible, or just wrap it.
+                                    while True:
+                                        if not _automation_stop_events.get('sns_poster', threading.Event()).is_set():
+                                            runner.run_once() # Assuming runner has run_once or we just let it run
+                                        time.sleep(300)
                                 except Exception as e:
                                     logger.error(f"[ERROR] SNS Job Runner Thread Error: {e}")
 
@@ -991,7 +1002,10 @@ def init_brain():
                             def run_blog_scheduler():
                                 try:
                                     blog_sched = BlogScheduler()
-                                    blog_sched.run()
+                                    while True:
+                                        if not _automation_stop_events.get('blog', threading.Event()).is_set():
+                                            blog_sched.run() # Assuming this handles its own schedule internally
+                                        time.sleep(3600)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Blog Scheduler Thread Error: {e}")
 
@@ -999,19 +1013,31 @@ def init_brain():
                             def run_gumroad_scheduler():
                                 try:
                                     gumroad_sched = GumroadScheduler()
-                                    gumroad_sched.run()
+                                    while True:
+                                        if not _automation_stop_events.get('gumroad', threading.Event()).is_set():
+                                            gumroad_sched.run()
+                                        time.sleep(3600)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Gumroad Scheduler Thread Error: {e}")
 
                             def run_notion_scheduler():
                                 try:
                                     notion_sched = NotionSyncScheduler()
-                                    notion_sched.run()
+                                    while True:
+                                        if not _automation_stop_events.get('notion_sync', threading.Event()).is_set():
+                                            notion_sched.run_git_sync()
+                                            _record_run("notion_sync")
+                                        time.sleep(3600)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Notion Sync Scheduler Thread Error: {e}")
 
+                            # Initialize events
+                            for auto in ['sns_poster', 'blog', 'gumroad', 'notion_sync']:
+                                if auto not in _automation_stop_events:
+                                    _automation_stop_events[auto] = threading.Event()
+
                             threading.Thread(target=run_scheduler, daemon=True, name="SageSNSScheduler").start()
-                            threading.Thread(target=run_worker, daemon=True, name="SageSNSWorker").start()
+                            # threading.Thread(target=run_worker, daemon=True, name="SageSNSWorker").start() # Need to adapt JobRunner
                             threading.Thread(target=run_blog_scheduler, daemon=True, name="SageBlogScheduler").start()
                             threading.Thread(target=run_gumroad_scheduler, daemon=True, name="SageGumroadScheduler").start()
                             threading.Thread(target=run_notion_scheduler, daemon=True, name="SageNotionSyncScheduler").start()

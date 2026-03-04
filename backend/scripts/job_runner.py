@@ -101,10 +101,14 @@ class SageJobRunner:
             f"[JOB] SageJobRunner worker started. Poll interval: {self.POLL_INTERVAL}s"
         )
         while True:
-            try:
-                count = self.process_pending()
-                if count:
-                    logger.info(f"[JOB] Processed {count} pending job(s).")
-            except Exception as e:
-                logger.error(f"[JOB] Worker error: {e}")
+            self.run_once()
             time.sleep(self.POLL_INTERVAL)
+
+    def run_once(self) -> None:
+        """Process pending jobs once without polling logic."""
+        try:
+            count = self.process_pending()
+            if count:
+                logger.info(f"[JOB] Processed {count} pending job(s).")
+        except Exception as e:
+            logger.error(f"[JOB] Worker error: {e}")
