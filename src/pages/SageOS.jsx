@@ -7,7 +7,7 @@ import { BACKEND_URL } from '../config/backendUrl';
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
 
 const SageOS = () => {
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const [activeTab, setActiveTab] = useState('monetization');
     const [d1Status, setD1Status] = useState('idle'); // idle, running, complete, error
     const [brakeEnabled, setBrakeEnabled] = useState(false);
     const [stats, setStats] = useState({ cpu: '3%', memory: '2GB', upTime: '144:20:10' });
@@ -437,12 +437,6 @@ const SageOS = () => {
 
                 <div className="space-y-2 flex-grow">
                     <button
-                        onClick={() => setActiveTab('dashboard')}
-                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === 'dashboard' ? 'bg-blue-600 border border-blue-500 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
-                    >
-                        <FiActivity /> <span>Overview</span>
-                    </button>
-                    <button
                         onClick={() => setActiveTab('monetization')}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === 'monetization' ? 'bg-purple-600 border border-purple-500 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                     >
@@ -474,78 +468,6 @@ const SageOS = () => {
             {/* Main Content */}
             <div className="flex-1 p-8 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-black to-black overflow-y-auto" translate="no">
 
-                {activeTab === 'dashboard' && (
-                    <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                        <h2 className="text-2xl font-bold mb-6">Sage Overview</h2>
-
-                        {/* Brain Stats Widget */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
-                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-sm mb-2 flex items-center gap-2"><FiCpu /> CPU Usage</div>
-                                <div className="text-3xl font-mono text-blue-400">{stats.cpu}</div>
-                            </div>
-                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-sm mb-2 flex items-center gap-2"><FiActivity /> Memory</div>
-                                <div className="text-3xl font-mono text-purple-400">{stats.memory}</div>
-                            </div>
-                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-sm mb-2">System Uptime</div>
-                                <div className="text-3xl font-mono text-emerald-400">{stats.upTime}</div>
-                            </div>
-                        </div>
-
-                        {/* Sage 3.0 Engine Metrics - Row 2 (Requested) */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiActivity /> Patterns Learned</div>
-                                <div className="text-2xl font-mono text-purple-400">{brainStats.learned_patterns || 0}</div>
-                            </div>
-                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiCpu /> Memory Active</div>
-                                <div className="text-2xl font-mono text-blue-400">
-                                    {(brainStats.accuracy * 100).toFixed(1) === '0.0' ? 'Warming up...' : `${(brainStats.accuracy * 100).toFixed(1)}%`}
-                                </div>
-                            </div>
-                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiCheckCircle /> Content Quality Score</div>
-                                <div className="text-2xl font-mono text-emerald-400">
-                                    {monetizationStats.qa_pass + monetizationStats.qa_warn > 0
-                                        ? Math.round((monetizationStats.qa_pass / (monetizationStats.qa_pass + monetizationStats.qa_warn)) * 100)
-                                        : 0}%
-                                </div>
-                            </div>
-                            <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
-                                <div className="text-slate-400 text-xs mb-2 flex items-center gap-2 uppercase tracking-widest"><FiShield /> Safety Checks Passed</div>
-                                <div className="text-2xl font-mono text-red-400">{monetizationStats.contamination_blocked || 0}</div>
-                            </div>
-                        </div>
-
-                        {/* D1 Knowledge Loop */}
-                        <div className="bg-gradient-to-br from-blue-900/20 to-black border border-blue-500/20 p-8 rounded-2xl">
-                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">D1 Knowledge Loop <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">Ready</span></h3>
-                            <p className="text-slate-400 mb-6 text-sm">Research the web and build your knowledge base.</p>
-
-                            <button
-                                onClick={handleD1Run}
-                                disabled={d1Status === 'running'}
-                                className={`px-6 py-3 rounded-xl font-bold flex items-center gap-3 transition-all ${d1Status === 'running' ? 'bg-slate-700 text-slate-400' :
-                                    d1Status === 'error' ? 'bg-red-600 text-white' :
-                                        d1Status === 'complete' ? 'bg-emerald-600 text-white' :
-                                            'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_30px_rgba(37,99,235,0.3)]'
-                                    }`}
-                            >
-                                {d1Status === 'idle' && <><FiPlay /> Run Research</>}
-                                {d1Status === 'running' && <><div className="animate-spin w-4 h-4 rounded-full border-2 border-slate-400 border-t-white"></div> Processing...</>}
-                                {d1Status === 'complete' && <><FiCheck /> Knowledge Created</>}
-                                {d1Status === 'error' && <><FiXCircle /> Error</>}
-                            </button>
-                        </div>
-
-                        {/* Identity Panel */}
-                        <IdentityPanel />
-                    </Motion.div>
-                )}
-
                 {activeTab === 'monetization' && (
                     <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto py-8">
                         <div className="text-center mb-10">
@@ -554,6 +476,16 @@ const SageOS = () => {
                         </div>
 
                         <div className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-6 backdrop-blur-sm">
+                            <details className="group border border-white/10 bg-black/30 rounded-2xl overflow-hidden cursor-pointer transition-all">
+                                <summary className="px-6 py-4 flex items-center justify-between text-sm font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-colors focus:outline-none">
+                                    <span className="flex items-center gap-2">🎭 Your AI Clone Identity <span className="text-xs font-normal text-slate-500 ml-2">Review before creating...</span></span>
+                                    <span className="group-open:-rotate-180 transition-transform duration-300">▼</span>
+                                </summary>
+                                <div className="p-2 border-t border-white/10 bg-black/50 cursor-default">
+                                    <IdentityPanel />
+                                </div>
+                            </details>
+
                             {/* Topic + research status */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
@@ -1178,7 +1110,10 @@ const SageOS = () => {
                                     </button>
                                 </div>
                                 <div className="flex gap-2 mt-3 flex-wrap">
-                                    <button type="button" onClick={() => setInputValue('Research a topic for me: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔍 Research a topic</button>
+                                    <button type="button" onClick={handleD1Run} disabled={d1Status === 'running'} className="text-xs px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-500 transition-all flex items-center gap-1">
+                                        {d1Status === 'running' ? <><div className="animate-spin w-3 h-3 rounded-full border-2 border-white/30 border-t-white mr-1"></div> Processing...</> : d1Status === 'complete' ? <><FiCheck /> Done</> : d1Status === 'error' ? <><FiXCircle /> Error</> : <>🚀 Run Research (D1)</>}
+                                    </button>
+                                    <button type="button" onClick={() => setInputValue('Research a topic for me: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔍 Find ideas</button>
                                     <button type="button" onClick={() => setInputValue('Generate content about: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">⚡ Generate content</button>
                                     <button type="button" onClick={() => setInputValue('Schedule a post: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">📅 Schedule a post</button>
                                     <button type="button" onClick={() => setInputValue('Set up automation: ')} className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔗 Set up automation</button>
