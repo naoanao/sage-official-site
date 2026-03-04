@@ -207,7 +207,8 @@ try:
         from backend.scripts.job_runner import SageJobRunner
         from backend.scheduler.blog_scheduler import BlogScheduler
         from backend.scheduler.gumroad_scheduler import GumroadScheduler
-        logger.info("[SUCCESS] SNS Scheduler & Job Runner modules imported.")
+        from backend.scheduler.notion_sync_scheduler import NotionSyncScheduler
+        logger.info("[SUCCESS] SNS, Blog, Gumroad, and Notion schedulers imported.")
     except Exception as e:
         logger.error(f"[ERROR] SNS Startup Import Failure: {e}")
 
@@ -510,6 +511,15 @@ def get_automations():
             "active": "SageGumroadScheduler" in active_threads,
             "schedule": "Daily 10:00 JST",
             "lastRun": _get_last_run_time("gumroad")
+        },
+        {
+            "id": "notion_sync",
+            "name": "Notion Daily Log Sync",
+            "icon": "📒",
+            "status": "Active" if "SageNotionSyncScheduler" in active_threads else "Paused",
+            "active": "SageNotionSyncScheduler" in active_threads,
+            "schedule": "Hourly (Daily Log)",
+            "lastRun": _get_last_run_time("notion_sync")
         }
     ]
     return jsonify(automations)
@@ -993,11 +1003,19 @@ def init_brain():
                                 except Exception as e:
                                     logger.error(f"[ERROR] Gumroad Scheduler Thread Error: {e}")
 
+                            def run_notion_scheduler():
+                                try:
+                                    notion_sched = NotionSyncScheduler()
+                                    notion_sched.run()
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Notion Sync Scheduler Thread Error: {e}")
+
                             threading.Thread(target=run_scheduler, daemon=True, name="SageSNSScheduler").start()
                             threading.Thread(target=run_worker, daemon=True, name="SageSNSWorker").start()
                             threading.Thread(target=run_blog_scheduler, daemon=True, name="SageBlogScheduler").start()
                             threading.Thread(target=run_gumroad_scheduler, daemon=True, name="SageGumroadScheduler").start()
-                            logger.info("[SUCCESS] SNS + Blog + Gumroad Threads spawned.")
+                            threading.Thread(target=run_notion_scheduler, daemon=True, name="SageNotionSyncScheduler").start()
+                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion Threads spawned.")
 
                         run_sns_loops()
                         
