@@ -24,7 +24,7 @@ from typing import Optional
 
 logger = logging.getLogger("WhopPublisher")
 
-WHOP_BASE_URL = "https://api.whop.com/api/v5"
+WHOP_BASE_URL = "https://api.whop.com/api/v2"
 WHOP_API_KEY = None   # Loaded lazily to pick up runtime env changes
 WHOP_COMPANY_ID = None
 
@@ -140,7 +140,10 @@ def create_and_publish(
     }
     """
     # --- DRY RUN MODE ---
-    if os.getenv("WHOP_DRY_RUN", "0") == "1" or os.getenv("SAGE_POST_DRY_RUN", "1") == "1":
+    # Only WHOP_DRY_RUN controls Whop publishing.
+    # SAGE_POST_DRY_RUN is intentionally ignored here to allow Whop to publish
+    # even while other Sage dry-run guards are active.
+    if os.getenv("WHOP_DRY_RUN", "0") == "1":
         mock_route = title.lower().replace(" ", "-")[:40]
         logger.info(f"[WHOP][DRY_RUN] Skipping real API call for: {title!r}")
         return {
