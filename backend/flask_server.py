@@ -1797,6 +1797,42 @@ def productize_endpoint():
         logger.error(f"[PRODUCTIZE] Error: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/whop/publish', methods=['POST'])
+def whop_publish_endpoint():
+    """
+    Standalone Whop publisher endpoint.
+    Accepts: { title, description, price_usd, dry_run }
+    Returns: { status, product_url, checkout_url, plan_id, whop_captions }
+    """
+    data = request.get_json(silent=True) or {}
+    title = data.get('title', '').strip()
+    description = data.get('description', '').strip()
+    price_usd = float(data.get('price_usd', 29.99))
+
+    if not title or not description:
+        return jsonify({"error": "title and description are required"}), 400
+
+    # Allow per-request dry_run override
+    if data.get('dry_run') is True:
+        os.environ['WHOP_DRY_RUN'] = '1'
+    elif data.get('dry_run') is False:
+        os.environ['WHOP_DRY_RUN'] = '0'
+
+    try:
+        from backend.integrations.whop_publisher import create_and_publish, build_sns_caption
+        result = create_and_publish(title, description, price_usd=price_usd)
+        if result.get('status') in ('success', 'dry_run'):
+            result['whop_captions'] = build_sns_caption(
+                title, price_usd,
+                result.get('product_url', ''),
+                result.get('checkout_url', ''),
+            )
+        return jsonify(result), 200 if result['status'] != 'error' else 500
+    except Exception as e:
+        logger.error(f"[WHOP] Publish endpoint error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/api/productize/execute', methods=['POST'])
 def productize_execute_endpoint():
     """
@@ -1825,6 +1861,30 @@ def productize_execute_endpoint():
             # Run Course Generation
             logger.info(f"[SCHOLAR] Production Started: COURSE for {topic} (lang={language})")
             result = course_gen_ref.generate_course(topic=topic, language=language)
+
+            # --- WHOP AUTO-PUBLISH (P2) ---
+            # Attempt to publish to Whop automatically after course generation.
+            # Fails gracefully: course result is always returned regardless.
+            try:
+                from backend.integrations.whop_publisher import create_and_publish, build_sns_caption
+                price_usd = float(data.get('price_usd', 29.99))
+                course_title = result.get('title') or topic
+                course_desc = result.get('description') or result.get('sales_page', '')[:800] or f'A comprehensive course on {topic}'
+                whop_result = create_and_publish(course_title, course_desc, price_usd=price_usd)
+                result['whop'] = whop_result
+                if whop_result.get('status') in ('success', 'dry_run'):
+                    result['whop_captions'] = build_sns_caption(
+                        course_title,
+                        price_usd,
+                        whop_result.get('product_url', ''),
+                        whop_result.get('checkout_url', ''),
+                    )
+                logger.info(f"[WHOP] Publish result: {whop_result.get('status')} {whop_result.get('product_url', '')}")
+            except Exception as whop_err:
+                logger.warning(f"[WHOP] Auto-publish skipped: {whop_err}")
+                result['whop'] = {'status': 'skipped', 'message': str(whop_err)}
+            # --- END WHOP ---
+
             return jsonify(result), 200
             
         elif product_type == 'ARTICLE':
