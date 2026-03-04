@@ -58,3 +58,4 @@ SAGE_STOP
 !/files/.gitkeep
 .claude/worktrees/
 compliance_deploy/
+tmp/notion_*.txt
