@@ -375,15 +375,23 @@ const SageOS = () => {
         return { score, badges };
     };
 
-    // Niche validation via backend
+    // Niche validation via backend — rate limited for demo
     const handleNicheValidate = async () => {
         if (!monetizeTopic.trim()) return;
         setNicheValidation({ status: 'running', data: null });
         try {
             const res = await api.post('/api/niche/validate', { topic: monetizeTopic });
-            setNicheValidation({ status: 'done', data: res.data });
+            if (res.data?.status === 'rate_limited') {
+                setNicheValidation({ status: 'rate_limited', data: res.data });
+            } else {
+                setNicheValidation({ status: 'done', data: res.data });
+            }
         } catch (e) {
-            setNicheValidation({ status: 'error', data: null });
+            if (e?.response?.status === 429) {
+                setNicheValidation({ status: 'rate_limited', data: e.response?.data });
+            } else {
+                setNicheValidation({ status: 'error', data: null });
+            }
         }
     };
 
@@ -407,11 +415,15 @@ const SageOS = () => {
 
         try {
             const res = await api.post('/api/chat', { message: newMsg.content });
-            setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                role: 'sage',
-                content: res.data.response || 'No response.'
-            }]);
+            const reply = { id: Date.now() + 1, role: 'sage', content: res.data.response || 'No response.' };
+            setMessages(prev => {
+                const next = [...prev, reply];
+                const sageCount = next.filter(m => m.role === 'sage').length;
+                if (sageCount >= 3 && !next.some(m => m.role === 'upgrade_banner')) {
+                    return [...next, { id: Date.now() + 2, role: 'upgrade_banner', content: '' }];
+                }
+                return next;
+            });
         } catch (e) {
             setMessages(prev => [...prev, {
                 id: Date.now() + 1,
@@ -518,6 +530,19 @@ const SageOS = () => {
                                     placeholder={CREATE_PLACEHOLDERS[placeholderIdx]}
                                     className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors ${researchCheck.status === 'missing' ? 'border-amber-500/50 focus:border-amber-400' : 'border-white/10 focus:border-purple-500'}`}
                                 />
+                                {/* Rate limit upgrade banner */}
+                                {nicheValidation.status === 'rate_limited' && (
+                                    <div className="mt-3 p-4 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-xl flex items-center justify-between gap-4">
+                                        <div>
+                                            <div className="text-sm font-bold text-white">🔒 Free demo limit reached (1/day)</div>
+                                            <p className="text-xs text-slate-400 mt-0.5">Upgrade for unlimited market demand checks.</p>
+                                        </div>
+                                        <a href="https://whop.com/sage-ai/" target="_blank" rel="noopener noreferrer"
+                                            className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all">
+                                            💎 Upgrade on Whop
+                                        </a>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Language selector */}
@@ -1048,9 +1073,12 @@ const SageOS = () => {
                 {activeTab === 'chat' && (
                     <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 max-w-4xl mx-auto py-4">
 
-                        {/* Active Automations */}
+                        {/* Active Automations - display only for free visitors */}
                         <div className="p-5 bg-white/3 border border-white/8 rounded-2xl">
-                            <div className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2">⚡ Active Automations</div>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="text-sm font-bold text-slate-300 flex items-center gap-2">⚡ Active Automations</div>
+                                <span className="text-xs text-slate-500 bg-white/5 border border-white/10 px-2 py-1 rounded-full">👁️ View only — upgrade to control</span>
+                            </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {automations.map(a => (
                                     <div key={a.id} className={`p-4 rounded-xl border transition-all ${a.active ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-white/3 border-white/8'}`}>
@@ -1062,8 +1090,9 @@ const SageOS = () => {
                                         <div className="text-xs text-slate-500">{a.schedule}</div>
                                         <div className="text-xs text-slate-500 mb-3">{a.lastRun || a.last_run || 'Never'}</div>
                                         <button
-                                            onClick={() => handleToggle(a.id, a.active)}
-                                            className={`w-full text-xs py-1.5 rounded-lg transition-all ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}
+                                            disabled
+                                            title="Upgrade to control automations"
+                                            className={`w-full text-xs py-1.5 rounded-lg cursor-not-allowed opacity-40 ${a.active ? 'bg-red-900/30 text-red-400' : 'bg-emerald-900/30 text-emerald-400'}`}
                                         >
                                             {a.active ? 'Stop' : 'Start'}
                                         </button>
@@ -1075,26 +1104,39 @@ const SageOS = () => {
                         {/* Chat */}
                         <div className="flex flex-col bg-white/3 border border-white/8 rounded-2xl overflow-hidden" style={{ height: 'calc(100vh - 26rem)' }}>
                             <div className="flex-1 overflow-y-auto space-y-4 p-4 no-scrollbar">
-                                {messages.map(msg => (
-                                    <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 rounded-tr-none' :
-                                            msg.role === 'system' ? 'bg-white/5 border border-white/10 text-slate-400 text-center mx-auto text-xs font-mono uppercase' :
-                                                'bg-slate-800 rounded-tl-none border border-slate-700'
-                                            }`}>
-                                            {msg.content}
-                                            {msg.role === 'sage' && (
-                                                <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
-                                                    <button
-                                                        onClick={() => convertToProduct(msg.content)}
-                                                        className="text-xs bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-colors"
-                                                    >
-                                                        <FiDollarSign /> Productize This (D2)
-                                                    </button>
-                                                </div>
-                                            )}
+                                {messages.map(msg =>
+                                    msg.role === 'upgrade_banner' ? (
+                                        <div key={msg.id} className="flex justify-center my-2">
+                                            <div className="w-full max-w-xl p-4 rounded-2xl bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 text-center">
+                                                <div className="text-sm font-bold text-white mb-1">🔒 Free demo limit reached (3 messages)</div>
+                                                <p className="text-xs text-slate-400 mb-3">Upgrade to unlock unlimited Sage conversations, automation control, and product generation.</p>
+                                                <a href="https://whop.com/sage-ai/" target="_blank" rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-sm transition-all">
+                                                    💎 Get Full Access on Whop →
+                                                </a>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ) : (
+                                        <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 rounded-tr-none' :
+                                                msg.role === 'system' ? 'bg-white/5 border border-white/10 text-slate-400 text-center mx-auto text-xs font-mono uppercase' :
+                                                    'bg-slate-800 rounded-tl-none border border-slate-700'
+                                                }`}>
+                                                {msg.content}
+                                                {msg.role === 'sage' && (
+                                                    <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
+                                                        <button
+                                                            onClick={() => convertToProduct(msg.content)}
+                                                            className="text-xs bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-colors"
+                                                        >
+                                                            <FiDollarSign /> Productize This (D2)
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                )}
                             </div>
                             <form onSubmit={sendMessage} className="p-4 bg-black/60 border-t border-white/5">
                                 <div className="flex relative">
