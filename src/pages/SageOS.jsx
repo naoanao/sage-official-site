@@ -222,23 +222,67 @@ const SageOS = () => {
         setBrakeEnabled(prev => !prev);
     };
 
-    // Core pipeline — shows demo output to public visitors (no real API call)
+    // Owner detection: localhost = owner's private workspace → real API
+    // Production domain = public visitor → demo only
+    const IS_OWNER = typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    // Core pipeline — real API for owner (localhost), demo for public visitors
     const runMonetizePipeline = async () => {
         setMonetizeStatus('running');
         setMonetizeResult(null);
-        // Brief simulated delay so the button feels responsive
-        await new Promise(r => setTimeout(r, 1200));
-        const courseData = { ...DEMO_RESULT };
-        setIsDemo(true);
-        setGenerateData(courseData);
-        setEditedSections((courseData.sections || []).map(s => ({ ...s })));
-        setEditedSalesPage(courseData.sales_page || '');
-        setEditedCaptions((courseData.sections || []).slice(0, 3).map(s => s.content?.slice(0, 280) || ''));
-        setSectionInstructions({});
-        setExpandedSection(0);
-        setContentTab('blog');
-        setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
-        setMonetizeStatus('review');
+
+        // ── Public visitor → instant demo (no API call) ──────────────────
+        if (!IS_OWNER) {
+            await new Promise(r => setTimeout(r, 1200));
+            const courseData = { ...DEMO_RESULT };
+            setIsDemo(true);
+            setGenerateData(courseData);
+            setEditedSections((courseData.sections || []).map(s => ({ ...s })));
+            setEditedSalesPage(courseData.sales_page || '');
+            setEditedCaptions((courseData.sections || []).slice(0, 3).map(s => s.content?.slice(0, 280) || ''));
+            setSectionInstructions({});
+            setExpandedSection(0);
+            setContentTab('blog');
+            setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
+            setMonetizeStatus('review');
+            return;
+        }
+
+        // ── Owner (localhost) → real API call ────────────────────────────
+        try {
+            const [planRes, execRes] = await Promise.all([
+                api.post('/api/productize', { topic: monetizeTopic, market, price, language: lang }),
+                Promise.resolve(null)
+            ]);
+            const plan = planRes?.data;
+            if (!plan || plan.status === 'error') throw new Error(plan?.error || 'Plan failed');
+
+            const execResult = await api.post('/api/productize/execute', {
+                topic: monetizeTopic,
+                plan: plan.plan,
+                language: lang,
+                market,
+                price
+            });
+            const courseData = execResult?.data;
+            if (!courseData || courseData.status === 'error') throw new Error(courseData?.error || 'Execute failed');
+
+            setIsDemo(false);
+            setGenerateData(courseData);
+            setEditedSections((courseData.sections || []).map(s => ({ ...s })));
+            setEditedSalesPage(courseData.sales_page || '');
+            setEditedCaptions((courseData.sections || []).slice(0, 3).map(s => s.content?.slice(0, 280) || ''));
+            setSectionInstructions({});
+            setExpandedSection(0);
+            setContentTab('blog');
+            setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
+            setMonetizeStatus('review');
+        } catch (e) {
+            setMonetizeResult(e.message || 'Pipeline failed');
+            setMonetizeStatus('error');
+            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
+        }
     };
 
     // Rewrite a single section with an instruction
@@ -742,7 +786,7 @@ const SageOS = () => {
                         {['review', 'finalizing', 'finalized'].includes(monetizeStatus) && generateData && (
                             <div className="space-y-4">
 
-                                        {/* Demo banner */}
+                                {/* Demo banner */}
                                 {isDemo && (
                                     <div className="p-4 bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/40 rounded-2xl flex items-center justify-between gap-4">
                                         <div>
@@ -1033,15 +1077,15 @@ const SageOS = () => {
                                                         🔒 Upgrade to Regenerate Images
                                                     </a>
                                                 ) : (
-                                                <button
-                                                    onClick={handleRegenImages}
-                                                    disabled={imageRegenStatus === 'running'}
-                                                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all"
-                                                >
-                                                    {imageRegenStatus === 'running'
-                                                        ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> 生成中...</>
-                                                        : <>🔄 Regenerate Images</>}
-                                                </button>
+                                                    <button
+                                                        onClick={handleRegenImages}
+                                                        disabled={imageRegenStatus === 'running'}
+                                                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all"
+                                                    >
+                                                        {imageRegenStatus === 'running'
+                                                            ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> 生成中...</>
+                                                            : <>🔄 Regenerate Images</>}
+                                                    </button>
                                                 )}
                                                 {globalInstruction && (
                                                     <span className="text-xs text-blue-400 bg-blue-900/20 border border-blue-500/20 px-2 py-1 rounded-lg truncate max-w-xs">
@@ -1099,38 +1143,38 @@ const SageOS = () => {
                                                 </button>
                                             </div>
                                         ) : (
-                                        <div className="space-y-2">
-                                            {[
-                                                { key: 'bluesky', icon: '🚀', label: 'Post to Bluesky', action: handlePublishBluesky },
-                                                { key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram },
-                                            ].map(({ key, icon, label, action }) => (
+                                            <div className="space-y-2">
+                                                {[
+                                                    { key: 'bluesky', icon: '🚀', label: 'Post to Bluesky', action: handlePublishBluesky },
+                                                    { key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram },
+                                                ].map(({ key, icon, label, action }) => (
+                                                    <button
+                                                        key={key}
+                                                        onClick={action}
+                                                        disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
+                                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}
+                                                    >
+                                                        <span>{publishChecklist[key] === 'done' ? '✅' : publishChecklist[key] === 'running' ? '⏳' : icon}</span>
+                                                        <span>{label}</span>
+                                                        {publishChecklist[key] === 'done' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
+                                                        {publishChecklist[key] === 'error' && <span className="ml-auto text-xs text-red-400">Failed</span>}
+                                                    </button>
+                                                ))}
                                                 <button
-                                                    key={key}
-                                                    onClick={action}
-                                                    disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
-                                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}
+                                                    onClick={handleCopyBlogPost}
+                                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist.copied ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}
                                                 >
-                                                    <span>{publishChecklist[key] === 'done' ? '✅' : publishChecklist[key] === 'running' ? '⏳' : icon}</span>
-                                                    <span>{label}</span>
-                                                    {publishChecklist[key] === 'done' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
-                                                    {publishChecklist[key] === 'error' && <span className="ml-auto text-xs text-red-400">Failed</span>}
+                                                    <span>{publishChecklist.copied ? '✅' : '📝'}</span>
+                                                    <span>{publishChecklist.copied ? 'Copied!' : 'Copy Blog Post'}</span>
                                                 </button>
-                                            ))}
-                                            <button
-                                                onClick={handleCopyBlogPost}
-                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist.copied ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}
-                                            >
-                                                <span>{publishChecklist.copied ? '✅' : '📝'}</span>
-                                                <span>{publishChecklist.copied ? 'Copied!' : 'Copy Blog Post'}</span>
-                                            </button>
-                                            <button
-                                                onClick={handleStartNew}
-                                                className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-all"
-                                            >
-                                                <span>✅</span>
-                                                <span>Done — Start New</span>
-                                            </button>
-                                        </div>
+                                                <button
+                                                    onClick={handleStartNew}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-all"
+                                                >
+                                                    <span>✅</span>
+                                                    <span>Done — Start New</span>
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 )}
@@ -1144,15 +1188,15 @@ const SageOS = () => {
                                                 💎 Upgrade to Save & Publish Real Output
                                             </a>
                                         ) : (
-                                        <button
-                                            onClick={handleFinalize}
-                                            disabled={monetizeStatus === 'finalizing'}
-                                            className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 disabled:opacity-50 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]"
-                                        >
-                                            {monetizeStatus === 'finalizing'
-                                                ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> 保存中...</>
-                                                : <><FiCheckCircle /> 確認完了 → Obsidianに保存</>}
-                                        </button>
+                                            <button
+                                                onClick={handleFinalize}
+                                                disabled={monetizeStatus === 'finalizing'}
+                                                className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 disabled:opacity-50 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]"
+                                            >
+                                                {monetizeStatus === 'finalizing'
+                                                    ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> 保存中...</>
+                                                    : <><FiCheckCircle /> 確認完了 → Obsidianに保存</>}
+                                            </button>
                                         )}
                                     </div>
                                 ) : (
