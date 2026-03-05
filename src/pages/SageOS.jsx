@@ -6,6 +6,44 @@ import { BACKEND_URL } from '../config/backendUrl';
 
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
 
+// ── Demo output shown to public visitors (no real API call) ─────────────────
+const DEMO_RESULT = {
+    qa_status: 'PASS',
+    research_source: 'demo_preview',
+    sections: [
+        {
+            title: 'Why AI is the #1 Passive Income Tool in 2025',
+            content: `AI tools have fundamentally changed the passive income landscape. Unlike traditional methods that require constant manual effort, AI-powered systems can generate content, respond to customers, and optimize your revenue streams 24/7.\n\nHere's what makes AI different:\n- **Zero sleep required**: Your AI works while you sleep, handling tasks that would take hours manually\n- **Scale without cost**: Adding a second revenue stream costs almost nothing when AI does the heavy lifting\n- **Compound learning**: The longer you run AI systems, the smarter they become about your niche\n\nThe data is clear: solopreneurs using AI tools are generating 3-5x more content than those who don't, with 40% less time invested.`
+        },
+        {
+            title: '5 Proven AI Income Streams You Can Start This Week',
+            content: `You don't need to be a tech expert to start earning passive income with AI. Here are five proven approaches:\n\n**1. AI-Powered Digital Products ($500–$5,000/month)**\nCreate ebooks, courses, and templates using AI, then sell them on Gumroad. The upfront work takes a weekend; the income continues for years.\n\n**2. AI Blog + Ad Revenue ($200–$2,000/month)**\nUse AI to publish 3–5 SEO-optimized posts per week. With 50+ posts, expect consistent ad and affiliate income.\n\n**3. AI Newsletter Monetization ($300–$3,000/month)**\nCurate and summarize industry news using AI, then monetize with sponsorships after hitting 1,000 subscribers.\n\n**4. AI Prompt Libraries ($100–$1,000/month)**\nPackage your best AI prompts into organized libraries and sell them as low-ticket products.\n\n**5. AI Social Media Management ($1,000–$10,000/month)**\nOffer AI-assisted social media services to local businesses. You manage the strategy; AI handles the execution.`
+        },
+        {
+            title: 'The 90-Day Blueprint: $0 → $2,000/month',
+            content: `Success with AI passive income requires a structured approach. Here's the blueprint that works:\n\n**Days 1–30: Foundation**\n- Pick ONE income stream\n- Set up your platform (Gumroad, blog, or newsletter)\n- Create your first 5 AI-generated products or posts\n- Target: $0 → First $100\n\n**Days 31–60: Optimization**\n- Analyze what's getting traction\n- Double down on the top 20% of content\n- Add your second revenue source\n- Target: $100 → $500/month\n\n**Days 61–90: Scale**\n- Automate your content pipeline\n- Launch an email list to own your audience\n- Cross-promote between channels\n- Target: $500 → $2,000/month\n\nThe key insight: **consistency beats perfection**. An AI-generated post published today beats a perfect post never published.`
+        }
+    ],
+    sales_page: `# The Complete Guide to AI Passive Income\n\n## Stop Trading Time for Money\n\nYou've been told passive income is hard. That you need years of experience, thousands of followers, or a huge budget to start.\n\n**That was true before AI.**\n\nNow, anyone with a laptop and the right knowledge can build multiple income streams that pay while they sleep — in weeks, not years.\n\n## What You'll Get\n✅ The 5 AI income streams generating $500–$10,000/month\n✅ The exact tools, prompts, and workflows (ready to copy-paste)\n✅ A 90-day blueprint from $0 to your first $2,000/month\n✅ Real examples with actual revenue data\n\n## Price: $29.99`,
+    images: {
+        'Why AI is the #1 Passive Income Tool': {
+            type: 'generated',
+            url: 'https://loremflickr.com/400/225/technology,laptop?lock=101',
+            prompt: 'Modern workspace with laptop showing AI dashboard'
+        },
+        '5 Proven AI Income Streams': {
+            type: 'generated',
+            url: 'https://loremflickr.com/400/225/business,money?lock=202',
+            prompt: 'Multiple income streams visualization'
+        },
+        'The 90-Day Blueprint': {
+            type: 'generated',
+            url: 'https://loremflickr.com/400/225/success,growth?lock=303',
+            prompt: 'Growth chart with milestones'
+        }
+    }
+};
+
 const SageOS = () => {
     const [activeTab, setActiveTab] = useState('monetization');
     const [d1Status, setD1Status] = useState('idle'); // idle, running, complete, error
@@ -35,12 +73,14 @@ const SageOS = () => {
     const [generateData, setGenerateData] = useState(null);
     const [editedSections, setEditedSections] = useState([]);
     const [editedSalesPage, setEditedSalesPage] = useState('');
+    const [editedCaptions, setEditedCaptions] = useState([]);
     const [globalInstruction, setGlobalInstruction] = useState('');
     const [sectionInstructions, setSectionInstructions] = useState({});
     const [rewritingIdx, setRewritingIdx] = useState(null); // which section is being rewritten
     const [globalRewriting, setGlobalRewriting] = useState(false);
     const [expandedSection, setExpandedSection] = useState(null); // index or 'sales'
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
+    const [isDemo, setIsDemo] = useState(false);
     // 'idle' | 'running' | 'done' | 'error'
 
     // Content tabs & publish
@@ -182,38 +222,23 @@ const SageOS = () => {
         setBrakeEnabled(prev => !prev);
     };
 
-    // Core pipeline — always runs generation regardless of research status
+    // Core pipeline — shows demo output to public visitors (no real API call)
     const runMonetizePipeline = async () => {
         setMonetizeStatus('running');
         setMonetizeResult(null);
-        try {
-            const planRes = await api.post('/api/productize', { topic: monetizeTopic, market, price });
-            if (!planRes.data || planRes.data.error) throw new Error(planRes.data?.error || 'Plan generation failed');
-
-            const execRes = await api.post('/api/productize/execute', {
-                topic: monetizeTopic,
-                type: 'COURSE',
-                plan: planRes.data.plan,
-                language: lang
-            });
-            if (!execRes.data || execRes.data.error) throw new Error(execRes.data?.error || 'Course generation failed');
-
-            // Store full data and enter Review & Edit mode
-            const courseData = execRes.data;
-            setGenerateData(courseData);
-            setEditedSections((courseData.sections || []).map(s => ({ ...s })));
-            setEditedSalesPage(courseData.sales_page || '');
-            setSectionInstructions({});
-            setExpandedSection(0);
-            setContentTab('blog');
-            setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
-            setMonetizeStatus('review');
-        } catch (e) {
-            console.error("Monetization failed", e);
-            setMonetizeResult(e.message || 'エラーが発生しました');
-            setMonetizeStatus('error');
-            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
-        }
+        // Brief simulated delay so the button feels responsive
+        await new Promise(r => setTimeout(r, 1200));
+        const courseData = { ...DEMO_RESULT };
+        setIsDemo(true);
+        setGenerateData(courseData);
+        setEditedSections((courseData.sections || []).map(s => ({ ...s })));
+        setEditedSalesPage(courseData.sales_page || '');
+        setEditedCaptions((courseData.sections || []).slice(0, 3).map(s => s.content?.slice(0, 280) || ''));
+        setSectionInstructions({});
+        setExpandedSection(0);
+        setContentTab('blog');
+        setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
+        setMonetizeStatus('review');
     };
 
     // Rewrite a single section with an instruction
@@ -317,7 +342,8 @@ const SageOS = () => {
         try {
             const res = await api.post('/api/productize/regenerate_images', {
                 sections: editedSections,
-                topic: monetizeTopic
+                topic: monetizeTopic,
+                custom_instruction: globalInstruction || ''
             });
             if (res.data?.status === 'success' && res.data.images) {
                 setGenerateData(prev => ({ ...prev, images: res.data.images }));
@@ -356,10 +382,12 @@ const SageOS = () => {
     };
 
     const handleStartNew = () => {
+        setIsDemo(false);
         setMonetizeStatus('idle');
         setGenerateData(null);
         setMonetizeResult(null);
         setContentTab('blog');
+        setEditedCaptions([]);
         setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
     };
 
@@ -714,6 +742,20 @@ const SageOS = () => {
                         {['review', 'finalizing', 'finalized'].includes(monetizeStatus) && generateData && (
                             <div className="space-y-4">
 
+                                        {/* Demo banner */}
+                                {isDemo && (
+                                    <div className="p-4 bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/40 rounded-2xl flex items-center justify-between gap-4">
+                                        <div>
+                                            <div className="text-sm font-bold text-amber-300 flex items-center gap-2">⚡ Demo Preview — Sample Output</div>
+                                            <p className="text-xs text-slate-400 mt-0.5">This is pre-built demo content. Upgrade to generate real AI output for your topic.</p>
+                                        </div>
+                                        <a href="https://whop.com/sage-ai/" target="_blank" rel="noopener noreferrer"
+                                            className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all whitespace-nowrap">
+                                            💎 Upgrade on Whop
+                                        </a>
+                                    </div>
+                                )}
+
                                 {/* Header bar */}
                                 <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl">
                                     <div>
@@ -721,22 +763,32 @@ const SageOS = () => {
                                             <span className={`text-xs font-bold px-2 py-1 rounded ${generateData.qa_status === 'PASS' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
                                                 QA {generateData.qa_status || 'WARN'}
                                             </span>
-                                            <span className="text-white font-bold truncate max-w-xs">{monetizeTopic}</span>
+                                            <span className="text-white font-bold truncate max-w-xs">{isDemo ? 'Demo: AI Passive Income Guide' : monetizeTopic}</span>
                                         </div>
                                         {generateData.research_source && (
                                             <div className="text-xs text-slate-500 mt-1">D1: {generateData.research_source}</div>
                                         )}
                                     </div>
                                     <button
-                                        onClick={() => { setMonetizeStatus('idle'); setGenerateData(null); }}
+                                        onClick={() => { setIsDemo(false); setMonetizeStatus('idle'); setGenerateData(null); }}
                                         className="text-xs text-slate-500 hover:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all"
                                     >
                                         ← やり直す
                                     </button>
                                 </div>
 
+                                {/* Global tone rewrite — locked in demo mode */}
+                                {isDemo && (
+                                    <div className="p-4 bg-white/3 border border-white/8 rounded-2xl flex items-center justify-between gap-4">
+                                        <div className="text-xs text-slate-500">🔒 Rewrite & editing locked in demo mode</div>
+                                        <a href="https://whop.com/sage-ai/" target="_blank" rel="noopener noreferrer"
+                                            className="text-xs px-3 py-1.5 bg-purple-600/50 hover:bg-purple-600 text-white rounded-lg font-bold transition-all whitespace-nowrap">
+                                            Upgrade →
+                                        </a>
+                                    </div>
+                                )}
                                 {/* Global tone rewrite — presets first, custom instruction below */}
-                                {(() => {
+                                {!isDemo && (() => {
                                     const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
                                     const isEn = resolvedLang === 'en';
                                     const enPresets = [
@@ -886,25 +938,37 @@ const SageOS = () => {
                                     {/* Captions tab */}
                                     {contentTab === 'captions' && (
                                         <div className="space-y-3">
-                                            <p className="text-xs text-slate-500 mb-2">Auto-generated from your blog sections. First 280 chars per caption.</p>
-                                            {editedSections.slice(0, 3).map((s, i) => (
+                                            <p className="text-xs text-slate-500 mb-2">SNS投稿用キャプション（280文字まで）。直接編集可能です。</p>
+                                            {editedCaptions.map((caption, i) => (
                                                 <div key={i} className="p-4 bg-black/40 rounded-2xl border border-white/10">
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-xs text-slate-500 font-mono">📱 Caption {i + 1}</span>
-                                                        <button
-                                                            onClick={() => navigator.clipboard.writeText(s.content?.slice(0, 280) || '')}
-                                                            className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all"
-                                                        >
-                                                            📋 Copy
-                                                        </button>
+                                                        <span className="text-xs text-slate-500 font-mono">📱 Caption {i + 1} <span className={caption.length > 280 ? 'text-red-400' : 'text-slate-600'}>({caption.length}/280)</span></span>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => setEditedCaptions(prev => prev.map((c, j) => j === i ? (editedSections[i]?.content?.slice(0, 280) || '') : c))}
+                                                                className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all"
+                                                            >
+                                                                ↺ リセット
+                                                            </button>
+                                                            <button
+                                                                onClick={() => navigator.clipboard.writeText(caption)}
+                                                                className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all"
+                                                            >
+                                                                📋 Copy
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-sm text-slate-300 leading-relaxed">
-                                                        {s.content?.slice(0, 280)}{s.content?.length > 280 ? '...' : ''}
-                                                    </p>
+                                                    <textarea
+                                                        value={caption}
+                                                        onChange={e => setEditedCaptions(prev => prev.map((c, j) => j === i ? e.target.value : c))}
+                                                        rows={4}
+                                                        maxLength={500}
+                                                        className="w-full bg-black/30 border border-white/5 rounded-lg px-3 py-2 text-sm text-slate-300 leading-relaxed focus:outline-none focus:border-blue-400 resize-y"
+                                                    />
                                                 </div>
                                             ))}
-                                            {editedSections.length === 0 && (
-                                                <div className="p-8 text-center text-slate-500">No sections available for captions.</div>
+                                            {editedCaptions.length === 0 && (
+                                                <div className="p-8 text-center text-slate-500">No captions yet. Generate content first.</div>
                                             )}
                                         </div>
                                     )}
@@ -962,15 +1026,32 @@ const SageOS = () => {
                                     {/* Images tab */}
                                     {contentTab === 'images' && (
                                         <div className="space-y-4">
-                                            <button
-                                                onClick={handleRegenImages}
-                                                disabled={imageRegenStatus === 'running'}
-                                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all"
-                                            >
-                                                {imageRegenStatus === 'running'
-                                                    ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> Regenerating...</>
-                                                    : <>🔄 Regenerate Images</>}
-                                            </button>
+                                            <div className="flex items-center gap-3">
+                                                {isDemo ? (
+                                                    <a href="https://whop.com/sage-ai/" target="_blank" rel="noopener noreferrer"
+                                                        className="px-5 py-2.5 bg-purple-600/50 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all hover:bg-purple-600">
+                                                        🔒 Upgrade to Regenerate Images
+                                                    </a>
+                                                ) : (
+                                                <button
+                                                    onClick={handleRegenImages}
+                                                    disabled={imageRegenStatus === 'running'}
+                                                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all"
+                                                >
+                                                    {imageRegenStatus === 'running'
+                                                        ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> 生成中...</>
+                                                        : <>🔄 Regenerate Images</>}
+                                                </button>
+                                                )}
+                                                {globalInstruction && (
+                                                    <span className="text-xs text-blue-400 bg-blue-900/20 border border-blue-500/20 px-2 py-1 rounded-lg truncate max-w-xs">
+                                                        指示: {globalInstruction}
+                                                    </span>
+                                                )}
+                                                {!globalInstruction && (
+                                                    <span className="text-xs text-slate-600">上の指示欄に入力してから再生成すると反映されます</span>
+                                                )}
+                                            </div>
                                             {generateData.images && Object.keys(generateData.images).length > 0 ? (
                                                 <div className="grid grid-cols-2 gap-3">
                                                     {Object.entries(generateData.images).map(([title, data]) => (
@@ -1004,6 +1085,20 @@ const SageOS = () => {
                                 {monetizeStatus === 'review' && (
                                     <div className="p-5 bg-slate-900/60 border border-white/10 rounded-2xl">
                                         <div className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">📋 Publish Checklist</div>
+                                        {isDemo ? (
+                                            <div className="space-y-2">
+                                                {['🚀 Post to Bluesky', '📸 Post to Instagram'].map(label => (
+                                                    <a key={label} href="https://whop.com/sage-ai/" target="_blank" rel="noopener noreferrer"
+                                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-white/3 border border-white/8 text-slate-500 cursor-pointer hover:bg-white/5 transition-all">
+                                                        <span>🔒</span><span>{label}</span><span className="ml-auto text-xs text-purple-400">Upgrade →</span>
+                                                    </a>
+                                                ))}
+                                                <button onClick={handleStartNew}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-all">
+                                                    <span>↺</span><span>Try Another Topic</span>
+                                                </button>
+                                            </div>
+                                        ) : (
                                         <div className="space-y-2">
                                             {[
                                                 { key: 'bluesky', icon: '🚀', label: 'Post to Bluesky', action: handlePublishBluesky },
@@ -1036,12 +1131,19 @@ const SageOS = () => {
                                                 <span>Done — Start New</span>
                                             </button>
                                         </div>
+                                        )}
                                     </div>
                                 )}
 
                                 {/* Finalize bar */}
                                 {monetizeStatus !== 'finalized' ? (
                                     <div className="flex gap-3 pt-2">
+                                        {isDemo ? (
+                                            <a href="https://whop.com/sage-ai/" target="_blank" rel="noopener noreferrer"
+                                                className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(147,51,234,0.3)]">
+                                                💎 Upgrade to Save & Publish Real Output
+                                            </a>
+                                        ) : (
                                         <button
                                             onClick={handleFinalize}
                                             disabled={monetizeStatus === 'finalizing'}
@@ -1051,6 +1153,7 @@ const SageOS = () => {
                                                 ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> 保存中...</>
                                                 : <><FiCheckCircle /> 確認完了 → Obsidianに保存</>}
                                         </button>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="p-5 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl space-y-2">
