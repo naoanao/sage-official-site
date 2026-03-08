@@ -899,6 +899,17 @@ const SageOS = () => {
                                         </div>
                                     )}
 
+                                    {/* Demo mode notice for public visitors */}
+                                    {!IS_OWNER && !['needs_research', 'review', 'finalizing', 'finalized'].includes(monetizeStatus) && (
+                                        <div className="flex items-center justify-between px-4 py-3 bg-amber-900/20 border border-amber-500/20 rounded-xl text-xs">
+                                            <span className="text-amber-300">⚡ Demo mode — sample output will be shown</span>
+                                            <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+                                                Upgrade for real output →
+                                            </a>
+                                        </div>
+                                    )}
+
                                     {/* Generate button */}
                                     {!['needs_research', 'review', 'finalizing', 'finalized'].includes(monetizeStatus) && (
                                         <button
