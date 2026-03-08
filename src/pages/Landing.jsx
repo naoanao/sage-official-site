@@ -57,7 +57,7 @@ const Landing = () => {
                     setSnsStats({ total_posts: data.total_posts });
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     useEffect(() => {
@@ -103,10 +103,10 @@ const Landing = () => {
 
                     <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
                         Type one idea. Get a <span className="text-white">blog post</span>, <span className="text-white">5 captions</span>,
-                        and a <span className="text-white">Gumroad product</span>. In 90 seconds.
+                        and a <span className="text-white">product — ready to sell</span>. In 90 seconds.
                     </p>
 
-                    <div className="flex items-center justify-center">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                             <Link
                                 to="/dashboard"
@@ -114,6 +114,16 @@ const Landing = () => {
                             >
                                 Try Sage Free <FiArrowRight />
                             </Link>
+                        </Motion.div>
+                        <Motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <a
+                                href="https://whop.com/segeai/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-10 py-5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-lg font-bold flex items-center gap-3 transition-all backdrop-blur-xl"
+                            >
+                                Get Full Access <FiShoppingCart />
+                            </a>
                         </Motion.div>
                     </div>
                 </Motion.div>
