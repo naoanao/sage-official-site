@@ -112,7 +112,7 @@ const Landing = () => {
                                 to="/dashboard"
                                 className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_50px_rgba(37,99,235,0.4)] flex items-center gap-3 transition-all"
                             >
-                                Try Sage Free <FiArrowRight />
+                                Dashboard <FiArrowRight />
                             </Link>
                         </Motion.div>
                         <Motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
