@@ -55,6 +55,7 @@ print(f"[INFO] Loading .env from: {env_path}")
 print(f"[KEY] NOTION_API_KEY={'SET' if os.getenv('NOTION_API_KEY') else 'NOT SET'}")
 print(f"[KEY] TELEGRAM_BOT_TOKEN={'SET' if os.getenv('TELEGRAM_BOT_TOKEN') else 'NOT SET'}")
 print(f"[KEY] BLUESKY_HANDLE={'SET' if os.getenv('BLUESKY_HANDLE') else 'NOT SET'}")
+print(f"[KEY] PERPLEXITY_API_KEY={'SET (' + os.getenv('PERPLEXITY_API_KEY', '')[:8] + '...)' if os.getenv('PERPLEXITY_API_KEY') else 'NOT SET ⚠️'}")
 
 # EnvGuardian: バックアップ & API Key検証 → NotionLogger に結果を記録
 try:
@@ -100,13 +101,13 @@ logger.info(f"🚀 [CONFIG] SAGE_BRAIN_STDP_ENABLED: {os.getenv('SAGE_BRAIN_STDP
 _IDENTITY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'identity.json')
 
 _IDENTITY_DEFAULTS = {
-    "role": "AI収益化の専門家",
-    "niche": "AIツールを使った副業・自動化",
+    "role": "AI monetization expert",
+    "niche": "AI-powered side income and automation for solopreneurs",
     "tone": "professional yet approachable",
     "visual_style": "clean minimalist tech aesthetic",
-    "language": "ja",
+    "language": "en",
     "brand_name": "Sage AI",
-    "target_audience": "AIで副収入を得たいソロプレナー"
+    "target_audience": "English-speaking solopreneurs who want passive income with AI tools"
 }
 
 def load_identity():
@@ -479,18 +480,14 @@ def get_detailed_stats():
 @app.route('/api/automations', methods=['GET'])
 def get_automations():
     """
-    Returns the real status of background automation threads.
+    Returns the status of automations based on stop-event flags.
     """
-    import threading
-    active_threads = [t.name for t in threading.enumerate()]
-    
     automations = [
         {
             "id": "bluesky",
             "name": "Social Media (Bluesky/IG)",
             "icon": "📱",
-            "status": "Active" if "SageSNSScheduler" in active_threads else "Paused",
-            "active": "SageSNSScheduler" in active_threads,
+            "active": _is_automation_active("bluesky"),
             "schedule": "Every 1 hour",
             "lastRun": _get_last_run_time("bluesky")
         },
@@ -498,8 +495,7 @@ def get_automations():
             "id": "blog",
             "name": "Daily Blog Scheduler",
             "icon": "📝",
-            "status": "Active" if "SageBlogScheduler" in active_threads else "Paused",
-            "active": "SageBlogScheduler" in active_threads,
+            "active": _is_automation_active("blog"),
             "schedule": "Daily 09:00 JST",
             "lastRun": _get_last_run_time("blog")
         },
@@ -507,8 +503,7 @@ def get_automations():
             "id": "gumroad",
             "name": "Gumroad Product Prep",
             "icon": "💰",
-            "status": "Active" if "SageGumroadScheduler" in active_threads else "Paused",
-            "active": "SageGumroadScheduler" in active_threads,
+            "active": _is_automation_active("gumroad"),
             "schedule": "Daily 10:00 JST",
             "lastRun": _get_last_run_time("gumroad")
         },
@@ -516,8 +511,7 @@ def get_automations():
             "id": "notion_sync",
             "name": "Notion Daily Log Sync",
             "icon": "📒",
-            "status": "Active" if "SageNotionSyncScheduler" in active_threads else "Paused",
-            "active": "SageNotionSyncScheduler" in active_threads,
+            "active": _is_automation_active("notion_sync"),
             "schedule": "Hourly (Daily Log)",
             "lastRun": _get_last_run_time("notion_sync")
         }
@@ -538,6 +532,13 @@ def _record_run(automation_id: str):
 # --- AUTOMATION TOGGLE ---
 _automation_stop_events = {}  # {automation_id: threading.Event}
 
+def _is_automation_active(automation_id: str) -> bool:
+    """Stop eventフラグが立っていなければactive=True（デフォルトactive）"""
+    event = _automation_stop_events.get(automation_id)
+    if event is None:
+        return True  # まだtoggleされていない = デフォルトでactive
+    return not event.is_set()  # set()=停止指示済み → active=False
+
 @app.route('/api/automations/toggle', methods=['POST'])
 def toggle_automation():
     """自動化スレッドをON/OFFする"""
@@ -549,10 +550,9 @@ def toggle_automation():
         if not automation_id:
             return jsonify({'error': 'id is required'}), 400
 
-        # Create event objects globally if they don't exist
-        for auto in ['sns_poster', 'blog', 'gumroad', 'notion_sync']:
-            if auto not in _automation_stop_events:
-                _automation_stop_events[auto] = threading.Event()
+        # Ensure event object exists for this automation_id
+        if automation_id not in _automation_stop_events:
+            _automation_stop_events[automation_id] = threading.Event()
 
         if not active:
             _automation_stop_events[automation_id].set()
@@ -2640,7 +2640,7 @@ def productize_rewrite():
     content = data.get('content', '').strip()
     instruction = data.get('instruction', '').strip()
     tone_preset = data.get('tone_preset', '').strip()
-    language = data.get('language', 'ja')
+    language = data.get('language', 'en')
 
     # tone_preset takes priority over raw instruction
     if tone_preset:
@@ -2656,6 +2656,14 @@ def productize_rewrite():
     compression_keywords = ['要約', '短く', '半分', '簡潔', 'まとめ', 'summarize', 'shorten', 'brief', 'condense', 'shorter', 'compress']
     is_compression = any(kw in instruction.lower() for kw in compression_keywords)
 
+    # Context from Sage's Identity (Soul)
+    identity_context = ""
+    if IDENTITY:
+        role = IDENTITY.get('role', 'Expert')
+        niche = IDENTITY.get('niche', 'Digital Product Creation')
+        tone = IDENTITY.get('tone', 'Professional')
+        identity_context = f"\n[AI IDENTITY]\nRole: {role}\nNiche: {niche}\nTone: {tone}\n\nYou are writing as this persona. Ensure the content reflects this brand voice."
+
     if language == 'ja':
         preservation_rule = (
             "- 要点は保ちながら指示に従って圧縮・簡潔にしてください。\n" if is_compression
@@ -2664,6 +2672,7 @@ def productize_rewrite():
         prompt = (
             f"以下のコンテンツを、指示に従って書き直してください。\n\n"
             f"【指示】{instruction}\n\n"
+            f"{identity_context}\n\n"
             f"【元のコンテンツ】\n{content}\n\n"
             f"【出力ルール】\n"
             f"{preservation_rule}"
@@ -2679,6 +2688,7 @@ def productize_rewrite():
         prompt = (
             f"Rewrite the following content according to the instruction.\n\n"
             f"[INSTRUCTION] {instruction}\n\n"
+            f"{identity_context}\n\n"
             f"[ORIGINAL CONTENT]\n{content}\n\n"
             f"[OUTPUT RULES]\n"
             f"{preservation_rule}"
@@ -2750,8 +2760,11 @@ def productize_regenerate_images():
 
         base_style = image_style or custom_instruction or f"{topic} professional course illustration"
 
+        # Pre-compute topic keywords for LoremFlickr fallback (avoids style-descriptor pollution)
+        topic_kw = course_gen_global._get_topic_visual_keywords(topic) if course_gen_global else None
+
         images = {}
-        for section in sections:
+        for idx, section in enumerate(sections):
             title = section.get('title', '')
             # Use pipeline's topic-aware image prompt so LoremFlickr gets English topic keywords
             # (prevents Japanese section titles from becoming useless LoremFlickr keywords)
@@ -2761,7 +2774,7 @@ def productize_regenerate_images():
             else:
                 prompt = f"{base_style}, photorealistic, high quality, 16:9" if base_style else f"{title}, photorealistic, high quality, 16:9"
             try:
-                url = image_gen_enhanced.generate_social_media_image(prompt, platform="twitter")
+                url = image_gen_enhanced.generate_social_media_image(prompt, platform="twitter", topic_keywords=topic_kw, section_index=idx)
                 images[title] = {"type": "generated", "url": url, "prompt": prompt}
                 logger.info(f"[REGEN_IMG] {title[:40]} → {url[:60] if url else 'None'}")
             except Exception as e:
