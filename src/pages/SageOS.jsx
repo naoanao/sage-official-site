@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome } from 'react-icons/fi';
+import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 import PhaseStepperBar from '../components/PhaseStepperBar';
@@ -598,6 +598,16 @@ const SageOS = () => {
                     >
                         <FiActivity /> <span>Automations</span>
                     </button>
+
+                    {/* Whop member link */}
+                    <a
+                        href="https://whop.com/joined/segeai/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-white/5 text-slate-400 hover:text-white"
+                    >
+                        <FiShoppingCart /> <span>Whop Members</span>
+                    </a>
                 </div>
 
                 {/* Brake Widget */}
@@ -628,7 +638,6 @@ const SageOS = () => {
                         <div className="p-5 bg-white/3 border border-white/8 rounded-2xl">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="text-sm font-bold text-slate-300 flex items-center gap-2">⚡ Active Automations</div>
-                                <span className="text-xs text-slate-500 bg-white/5 border border-white/10 px-2 py-1 rounded-full">👁️ View only — upgrade to control</span>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {automations.map(a => (
@@ -640,8 +649,9 @@ const SageOS = () => {
                                         <div className="text-sm font-semibold text-white mb-0.5">{a.name}</div>
                                         <div className="text-xs text-slate-500">{a.schedule}</div>
                                         <div className="text-xs text-slate-500 mb-3">{a.lastRun || 'Never'}</div>
-                                        <button disabled title="Upgrade to control automations"
-                                            className={`w-full text-xs py-1.5 rounded-lg cursor-not-allowed opacity-40 ${a.active ? 'bg-red-900/30 text-red-400' : 'bg-emerald-900/30 text-emerald-400'}`}>
+                                        <button
+                                            onClick={() => handleToggle(a.id, a.active)}
+                                            className={`w-full text-xs py-1.5 rounded-lg transition-all ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}>
                                             {a.active ? 'Stop' : 'Start'}
                                         </button>
                                     </div>

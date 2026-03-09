@@ -7,6 +7,24 @@ import SpaceBackground from '../components/SpaceBackground';
 const products = [
     {
         id: 1,
+        title: 'Sage AI — Full Access (Whop)',
+        price: 'Members Only',
+        url: 'https://whop.com/segeai/',
+        badge: 'RECOMMENDED',
+        badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+        accentColor: 'from-emerald-500 to-teal-600',
+        glowColor: 'rgba(16,185,129,0.3)',
+        desc: 'Full access to Sage AI — autonomous content pipeline, dashboard, and all future updates. Join the Whop community and start building your AI income stream.',
+        features: [
+            'Sage Cockpit dashboard access',
+            'Autonomous SNS + blog pipeline',
+            'Gumroad product auto-generation',
+            'Community + priority support',
+        ],
+        buttonLabel: 'Join on Whop',
+    },
+    {
+        id: 2,
         title: '2026 AI Influencer Monetization Express',
         price: '$29.99',
         url: 'https://naofumi3.gumroad.com/l/yvzrfjd',
@@ -21,6 +39,7 @@ const products = [
             'Monetization funnel step-by-step',
             'Lifetime access + future updates',
         ],
+        buttonLabel: 'Buy on Gumroad',
     },
 ];
 
@@ -121,7 +140,7 @@ const Shop = () => {
                                 style={{ boxShadow: `0 0 30px ${product.glowColor}` }}
                             >
                                 <FiZap size={16} />
-                                Buy on Gumroad
+                                {product.buttonLabel}
                                 <FiArrowRight size={16} />
                             </Motion.a>
                         </Motion.div>
