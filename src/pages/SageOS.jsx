@@ -100,6 +100,7 @@ const SageOS = () => {
     const [lang, setLang] = useState('auto');
     const [monetizeStatus, setMonetizeStatus] = useState('idle');
     const [monetizeResult, setMonetizeResult] = useState(null);
+    const [generateProgress, setGenerateProgress] = useState('');
     const [researchCheck, setResearchCheck] = useState({ status: 'idle', file: null });
     const researchDebounce = useRef(null);
     const chatInputRef = useRef(null);
@@ -284,6 +285,18 @@ const SageOS = () => {
         setMonetizeStatus('running');
         setMonetizeResult(null);
 
+        const _progressSteps = [
+            [0,      '🔍 Analyzing your topic...'],
+            [4000,   '🧠 Building product structure...'],
+            [12000,  '✍️ Generating content...'],
+            [30000,  '💡 Refining with market data...'],
+            [60000,  '⏳ Still working (LLM processing)...'],
+            [100000, '🔥 Almost there...'],
+        ];
+        const _progressTimers = _progressSteps.map(([delay, msg]) =>
+            setTimeout(() => setGenerateProgress(msg), delay)
+        );
+
         if (!IS_OWNER) {
             await new Promise(r => setTimeout(r, 1200));
             const courseData = { ...DEMO_RESULT };
@@ -296,6 +309,8 @@ const SageOS = () => {
             setExpandedSection(0);
             setContentTab('blog');
             setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
+            _progressTimers.forEach(clearTimeout);
+            setGenerateProgress('');
             setMonetizeStatus('review');
             return;
         }
@@ -328,8 +343,12 @@ const SageOS = () => {
             setExpandedSection(0);
             setContentTab('blog');
             setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
+            _progressTimers.forEach(clearTimeout);
+            setGenerateProgress('');
             setMonetizeStatus('review');
         } catch (e) {
+            _progressTimers.forEach(clearTimeout);
+            setGenerateProgress('');
             setMonetizeResult(e.message || 'Pipeline failed');
             setMonetizeStatus('error');
             setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
@@ -974,6 +993,10 @@ const SageOS = () => {
                                             {monetizeStatus === 'running' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-slate-400 border-t-white"></div> Running Pipeline...</>}
                                             {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed — Retry</>}
                                         </button>
+                                    )}
+
+                                    {monetizeStatus === 'running' && generateProgress && (
+                                        <p className="text-xs text-violet-300 mt-2 animate-pulse text-center">{generateProgress}</p>
                                     )}
 
                                     {monetizeResult && monetizeStatus === 'error' && (
