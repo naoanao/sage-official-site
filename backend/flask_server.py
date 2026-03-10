@@ -2529,6 +2529,34 @@ def api_d1_generate():
         logger.error(f"D1 trigger error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/research/run', methods=['POST'])
+def api_research_run():
+    """Run D1 research for a topic and return a human-readable summary."""
+    try:
+        data = request.get_json(silent=True) or {}
+        topic = data.get('topic', '').strip()
+        if not topic:
+            return jsonify({"error": "topic required"}), 400
+
+        if not autonomous:
+            return jsonify({"error": "Autonomous adapter not initialized"}), 503
+
+        autonomous._observe_and_log()
+
+        decision = {'type': 'research_ai_trends', 'data': {'topic': topic}}
+        original_exec = autonomous.phase_2_execute
+        autonomous.phase_2_execute = True
+        try:
+            autonomous._execute_decision(decision)
+        finally:
+            autonomous.phase_2_execute = original_exec
+
+        summary = f"「{topic}」のリサーチが完了しました。レポートは output/ フォルダに保存されました。"
+        return jsonify({"status": "success", "summary": summary})
+    except Exception as e:
+        logger.error(f"research/run error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/research/check', methods=['GET'])
 def check_research_for_topic():
     """Check if D1 research files exist for a given topic."""

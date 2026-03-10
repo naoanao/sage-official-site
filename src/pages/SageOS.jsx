@@ -247,6 +247,33 @@ const SageOS = () => {
         }
     };
 
+    const handleRunResearch = async () => {
+        const topic = monetizeTopic || inputValue;
+        if (!topic.trim()) return;
+        setMonetizeStatus('running_d1');
+        try {
+            const res = await api.post('/api/research/run', { topic });
+            setMessages(prev => [...prev, {
+                id: Date.now(),
+                role: 'sage',
+                content: res.data.summary ?? 'リサーチ完了！結果を output/ に保存しました。'
+            }]);
+            const check = await api.get(`/api/research/check?topic=${encodeURIComponent(topic)}`);
+            setResearchCheck({
+                status: check.data?.has_research ? 'found' : 'missing',
+                file: check.data?.file || null
+            });
+            setMonetizeStatus('idle');
+        } catch (e) {
+            setMonetizeStatus('idle');
+            setMessages(prev => [...prev, {
+                id: Date.now(),
+                role: 'sage',
+                content: `リサーチエラー: ${e?.response?.data?.error || e.message}`
+            }]);
+        }
+    };
+
     const toggleBrake = () => { setBrakeEnabled(prev => !prev); };
 
     const IS_OWNER = typeof window !== 'undefined' &&
@@ -775,7 +802,7 @@ const SageOS = () => {
                                             </button>
                                         </div>
                                         <div className="flex gap-2 mt-3 flex-wrap">
-                                            <button type="button" onClick={handleD1Run} disabled={d1Status === 'running'}
+                                            <button type="button" onClick={handleRunResearch} disabled={monetizeStatus === 'running_d1'}
                                                 className="text-xs px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-500 transition-all flex items-center gap-1">
                                                 {d1Status === 'running' ? <><div className="animate-spin w-3 h-3 rounded-full border-2 border-white/30 border-t-white mr-1"></div> Processing...</> : d1Status === 'complete' ? <><FiCheck /> Done</> : d1Status === 'error' ? <><FiXCircle /> Error</> : <>🚀 Run Research (D1)</>}
                                             </button>
