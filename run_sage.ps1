@@ -84,12 +84,9 @@ Start-Process -FilePath $NgrokExe `
 Start-Sleep -Seconds 3
 
 # ── Start Vite dev server (localhost:5173) ────────────────────────────────
-Add-Content $LogFile "[$ts] Launching Vite dev server (npm run dev)..."
 Start-Process -FilePath "cmd.exe" `
     -ArgumentList "/c", "npm run dev" `
     -WorkingDirectory $SageDir `
-    -RedirectStandardOutput "$SageDir\logs\vite_stdout.log" `
-    -RedirectStandardError  "$SageDir\logs\vite_stderr.log" `
     -WindowStyle Hidden
 Add-Content $LogFile "[$ts] Vite dev server launched (port 5173)."
 
