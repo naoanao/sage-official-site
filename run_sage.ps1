@@ -132,14 +132,18 @@ if ($cfToken -and $cfAccountId) {
     }
 }
 
-# ── Git Push (only if explicitly needed or first migration) ──────────────
-# We'll do one final push to ensure the frontend code is synced with ngrok URL
+# ── Git Push (only when _backend.js actually changed) ────────────────────
 $git = "git"
 try {
     & $git -C $SageDir add "functions/_backend.js" 2>&1 | Out-Null
-    & $git -C $SageDir commit -m "feat: permanent migration to ngrok static domain" 2>&1 | Out-Null
-    & $git -C $SageDir push origin main 2>&1 | Out-Null
-    Add-Content $LogFile "[$ts] git push OK."
+    $gitStatus = & $git -C $SageDir status --porcelain 2>&1
+    if ($gitStatus) {
+        & $git -C $SageDir commit -m "chore(ngrok): update backend URL $(Get-Date -Format 'yyyy-MM-dd HH:mm')" 2>&1 | Out-Null
+        & $git -C $SageDir push origin main 2>&1 | Out-Null
+        Add-Content $LogFile "[$ts] git push OK."
+    } else {
+        Add-Content $LogFile "[$ts] No changes detected. Skipping git commit/push."
+    }
 } catch {
     Add-Content $LogFile "[$ts] git push skipped or failed (likely no changes)."
 }
