@@ -11,6 +11,8 @@ Features:
 import logging
 import time
 from typing import Dict, List, Optional
+import os
+import json
 from datetime import datetime
 from backend.modules.monetization_measure import MonetizationMeasure
 
@@ -52,7 +54,8 @@ class CourseProductionPipeline:
         self.groq_client = groq_client
         self.gemini_client = gemini_client
         self.memory = memory
-        logger.info("CourseProductionPipeline initialized")
+        self.identity = self._load_identity()
+        logger.info(f"CourseProductionPipeline initialized with identity: {self.identity.get('role', 'Expert')}")
 
     def _invoke_llm(self, prompt: str) -> str:
         """Call primary LLM (Groq) with 429 retry, fall back to Gemini, then Ollama (local)."""
@@ -114,6 +117,34 @@ class CourseProductionPipeline:
 
         return ""
     
+    def _load_identity(self) -> Dict:
+        """Load character settings from backend/config/identity.json."""
+        try:
+            path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'identity.json')
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not load identity.json: {e}")
+        return {
+            "role": "Expert AI Agent",
+            "niche": "Knowledge Automation",
+            "tone": "Professional and Practical",
+            "brand_name": "Sage AI"
+        }
+
+    def _get_identity_context(self) -> str:
+        """Format identity into a prompt instruction."""
+        role = self.identity.get('role', 'Expert')
+        niche = self.identity.get('niche', 'Professional knowledge')
+        tone = self.identity.get('tone', 'Helpful')
+        brand = self.identity.get('brand_name', 'Sage AI')
+        return (
+            f"\n[AI IDENTITY]\n"
+            f"You are {brand}, an {role} specializing in {niche}. "
+            f"Your voice is {tone}. Write all content from this perspective."
+        )
+
     def generate_course(self, topic: str, num_sections: int = 5, generate_narration: bool = False, reference_audio: str = None, language: str = 'auto', **kwargs) -> Dict:
         """
         Generate complete course
@@ -165,7 +196,7 @@ class CourseProductionPipeline:
             logger.info(f"✅ Content generated: {len(sections)} sections")
 
             # Step 3: Generate slide images
-            slides = self._generate_slides(sections)
+            slides = self._generate_slides(sections, topic=safe_topic)
             logger.info(f"✅ Slides generated: {len(slides)} images")
 
             # Step 3b: Generate image prompts and actual images
@@ -595,18 +626,26 @@ Format: Just the titles, one per line, no numbering.
         research_context = f"\n--- PRIMARY RESEARCH SOURCE (D1) ---\n{kc['research']}\n" if kc["research"] else ""
         brain_context = f"\n--- BRAIN SUCCESSFUL PATTERN ---\n{kc['brain']}\n" if kc["brain"] else ""
         semantic_context = f"\n--- SEMANTIC MEMORY ---\n{kc['semantic']}\n" if kc["semantic"] else ""
+        identity_context = self._get_identity_context()
+
         if language == "ja":
-            lang_instruction = "\n6. 日本語で本文を書いてください（Write all content in Japanese）。"
+            lang_instruction = (
+                "\n6. 日本語で本文を書いてください（Write all content in Japanese）。"
+                "\n7. 文体: 購入者が「買ってよかった」と思える実践的な内容にする。"
+                "\n   - 「〜かもしれません」「〜と言われています」などの曖昧表現を避ける"
+                "\n   - 具体的な数字・事例・地名・人物名・期間を積極的に使う"
+                "\n   - 理論より手順を優先する（「まず〇〇、次に〇〇」形式）"
+            )
             section_structure = """## REQUIRED STRUCTURE:
-**導入（2-3文）**: このセクションのトピックに固有の課題を述べる。
-**メインコンテンツ**: 具体的なデータ・事例・方法を含む3-4段落。
+**導入（2-3文）**: このセクション固有の「読者が今まさに直面している課題」を具体的に述べる。汎用的な「重要です」は禁止。
+**メインコンテンツ**: 具体的なデータ・日本の事例・実行可能な方法を含む3-4段落。架空ではなく現実的な例を使う。
 **今すぐできること**:
-1. [Action] — 所要時間: X分
-2. [Action] — 所要時間: X分
-3. [Action] — 所要時間: X分
-**よくある失敗**:
-- 失敗1: [specific mistake] → 対策: [specific fix]
-- 失敗2: [specific mistake] → 対策: [specific fix]"""
+1. [具体的なAction] — 所要時間: X分 — 成功の目安: [measurable outcome]
+2. [具体的なAction] — 所要時間: X分 — 成功の目安: [measurable outcome]
+3. [具体的なAction] — 所要時間: X分 — 成功の目安: [measurable outcome]
+**よくある失敗と対策**:
+- 失敗1: [日本の文脈に合った具体的なmistake] → 対策: [具体的なfix]
+- 失敗2: [日本の文脈に合った具体的なmistake] → 対策: [具体的なfix]"""
         else:
             lang_instruction = (
                 "\n6. Write all content in English. Use English section headers only."
@@ -631,6 +670,7 @@ Format: Just the titles, one per line, no numbering.
             logger.info(f"📝 Generating section {i}/{len(outline)}: {title}")
 
             prompt = f"""You are writing a high-converting digital course section. The reader bought this product to solve a real problem — give them immediately usable, specific knowledge.
+{identity_context}
 
 COURSE TOPIC: {topic}
 SECTION ({i}/{len(outline)}): {title}
@@ -702,18 +742,24 @@ Content:"""
             cleaned.append(para)
         return '\n\n'.join(cleaned)
     
-    def _generate_slides(self, sections: List[Dict]) -> List[Dict]:
+    def _generate_slides(self, sections: List[Dict], topic: str = "") -> List[Dict]:
         """Generate slide images using image_gen_enhanced (HF Flux → Gemini → LoremFlickr)"""
         from backend.integrations.image_generation import image_gen_enhanced
         slides = []
+        topic_kw = self._get_topic_visual_keywords(topic) if topic else None
 
-        for section in sections:
+        for i, section in enumerate(sections):
             logger.info(f"🖼️  Generating slide {section['number']}: {section['title']}")
 
-            prompt = f"Professional course slide, title: '{section['title']}', minimal text, clean educational design, high quality, 16:9"
+            # Per-section keywords: more specific than topic-level fallback
+            section_kw = self._get_section_visual_keywords(section['title'], topic_kw)
+            # Seed prompt: include topic so same section titles across different topics get distinct images
+            prompt = f"{topic} | {section['title']} — slide {i + 1}"
 
             try:
-                url = image_gen_enhanced.generate_social_media_image(prompt, platform="twitter")
+                url = image_gen_enhanced.generate_social_media_image(
+                    prompt, platform="twitter", topic_keywords=section_kw, section_index=i
+                )
                 slides.append({
                     "section": section['number'],
                     "title": section['title'],
@@ -738,12 +784,33 @@ Content:"""
     def _get_topic_visual_keywords(self, topic: str) -> str:
         """Return LoremFlickr-friendly English keywords based on topic category."""
         t = topic.lower()
+        if any(k in t for k in ["npo","ngo","nonprofit","非営利","ボランティア","社会貢献","チャリティ","charity","volunteer","community","コミュニティ","市民","civic"]):
+            return "volunteer community nonprofit charity teamwork"
+        if any(k in t for k in ["コンテンツ","content marketing","sns","ソーシャルメディア","ブログ","blog","youtube","インフルエンサー","influencer","マーケティング","marketing","creator","クリエイター"]):
+            return "content creator media digital marketing"
+        if any(k in t for k in ["japan","japanese","日本","tokyo","osaka","kyoto","和","日本語","nippon"]):
+            return "japan tokyo society culture community"
         if any(k in t for k in ["money","finance","invest","revenue","profit","income","sales","business","startup","entrepreneur","お金","投資","収益","マネー","利益","資産","売上","稼"]):
             return "money finance business success wealth"
         if any(k in t for k in ["health","cbd","wellness","supplement","diet","yoga","meditation","fitness","exercise","gym","weight","muscle","protein","健康","サプリ","ダイエット","筋肉","ヨガ"]):
             return "health wellness nature lifestyle green"
-        if any(k in t for k in ["ai","artificial","automation","programming","code","software","tech","computer","digital","robot","machine","データ","テクノロジー","プログラミング","自動"]):
-            return "technology computer digital innovation future"
+        # AI/Tech — sub-categories for more relevant images
+        if any(k in t for k in ["robot","ロボット","humanoid","autonomous car","自動運転","drone","ドローン"]):
+            return "robot technology futuristic machine automation"
+        if any(k in t for k in ["social media","ソーシャルメディア","instagram","tiktok","twitter","x.com","facebook","viral","viral content","バイラル"]):
+            return "social media smartphone screen influencer viral"
+        if any(k in t for k in ["monetize","monetization","収益化","passive income","passive","副業","side hustle","make money","稼ぐ"]):
+            return "money laptop entrepreneur business success"
+        if any(k in t for k in ["automation","自動化","workflow","automate","bot","rpa","zapier","make.com","自動"]):
+            return "automation workflow office screen dashboard"
+        if any(k in t for k in ["generative ai","generate","generation","生成ai","生成","image generation","midjourney","stable diffusion","llm","chatgpt","gpt","claude","openai"]):
+            return "artificial intelligence screen data futuristic"
+        if any(k in t for k in ["data","analytics","analysis","dashboard","chart","graph","統計","データ分析","ビッグデータ","big data"]):
+            return "data analytics chart graph statistics"
+        if any(k in t for k in ["programming","code","software","developer","engineering","コーディング","プログラミング","開発","エンジニア"]):
+            return "programming code laptop developer screen"
+        if any(k in t for k in ["ai","artificial intelligence","machine learning","deep learning","neural","人工知能","テクノロジー","tech","computer","digital"]):
+            return "artificial intelligence technology innovation future"
         if any(k in t for k in ["real estate","property","house","apartment","rent","mortgage","不動産","物件","マンション","住宅"]):
             return "architecture building home urban modern"
         if any(k in t for k in ["travel","trip","vacation","journey","adventure","旅行","観光","旅"]):
@@ -754,7 +821,38 @@ Content:"""
             return "beauty fashion lifestyle cosmetic elegant"
         if any(k in t for k in ["learn","study","course","teach","education","skill","training","学習","スキル","教育","学ぶ"]):
             return "education study books knowledge learning"
-        return "business professional success modern lifestyle"
+        if any(k in t for k in ["environment","eco","green","climate","sustainable","環境","エコ","サステナ","地球","自然","森"]):
+            return "nature environment green sustainable outdoor"
+        if any(k in t for k in ["mental","mindset","psychology","stress","anxiety","well-being","メンタル","心理","ストレス","マインド","瞑想"]):
+            return "mindfulness wellness calm peaceful meditation"
+        return "people working team collaboration success"
+
+    def _get_section_visual_keywords(self, section_title: str, topic_kw: str) -> str:
+        """Derive per-section LoremFlickr keywords from section title, falling back to topic_kw."""
+        t = section_title.lower()
+        # Section-level keyword map: title pattern → LoremFlickr keywords
+        _section_map = [
+            (["introduction","intro","overview","はじめに","概要","what is","とは"],       "introduction concept overview idea"),
+            (["history","origin","background","歴史","起源","背景"],                       "history timeline archive vintage documentary"),
+            (["benefit","advantage","merit","メリット","利点","why","なぜ"],               "success achievement benefit result positive"),
+            (["risk","danger","problem","warning","注意","リスク","問題","デメリット"],     "warning risk danger caution problem"),
+            (["strategy","plan","method","how to","方法","戦略","手順","ステップ","step"], "strategy plan whiteboard business steps"),
+            (["tool","software","app","platform","ツール","アプリ","ソフト"],              "tools software technology laptop screen"),
+            (["case study","example","success story","事例","ケーススタディ","実例"],       "success story case example result"),
+            (["monetize","revenue","income","earn","収益","稼ぐ","マネタイズ"],             "money laptop entrepreneur success income"),
+            (["automation","automate","workflow","自動化","自動"],                         "automation workflow office dashboard screen"),
+            (["social media","instagram","tiktok","sns","viral","バイラル"],               "social media smartphone influencer screen"),
+            (["content","blog","post","write","コンテンツ","ブログ","投稿"],               "content creation writing laptop desk"),
+            (["data","analytics","metric","chart","データ","分析","統計"],                 "data analytics chart graph statistics"),
+            (["ai","robot","machine learning","artificial","人工知能","生成ai"],           "artificial intelligence technology futuristic"),
+            (["future","next","trend","将来","未来","トレンド","forecast"],                "future technology innovation modern city"),
+            (["community","network","connect","コミュニティ","ネットワーク","つながり"],    "community network people teamwork connect"),
+            (["conclusion","summary","wrap","まとめ","結論","next step","次のステップ"],    "success achievement goal finish accomplish"),
+        ]
+        for keywords, lf_kw in _section_map:
+            if any(k in t for k in keywords):
+                return lf_kw
+        return topic_kw
 
     def _generate_image_prompt(self, section_title: str, topic: str, target_market: str = "us") -> str:
         """セクションタイトルから最適な画像プロンプトを生成（複数バリエーションからランダム選択）"""
@@ -762,18 +860,23 @@ Content:"""
 
         # UFO/UAP トピックのみ UFO ビジュアルマップを使用
         _is_ufo = any(kw in topic.lower() for kw in ["ufo", "uap", "alien", "extraterrestrial", "disclosure", "宇宙人", "未確認"])
+        
         if not _is_ufo:
             # Non-UFO: トピック関連キーワード + セクション番号で異なる構図
             _kw = self._get_topic_visual_keywords(topic)
+            
+            # Use visual_style from Identity if available
+            visual_style = self.identity.get('visual_style', 'professional photography, bright modern background')
+            
             _styles = [
-                f"{_kw}, professional photography, bright modern background",
-                f"{_kw}, clean minimal style, soft lighting, editorial",
-                f"{_kw}, lifestyle photography, natural light, aspirational",
-                f"{_kw}, flat lay composition, white background, commercial",
-                f"{_kw}, documentary style, authentic real world setting",
+                f"{_kw}, {visual_style}, editorial",
+                f"{_kw}, {visual_style}, soft lighting",
+                f"{_kw}, {visual_style}, high contrast",
+                f"{_kw}, {visual_style}, clean composition",
+                f"{_kw}, {visual_style}, natural lighting",
             ]
             _idx = hash(section_title) % len(_styles)
-            prompt_base = "photorealistic, high quality, 16:9 aspect ratio"
+            prompt_base = "high quality, 16:9 aspect ratio"
             # Include section title so each section gets a unique MD5 seed in LoremFlickr
             return f"{_styles[_idx]}, subject: {section_title[:40]}, {prompt_base}"
 
@@ -1005,76 +1108,102 @@ Order right now and you'll also receive these 3 exclusive bonuses — FREE:
             )
             evidence_block = "\n".join(evidence_lines) if evidence_lines else "- 一次情報ソース: 汎用知識ベース（D1トレース未取得）"
 
-            # Determine positioning: Course vs Field Log
-            is_course = any(k in topic.lower() for k in ["course", "how to", "描き方", "講座", "教材", "教育"])
-            
-            if is_course:
-                positioning_instruction = """
-                - 目的: 教育コンテンツ（コース・講座）として販売する
-                - 購入者は「スキルアップ」と「体系的な学習」を期待している
-                - 「実戦ログ」という言葉は証拠として使いつつも、メインは「最高品質の教材」として位置づける
-                """
-            else:
-                positioning_instruction = """
-                - 目的: 実戦ログを資産として販売する
-                - 「コース」という言葉を極力避け、「AIが実際に動いた時の作戦記録」として位置づける
-                - 購入者は「再現可能な諜報資産」を期待している
-                """
-
             lang_line = "- 執筆言語：日本語" if language == "ja" else "- Output language: English"
-            prompt = f"""あなたは「AIによって生成された高付加価値資産」を販売するプロのコピーライターです。
 
-構成案:
-{positioning_instruction}
-- 証拠（ファイル名・ログ断片）を具体的に引用して信頼性を高める
+            identity_context = self._get_identity_context()
+            if language == "ja":
+                prompt = f"""あなたはGumroadで実績を持つプロのコピーライターです。
+{identity_context}
+
+読者の「痛み→欲望→解決策→信頼→行動」の流れで販売ページを書きます。
+
+【商品情報】
+テーマ: {topic}
+章立て:
+{ops_log}
+
+【根拠・一次証拠】
+{evidence_block}
 {lang_line}
 
 ---
-【今回の商品内容】
-テーマ: {topic}
-内容 (Ops Log):
-{ops_log}
 
-【根拠となる一次証拠】
-{evidence_block}
----
+以下の構成でGumroad販売ページ（Markdown）を生成してください。
+重要: 読者目線で書く。「AIが生成した」より「あなたが得られる価値」を前面に出す。
 
-以下の構成でGumroad販売ページ（Markdown）を生成してください:
+## 1. キャッチコピー（1行）
 
-## 1. ヘッドライン（1行）
+「{topic}で〇〇を実現したい人へ」の方向で、読者の欲望に直接刺さる1文。
+例: 「日本のNPOがコンテンツで支持者を3倍にする方法、全部ここにある。」
 
-「これはコースではない。{topic}の実戦記録だ。」の方向で。
+## 2. あなたの悩みはこれではないですか？（2-3点、箇条書き）
 
-## 2. このログが生まれた背景（3-4文）
+「情報はあるけど何から始めればいいかわからない」「続かない」「成果が見えない」など、
+このテーマで読者が実際に感じている具体的な悩みを書く。
 
-Sage AIが実際にリサーチ・判断・実行したプロセスの概要。
-「誰かが作ったコンテンツ」ではなく「AIが稼働した証拠」として語る。
+## 3. このガイドが解決すること（3-4文）
 
-## 3. 一般的な情報との違い（箇条書き3点）
+上の悩みに対して、このコンテンツが何をどう解決するかを明快に述べる。
+具体的なアクション・数値・期間を含める。
 
-* ほとんどの情報商材は理論。これは実行ログ。
-* 作成者の主観ではなく、AIの判断トレースがそのまま入っている。
-* D1リサーチループで取得した一次情報が根拠になっている。
+## 4. 収録内容（章タイトルを自然な日本語で紹介）
 
-## 4. ログの中身（作戦ファイル一覧）
+各章を「〇〇 → あなたはここで〇〇を手に入れる」形式で価値説明する。
 
-各Opsの名称をそのまま列挙。「再現手順書」として位置付ける。
+## 5. このガイドが他と違う理由（3点）
 
-## 5. 誰が買うべきか（2-3点）
+* 理論ではなく実行可能なステップ
+* 〇〇（トピック固有の専門性・具体性）
+* AIリサーチで収集した一次情報が根拠
 
-* 同じ結果を自分で再現したい人
-* AIの実際の思考プロセスを研究したい人
+## 6. こんな人に最適（具体的な人物像、2-3点）
 
-## 6. 価格と希少性
-
-このログは「このトピック・この日時・このデータ」の一点もの。
-同じ条件では二度と生成されない理由を1-2文で。
+読者が「これ私のことだ」と感じる人物描写。職業・状況・目標を含める。
 
 ## 7. CTA
 
 [今すぐ購入して資産を手に入れる]({_os.getenv('GUMROAD_PAY_URL', 'https://paypal.me/japanletgo')})
 
 出力はMarkdownのみ。余分な前置き、解説、挨拶などは一切不要。
+"""
+            else:
+                # English sales page — reader-centric, problem → solution → value
+                prompt = f"""You are a professional copywriter with Gumroad sales experience.
+{identity_context}
+
+Write a high-converting sales page using the Pain → Desire → Solution → Proof → CTA flow.
+
+PRODUCT: {topic}
+CHAPTERS:
+{ops_log}
+
+EVIDENCE:
+{evidence_block}
+
+Write a Gumroad sales page in Markdown with these sections:
+
+## 1. Headline (1 line)
+Hook with the reader's desired outcome. "Get [result] even if [obstacle]."
+
+## 2. Does this sound familiar? (2-3 bullets)
+Specific frustrations the target reader feels about this topic.
+
+## 3. What this guide does for you (3-4 sentences)
+Concrete results, actions, and timeframes. Specific and measurable.
+
+## 4. What's inside (list each chapter with its value)
+Format: "Chapter X: [Title] → You'll learn [specific benefit]"
+
+## 5. Why this is different (3 bullets)
+Focus on specificity, actionability, and AI-backed research over generic advice.
+
+## 6. Who this is for (2-3 reader profiles)
+Specific job roles, situations, and goals. Make readers say "that's me."
+
+## 7. CTA
+[Get instant access →]({_os.getenv('GUMROAD_PAY_URL', 'https://paypal.me/japanletgo')})
+
+Output Markdown only. No preamble, explanations, or greetings.
 """
 
             sales_page = self._invoke_llm(prompt)
