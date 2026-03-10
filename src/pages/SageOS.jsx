@@ -102,6 +102,7 @@ const SageOS = () => {
     const [monetizeResult, setMonetizeResult] = useState(null);
     const [researchCheck, setResearchCheck] = useState({ status: 'idle', file: null });
     const researchDebounce = useRef(null);
+    const chatInputRef = useRef(null);
 
     const CREATE_PLACEHOLDERS = [
         "e.g. Beginner's guide to passive income with AI",
@@ -251,7 +252,8 @@ const SageOS = () => {
     const IS_OWNER = typeof window !== 'undefined' &&
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-    const runMonetizePipeline = async () => {
+    const runMonetizePipeline = async (topicOverride) => {
+        const topicToUse = topicOverride || monetizeTopic;
         setMonetizeStatus('running');
         setMonetizeResult(null);
 
@@ -273,7 +275,7 @@ const SageOS = () => {
 
         try {
             const [planRes] = await Promise.all([
-                api.post('/api/productize', { topic: monetizeTopic, market, price, language: lang }),
+                api.post('/api/productize', { topic: topicToUse, market, price, language: lang }),
                 Promise.resolve(null)
             ]);
             const plan = planRes?.data;
@@ -281,7 +283,7 @@ const SageOS = () => {
 
             const execResult = await api.post('/api/productize/execute', {
                 type: 'COURSE',
-                topic: monetizeTopic,
+                topic: topicToUse,
                 plan: plan.plan,
                 language: lang,
                 market,
@@ -457,11 +459,12 @@ const SageOS = () => {
         return { score, badges };
     };
 
-    const handleNicheValidate = async () => {
-        if (!monetizeTopic.trim()) return;
+    const handleNicheValidate = async (topicOverride) => {
+        const topicToUse = topicOverride || monetizeTopic;
+        if (!topicToUse.trim()) return;
         setNicheValidation({ status: 'running', data: null });
         try {
-            const res = await api.post('/api/niche/validate', { topic: monetizeTopic });
+            const res = await api.post('/api/niche/validate', { topic: topicToUse });
             if (res.data?.status === 'rate_limited') {
                 setNicheValidation({ status: 'rate_limited', data: res.data });
             } else {
@@ -476,13 +479,14 @@ const SageOS = () => {
         }
     };
 
-    const handleMonetize = async () => {
-        if (!monetizeTopic) return;
+    const handleMonetize = async (topicOverride) => {
+        const topicToUse = topicOverride || monetizeTopic;
+        if (!topicToUse) return;
         if (researchCheck.status === 'missing') {
             setMonetizeStatus('needs_research');
             return;
         }
-        await runMonetizePipeline();
+        await runMonetizePipeline(topicToUse);
     };
 
     const sendMessage = async (e) => {
@@ -713,6 +717,7 @@ const SageOS = () => {
                                                                     const topic = extractTopic(messages);
                                                                     setMonetizeTopic(topic);
                                                                     goToPhase(2, topic);
+                                                                    runMonetizePipeline(topic);
                                                                 }}
                                                                 className="text-sm px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold rounded-xl flex items-center gap-2 transition-all"
                                                             >
@@ -722,14 +727,18 @@ const SageOS = () => {
                                                                 onClick={() => {
                                                                     const topic = extractTopic(messages);
                                                                     if (topic) setMonetizeTopic(topic);
-                                                                    handleNicheValidate();
+                                                                    goToPhase(2, topic);
+                                                                    handleNicheValidate(topic);
                                                                 }}
                                                                 className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-xl flex items-center gap-2 transition-all"
                                                             >
                                                                 📊 まずニッチ検証する
                                                             </button>
                                                             <button
-                                                                onClick={() => { }}
+                                                                onClick={() => {
+                                                                    chatInputRef.current?.focus();
+                                                                    chatInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                }}
                                                                 className="text-sm px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl flex items-center gap-2 transition-all"
                                                             >
                                                                 💬 もう少し話す
@@ -754,6 +763,7 @@ const SageOS = () => {
                                     <form onSubmit={sendMessage} className="p-4 bg-black/60 border-t border-white/5">
                                         <div className="flex relative">
                                             <input
+                                                ref={chatInputRef}
                                                 type="text"
                                                 value={inputValue}
                                                 onChange={e => setInputValue(e.target.value)}
