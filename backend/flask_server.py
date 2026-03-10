@@ -2532,6 +2532,7 @@ def api_d1_generate():
 @app.route('/api/research/run', methods=['POST'])
 def api_research_run():
     """Run D1 research for a topic and return a human-readable summary."""
+    import concurrent.futures
     try:
         data = request.get_json(silent=True) or {}
         topic = data.get('topic', '').strip()
@@ -2541,15 +2542,22 @@ def api_research_run():
         if not autonomous:
             return jsonify({"error": "Autonomous adapter not initialized"}), 503
 
-        autonomous._observe_and_log()
+        def _run_research():
+            autonomous._observe_and_log()
+            decision = {'type': 'research_ai_trends', 'data': {'topic': topic}}
+            original_exec = autonomous.phase_2_execute
+            autonomous.phase_2_execute = True
+            try:
+                autonomous._execute_decision(decision)
+            finally:
+                autonomous.phase_2_execute = original_exec
 
-        decision = {'type': 'research_ai_trends', 'data': {'topic': topic}}
-        original_exec = autonomous.phase_2_execute
-        autonomous.phase_2_execute = True
-        try:
-            autonomous._execute_decision(decision)
-        finally:
-            autonomous.phase_2_execute = original_exec
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_run_research)
+            try:
+                future.result(timeout=30)
+            except concurrent.futures.TimeoutError:
+                logger.warning(f"research/run timed out for topic: {topic}")
 
         summary = f"「{topic}」のリサーチが完了しました。レポートは output/ フォルダに保存されました。"
         return jsonify({"status": "success", "summary": summary})

@@ -958,7 +958,7 @@ const SageOS = () => {
                                                 <button onClick={handleD1ForTopic} className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
                                                     <FiPlay /> D1リサーチを実行してから生成
                                                 </button>
-                                                <button onClick={runMonetizePipeline} className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-400 text-sm rounded-xl transition-all">
+                                                <button onClick={() => runMonetizePipeline()} className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-400 text-sm rounded-xl transition-all">
                                                     このまま生成（リスクあり）
                                                 </button>
                                             </div>
