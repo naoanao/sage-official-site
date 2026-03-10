@@ -2901,6 +2901,60 @@ def get_brain_stats():
         return jsonify({"status": "success", "data": stats}), 200
     return jsonify({"status": "error", "error": "brain not initialized"}), 503
 
+# ── Stripe Checkout ──────────────────────────────────────────────────────────
+@app.route('/api/stripe/checkout', methods=['POST'])
+def stripe_checkout():
+    """
+    Creates a Stripe Payment Link for the Sage 3.0 product.
+    Requires STRIPE_SECRET_KEY in .env.
+    Falls back to Gumroad if key not set.
+    """
+    try:
+        from backend.integrations.stripe_integration import stripe_integration
+        data = request.get_json(silent=True) or {}
+        product_name = data.get('product_name', '2026 AI Influencer Monetization Express')
+        price = float(data.get('price', 29.99))
+
+        result = stripe_integration.create_payment_link(product_name, price)
+        if result.get('status') == 'success':
+            return jsonify(result), 200
+        # no_key or error → Gumroad fallback
+        return jsonify({
+            'status': 'fallback',
+            'url': 'https://naofumi3.gumroad.com/l/yvzrfjd',
+            'message': result.get('message', 'Stripe not configured — using Gumroad'),
+        }), 200
+    except Exception as e:
+        print(f"[Stripe endpoint] Error: {e}")
+        return jsonify({
+            'status': 'fallback',
+            'url': 'https://naofumi3.gumroad.com/l/yvzrfjd',
+            'message': str(e),
+        }), 200
+
+
+# ── PayPal Checkout ───────────────────────────────────────────────────────────
+@app.route('/api/paypal/checkout', methods=['POST'])
+def paypal_checkout():
+    """
+    Creates a PayPal order and returns the approve URL.
+    Requires PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET in .env.
+    Falls back to PayPal.me if keys not set.
+    """
+    try:
+        from backend.integrations.paypal_integration import paypal_integration
+        data = request.get_json(silent=True) or {}
+        amount = str(data.get('amount', '29.99'))
+        result = paypal_integration.create_order(amount=amount)
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'no_keys',
+            'url': 'https://paypal.me/japanletgo/29.99',
+            'message': str(e),
+        }), 200
+
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react_app(path):
