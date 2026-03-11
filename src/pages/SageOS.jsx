@@ -567,7 +567,10 @@ const SageOS = () => {
     // ── Phase helpers ────────────────────────────────────────────────────────
     const goToPhase = (phase, topic) => {
         setCurrentPhase(phase);
-        if (topic !== undefined && topic !== null && topic !== '') setActiveTopic(topic);
+        if (topic !== undefined && topic !== null && topic !== '') {
+            setActiveTopic(topic);
+            setMonetizeTopic(topic);
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
