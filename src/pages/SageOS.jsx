@@ -832,7 +832,7 @@ const SageOS = () => {
                                                 className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔍 Find ideas</button>
                                             <button type="button" onClick={() => setInputValue('Generate content about: ')}
                                                 className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">⚡ Generate content</button>
-                                            <button type="button" onClick={() => goToPhase(2, monetizeTopic || '')}
+                                            <button type="button" onClick={() => goToPhase(2, monetizeTopic || extractTopic(messages))}
                                                 className="text-xs px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 hover:text-white rounded-lg border border-purple-500/30 transition-all">⚡ Skip to Create</button>
                                         </div>
                                     </form>
@@ -982,7 +982,7 @@ const SageOS = () => {
                                     {/* Generate button */}
                                     {!['needs_research', 'review', 'finalizing', 'finalized'].includes(monetizeStatus) && (
                                         <button
-                                            onClick={handleMonetize}
+                                            onClick={() => handleMonetize()}
                                             disabled={!monetizeTopic || ['running', 'running_d1'].includes(monetizeStatus)}
                                             className={`w-full py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-3 transition-all ${!monetizeTopic ? 'bg-slate-800 text-slate-500 cursor-not-allowed' :
                                                 monetizeStatus === 'running' ? 'bg-slate-700 text-slate-400' :
@@ -1266,7 +1266,7 @@ const SageOS = () => {
                                                             className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
                                                         />
                                                         <button
-                                                            onClick={handleRewriteAll}
+                                                            onClick={() => handleRewriteAll()}
                                                             disabled={!globalInstruction.trim() || globalRewriting}
                                                             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
                                                         >
