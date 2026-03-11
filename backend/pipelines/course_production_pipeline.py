@@ -222,7 +222,12 @@ class CourseProductionPipeline:
             # Step 5: Save to Obsidian
             note_path = self._save_to_obsidian(safe_topic, outline, sections, slides, sales_page, research_data)
             logger.info(f"✅ Saved to Obsidian: {note_path}")
-            
+
+            # Step 6: Generate blog post (SEO article from course content)
+            blog_post = self._generate_blog_post(safe_topic, sections, language=language)
+            if blog_post:
+                logger.info(f"✅ Blog post generated ({len(blog_post)} chars)")
+
             result = {
                 "status": "success",
                 "topic": topic,
@@ -231,6 +236,7 @@ class CourseProductionPipeline:
                 "slides": slides,
                 "images": image_results,
                 "sales_page": sales_page,
+                "blog_post": blog_post,
                 "research_source": research_data['filename'] if research_data else None,
                 "obsidian_note": str(note_path)
             }
@@ -666,8 +672,21 @@ Format: Just the titles, one per line, no numbering.
 - Mistake 1: [specific mistake] → Fix: [specific fix]
 - Mistake 2: [specific mistake] → Fix: [specific fix]"""
 
+        used_intro_phrases: list = []
+
         for i, title in enumerate(outline, 1):
             logger.info(f"📝 Generating section {i}/{len(outline)}: {title}")
+
+            # Dynamically forbid already-used opening phrases
+            if used_intro_phrases:
+                forbidden_lines = "\n".join(f'- "{p[:90]}..."' for p in used_intro_phrases[-4:])
+                forbidden_hint = (
+                    f"\n\nCRITICAL — FORBIDDEN OPENING PHRASES (already used in previous sections — do NOT reuse or paraphrase these):\n"
+                    f"{forbidden_lines}\n"
+                    f"Start this section with a completely different hook: a surprising stat, a counter-intuitive claim, or a direct scenario."
+                )
+            else:
+                forbidden_hint = ""
 
             prompt = f"""You are writing a high-converting digital course section. The reader bought this product to solve a real problem — give them immediately usable, specific knowledge.
 {identity_context}
@@ -681,18 +700,20 @@ SECTION ({i}/{len(outline)}): {title}
 ## CONTENT RULES (strictly enforced)
 
 ### What TO include:
+0. RESULT-FIRST: The very first sentence of this section must be: "By the end of this section, you will [one specific, measurable outcome]." — concrete, not vague.
 1. RESEARCH MATCH: If PRIMARY RESEARCH covers "{title}", cite specific data, dates, and place names from it directly.
    If research is off-topic, ignore it and use your own expertise.
 2. REAL NUMBERS: Include at least 2 specific data points (percentages, times, prices, distances, counts).
 3. ACTIONABLE STEPS: A numbered action list (3-5 items), each with estimated time required.
 4. COMMON MISTAKES: List 2-3 mistakes beginners make and how to avoid them.
 5. QUICK WIN: One thing the reader can do in under 10 minutes to see immediate progress.
+6. SPECIFIC EXAMPLES: Name at least one real tool (e.g. Notion, Airtable, ChatGPT, Canva), a real company, or a specific dollar amount. Generic advice without concrete names/numbers is rejected.
 
 ### What NOT to include:
 - Generic statements like "important", "essential", "you should know..."
 - AI productivity tools, automation, virtual assistants (unless topic is AI-related)
 - Filler paragraphs without specific information
-- Theoretical content without practical application{lang_instruction}
+- Theoretical content without practical application{lang_instruction}{forbidden_hint}
 
 {section_structure}
 
@@ -704,6 +725,15 @@ Content:"""
                 content = f"**{title}**\n\nThis section covers important aspects of {title}. Key concepts will be explained with practical examples and real-world applications."
 
             content = self._reduce_data_overload(content, language)
+
+            # Track the first real sentence so the next section's prompt can forbid it
+            first_real_line = next(
+                (ln.strip()[:100] for ln in content.split('\n')
+                 if ln.strip() and not ln.strip().startswith(('**', '#', '-', '*', '|'))),
+                ""
+            )
+            if first_real_line:
+                used_intro_phrases.append(first_real_line)
 
             sections.append({
                 "number": i,
@@ -975,15 +1005,24 @@ Content:"""
         image_results = {}
         output_dir = self._get_output_dir(topic)
 
-        for section in sections:
+        topic_kw = self._get_topic_visual_keywords(topic) if topic else None
+
+        for sec_idx, section in enumerate(sections):
             title = section.get("title", "")
 
             # 画像プロンプト生成（英語）
             prompt = self._generate_image_prompt(title, topic, target_market)
 
+            # Per-section LoremFlickr keywords (avoids identical keyword pool across sections)
+            section_kw = self._get_section_visual_keywords(title, topic_kw) if topic_kw else None
+
             # Gemini → Imgur → LoremFlickr の既存パイプラインで画像生成
             try:
-                public_url = image_gen_enhanced.generate_social_media_image(prompt, platform="twitter")
+                public_url = image_gen_enhanced.generate_social_media_image(
+                    prompt, platform="twitter",
+                    topic_keywords=section_kw,
+                    section_index=sec_idx
+                )
                 image_results[title] = {
                     "type": "generated",
                     "url": public_url,
@@ -1162,7 +1201,7 @@ Order right now and you'll also receive these 3 exclusive bonuses — FREE:
 
 ## 7. CTA
 
-[今すぐ購入して資産を手に入れる]({_os.getenv('GUMROAD_PAY_URL', 'https://paypal.me/japanletgo')})
+[今すぐ購入して資産を手に入れる]({_os.getenv('GUMROAD_PAY_URL', 'https://naofumi3.gumroad.com/l/yvzrfjd')})
 
 出力はMarkdownのみ。余分な前置き、解説、挨拶などは一切不要。
 """
@@ -1201,7 +1240,7 @@ Focus on specificity, actionability, and AI-backed research over generic advice.
 Specific job roles, situations, and goals. Make readers say "that's me."
 
 ## 7. CTA
-[Get instant access →]({_os.getenv('GUMROAD_PAY_URL', 'https://paypal.me/japanletgo')})
+[Get instant access →]({_os.getenv('GUMROAD_PAY_URL', 'https://naofumi3.gumroad.com/l/yvzrfjd')})
 
 Output Markdown only. No preamble, explanations, or greetings.
 """
@@ -1315,4 +1354,57 @@ Output Markdown only. No preamble, explanations, or greetings.
                 return str(note_path)
         except Exception as e:
             logger.error(f"Obsidian save failed: {e}")
+            return None
+
+    def _generate_blog_post(self, topic: str, sections: List[Dict], language: str = "en") -> Optional[str]:
+        """Generate a SEO blog post from course content. Returns Markdown string or None."""
+        import os as _os
+        # Use first 3 sections as source material
+        section_summaries = "\n".join(
+            f"- {s['title']}: {s['content'][:300].strip()}"
+            for s in sections[:3]
+        )
+        gumroad_url = _os.getenv("GUMROAD_PAY_URL", "https://naofumi3.gumroad.com/l/yvzrfjd")
+
+        if language == "ja":
+            prompt = f"""あなたはSEOに強いブログライターです。以下のオンラインコース情報をもとに、読者が「読んでよかった」と感じる日本語ブログ記事を書いてください。
+
+トピック: {topic}
+
+コースの主なセクション:
+{section_summaries}
+
+## 記事の構成（必須）:
+1. **タイトル** (H1): SEO最適化済み、クリック率を高める
+2. **導入** (150字): 読者の悩みに共感し、解決策を予告
+3. **本文** (3見出し×300字): 各セクションから実用的な知識を抽出
+4. **まとめ** (100字): 学んだことの要約
+5. **CTA**: [コースで詳しく学ぶ →]({gumroad_url})
+
+出力はMarkdownのみ。
+"""
+        else:
+            prompt = f"""You are an SEO blog writer. Write a high-value English blog post based on the online course below.
+
+Topic: {topic}
+
+Key course sections:
+{section_summaries}
+
+## Article structure (required):
+1. **Title** (H1): SEO-optimized, high click-through
+2. **Intro** (100 words): Empathize with the reader's problem, preview the solution
+3. **Body** (3 H2 sections × 200 words): Extract actionable insights from each course section
+4. **Conclusion** (80 words): Summarize key takeaways
+5. **CTA**: [Get the full course →]({gumroad_url})
+
+Output Markdown only.
+"""
+        try:
+            blog_post = self._invoke_llm(prompt)
+            if blog_post:
+                logger.info(f"✅ Blog post generated ({len(blog_post)} chars)")
+            return blog_post
+        except Exception as e:
+            logger.warning(f"Blog post generation failed: {e}")
             return None

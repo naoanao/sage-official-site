@@ -2759,6 +2759,37 @@ def productize_rewrite():
         return jsonify({"error": str(e)}), 500
 
 
+def generate_image_hf(prompt: str, width: int = 768, height: int = 512) -> str:
+    """
+    Generate image via HuggingFace SDXL. Returns base64 data URI on success,
+    LoremFlickr URL as fallback (no API key needed).
+    Requires HF_TOKEN in .env.
+    """
+    import base64 as _b64
+    import hashlib as _hl
+    hf_token = os.getenv("HF_TOKEN", "")
+    if hf_token:
+        try:
+            res = requests.post(
+                "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
+                headers={"Authorization": f"Bearer {hf_token}"},
+                json={"inputs": prompt, "parameters": {"width": width, "height": height}},
+                timeout=120,
+            )
+            if res.status_code == 200 and res.headers.get("content-type", "").startswith("image"):
+                b64 = _b64.b64encode(res.content).decode("utf-8")
+                logger.info(f"[generate_image_hf] SDXL OK ({len(res.content)} bytes)")
+                return f"data:image/jpeg;base64,{b64}"
+        except Exception as e:
+            logger.warning(f"[generate_image_hf] SDXL failed: {e}")
+    # LoremFlickr fallback
+    seed = int(_hl.md5(prompt.encode()).hexdigest(), 16) % 9999
+    kw = prompt.split(",")[0].strip().replace(" ", ",")[:40]
+    url = f"https://loremflickr.com/{width}/{height}/{kw}?lock={seed}"
+    logger.info(f"[generate_image_hf] LoremFlickr fallback: {url}")
+    return url
+
+
 @app.route('/api/productize/regenerate_images', methods=['POST'])
 def productize_regenerate_images():
     """Regenerate course images. Uses LLM to translate any user instruction into image style keywords."""
