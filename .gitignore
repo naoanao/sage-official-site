@@ -59,4 +59,42 @@ SAGE_STOP
 .claude/worktrees/
 compliance_deploy/
 tmp/notion_*.txt
-test_notion.py\nactivate_notion_spec.py\nrun_actual_monetization_2026_validator.py\ntmp/
+test_notion.py
+activate_notion_spec.py
+run_actual_monetization_2026_validator.py
+tmp/
+
+# Data exports / large docs (not source code)
+notion_latest_full.txt
+sage_3_hp.md
+
+# Temp / debug scripts
+tmp_*.py
+tmp_*.json
+tmp_*.txt
+debug_*.py
+debug_*.txt
+*.out
+all_files.txt
+NUL
+
+# Markdown docs generated during research sessions
+progress_summary_*.md
+firebase_plan_full.md
+avatar_system.md
+monetization_strategy.md
+runbook_ssot.md
+tech_stack_overview.md
+
+# JSON results / debug artifacts
+*_results.json
+*_details.json
+latest_e2e_result.json
+
+# Output directory (generated course content)
+output/
+
+# Misc root-level artifacts
+traceback.txt
+update_notion_task.py
+*tmpgitlog.txt

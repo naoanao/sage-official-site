@@ -116,14 +116,12 @@ const Landing = () => {
                             </Link>
                         </Motion.div>
                         <Motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <a
-                                href="https://whop.com/segeai/"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <Link
+                                to="/sales"
                                 className="px-10 py-5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-lg font-bold flex items-center gap-3 transition-all backdrop-blur-xl"
                             >
                                 Get Full Access <FiShoppingCart />
-                            </a>
+                            </Link>
                         </Motion.div>
                     </div>
                 </Motion.div>
@@ -374,14 +372,12 @@ const Landing = () => {
                                 </li>
                             ))}
                         </ul>
-                        <a
-                            href="https://naofumi3.gumroad.com/l/yvzrfjd"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <Link
+                            to="/sales"
                             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
                         >
-                            <FiShoppingCart size={16} /> Buy on Gumroad — $29.99 →
-                        </a>
+                            <FiShoppingCart size={16} /> Get Access — $29.99 →
+                        </Link>
                     </Motion.div>
                 </div>
             </section>

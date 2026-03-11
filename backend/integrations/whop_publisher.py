@@ -100,7 +100,7 @@ def create_plan(
     headers = _get_headers()
     payload = {
         "product_id": product_id,
-        "price": int(price_usd * 100),  # Convert to cents
+        "initial_price": int(price_usd * 100),  # Convert to cents
         "currency": currency,
         "billing_period": billing_period,
         "billing_period_unit": billing_period_unit,
