@@ -10,11 +10,12 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 REQUIRED_KEYS = {
-    "HF_TOKEN":       "HuggingFace Flux image generation",
-    "IMGBB_API_KEY":  "imgbb image hosting",
-    "GEMINI_API_KEY": "Gemini AI (image + text fallback)",
-    "GROQ_API_KEY":   "Groq LLM (primary text AI)",
-    "NOTION_API_KEY": "Notion integration",
+    "HF_TOKEN":            "HuggingFace Flux image generation",
+    "IMGBB_API_KEY":       "imgbb image hosting",
+    "GEMINI_API_KEY":      "Gemini AI (image + text fallback)",
+    "GROQ_API_KEY":        "Groq LLM (primary text AI)",
+    "NOTION_API_KEY":      "Notion integration",
+    "PERPLEXITY_API_KEY":  "Perplexity AI (research / niche validation)",
 }
 
 

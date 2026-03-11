@@ -107,8 +107,18 @@ class SageJobRunner:
     def run_once(self) -> None:
         """Process pending jobs once without polling logic."""
         try:
+            # Monthly Instagram token refresh check (approx 9:00 AM on the 1st)
+            now = datetime.now()
+            if now.day == 1 and now.hour == 9 and now.minute < 10:
+                try:
+                    from backend.modules.instagram_token_refresher import refresh_instagram_token
+                    refresh_instagram_token()
+                except Exception as e:
+                    logger.error(f"[JOB] Failed to trigger token refresh: {e}")
+
             count = self.process_pending()
             if count:
                 logger.info(f"[JOB] Processed {count} pending job(s).")
         except Exception as e:
             logger.error(f"[JOB] Worker error: {e}")
+

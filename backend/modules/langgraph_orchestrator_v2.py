@@ -248,7 +248,6 @@ class LangGraphOrchestrator:
         return self.llm.invoke(input_data)
 
     def plan_node(self, state: AgentState):
-        import sys
         logger.info("--- Planner Node ---")
         messages = state.get("messages", [])
         user_request = messages[-1].content if messages else ""
@@ -301,7 +300,6 @@ class LangGraphOrchestrator:
         # FILE CREATION OVERRIDE (Sage's Hands)
         if any(k in req for k in ["ファイル", "作成して", "書き込んで", "create file", "write file", "save file", "作って", "保存して"]):
              # Extract filename and content from request
-             import re
              # Try to extract quoted filename
              fname_match = re.search(r'[「\'"](.*?\.[a-zA-Z]{2,4})[」\'"\s]', user_request)
              filename = fname_match.group(1) if fname_match else "sage_output.txt"
@@ -310,7 +308,7 @@ class LangGraphOrchestrator:
              if "document" in req or "ドキュメント" in req:
                  location = "documents"
              # Extract content between 「」or quotes if present
-             content_match = re.search(r'[「\'"](.*?)[」\'"$]', user_request)
+             content_match = re.search(r'[「\'"](.*?)[」\'|$]', user_request)
              content = content_match.group(1) if content_match and content_match.group(1) != filename else user_request
              override_plan = [{"step_id": 1, "tool": "create_file", "params": {"filename": filename, "content": content, "location": location, "overwrite": True}}]
              ret_val = {"plan": override_plan, "context": context}

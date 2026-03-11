@@ -2,7 +2,6 @@ import os
 import logging
 import requests as _requests
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 from backend.modules.notion_agent import NotionAgent
 
 NOTION_API_VERSION = "2022-06-28"
@@ -26,12 +25,10 @@ class NotionContentPool:
             return []
 
         try:
-            # Querying for Status that marks content as ready for SNS
+            # Querying for Status='予約済み' (SNS Content Pool uses English field names)
             query_body = {
                 "filter": {
                     "or": [
-                        {"property": "ステータス", "select": {"equals": "未着手"}},
-                        {"property": "ステータス", "select": {"equals": "進行中"}},
                         {"property": "Status", "select": {"equals": "予約済み"}},
                         {"property": "Status", "select": {"equals": "Ready"}},
                     ]
@@ -103,28 +100,13 @@ class NotionContentPool:
                 json={
                     "parent": {"database_id": self.db_id},
                     "properties": {
-                        "タスク名": {"title": [{"text": {"content": title}}]},
-                        "ステータス": {"select": {"name": "未着手"}},
-                        "カテゴリ": {"select": {"name": category}},
+                        "Topic": {"title": [{"text": {"content": title}}]},
+                        "Status": {"select": {"name": status}},
+                        "Category": {"select": {"name": category}},
                     }
                 },
                 timeout=10,
             )
-            # If default keys fail, fallback to English keys
-            if resp.status_code == 400:
-                resp = _requests.post(
-                    "https://api.notion.com/v1/pages",
-                    headers=headers,
-                    json={
-                        "parent": {"database_id": self.db_id},
-                        "properties": {
-                            "Topic": {"title": [{"text": {"content": title}}]},
-                            "Status": {"select": {"name": status}},
-                            "Category": {"select": {"name": category}},
-                        }
-                    },
-                    timeout=10,
-                )
             resp.raise_for_status()
             logger.info(f"✅ Topic added to Notion: '{title}' [{category}]")
             return True
@@ -137,22 +119,12 @@ class NotionContentPool:
         if not self.notion.enabled: return
         
         try:
-            # Try Japanese key
-            try:
-                self.notion.client.pages.update(
-                    page_id=page_id,
-                    properties={
-                        "ステータス": {"select": {"name": "完了"}}
-                    }
-                )
-            except Exception:
-                # Fallback to English key
-                self.notion.client.pages.update(
-                    page_id=page_id,
-                    properties={
-                        "Status": {"select": {"name": "完了"}}
-                    }
-                )
+            self.notion.client.pages.update(
+                page_id=page_id,
+                properties={
+                    "Status": {"select": {"name": "完了"}}
+                }
+            )
             logger.info(f"✅ Notion item {page_id} marked as POSTED (完了).")
         except Exception as e:
             logger.error(f"Failed to update Notion status: {e}")
