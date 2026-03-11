@@ -6,9 +6,9 @@ import requests
 logger = logging.getLogger(__name__)
 
 GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation"
-# Hugging Face Flux — requires HF_TOKEN (router.huggingface.co requires auth as of 2026-03)
-HF_FLUX_MODEL = "black-forest-labs/FLUX.1-schnell"
-HF_INFERENCE_URL = f"https://router.huggingface.co/hf-inference/models/{HF_FLUX_MODEL}"
+# Hugging Face SDXL — standard inference API (free tier, no credits needed)
+HF_SDXL_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
+HF_INFERENCE_URL = f"https://api-inference.huggingface.co/models/{HF_SDXL_MODEL}"
 IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload"
 
 PLATFORM_SIZES = {
@@ -22,13 +22,14 @@ PLATFORM_SIZES = {
 class ImageGenerationEnhanced:
     """
     Sage Image Generation.
-    Pipeline: HuggingFace Flux → imgbb  |  Gemini → imgbb
+    Pipeline: HuggingFace SDXL → imgbb  |  Gemini → imgbb  |  LoremFlickr
 
-    Tier 1: HuggingFace Inference API (FLUX.1-schnell)
-      - Requires HF_TOKEN (router.huggingface.co requires auth as of 2026-03)
+    Tier 1: HuggingFace Inference API (stable-diffusion-xl-base-1.0)
+      - Requires HF_TOKEN (free tier, api-inference.huggingface.co)
       - Returns raw PNG bytes → upload to imgbb → permanent public URL
     Tier 2: Gemini REST API (gemini-2.0-flash-exp-image-generation)
-      - Falls back when HF is slow/rate-limited
+      - Falls back when HF is rate-limited / model loading
+    Tier 3: LoremFlickr keyword URL (always succeeds, no API key)
     """
 
     def __init__(self):
@@ -50,26 +51,33 @@ class ImageGenerationEnhanced:
     # Tier 1: HuggingFace Flux
     # ------------------------------------------------------------------
 
-    def _hf_flux_generate_bytes(self, prompt: str) -> bytes | None:
-        """Call HuggingFace Router API (FLUX.1-schnell). Requires HF_TOKEN. Returns PNG bytes or None."""
+    def _hf_sdxl_generate_bytes(self, prompt: str, width: int = 768, height: int = 512) -> bytes | None:
+        """Call HuggingFace Inference API (SDXL). Requires HF_TOKEN. Returns PNG bytes or None."""
         if not self.hf_token:
-            logger.info("HF Flux skipped: HF_TOKEN not set (required since 2026-03)")
+            logger.info("HF SDXL skipped: HF_TOKEN not set")
             return None
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.hf_token}"}
+        headers = {"Authorization": f"Bearer {self.hf_token}"}
         try:
             resp = requests.post(
                 HF_INFERENCE_URL,
                 headers=headers,
-                json={"inputs": prompt, "parameters": {"num_inference_steps": 4}},
-                timeout=45,
+                json={"inputs": prompt, "parameters": {"width": width, "height": height}},
+                timeout=120,
             )
             if resp.status_code == 200 and resp.headers.get("content-type", "").startswith("image"):
-                logger.info(f"HF Flux OK ({len(resp.content)} bytes)")
+                logger.info(f"HF SDXL OK ({len(resp.content)} bytes)")
                 return resp.content
-            body = resp.json() if resp.content else {}
-            logger.warning(f"HF Flux returned {resp.status_code}: {str(body)[:120]}")
+            if resp.status_code == 503:
+                # Model loading — transient, skip gracefully
+                logger.warning("HF SDXL model loading (503), skipping")
+                return None
+            try:
+                body = resp.json()
+            except Exception:
+                body = {}
+            logger.warning(f"HF SDXL returned {resp.status_code}: {str(body)[:120]}")
         except Exception as e:
-            logger.warning(f"HF Flux generation failed: {e}")
+            logger.warning(f"HF SDXL generation failed: {e}")
         return None
 
     # ------------------------------------------------------------------
@@ -140,10 +148,26 @@ class ImageGenerationEnhanced:
     # Public interface
     # ------------------------------------------------------------------
 
-    def _loremflickr_url(self, text: str, width: int = 1200, height: int = 675) -> str:
-        """Tier 3 fallback: LoremFlickr keyword URL (no API key required, always works)."""
-        import re
+    def _loremflickr_url(self, text: str, width: int = 1200, height: int = 675, topic_keywords: str = None, section_index: int = 0) -> str:
+        """Tier 3 fallback: LoremFlickr keyword URL (no API key required, always works).
+
+        topic_keywords: pre-computed English keywords to use instead of parsing text.
+                        Pass this to avoid style-descriptor pollution in keyword extraction.
+        section_index: used to vary the seed so each section gets a different image.
+        """
         import hashlib
+        topic_hash = int(hashlib.md5(text.encode()).hexdigest(), 16) % 10000
+        # 137 is prime — ensures each section index produces a well-distributed unique seed
+        seed = (topic_hash + section_index * 137) % 10000
+
+        if topic_keywords:
+            # Use pre-computed keywords directly (most reliable path)
+            kw = ','.join(topic_keywords.split()[:3])
+            url = f"https://loremflickr.com/{width}/{height}/{kw}?lock={seed}"
+            logger.info(f"Image ready (LoremFlickr/topic): {url} (keywords: {kw})")
+            return url
+
+        import re
         # Skip generic/technical prompt terms, extract topic keywords
         noise_words = {
             # Articles / prepositions
@@ -159,24 +183,27 @@ class ImageGenerationEnhanced:
             'aspect', 'resolution', 'format', 'shot', 'view', 'angle', 'wide',
             'social', 'media', 'course', 'slide', 'title', 'text', 'design',
             'educational', 'minimal', 'twitter', 'instagram', 'platform',
+            'subject', 'business', 'success', 'lifestyle',
             # Size strings
             '16:9', 'x675', 'x1080', 'x1200', '1200', '675', '1080',
         }
         words = re.sub(r'[^\w\s]', ' ', text.lower()).split()
-        keywords = [w for w in words if len(w) >= 3 and w not in noise_words][:3]
+        # Only include ASCII keywords (Japanese chars don't work in LoremFlickr URLs)
+        keywords = [w for w in words if len(w) >= 3 and w not in noise_words and w.isascii()][:3]
         kw = ','.join(keywords) if keywords else 'nature'
-        # Use title hash as ?lock= seed so each section gets a unique but reproducible image
-        seed = int(hashlib.md5(text.encode()).hexdigest(), 16) % 10000
         url = f"https://loremflickr.com/{width}/{height}/{kw}?lock={seed}"
         logger.info(f"Image ready (LoremFlickr): {url} (keywords: {kw}, seed: {seed})")
         return url
 
-    def generate_social_media_image(self, text: str, platform: str = "instagram") -> str | None:
+    def generate_social_media_image(self, text: str, platform: str = "instagram", topic_keywords: str = None, section_index: int = 0) -> str | None:
         """
         Generate a social media image and return a permanent public URL.
         1. HuggingFace Flux (HF_TOKEN required) → imgbb
         2. Gemini → imgbb
         3. LoremFlickr keyword URL (always succeeds)
+
+        section_index: pass the 0-based position of the section so each section
+                       gets a unique LoremFlickr seed (avoids identical fallback images).
         """
         width, height = PLATFORM_SIZES.get(platform.lower(), (1080, 1080))
         prompt = (
@@ -186,12 +213,12 @@ class ImageGenerationEnhanced:
 
         logger.info(f"Generating image for: {text[:60]}...")
 
-        # Tier 1: HuggingFace Flux (requires HF_TOKEN)
-        img_bytes = self._hf_flux_generate_bytes(prompt)
+        # Tier 1: HuggingFace SDXL (requires HF_TOKEN, free tier)
+        img_bytes = self._hf_sdxl_generate_bytes(prompt, width=width, height=height)
         if img_bytes:
             public_url = self._upload_to_imgbb(img_bytes)
             if public_url:
-                logger.info(f"Image ready (HF Flux+imgbb): {public_url}")
+                logger.info(f"Image ready (HF SDXL+imgbb): {public_url}")
                 return public_url
 
         # Tier 2: Gemini
@@ -205,7 +232,7 @@ class ImageGenerationEnhanced:
 
         # Tier 3: LoremFlickr (always returns a URL — keyword-based)
         logger.warning(f"HF+Gemini failed, falling back to LoremFlickr for: {text[:40]}")
-        return self._loremflickr_url(text, width, height)
+        return self._loremflickr_url(text, width, height, topic_keywords=topic_keywords, section_index=section_index)
 
     def generate_blog_image(self, topic: str, style: str = "realistic") -> str | None:
         prompt = f"{topic}, high quality, professional, {style}, 8k resolution, detailed"
