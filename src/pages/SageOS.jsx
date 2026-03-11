@@ -479,7 +479,20 @@ const SageOS = () => {
 
     const handleCopyBlogPost = () => {
         const text = editedSections.map(s => `## ${s.title}\n\n${s.content}`).join('\n\n');
-        navigator.clipboard.writeText(text);
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(() => {});
+            } else {
+                const el = document.createElement('textarea');
+                el.value = text;
+                el.style.position = 'fixed';
+                el.style.opacity = '0';
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            }
+        } catch (e) {}
         setPublishChecklist(p => ({ ...p, copied: true }));
         setTimeout(() => setPublishChecklist(p => ({ ...p, copied: false })), 2000);
     };
