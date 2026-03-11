@@ -677,6 +677,17 @@ Format: Just the titles, one per line, no numbering.
         for i, title in enumerate(outline, 1):
             logger.info(f"📝 Generating section {i}/{len(outline)}: {title}")
 
+            # Section-1 only gets the "By the end of this section..." opener; all others must use a hook
+            if i == 1:
+                opening_rule = 'RESULT-FIRST: The very first sentence of this section must be: "By the end of this section, you will [one specific, measurable outcome]." — concrete, not vague.'
+            else:
+                opening_rule = (
+                    'HOOK OPENING: Do NOT start with "By the end of this section..." — '
+                    'that phrase was already used in Section 1 and must NOT appear again. '
+                    'Instead open with a surprising statistic, a counter-intuitive claim, '
+                    'or a direct real-world scenario that immediately pulls the reader in.'
+                )
+
             # Dynamically forbid already-used opening phrases
             if used_intro_phrases:
                 forbidden_lines = "\n".join(f'- "{p[:90]}..."' for p in used_intro_phrases[-4:])
@@ -700,7 +711,7 @@ SECTION ({i}/{len(outline)}): {title}
 ## CONTENT RULES (strictly enforced)
 
 ### What TO include:
-0. RESULT-FIRST: The very first sentence of this section must be: "By the end of this section, you will [one specific, measurable outcome]." — concrete, not vague.
+0. {opening_rule}
 1. RESEARCH MATCH: If PRIMARY RESEARCH covers "{title}", cite specific data, dates, and place names from it directly.
    If research is off-topic, ignore it and use your own expertise.
 2. REAL NUMBERS: Include at least 2 specific data points (percentages, times, prices, distances, counts).
