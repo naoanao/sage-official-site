@@ -53,7 +53,7 @@ const Landing = () => {
         fetch('/api/sns/stats')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (data && data.total_posts != null) {
+                if (data && data.total_posts > 0) {
                     setSnsStats({ total_posts: data.total_posts });
                 }
             })

@@ -9,6 +9,7 @@ import SageMiniChat from '../components/SageMiniChat';
 
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
 const apiRewrite = axios.create({ baseURL: BACKEND_URL, timeout: 30000 });
+const apiLong = axios.create({ baseURL: BACKEND_URL, timeout: 300000 }); // 5min for pipeline
 
 // ── Demo output shown to public visitors (no real API call) ─────────────────
 const DEMO_RESULT = {
@@ -84,10 +85,16 @@ const PRESETS = [
     },
 ];
 
+const _ls = {
+    get: (k, d) => { try { const v = localStorage.getItem(k); return v != null ? JSON.parse(v) : d; } catch { return d; } },
+    set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del: (k) => { try { localStorage.removeItem(k); } catch {} },
+};
+
 const SageOS = () => {
     // ── Phase navigation state ───────────────────────────────────────────────
-    const [currentPhase, setCurrentPhase] = useState(1); // 1=TALK 2=CREATE 3=REFINE 4=PUBLISH
-    const [activeTopic, setActiveTopic] = useState('');
+    const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
+    const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(false);
 
     const [d1Status, setD1Status] = useState('idle');
@@ -95,7 +102,7 @@ const SageOS = () => {
     const [stats, setStats] = useState({ cpu: '3%', memory: '2GB', upTime: '144:20:10' });
 
     // Monetization state
-    const [monetizeTopic, setMonetizeTopic] = useState('');
+    const [monetizeTopic, setMonetizeTopic] = useState(() => _ls.get('sage_topic', ''));
     const [market, setMarket] = useState('US');
     const [price, setPrice] = useState('$29.99');
     const [lang, setLang] = useState('auto');
@@ -245,6 +252,11 @@ const SageOS = () => {
         return () => clearTimeout(t);
     }, [monetizeTopic, price]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Persist phase + topic to localStorage so refresh restores state
+    useEffect(() => { _ls.set('sage_phase', currentPhase); }, [currentPhase]);
+    useEffect(() => { _ls.set('sage_topic', monetizeTopic); }, [monetizeTopic]);
+    useEffect(() => { _ls.set('sage_activeTopic', activeTopic); }, [activeTopic]);
+
     const handleD1Run = async () => {
         setD1Status('running');
         try {
@@ -270,13 +282,17 @@ const SageOS = () => {
         } catch (e) {
             setMonetizeStatus('error');
             setMonetizeResult('D1リサーチに失敗しました: ' + (e.message || ''));
-            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
+            // エラーは自動リセットしない
         }
     };
 
     const handleRunResearch = async () => {
         const topic = monetizeTopic || inputValue;
-        if (!topic.trim()) return;
+        if (!topic.trim()) {
+            chatInputRef.current?.focus();
+            setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: '🔍 リサーチするトピックを入力してください。' }]);
+            return;
+        }
         setMonetizeStatus('running_d1');
         try {
             const res = await api.post('/api/research/run', { topic });
@@ -343,13 +359,13 @@ const SageOS = () => {
 
         try {
             const [planRes] = await Promise.all([
-                api.post('/api/productize', { topic: topicToUse, market, price, language: lang }),
+                apiLong.post('/api/productize', { topic: topicToUse, market, price, language: lang }),
                 Promise.resolve(null)
             ]);
             const plan = planRes?.data;
             if (!plan || plan.status === 'error') throw new Error(plan?.error || 'Plan failed');
 
-            const execResult = await api.post('/api/productize/execute', {
+            const execResult = await apiLong.post('/api/productize/execute', {
                 type: 'COURSE',
                 topic: topicToUse,
                 plan: plan.plan,
@@ -379,7 +395,7 @@ const SageOS = () => {
             setProgressPercent(0);
             const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
             setMonetizeResult(isTimeout
-                ? 'タイムアウト (130秒) — LLMの処理に時間がかかりすぎました。しばらく待ってから再試行してください。'
+                ? 'タイムアウト (5分) — LLMの処理に時間がかかりすぎました。しばらく待ってから再試行してください。'
                 : (e.message || 'Pipeline failed'));
             setMonetizeStatus('error');
             // エラーは自動リセットしない — ユーザーが明示的にRetryするまで表示
@@ -544,6 +560,9 @@ const SageOS = () => {
         setContentTab('blog');
         setEditedCaptions([]);
         setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
+        _ls.del('sage_phase');
+        _ls.del('sage_topic');
+        _ls.del('sage_activeTopic');
     };
 
     const analyzeContentQuality = (content) => {
