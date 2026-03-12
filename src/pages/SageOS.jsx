@@ -122,10 +122,15 @@ const SageOS = () => {
     const [sectionInstructions, setSectionInstructions] = useState({});
     const [rewritingIdx, setRewritingIdx] = useState(null);
     const [globalRewriting, setGlobalRewriting] = useState(false);
+    const [rewritingPreset, setRewritingPreset] = useState(null); // preset.id currently running
+    const [presetResults, setPresetResults] = useState({}); // { [presetId]: 'success'|'error' }
     const [rewriteError, setRewriteError] = useState(null);
     const [expandedSection, setExpandedSection] = useState(null);
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
     const [isDemo, setIsDemo] = useState(false);
+    const [quickPreview, setQuickPreview] = useState(null); // { headline, buyer, price, hooks[] }
+    const [progressPercent, setProgressPercent] = useState(0);
+    const [copyStatus, setCopyStatus] = useState('idle'); // 'idle'|'success'|'error'
 
     // Content tabs & publish
     const [contentTab, setContentTab] = useState('blog');
@@ -147,6 +152,21 @@ const SageOS = () => {
         { id: 1, role: 'system', content: 'Hi. What would you like to create today?' }
     ]);
     const [inputValue, setInputValue] = useState('');
+
+    // Quick Monetize Preview — local heuristic, no API needed
+    const buildQuickPreview = (topic) => {
+        if (!topic || topic.trim().length < 5) return null;
+        const isJa = /[\u3000-\u9fff]/.test(topic);
+        const hooks = isJa
+            ? [`「${topic}」で月5万円稼ぐ人がやっている3つのこと`, `今すぐ始められる！${topic}で副収入を作る最短ルート`, `失敗しない${topic}の完全マップ`]
+            : [`The exact ${topic} system generating passive income in 2026`, `3 steps to your first $500 with ${topic}`, `Why most people fail at ${topic} — and how to be different`];
+        return {
+            headline: isJa ? `「${topic}」で結果を出すための完全ガイド` : `The Complete ${topic} Blueprint`,
+            buyer: isJa ? '副業・収益化を目指す社会人' : 'Solopreneurs & creators looking for their first income stream',
+            price: price || '$29.99',
+            hooks,
+        };
+    };
 
     const fetchAutomations = async () => {
         try {
@@ -220,6 +240,11 @@ const SageOS = () => {
         return () => clearInterval(t);
     }, []);
 
+    useEffect(() => {
+        const t = setTimeout(() => setQuickPreview(buildQuickPreview(monetizeTopic)), 600);
+        return () => clearTimeout(t);
+    }, [monetizeTopic, price]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const handleD1Run = async () => {
         setD1Status('running');
         try {
@@ -287,15 +312,15 @@ const SageOS = () => {
         setMonetizeResult(null);
 
         const _progressSteps = [
-            [0,      '🔍 Analyzing your topic...'],
-            [4000,   '🧠 Building product structure...'],
-            [12000,  '✍️ Generating content...'],
-            [30000,  '💡 Refining with market data...'],
-            [60000,  '⏳ Still working (LLM processing)...'],
-            [100000, '🔥 Almost there...'],
+            [0,      '🔍 Analyzing your topic...',         5],
+            [4000,   '🧠 Building product structure...',   18],
+            [12000,  '✍️ Generating content...',           40],
+            [30000,  '💡 Refining with market data...',    62],
+            [60000,  '⏳ Still working (LLM processing)...', 80],
+            [100000, '🔥 Almost there...',                 93],
         ];
-        const _progressTimers = _progressSteps.map(([delay, msg]) =>
-            setTimeout(() => setGenerateProgress(msg), delay)
+        const _progressTimers = _progressSteps.map(([delay, msg, pct]) =>
+            setTimeout(() => { setGenerateProgress(msg); setProgressPercent(pct); }, delay)
         );
 
         if (!IS_OWNER) {
@@ -346,10 +371,12 @@ const SageOS = () => {
             setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
+            setProgressPercent(100);
             setMonetizeStatus('review');
         } catch (e) {
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
+            setProgressPercent(0);
             const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
             setMonetizeResult(isTimeout
                 ? 'タイムアウト (130秒) — LLMの処理に時間がかかりすぎました。しばらく待ってから再試行してください。'
@@ -422,6 +449,7 @@ const SageOS = () => {
                 : (e?.response?.data?.error || e?.message || 'Rewrite failed') + ' — Please try again.';
             setRewriteError(msg);
             console.error('Global rewrite failed', e);
+            throw e; // let applyPreset catch it for per-button error state
         } finally {
             setGlobalRewriting(false);
         }
@@ -485,11 +513,13 @@ const SageOS = () => {
         } catch { setPublishChecklist(p => ({ ...p, instagram: 'error' })); }
     };
 
-    const handleCopyBlogPost = () => {
+    const handleCopyBlogPost = async () => {
         const text = editedSections.map(s => `## ${s.title}\n\n${s.content}`).join('\n\n');
+        let success = false;
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).catch(() => {});
+                await navigator.clipboard.writeText(text);
+                success = true;
             } else {
                 const el = document.createElement('textarea');
                 el.value = text;
@@ -497,12 +527,13 @@ const SageOS = () => {
                 el.style.opacity = '0';
                 document.body.appendChild(el);
                 el.select();
-                document.execCommand('copy');
+                success = document.execCommand('copy');
                 document.body.removeChild(el);
             }
-        } catch (e) {}
-        setPublishChecklist(p => ({ ...p, copied: true }));
-        setTimeout(() => setPublishChecklist(p => ({ ...p, copied: false })), 3000);
+        } catch (e) { success = false; }
+        setCopyStatus(success ? 'success' : 'error');
+        setPublishChecklist(p => ({ ...p, copied: success }));
+        setTimeout(() => { setCopyStatus('idle'); setPublishChecklist(p => ({ ...p, copied: false })); }, 3000);
     };
 
     const handleStartNew = () => {
@@ -600,15 +631,23 @@ const SageOS = () => {
         return lastUserMsg?.content || '';
     };
 
-    const applyPreset = (preset) => {
+    const applyPreset = async (preset) => {
+        if (rewritingPreset || globalRewriting) return;
+        setRewritingPreset(preset.id);
+        setPresetResults(prev => { const n = { ...prev }; delete n[preset.id]; return n; });
         const isJa = lang === 'ja' || (lang === 'auto' && monetizeTopic.match(/[\u3000-\u9fff]/));
-        if (isJa && preset.tonePreset_ja) {
-            handleRewriteAll(undefined, preset.tonePreset_ja);
-        } else if (!isJa && preset.tonePreset_en) {
-            handleRewriteAll(undefined, preset.tonePreset_en);
-        } else {
-            const instr = isJa ? preset.instruction_ja : preset.instruction_en;
-            handleRewriteAll(instr, undefined);
+        let tonePreset, instruction;
+        if (isJa && preset.tonePreset_ja) tonePreset = preset.tonePreset_ja;
+        else if (!isJa && preset.tonePreset_en) tonePreset = preset.tonePreset_en;
+        else instruction = isJa ? preset.instruction_ja : preset.instruction_en;
+        try {
+            await handleRewriteAll(instruction, tonePreset);
+            setPresetResults(prev => ({ ...prev, [preset.id]: 'success' }));
+        } catch {
+            setPresetResults(prev => ({ ...prev, [preset.id]: 'error' }));
+        } finally {
+            setRewritingPreset(null);
+            setTimeout(() => setPresetResults(prev => { const n = { ...prev }; delete n[preset.id]; return n; }), 3000);
         }
     };
 
@@ -938,9 +977,23 @@ const SageOS = () => {
                                             </div>
                                         )}
                                         {nicheValidation.status === 'error' && (
-                                            <div className="mt-2 px-3 py-2 bg-red-900/20 border border-red-500/30 rounded-lg text-xs text-red-400 flex items-center gap-2">
-                                                <FiXCircle className="shrink-0" /> 市場調査に失敗しました。Flaskが起動しているか確認してください。
-                                                <button onClick={() => setNicheValidation({ status: 'idle', data: null })} className="ml-auto text-red-500 hover:text-red-300">✕</button>
+                                            <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg space-y-2">
+                                                <div className="text-xs text-red-400 flex items-center gap-2">
+                                                    <FiXCircle className="shrink-0" /> API検証失敗 — 外部ツールで手動確認できます:
+                                                    <button onClick={() => setNicheValidation({ status: 'idle', data: null })} className="ml-auto text-red-500 hover:text-red-300">✕</button>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {[
+                                                        { label: '📈 Google Trends', url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(monetizeTopic)}` },
+                                                        { label: '💬 Reddit', url: `https://www.reddit.com/search/?q=${encodeURIComponent(monetizeTopic)}` },
+                                                        { label: '▶️ YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
+                                                    ].map(({ label, url }) => (
+                                                        <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                                                            className="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-white/10 transition-all">
+                                                            {label}
+                                                        </a>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                         {nicheValidation.status === 'done' && nicheValidation.data?.status === 'success' && (
@@ -1030,8 +1083,34 @@ const SageOS = () => {
                                         </button>
                                     )}
 
-                                    {monetizeStatus === 'running' && generateProgress && (
-                                        <p className="text-xs text-violet-300 mt-2 animate-pulse text-center">{generateProgress}</p>
+                                    {monetizeStatus === 'running' && (
+                                        <div className="mt-3 space-y-2">
+                                            {/* Progress bar */}
+                                            <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-[2000ms] ease-out"
+                                                    style={{ width: `${progressPercent}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-violet-300 animate-pulse text-center">{generateProgress}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Quick Monetize Preview — shows while typing or generating */}
+                                    {(monetizeStatus === 'running' || monetizeStatus === 'idle') && quickPreview && (
+                                        <div className="mt-4 p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl space-y-3">
+                                            <div className="text-xs font-bold text-purple-400 uppercase tracking-widest">⚡ Quick Preview</div>
+                                            <div className="text-white font-bold text-sm">{quickPreview.headline}</div>
+                                            <div className="text-xs text-slate-400">👤 {quickPreview.buyer}</div>
+                                            <div className="text-xs text-emerald-400 font-bold">💰 {quickPreview.price}</div>
+                                            <div className="space-y-1">
+                                                {quickPreview.hooks.map((h, i) => (
+                                                    <div key={i} className="text-xs text-slate-300 flex gap-2">
+                                                        <span className="text-purple-400 shrink-0">→</span>{h}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     )}
 
                                     {monetizeResult && monetizeStatus === 'error' && (
@@ -1281,19 +1360,30 @@ const SageOS = () => {
                                                     <div className="text-xs font-bold text-purple-300 uppercase tracking-widest">
                                                         全体の口調・スタイルを一括変更
                                                     </div>
-                                                    {/* 2×4 preset grid */}
+                                                    {/* 2×4 preset grid — per-button loading/done/error */}
                                                     <div className="grid grid-cols-2 gap-2">
-                                                        {PRESETS.map(preset => (
-                                                            <button
-                                                                key={preset.id}
-                                                                onClick={() => applyPreset(preset)}
-                                                                disabled={globalRewriting}
-                                                                className="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-purple-600/30 hover:text-white disabled:opacity-40 text-slate-300 rounded-xl transition-all text-sm font-medium border border-white/10 hover:border-purple-400/40 text-left"
-                                                            >
-                                                                <span className="text-base">{preset.icon}</span>
-                                                                <span className="text-xs">{preset.label}</span>
-                                                            </button>
-                                                        ))}
+                                                        {PRESETS.map(preset => {
+                                                            const isThis = rewritingPreset === preset.id;
+                                                            const result = presetResults[preset.id];
+                                                            return (
+                                                                <button
+                                                                    key={preset.id}
+                                                                    onClick={() => applyPreset(preset)}
+                                                                    disabled={!!(rewritingPreset || globalRewriting)}
+                                                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium border text-left
+                                                                        ${result === 'success' ? 'bg-emerald-900/30 border-emerald-500/40 text-emerald-300'
+                                                                        : result === 'error' ? 'bg-red-900/20 border-red-500/30 text-red-400'
+                                                                        : isThis ? 'bg-purple-600/30 border-purple-400/40 text-white'
+                                                                        : 'bg-white/5 hover:bg-purple-600/30 hover:text-white disabled:opacity-40 text-slate-300 border-white/10 hover:border-purple-400/40'}`}
+                                                                >
+                                                                    {isThis
+                                                                        ? <div className="w-4 h-4 rounded-full border-2 border-purple-300 border-t-transparent animate-spin shrink-0" />
+                                                                        : <span className="text-base shrink-0">{result === 'success' ? '✅' : result === 'error' ? '❌' : preset.icon}</span>
+                                                                    }
+                                                                    <span className="text-xs">{isThis ? 'Rewriting...' : result === 'success' ? 'Done!' : result === 'error' ? 'Failed — Retry' : preset.label}</span>
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
                                                     {/* Custom instruction */}
                                                     <div className="flex gap-2">
@@ -1338,6 +1428,55 @@ const SageOS = () => {
                                                     </button>
                                                 )}
                                             </div>
+
+                                            {/* Product Value Stack */}
+                                            {generateData && (generateData.bonus_stack || generateData.product_hook || generateData.launch_checklist) && (
+                                                <div className="p-4 bg-emerald-900/10 border border-emerald-500/20 rounded-2xl space-y-3">
+                                                    <div className="text-xs font-bold text-emerald-300 uppercase tracking-widest">🎁 商品一式 Product Stack</div>
+
+                                                    {/* Product Hook */}
+                                                    {generateData.product_hook && (
+                                                        <div className="space-y-1">
+                                                            <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Product Hook</div>
+                                                            <div className="text-xs text-white/90 bg-black/30 rounded-xl px-3 py-2 leading-relaxed">
+                                                                "{generateData.product_hook}"
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Bonus Stack */}
+                                                    {generateData.bonus_stack && generateData.bonus_stack.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                            <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Bonus Stack (3 bonuses)</div>
+                                                            {generateData.bonus_stack.map((bonus, i) => (
+                                                                <div key={i} className="flex items-start gap-2 text-xs bg-black/20 rounded-lg px-3 py-2">
+                                                                    <span className="text-emerald-400 font-bold shrink-0">B{i + 1}</span>
+                                                                    <div>
+                                                                        <div className="text-white font-semibold">{bonus.title}</div>
+                                                                        {bonus.description && <div className="text-slate-400 text-[11px] mt-0.5">{bonus.description}</div>}
+                                                                        {bonus.value && <div className="text-emerald-400 text-[10px] mt-0.5">Value: {bonus.value}</div>}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Launch Checklist */}
+                                                    {generateData.launch_checklist && generateData.launch_checklist.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                            <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Launch Checklist</div>
+                                                            <div className="space-y-1">
+                                                                {generateData.launch_checklist.map((item, i) => (
+                                                                    <div key={i} className="flex items-center gap-2 text-xs text-slate-300">
+                                                                        <div className="w-4 h-4 rounded border border-emerald-500/40 flex items-center justify-center shrink-0 text-[10px] text-emerald-400">{i + 1}</div>
+                                                                        <span>{item}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {/* Preview tabs */}
                                             <div className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
@@ -1448,23 +1587,56 @@ const SageOS = () => {
                                             ) : (
                                                 <div className="space-y-2">
                                                     {[
-                                                        { key: 'bluesky', icon: '🚀', label: 'Post to Bluesky', action: handlePublishBluesky },
-                                                        { key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram },
-                                                    ].map(({ key, icon, label, action }) => (
-                                                        <button key={key} onClick={action}
-                                                            disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
-                                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
-                                                            <span>{publishChecklist[key] === 'done' ? '✅' : publishChecklist[key] === 'running' ? '⏳' : icon}</span>
-                                                            <span>{label}</span>
-                                                            {publishChecklist[key] === 'done' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
-                                                            {publishChecklist[key] === 'error' && <span className="ml-auto text-xs text-red-400">Failed</span>}
-                                                        </button>
+                                                        {
+                                                            key: 'bluesky', icon: '🚀', label: 'Post to Bluesky', action: handlePublishBluesky,
+                                                            fallbackUrl: 'https://bsky.app', fallbackLabel: 'Open Bluesky',
+                                                        },
+                                                        {
+                                                            key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram,
+                                                            fallbackUrl: 'https://www.instagram.com', fallbackLabel: 'Open Instagram',
+                                                        },
+                                                    ].map(({ key, icon, label, action, fallbackUrl, fallbackLabel }) => (
+                                                        <div key={key} className="space-y-1">
+                                                            <button onClick={action}
+                                                                disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
+                                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-white/5 border-white/10 text-slate-400' : publishChecklist[key] === 'error' ? 'bg-red-900/10 border-red-500/20 text-red-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
+                                                                <span>{publishChecklist[key] === 'done' ? '✅' : publishChecklist[key] === 'running' ? '⏳' : publishChecklist[key] === 'error' ? '❌' : icon}</span>
+                                                                <span>{label}</span>
+                                                                {publishChecklist[key] === 'done' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
+                                                                {publishChecklist[key] === 'error' && <span className="ml-auto text-xs text-red-400">Failed — Retry?</span>}
+                                                            </button>
+                                                            {/* Fallback actions shown on failure */}
+                                                            {publishChecklist[key] === 'error' && (
+                                                                <div className="flex gap-2 pl-2">
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            const caption = editedCaptions[0] || editedSections.map(s => s.title).join(' ');
+                                                                            try {
+                                                                                if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(caption);
+                                                                                else { const el = document.createElement('textarea'); el.value = caption; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); }
+                                                                            } catch {}
+                                                                        }}
+                                                                        className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5"
+                                                                    >
+                                                                        📋 Copy Caption
+                                                                    </button>
+                                                                    <a href={fallbackUrl} target="_blank" rel="noopener noreferrer"
+                                                                        className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                                                                        🔗 {fallbackLabel}
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     ))}
                                                     <button onClick={handleCopyBlogPost}
-                                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist.copied ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
-                                                        <span>{publishChecklist.copied ? '✅' : '📝'}</span>
+                                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${
+                                                            copyStatus === 'success' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300'
+                                                            : copyStatus === 'error' ? 'bg-red-900/20 border-red-500/30 text-red-400'
+                                                            : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
+                                                        <span>{copyStatus === 'success' ? '✅' : copyStatus === 'error' ? '❌' : '📝'}</span>
                                                         <span>Copy Blog Post</span>
-                                                        {publishChecklist.copied && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
+                                                        {copyStatus === 'success' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
+                                                        {copyStatus === 'error' && <span className="ml-auto text-xs text-red-400">Copy failed</span>}
                                                     </button>
                                                 </div>
                                             )}

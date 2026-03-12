@@ -228,6 +228,10 @@ class CourseProductionPipeline:
             if blog_post:
                 logger.info(f"✅ Blog post generated ({len(blog_post)} chars)")
 
+            # Step 7: Generate product package extras (bonus stack, product hook, launch checklist)
+            product_extras = self._generate_product_extras(safe_topic, sections, language=language)
+            logger.info(f"✅ Product extras generated")
+
             result = {
                 "status": "success",
                 "topic": topic,
@@ -238,7 +242,10 @@ class CourseProductionPipeline:
                 "sales_page": sales_page,
                 "blog_post": blog_post,
                 "research_source": research_data['filename'] if research_data else None,
-                "obsidian_note": str(note_path)
+                "obsidian_note": str(note_path),
+                "bonus_stack": product_extras.get("bonus_stack", []),
+                "product_hook": product_extras.get("product_hook", ""),
+                "launch_checklist": product_extras.get("launch_checklist", []),
             }
 
             # QA Gate — must pass before brain training and final "VERIFIED" status
@@ -1419,3 +1426,90 @@ Output Markdown only.
         except Exception as e:
             logger.warning(f"Blog post generation failed: {e}")
             return None
+
+    def _generate_product_extras(self, topic: str, sections: List[Dict], language: str = "en") -> dict:
+        """Generate bonus_stack, product_hook, and launch_checklist to complete the product package."""
+        section_titles = [s['title'] for s in sections[:5]]
+        titles_str = "\n".join(f"- {t}" for t in section_titles)
+
+        if language == "ja":
+            prompt = f"""以下のデジタル商品のボーナススタック・製品フック・ローンチチェックリストをJSONで生成してください。
+
+トピック: {topic}
+セクション:
+{titles_str}
+
+以下のJSON形式で出力してください（コードブロックなし・JSONのみ）:
+{{
+  "product_hook": "1文の強力なオファー概要（ベネフィット明示、具体的な数値を含む）",
+  "bonus_stack": [
+    {{"title": "ボーナス1タイトル", "description": "20字以内の説明", "value": "¥3,000相当"}},
+    {{"title": "ボーナス2タイトル", "description": "20字以内の説明", "value": "¥2,000相当"}},
+    {{"title": "ボーナス3タイトル", "description": "20字以内の説明", "value": "¥1,500相当"}}
+  ],
+  "launch_checklist": [
+    "Gumroadページの商品説明を更新",
+    "ブログ記事を公開してGumroadへリンク",
+    "Blueskyに告知ポストを投稿",
+    "Instagramにキャプションを投稿",
+    "価格を確認して公開"
+  ]
+}}"""
+        else:
+            prompt = f"""Generate a bonus stack, product hook, and launch checklist for this digital product as JSON.
+
+Topic: {topic}
+Sections:
+{titles_str}
+
+Output valid JSON only (no code blocks):
+{{
+  "product_hook": "One powerful sentence summarizing the offer — include a specific benefit and number",
+  "bonus_stack": [
+    {{"title": "Bonus 1 title", "description": "Under 15 words", "value": "$29 value"}},
+    {{"title": "Bonus 2 title", "description": "Under 15 words", "value": "$19 value"}},
+    {{"title": "Bonus 3 title", "description": "Under 15 words", "value": "$15 value"}}
+  ],
+  "launch_checklist": [
+    "Update Gumroad product description",
+    "Publish blog post with Gumroad link",
+    "Post to Bluesky with hook",
+    "Post to Instagram with caption",
+    "Verify price and go live"
+  ]
+}}"""
+
+        try:
+            import json as _json
+            raw = self._invoke_llm(prompt)
+            if not raw:
+                raise ValueError("Empty LLM response")
+            # Strip markdown code fences if present
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = "\n".join(raw.split("\n")[1:])
+            if raw.endswith("```"):
+                raw = "\n".join(raw.split("\n")[:-1])
+            return _json.loads(raw.strip())
+        except Exception as e:
+            logger.warning(f"Product extras generation failed: {e}")
+            # Return safe defaults so the pipeline never breaks
+            if language == "ja":
+                return {
+                    "product_hook": f"「{topic}」で成果を出すための完全ガイド — 今すぐ実践できる手順付き",
+                    "bonus_stack": [
+                        {"title": "クイックスタートチェックリスト", "description": "すぐ使える実践チェックリスト", "value": "¥2,000相当"},
+                        {"title": "キャプションスワイプファイル", "description": "SNS投稿用コピペテンプレート集", "value": "¥1,500相当"},
+                        {"title": "ローンチデイ投稿プラン", "description": "初日に何を投稿するかの計画書", "value": "¥1,000相当"},
+                    ],
+                    "launch_checklist": ["Gumroadを更新", "ブログ記事を公開", "Blueskyに告知", "Instagramに投稿", "価格を確認して公開"],
+                }
+            return {
+                "product_hook": f"Master {topic} with this complete step-by-step guide — actionable results guaranteed",
+                "bonus_stack": [
+                    {"title": "Quick-Start Checklist", "description": "Get results from day one", "value": "$29 value"},
+                    {"title": "Caption Swipe File", "description": "Copy-paste social captions ready to post", "value": "$19 value"},
+                    {"title": "Launch Day Posting Plan", "description": "Your first 24 hours mapped out", "value": "$15 value"},
+                ],
+                "launch_checklist": ["Update Gumroad listing", "Publish blog post", "Post to Bluesky", "Post to Instagram", "Verify price & go live"],
+            }
