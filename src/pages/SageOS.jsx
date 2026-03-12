@@ -155,7 +155,7 @@ const SageOS = () => {
 
     // Quick Monetize Preview — local heuristic, no API needed
     const buildQuickPreview = (topic) => {
-        if (!topic || topic.trim().length < 5) return null;
+        if (!topic || topic.trim().length < 2) return null;
         const isJa = /[\u3000-\u9fff]/.test(topic);
         const hooks = isJa
             ? [`「${topic}」で月5万円稼ぐ人がやっている3つのこと`, `今すぐ始められる！${topic}で副収入を作る最短ルート`, `失敗しない${topic}の完全マップ`]
@@ -940,11 +940,21 @@ const SageOS = () => {
                                                 <button
                                                     onClick={handleNicheValidate}
                                                     disabled={!monetizeTopic.trim() || nicheValidation.status === 'running'}
-                                                    className="text-xs px-3 py-1 bg-indigo-900/40 hover:bg-indigo-800/60 disabled:opacity-40 text-indigo-300 border border-indigo-500/30 rounded-lg flex items-center gap-1.5 transition-all"
+                                                    className={`text-xs px-3 py-1 disabled:opacity-40 rounded-lg flex items-center gap-1.5 transition-all border ${
+                                                        nicheValidation.status === 'error'
+                                                            ? 'bg-red-900/30 text-red-300 border-red-500/30 hover:bg-red-800/40'
+                                                            : nicheValidation.status === 'done'
+                                                                ? 'bg-emerald-900/30 text-emerald-300 border-emerald-500/30 hover:bg-emerald-800/40'
+                                                                : 'bg-indigo-900/40 hover:bg-indigo-800/60 text-indigo-300 border-indigo-500/30'
+                                                    }`}
                                                 >
                                                     {nicheValidation.status === 'running'
                                                         ? <><div className="w-3 h-3 rounded-full border border-indigo-300 border-t-transparent animate-spin" /> Checking...</>
-                                                        : <>📊 Check Market Demand</>}
+                                                        : nicheValidation.status === 'error'
+                                                            ? <>❌ Failed — Retry</>
+                                                            : nicheValidation.status === 'done'
+                                                                ? <>✅ Checked</>
+                                                                : <>📊 Check Market Demand</>}
                                                 </button>
                                             </div>
                                             {researchCheck.status === 'checking' && (
@@ -977,9 +987,9 @@ const SageOS = () => {
                                             </div>
                                         )}
                                         {nicheValidation.status === 'error' && (
-                                            <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg space-y-2">
-                                                <div className="text-xs text-red-400 flex items-center gap-2">
-                                                    <FiXCircle className="shrink-0" /> API検証失敗 — 外部ツールで手動確認できます:
+                                            <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                                                <div className="text-xs text-red-400 flex items-center gap-2 mb-2">
+                                                    <FiXCircle className="shrink-0" /> API検証失敗 — 外部ツールで手動確認:
                                                     <button onClick={() => setNicheValidation({ status: 'idle', data: null })} className="ml-auto text-red-500 hover:text-red-300">✕</button>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
@@ -989,11 +999,27 @@ const SageOS = () => {
                                                         { label: '▶️ YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
                                                     ].map(({ label, url }) => (
                                                         <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                                                            className="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-white/10 transition-all">
+                                                            className="text-xs px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-white/10 transition-all font-medium">
                                                             {label}
                                                         </a>
                                                     ))}
                                                 </div>
+                                            </div>
+                                        )}
+                                        {/* Always-visible external research links when topic is entered */}
+                                        {monetizeTopic.trim().length >= 2 && nicheValidation.status !== 'error' && (
+                                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                                <span className="text-[10px] text-slate-600">手動確認:</span>
+                                                {[
+                                                    { label: '📈 Trends', url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(monetizeTopic)}` },
+                                                    { label: '💬 Reddit', url: `https://www.reddit.com/search/?q=${encodeURIComponent(monetizeTopic)}` },
+                                                    { label: '▶️ YT', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
+                                                ].map(({ label, url }) => (
+                                                    <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                                                        className="text-[10px] px-1.5 py-0.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-slate-300 rounded border border-white/5 transition-all">
+                                                        {label}
+                                                    </a>
+                                                ))}
                                             </div>
                                         )}
                                         {nicheValidation.status === 'done' && nicheValidation.data?.status === 'success' && (
@@ -1086,18 +1112,21 @@ const SageOS = () => {
                                     {monetizeStatus === 'running' && (
                                         <div className="mt-3 space-y-2">
                                             {/* Progress bar */}
-                                            <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-                                                <div
-                                                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-[2000ms] ease-out"
-                                                    style={{ width: `${progressPercent}%` }}
-                                                />
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 bg-slate-800 rounded-full h-2.5 overflow-hidden border border-white/10">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full transition-all ease-out"
+                                                        style={{ width: `${progressPercent}%`, transitionDuration: '2000ms' }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs text-slate-400 shrink-0 w-8 text-right">{progressPercent}%</span>
                                             </div>
                                             <p className="text-xs text-violet-300 animate-pulse text-center">{generateProgress}</p>
                                         </div>
                                     )}
 
-                                    {/* Quick Monetize Preview — shows while typing or generating */}
-                                    {(monetizeStatus === 'running' || monetizeStatus === 'idle') && quickPreview && (
+                                    {/* Quick Monetize Preview — shows while typing, generating, or on error */}
+                                    {!['review', 'finalizing', 'finalized'].includes(monetizeStatus) && quickPreview && (
                                         <div className="mt-4 p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl space-y-3">
                                             <div className="text-xs font-bold text-purple-400 uppercase tracking-widest">⚡ Quick Preview</div>
                                             <div className="text-white font-bold text-sm">{quickPreview.headline}</div>
@@ -1113,18 +1142,26 @@ const SageOS = () => {
                                         </div>
                                     )}
 
-                                    {monetizeResult && monetizeStatus === 'error' && (
-                                        <div className="mt-4 p-4 bg-red-900/30 border border-red-500/30 rounded-xl text-sm">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <div className="text-red-400 font-bold">❌ エラー詳細</div>
+                                    {monetizeStatus === 'error' && (
+                                        <div className="mt-4 p-4 bg-red-900/30 border border-red-500/40 rounded-xl text-sm space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-red-400 font-bold flex items-center gap-2">❌ パイプライン失敗</div>
                                                 <button
                                                     onClick={() => { setMonetizeStatus('idle'); setMonetizeResult(null); }}
-                                                    className="text-xs text-slate-500 hover:text-slate-300 px-2 py-1 rounded hover:bg-white/5"
+                                                    className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/10 border border-white/10 transition-all"
                                                 >
                                                     ✕ 閉じる
                                                 </button>
                                             </div>
-                                            <div className="text-slate-300 text-xs break-all">{monetizeResult}</div>
+                                            <div className="text-slate-300 text-xs break-all">
+                                                {monetizeResult || 'LLMパイプラインでエラーが発生しました。再試行するか、しばらくお待ちください。'}
+                                            </div>
+                                            <button
+                                                onClick={() => { setMonetizeStatus('idle'); setMonetizeResult(null); setTimeout(() => handleMonetize(), 50); }}
+                                                className="w-full py-2 bg-red-800/40 hover:bg-red-700/50 border border-red-500/30 text-red-300 text-xs font-bold rounded-lg transition-all"
+                                            >
+                                                🔄 もう一度試す
+                                            </button>
                                         </div>
                                     )}
 
