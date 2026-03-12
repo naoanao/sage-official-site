@@ -1053,15 +1053,15 @@ const SageOS = () => {
                                         )}
                                         {/* Always-visible external research links when topic is entered */}
                                         {monetizeTopic.trim().length >= 2 && nicheValidation.status !== 'error' && (
-                                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                                <span className="text-[10px] text-slate-600">手動確認:</span>
+                                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                                <span className="text-xs text-slate-500">手動確認:</span>
                                                 {[
                                                     { label: '📈 Trends', url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(monetizeTopic)}` },
                                                     { label: '💬 Reddit', url: `https://www.reddit.com/search/?q=${encodeURIComponent(monetizeTopic)}` },
-                                                    { label: '▶️ YT', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
+                                                    { label: '▶️ YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
                                                 ].map(({ label, url }) => (
                                                     <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                                                        className="text-[10px] px-1.5 py-0.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-slate-300 rounded border border-white/5 transition-all">
+                                                        className="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-white/10 transition-all font-medium">
                                                         {label}
                                                     </a>
                                                 ))}
