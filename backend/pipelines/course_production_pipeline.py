@@ -145,7 +145,7 @@ class CourseProductionPipeline:
             f"Your voice is {tone}. Write all content from this perspective."
         )
 
-    def generate_course(self, topic: str, num_sections: int = 5, generate_narration: bool = False, reference_audio: str = None, language: str = 'auto', **kwargs) -> Dict:
+    def generate_course(self, topic: str, num_sections: int = 3, generate_narration: bool = False, reference_audio: str = None, language: str = 'auto', **kwargs) -> Dict:
         """
         Generate complete course
 
@@ -679,34 +679,20 @@ Format: Just the titles, one per line, no numbering.
 - Mistake 1: [specific mistake] → Fix: [specific fix]
 - Mistake 2: [specific mistake] → Fix: [specific fix]"""
 
-        used_intro_phrases: list = []
-
+        # Build all prompts upfront (no cross-section dependency needed for speed)
+        opening_rules = []
         for i, title in enumerate(outline, 1):
-            logger.info(f"📝 Generating section {i}/{len(outline)}: {title}")
-
-            # Section-1 only gets the "By the end of this section..." opener; all others must use a hook
             if i == 1:
-                opening_rule = 'RESULT-FIRST: The very first sentence of this section must be: "By the end of this section, you will [one specific, measurable outcome]." — concrete, not vague.'
+                opening_rules.append('RESULT-FIRST: The very first sentence must be: "By the end of this section, you will [one specific, measurable outcome]."')
             else:
-                opening_rule = (
-                    'HOOK OPENING: Do NOT start with "By the end of this section..." — '
-                    'that phrase was already used in Section 1 and must NOT appear again. '
-                    'Instead open with a surprising statistic, a counter-intuitive claim, '
-                    'or a direct real-world scenario that immediately pulls the reader in.'
+                opening_rules.append(
+                    'HOOK OPENING: Open with a surprising statistic, a counter-intuitive claim, '
+                    'or a direct real-world scenario. Do NOT start with "By the end of this section..."'
                 )
 
-            # Dynamically forbid already-used opening phrases
-            if used_intro_phrases:
-                forbidden_lines = "\n".join(f'- "{p[:90]}..."' for p in used_intro_phrases[-4:])
-                forbidden_hint = (
-                    f"\n\nCRITICAL — FORBIDDEN OPENING PHRASES (already used in previous sections — do NOT reuse or paraphrase these):\n"
-                    f"{forbidden_lines}\n"
-                    f"Start this section with a completely different hook: a surprising stat, a counter-intuitive claim, or a direct scenario."
-                )
-            else:
-                forbidden_hint = ""
-
-            prompt = f"""You are writing a high-converting digital course section. The reader bought this product to solve a real problem — give them immediately usable, specific knowledge.
+        prompts = []
+        for i, title in enumerate(outline, 1):
+            prompts.append(f"""You are writing a high-converting digital course section. The reader bought this product to solve a real problem — give them immediately usable, specific knowledge.
 {identity_context}
 
 COURSE TOPIC: {topic}
@@ -718,47 +704,43 @@ SECTION ({i}/{len(outline)}): {title}
 ## CONTENT RULES (strictly enforced)
 
 ### What TO include:
-0. {opening_rule}
+0. {opening_rules[i-1]}
 1. RESEARCH MATCH: If PRIMARY RESEARCH covers "{title}", cite specific data, dates, and place names from it directly.
    If research is off-topic, ignore it and use your own expertise.
 2. REAL NUMBERS: Include at least 2 specific data points (percentages, times, prices, distances, counts).
 3. ACTIONABLE STEPS: A numbered action list (3-5 items), each with estimated time required.
 4. COMMON MISTAKES: List 2-3 mistakes beginners make and how to avoid them.
 5. QUICK WIN: One thing the reader can do in under 10 minutes to see immediate progress.
-6. SPECIFIC EXAMPLES: Name at least one real tool (e.g. Notion, Airtable, ChatGPT, Canva), a real company, or a specific dollar amount. Generic advice without concrete names/numbers is rejected.
+6. SPECIFIC EXAMPLES: Name at least one real tool, a real company, or a specific dollar amount.
 
 ### What NOT to include:
 - Generic statements like "important", "essential", "you should know..."
-- AI productivity tools, automation, virtual assistants (unless topic is AI-related)
 - Filler paragraphs without specific information
-- Theoretical content without practical application{lang_instruction}{forbidden_hint}
+- Theoretical content without practical application{lang_instruction}
 
 {section_structure}
 
-Content:"""
-            
+Content:""")
+
+        # Parallel generation — cap at 3 workers to respect Groq rate limits
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        results = [None] * len(outline)
+
+        def _gen(idx_prompt):
+            idx, prompt = idx_prompt
+            logger.info(f"📝 Generating section {idx+1}/{len(outline)}: {outline[idx]}")
             content = self._invoke_llm(prompt)
-
             if not content:
-                content = f"**{title}**\n\nThis section covers important aspects of {title}. Key concepts will be explained with practical examples and real-world applications."
+                content = f"**{outline[idx]}**\n\nThis section covers key aspects of {outline[idx]}. Practical examples and actionable steps will guide you through the process."
+            return idx, self._reduce_data_overload(content, language)
 
-            content = self._reduce_data_overload(content, language)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            futures = {pool.submit(_gen, (i, p)): i for i, p in enumerate(prompts)}
+            for future in as_completed(futures):
+                idx, content = future.result()
+                results[idx] = {"number": idx + 1, "title": outline[idx], "content": content}
 
-            # Track the first real sentence so the next section's prompt can forbid it
-            first_real_line = next(
-                (ln.strip()[:100] for ln in content.split('\n')
-                 if ln.strip() and not ln.strip().startswith(('**', '#', '-', '*', '|'))),
-                ""
-            )
-            if first_real_line:
-                used_intro_phrases.append(first_real_line)
-
-            sections.append({
-                "number": i,
-                "title": title,
-                "content": content
-            })
-
+        sections = [r for r in results if r is not None]
         return sections
 
     @staticmethod
