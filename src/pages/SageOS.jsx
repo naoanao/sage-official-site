@@ -8,6 +8,7 @@ import PhaseStepperBar from '../components/PhaseStepperBar';
 import SageMiniChat from '../components/SageMiniChat';
 
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
+const apiRewrite = axios.create({ baseURL: BACKEND_URL, timeout: 30000 });
 
 // ── Demo output shown to public visitors (no real API call) ─────────────────
 const DEMO_RESULT = {
@@ -349,9 +350,12 @@ const SageOS = () => {
         } catch (e) {
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
-            setMonetizeResult(e.message || 'Pipeline failed');
+            const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
+            setMonetizeResult(isTimeout
+                ? 'タイムアウト (130秒) — LLMの処理に時間がかかりすぎました。しばらく待ってから再試行してください。'
+                : (e.message || 'Pipeline failed'));
             setMonetizeStatus('error');
-            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
+            // エラーは自動リセットしない — ユーザーが明示的にRetryするまで表示
         }
     };
 
@@ -360,7 +364,7 @@ const SageOS = () => {
         if (!instruction.trim()) return;
         setRewritingIdx(idx);
         try {
-            const res = await api.post('/api/productize/rewrite', {
+            const res = await apiRewrite.post('/api/productize/rewrite', {
                 content: editedSections[idx].content,
                 instruction,
                 language: lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang
@@ -370,7 +374,8 @@ const SageOS = () => {
                 setSectionInstructions(prev => ({ ...prev, [idx]: '' }));
             }
         } catch (e) {
-            console.error('Rewrite failed', e);
+            const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
+            setRewriteError(isTimeout ? 'タイムアウト: LLMの応答が遅れています。もう一度お試しください。' : `書き直し失敗: ${e?.message || 'Unknown error'}`);
         } finally {
             setRewritingIdx(null);
         }
@@ -390,11 +395,11 @@ const SageOS = () => {
 
             const sectionResults = await Promise.allSettled(
                 editedSections.map(s =>
-                    api.post('/api/productize/rewrite', rewritePayload(s.content))
+                    apiRewrite.post('/api/productize/rewrite', rewritePayload(s.content))
                 )
             );
             const salesPageRes = editedSalesPage
-                ? await api.post('/api/productize/rewrite', rewritePayload(editedSalesPage)).catch(() => null)
+                ? await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSalesPage)).catch(() => null)
                 : null;
 
             setEditedSections(prev => prev.map((s, i) => {
@@ -411,8 +416,11 @@ const SageOS = () => {
             }
             setGlobalInstruction('');
         } catch (e) {
-            const msg = e?.response?.data?.error || e?.message || 'Rewrite failed';
-            setRewriteError(`${msg} — Please try again.`);
+            const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
+            const msg = isTimeout
+                ? 'タイムアウト: LLMの応答が遅れています（30秒）。もう一度お試しください。'
+                : (e?.response?.data?.error || e?.message || 'Rewrite failed') + ' — Please try again.';
+            setRewriteError(msg);
             console.error('Global rewrite failed', e);
         } finally {
             setGlobalRewriting(false);
@@ -494,7 +502,7 @@ const SageOS = () => {
             }
         } catch (e) {}
         setPublishChecklist(p => ({ ...p, copied: true }));
-        setTimeout(() => setPublishChecklist(p => ({ ...p, copied: false })), 2000);
+        setTimeout(() => setPublishChecklist(p => ({ ...p, copied: false })), 3000);
     };
 
     const handleStartNew = () => {
@@ -929,6 +937,17 @@ const SageOS = () => {
                                                 </a>
                                             </div>
                                         )}
+                                        {nicheValidation.status === 'error' && (
+                                            <div className="mt-2 px-3 py-2 bg-red-900/20 border border-red-500/30 rounded-lg text-xs text-red-400 flex items-center gap-2">
+                                                <FiXCircle className="shrink-0" /> 市場調査に失敗しました。Flaskが起動しているか確認してください。
+                                                <button onClick={() => setNicheValidation({ status: 'idle', data: null })} className="ml-auto text-red-500 hover:text-red-300">✕</button>
+                                            </div>
+                                        )}
+                                        {nicheValidation.status === 'done' && nicheValidation.data?.status === 'success' && (
+                                            <div className="mt-2 px-3 py-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg text-xs text-emerald-400 flex items-center gap-1">
+                                                <FiCheckCircle className="shrink-0" /> 市場調査完了 — 下にレポートを表示
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Language selector */}
@@ -1017,7 +1036,15 @@ const SageOS = () => {
 
                                     {monetizeResult && monetizeStatus === 'error' && (
                                         <div className="mt-4 p-4 bg-red-900/30 border border-red-500/30 rounded-xl text-sm">
-                                            <div className="text-red-400 font-bold mb-1">❌ エラー詳細</div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <div className="text-red-400 font-bold">❌ エラー詳細</div>
+                                                <button
+                                                    onClick={() => { setMonetizeStatus('idle'); setMonetizeResult(null); }}
+                                                    className="text-xs text-slate-500 hover:text-slate-300 px-2 py-1 rounded hover:bg-white/5"
+                                                >
+                                                    ✕ 閉じる
+                                                </button>
+                                            </div>
                                             <div className="text-slate-300 text-xs break-all">{monetizeResult}</div>
                                         </div>
                                     )}
@@ -1436,7 +1463,8 @@ const SageOS = () => {
                                                     <button onClick={handleCopyBlogPost}
                                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist.copied ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
                                                         <span>{publishChecklist.copied ? '✅' : '📝'}</span>
-                                                        <span>{publishChecklist.copied ? 'Copied!' : 'Copy Blog Post'}</span>
+                                                        <span>Copy Blog Post</span>
+                                                        {publishChecklist.copied && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
                                                     </button>
                                                 </div>
                                             )}
