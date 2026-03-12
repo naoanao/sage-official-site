@@ -1325,6 +1325,18 @@ def api_pilot_chat():
         if not airesponse:
             airesponse = "SUCCESS Task completed. No text output."
 
+        # --- ボイラープレート除去: LLMが出力する「No tools executed」系を後処理で削除 ---
+        import re as _re
+        _boilerplate = [
+            r"(?i)^since no tools (were|have been) executed[^\n]*\n?",
+            r"(?i)^no tools (were|have been) (used|executed)[^\n]*\n?",
+            r"(?i)^as no tools were (used|executed)[^\n]*\n?",
+            r"(?i)^i (didn'?t|did not) (use|execute|run) any tools[^\n]*\n?",
+            r"(?i)^(note:|note that )(no tools|tools were not)[^\n]*\n?",
+        ]
+        for _pat in _boilerplate:
+            airesponse = _re.sub(_pat, '', airesponse).strip()
+
         # --- 保存(次ターンに効かせる)---
         if memory:
             try:

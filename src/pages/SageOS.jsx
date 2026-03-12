@@ -515,7 +515,7 @@ const SageOS = () => {
         } catch (e) {
             setMonetizeResult(e.message);
             setMonetizeStatus('error');
-            setTimeout(() => { setMonetizeStatus('review'); setMonetizeResult(null); }, 6000);
+            // エラーは自動消去しない — ユーザーが✕閉じるで明示的に閉じる
         }
     };
 
@@ -529,11 +529,15 @@ const SageOS = () => {
             });
             if (res.data?.status === 'success' && res.data.images) {
                 setGenerateData(prev => ({ ...prev, images: res.data.images }));
+                setImageRegenStatus('done');
+            } else {
+                setImageRegenStatus('error');
             }
         } catch (e) {
             console.error('Image regen failed', e);
+            setImageRegenStatus('error');
         } finally {
-            setImageRegenStatus('idle');
+            setTimeout(() => setImageRegenStatus('idle'), 3000);
         }
     };
 
@@ -1506,7 +1510,11 @@ const SageOS = () => {
                                                     >
                                                         {imageRegenStatus === 'running'
                                                             ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> 生成中...</>
-                                                            : <>🔄 Regenerate Images</>}
+                                                            : imageRegenStatus === 'done'
+                                                                ? <>✅ 完了！</>
+                                                                : imageRegenStatus === 'error'
+                                                                    ? <>❌ 失敗 — Retry</>
+                                                                    : <>🔄 Regenerate Images</>}
                                                     </button>
                                                 )}
                                             </div>
@@ -1711,14 +1719,14 @@ const SageOS = () => {
                                                         </div>
                                                     ))}
                                                     <button onClick={handleCopyBlogPost}
-                                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${
-                                                            copyStatus === 'success' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300'
-                                                            : copyStatus === 'error' ? 'bg-red-900/20 border-red-500/30 text-red-400'
+                                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all border ${
+                                                            copyStatus === 'success' ? 'bg-emerald-600/30 border-emerald-400/50 text-emerald-200 scale-[1.01]'
+                                                            : copyStatus === 'error' ? 'bg-red-900/30 border-red-500/50 text-red-300'
                                                             : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
-                                                        <span>{copyStatus === 'success' ? '✅' : copyStatus === 'error' ? '❌' : '📝'}</span>
-                                                        <span>Copy Blog Post</span>
-                                                        {copyStatus === 'success' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
-                                                        {copyStatus === 'error' && <span className="ml-auto text-xs text-red-400">Copy failed</span>}
+                                                        <span className="text-base">{copyStatus === 'success' ? '✅' : copyStatus === 'error' ? '❌' : '📝'}</span>
+                                                        <span>{copyStatus === 'success' ? 'Copied!' : copyStatus === 'error' ? 'Copy Failed' : 'Copy Blog Post'}</span>
+                                                        {copyStatus === 'success' && <span className="ml-auto text-xs font-bold text-emerald-300 animate-pulse">Done!</span>}
+                                                        {copyStatus === 'error' && <span className="ml-auto text-xs text-red-400">Retry?</span>}
                                                     </button>
                                                 </div>
                                             )}
