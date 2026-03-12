@@ -1328,14 +1328,20 @@ def api_pilot_chat():
         # --- ボイラープレート除去: LLMが出力する「No tools executed」系を後処理で削除 ---
         import re as _re
         _boilerplate = [
+            r"(?i)^no tools executed[^\n]*\n?",
             r"(?i)^since no tools (were|have been) executed[^\n]*\n?",
-            r"(?i)^no tools (were|have been) (used|executed)[^\n]*\n?",
+            r"(?i)^no tools (were|have been)? ?(used|executed)[^\n]*\n?",
             r"(?i)^as no tools were (used|executed)[^\n]*\n?",
             r"(?i)^i (didn'?t|did not) (use|execute|run) any tools[^\n]*\n?",
             r"(?i)^(note:|note that )(no tools|tools were not)[^\n]*\n?",
+            r"(?i)^tools? (were not|not) (used|executed|called)[^\n]*\n?",
+            r"(?i)^there (are|were) no tools (to |)(use|execute|call)[^\n]*\n?",
         ]
         for _pat in _boilerplate:
             airesponse = _re.sub(_pat, '', airesponse).strip()
+        # 全文がボイラープレートだった場合のフォールバック
+        if not airesponse:
+            airesponse = "ご質問をありがとうございます。詳しくお聞かせください。" if uilang == "ja" else "Got it — could you tell me more about what you'd like to create?"
 
         # --- 保存(次ターンに効かせる)---
         if memory:

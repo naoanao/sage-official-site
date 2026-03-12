@@ -137,6 +137,7 @@ const SageOS = () => {
     const [quickPreview, setQuickPreview] = useState(null); // { headline, buyer, price, hooks[] }
     const [progressPercent, setProgressPercent] = useState(0);
     const [copyStatus, setCopyStatus] = useState('idle'); // 'idle'|'success'|'error'
+    const [copyToast, setCopyToast] = useState(null); // null | 'success' | 'error'
 
     // Content tabs & publish
     const [contentTab, setContentTab] = useState('blog');
@@ -327,12 +328,16 @@ const SageOS = () => {
         setMonetizeResult(null);
 
         const _progressSteps = [
-            [0,      '🔍 Analyzing your topic...',         5],
-            [4000,   '🧠 Building product structure...',   18],
-            [12000,  '✍️ Generating content...',           40],
-            [30000,  '💡 Refining with market data...',    62],
-            [60000,  '⏳ Still working (LLM processing)...', 80],
-            [100000, '🔥 Almost there...',                 93],
+            [0,      '🔍 Analyzing your topic...',             5],
+            [4000,   '🧠 Building product structure...',       18],
+            [12000,  '✍️ Generating content...',               40],
+            [30000,  '💡 Refining with market data...',        62],
+            [60000,  '⏳ Still working (LLM processing)...',   80],
+            [100000, '🔥 Almost there...',                     93],
+            [130000, '🔥 Almost there... (LLM slow today)',    94],
+            [155000, '⏳ Finalizing your product...',          95],
+            [180000, '🔥 Just wrapping up, hang tight!',      96],
+            [210000, '⏳ Nearly done...',                      97],
         ];
         const _progressTimers = _progressSteps.map(([delay, msg, pct]) =>
             setTimeout(() => { setGenerateProgress(msg); setProgressPercent(pct); }, delay)
@@ -578,8 +583,13 @@ const SageOS = () => {
             }
         } catch (e) { success = false; }
         setCopyStatus(success ? 'success' : 'error');
+        setCopyToast(success ? 'success' : 'error');
         setPublishChecklist(p => ({ ...p, copied: success }));
-        setTimeout(() => { setCopyStatus('idle'); setPublishChecklist(p => ({ ...p, copied: false })); }, 3000);
+        setTimeout(() => {
+            setCopyStatus('idle');
+            setCopyToast(null);
+            setPublishChecklist(p => ({ ...p, copied: false }));
+        }, 3500);
     };
 
     const handleStartNew = () => {
@@ -708,6 +718,17 @@ const SageOS = () => {
     // ── Render ───────────────────────────────────────────────────────────────
     return (
         <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-hidden flex" translate="no">
+
+            {/* ── Copy Toast (fixed overlay) ──────────────────────────────── */}
+            {copyToast && (
+                <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border text-sm font-bold pointer-events-none transition-all
+                    ${copyToast === 'success'
+                        ? 'bg-emerald-600 border-emerald-400/60 text-white shadow-emerald-900/50'
+                        : 'bg-red-700 border-red-500/60 text-white shadow-red-900/50'}`}>
+                    <span className="text-base">{copyToast === 'success' ? '✅' : '❌'}</span>
+                    <span>{copyToast === 'success' ? 'Blog post copied to clipboard!' : 'Copy failed — please try again'}</span>
+                </div>
+            )}
 
             {/* ── Sidebar ─────────────────────────────────────────────────── */}
             <div className="w-64 bg-slate-900/50 border-r border-white/5 flex flex-col p-4 backdrop-blur-md z-10 shrink-0">
@@ -1684,8 +1705,9 @@ const SageOS = () => {
                                                         {
                                                             key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram,
                                                             fallbackUrl: 'https://www.instagram.com', fallbackLabel: 'Open Instagram',
+                                                            errorHint: 'Token may be expired — copy caption & post manually',
                                                         },
-                                                    ].map(({ key, icon, label, action, fallbackUrl, fallbackLabel }) => (
+                                                    ].map(({ key, icon, label, action, fallbackUrl, fallbackLabel, errorHint }) => (
                                                         <div key={key} className="space-y-1">
                                                             <button onClick={action}
                                                                 disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
@@ -1697,23 +1719,28 @@ const SageOS = () => {
                                                             </button>
                                                             {/* Fallback actions shown on failure */}
                                                             {publishChecklist[key] === 'error' && (
-                                                                <div className="flex gap-2 pl-2">
-                                                                    <button
-                                                                        onClick={async () => {
-                                                                            const caption = editedCaptions[0] || editedSections.map(s => s.title).join(' ');
-                                                                            try {
-                                                                                if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(caption);
-                                                                                else { const el = document.createElement('textarea'); el.value = caption; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); }
-                                                                            } catch {}
-                                                                        }}
-                                                                        className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5"
-                                                                    >
-                                                                        📋 Copy Caption
-                                                                    </button>
-                                                                    <a href={fallbackUrl} target="_blank" rel="noopener noreferrer"
-                                                                        className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5">
-                                                                        🔗 {fallbackLabel}
-                                                                    </a>
+                                                                <div className="space-y-1.5 pl-2">
+                                                                    {errorHint && (
+                                                                        <div className="text-[10px] text-amber-400/80 px-1">⚠️ {errorHint}</div>
+                                                                    )}
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                const caption = editedCaptions[0] || editedSections.map(s => s.title).join(' ');
+                                                                                try {
+                                                                                    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(caption);
+                                                                                    else { const el = document.createElement('textarea'); el.value = caption; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); }
+                                                                                } catch {}
+                                                                            }}
+                                                                            className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5"
+                                                                        >
+                                                                            📋 Copy Caption
+                                                                        </button>
+                                                                        <a href={fallbackUrl} target="_blank" rel="noopener noreferrer"
+                                                                            className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                                                                            🔗 {fallbackLabel}
+                                                                        </a>
+                                                                    </div>
                                                                 </div>
                                                             )}
                                                         </div>
