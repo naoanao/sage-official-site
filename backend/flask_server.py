@@ -1706,6 +1706,23 @@ def chat_endpoint():
         if not ai_response:
             ai_response = "[SUCCESS] Task completed (No text output)."
 
+        # --- ボイラープレート除去: LLMが「No tools executed」等を出力した場合に削除 ---
+        import re as _re2
+        _bp = [
+            r"(?i)^no tools executed[^\n]*\n?",
+            r"(?i)^since no tools (were|have been) executed[^\n]*\n?",
+            r"(?i)^no tools (were|have been)? ?(used|executed)[^\n]*\n?",
+            r"(?i)^as no tools were (used|executed)[^\n]*\n?",
+            r"(?i)^i (didn'?t|did not) (use|execute|run) any tools[^\n]*\n?",
+            r"(?i)^(note:|note that )(no tools|tools were not)[^\n]*\n?",
+            r"(?i)^tools? (were not|not) (used|executed|called)[^\n]*\n?",
+            r"(?i)^there (are|were) no tools (to |)(use|execute|call)[^\n]*\n?",
+        ]
+        for _p in _bp:
+            ai_response = _re2.sub(_p, '', ai_response).strip()
+        if not ai_response:
+            ai_response = "ご質問をありがとうございます。もう少し詳しくお聞かせください。"
+
         # --- MEMORY SAVE (Synchronize Brain & Database) ---
         if memory:
             memory.save_short_term('user', user_message, session_id=session_id)
