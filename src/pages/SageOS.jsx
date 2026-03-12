@@ -9,7 +9,6 @@ import SageMiniChat from '../components/SageMiniChat';
 
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
 const apiRewrite = axios.create({ baseURL: BACKEND_URL, timeout: 30000 });
-const apiLong = axios.create({ baseURL: BACKEND_URL, timeout: 300000 }); // 5min for pipeline
 
 // ── Demo output shown to public visitors (no real API call) ─────────────────
 const DEMO_RESULT = {
@@ -358,14 +357,14 @@ const SageOS = () => {
         }
 
         try {
-            const [planRes] = await Promise.all([
-                apiLong.post('/api/productize', { topic: topicToUse, market, price, language: lang }),
-                Promise.resolve(null)
-            ]);
+            // ── Step 1: Generate product plan (fast, ~2s) ───────────────────
+            const planRes = await api.post('/api/productize', { topic: topicToUse, market, price, language: lang });
             const plan = planRes?.data;
             if (!plan || plan.status === 'error') throw new Error(plan?.error || 'Plan failed');
 
-            const execResult = await apiLong.post('/api/productize/execute', {
+            // ── Step 2: Start background job (returns immediately) ──────────
+            // Uses short timeout — CF Pages Function only needs to start the job (<30s)
+            const startRes = await api.post('/api/jobs/pipeline/start', {
                 type: 'COURSE',
                 topic: topicToUse,
                 plan: plan.plan,
@@ -373,7 +372,37 @@ const SageOS = () => {
                 market,
                 price
             });
-            const courseData = execResult?.data;
+            const jobId = startRes?.data?.job_id;
+            if (!jobId) throw new Error('Failed to start background job');
+
+            // ── Step 3: Poll for result every 3 seconds ─────────────────────
+            const MAX_POLLS = 120; // 6 minutes max
+            let polls = 0;
+            const courseData = await new Promise((resolve, reject) => {
+                const pollInterval = setInterval(async () => {
+                    polls++;
+                    if (polls > MAX_POLLS) {
+                        clearInterval(pollInterval);
+                        reject(new Error('ジョブタイムアウト (6分) — LLMの処理が完了しませんでした。'));
+                        return;
+                    }
+                    try {
+                        const statusRes = await api.get(`/api/jobs/${jobId}/status`);
+                        const { status, result, error } = statusRes.data;
+                        if (status === 'done') {
+                            clearInterval(pollInterval);
+                            resolve(result);
+                        } else if (status === 'error') {
+                            clearInterval(pollInterval);
+                            reject(new Error(error || 'Pipeline failed'));
+                        }
+                        // 'running' → keep polling
+                    } catch (pollErr) {
+                        // Network blip — keep polling until MAX_POLLS
+                    }
+                }, 3000);
+            });
+
             if (!courseData || courseData.status === 'error') throw new Error(courseData?.error || 'Execute failed');
 
             setIsDemo(false);
@@ -393,10 +422,7 @@ const SageOS = () => {
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
             setProgressPercent(0);
-            const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
-            setMonetizeResult(isTimeout
-                ? 'タイムアウト (5分) — LLMの処理に時間がかかりすぎました。しばらく待ってから再試行してください。'
-                : (e.message || 'Pipeline failed'));
+            setMonetizeResult(e.message || 'Pipeline failed');
             setMonetizeStatus('error');
             // エラーは自動リセットしない — ユーザーが明示的にRetryするまで表示
         }

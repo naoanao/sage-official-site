@@ -230,6 +230,30 @@ if not FRONTEND_DIST.exists():
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path=None)
 
+# ── Background job store (pipeline async jobs) ───────────────────────────────
+_jobs: Dict[str, dict] = {}        # job_id → {status, result, error, created_at}
+_jobs_lock = threading.Lock()
+
+def _job_get(job_id: str) -> Optional[dict]:
+    with _jobs_lock:
+        return _jobs.get(job_id)
+
+def _job_set(job_id: str, **kwargs):
+    with _jobs_lock:
+        if job_id not in _jobs:
+            _jobs[job_id] = {}
+        _jobs[job_id].update(kwargs)
+
+# Cleanup jobs older than 1 hour to avoid unbounded growth
+def _jobs_gc():
+    import time as _time
+    cutoff = _time.time() - 3600
+    with _jobs_lock:
+        stale = [k for k, v in _jobs.items() if v.get('created_at', 0) < cutoff]
+        for k in stale:
+            del _jobs[k]
+# ─────────────────────────────────────────────────────────────────────────────
+
 # CORS — manual handler (flask-cors 4.x uses WSGI middleware which conflicts)
 _DEV_ORIGINS = {
     "http://localhost:3000", "http://localhost:5000", "http://localhost:5001",
@@ -1913,6 +1937,80 @@ def productize_execute_endpoint():
     except Exception as e:
         logger.error(f"[EXECUTE_PRODUCTION] Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/jobs/pipeline/start', methods=['POST'])
+def jobs_pipeline_start():
+    """
+    Start pipeline as a background job.
+    Body: { topic, type, plan, language, market, price, price_usd }
+    Returns: { job_id }
+    The job runs /api/productize/execute logic in a background thread.
+    Poll GET /api/jobs/<job_id>/status for result.
+    """
+    import time as _time
+    course_gen_ref = globals().get('course_gen_global')
+
+    data = request.get_json(silent=True) or {}
+    product_type = data.get('type', 'COURSE')
+    topic = data.get('topic', '').strip()
+    if not topic:
+        return jsonify({"error": "topic is required"}), 400
+
+    job_id = str(uuid.uuid4())
+    _job_set(job_id, status='running', result=None, error=None, created_at=_time.time())
+    _jobs_gc()
+
+    def _run():
+        try:
+            if product_type == 'COURSE':
+                if not course_gen_ref:
+                    raise RuntimeError("Course Production Pipeline not initialized")
+                language = data.get('language', 'auto')
+                logger.info(f"[JOB:{job_id}] COURSE start: topic={topic} lang={language}")
+                result = course_gen_ref.generate_course(topic=topic, language=language)
+                # Whop auto-publish (graceful)
+                try:
+                    from backend.integrations.whop_publisher import create_and_publish, build_sns_caption
+                    price_usd = float(data.get('price_usd', 29.99))
+                    course_title = result.get('title') or topic
+                    course_desc = result.get('description') or result.get('sales_page', '')[:800] or f'A comprehensive course on {topic}'
+                    whop_result = create_and_publish(course_title, course_desc, price_usd=price_usd)
+                    result['whop'] = whop_result
+                    if whop_result.get('status') in ('success', 'dry_run'):
+                        result['whop_captions'] = build_sns_caption(
+                            course_title, price_usd,
+                            whop_result.get('product_url', ''),
+                            whop_result.get('checkout_url', ''),
+                        )
+                except Exception as whop_err:
+                    logger.warning(f"[JOB:{job_id}] Whop skipped: {whop_err}")
+                    result['whop'] = {'status': 'skipped', 'message': str(whop_err)}
+                _job_set(job_id, status='done', result=result)
+                logger.info(f"[JOB:{job_id}] COURSE done")
+            else:
+                raise ValueError(f"Unsupported product type: {product_type}")
+        except Exception as e:
+            logger.error(f"[JOB:{job_id}] Failed: {e}")
+            _job_set(job_id, status='error', error=str(e))
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    return jsonify({"job_id": job_id}), 202
+
+
+@app.route('/api/jobs/<job_id>/status', methods=['GET'])
+def jobs_status(job_id):
+    """Poll job status. Returns { status: running|done|error, result?, error? }"""
+    job = _job_get(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    resp = {"status": job['status']}
+    if job['status'] == 'done':
+        resp['result'] = job.get('result')
+    elif job['status'] == 'error':
+        resp['error'] = job.get('error')
+    return jsonify(resp), 200
+
 
 @app.route('/api/memory/recent', methods=['GET'])
 def get_recent_memories():
