@@ -543,7 +543,28 @@ def get_automations():
     return jsonify(automations)
 
 # --- LAST RUN REGISTRY ---
-_last_run_registry = {}  # {automation_id: datetime_string}
+_LAST_RUN_FILE = os.path.join(os.path.dirname(__file__), '..', 'logs', 'last_run_registry.json')
+
+def _load_last_run_registry() -> dict:
+    """起動時にファイルから最終実行時刻を復元する"""
+    try:
+        if os.path.exists(_LAST_RUN_FILE):
+            with open(_LAST_RUN_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+_last_run_registry = _load_last_run_registry()
+
+def _save_last_run_registry():
+    """最終実行時刻をファイルに永続化する"""
+    try:
+        os.makedirs(os.path.dirname(_LAST_RUN_FILE), exist_ok=True)
+        with open(_LAST_RUN_FILE, 'w', encoding='utf-8') as f:
+            json.dump(_last_run_registry, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"last_run_registry save failed: {e}")
 
 def _get_last_run_time(automation_id: str) -> str:
     """最終実行時刻を返す。未記録の場合は'Never'"""
@@ -552,6 +573,7 @@ def _get_last_run_time(automation_id: str) -> str:
 def _record_run(automation_id: str):
     """スケジューラーが実行する際に呼び出して時刻を記録する"""
     _last_run_registry[automation_id] = datetime.now().strftime('%Y-%m-%d %H:%M JST')
+    _save_last_run_registry()
 
 # --- AUTOMATION TOGGLE ---
 _automation_stop_events = {}  # {automation_id: threading.Event}

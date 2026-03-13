@@ -722,19 +722,36 @@ SECTION ({i}/{len(outline)}): {title}
 
 Content:""")
 
-        # Parallel generation — cap at 3 workers to respect Groq rate limits
+        # Parallel generation — English uses 1 worker to avoid Groq TPM rate limits
+        # (English prompts are longer → hit rate limits faster when parallel)
         from concurrent.futures import ThreadPoolExecutor, as_completed
         results = [None] * len(outline)
+        _workers = 1 if language == "en" else 3
 
         def _gen(idx_prompt):
             idx, prompt = idx_prompt
             logger.info(f"📝 Generating section {idx+1}/{len(outline)}: {outline[idx]}")
             content = self._invoke_llm(prompt)
             if not content:
-                content = f"**{outline[idx]}**\n\nThis section covers key aspects of {outline[idx]}. Practical examples and actionable steps will guide you through the process."
+                title = outline[idx]
+                if language == "en":
+                    content = (
+                        f"## {title}\n\n"
+                        f"By the end of this section, you will have 3 actionable steps to apply {title} immediately.\n\n"
+                        f"Most people spend 80% of their time on the wrong 20% of {title}. Here's the fix: focus on what moves the needle in under 30 minutes.\n\n"
+                        f"**Take Action Now**:\n"
+                        f"1. Step 1: Audit your current approach — Time required: 10 minutes\n"
+                        f"2. Step 2: Identify the 1 bottleneck blocking progress — Time required: 15 minutes\n"
+                        f"3. Step 3: Implement the fix and measure results — Time required: 20 minutes\n\n"
+                        f"**Common Mistakes**:\n"
+                        f"- Mistake 1: Skipping the audit step → Fix: Always start with a 10-minute review\n"
+                        f"- Mistake 2: Trying to fix everything at once → Fix: Focus on 1 bottleneck at a time"
+                    )
+                else:
+                    content = f"**{title}**\n\nこのセクションでは{title}の重要なポイントを解説します。実践的な例と行動ステップを参考にしてください。"
             return idx, self._reduce_data_overload(content, language)
 
-        with ThreadPoolExecutor(max_workers=3) as pool:
+        with ThreadPoolExecutor(max_workers=_workers) as pool:
             futures = {pool.submit(_gen, (i, p)): i for i, p in enumerate(prompts)}
             for future in as_completed(futures):
                 idx, content = future.result()

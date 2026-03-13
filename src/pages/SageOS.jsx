@@ -8,7 +8,7 @@ import PhaseStepperBar from '../components/PhaseStepperBar';
 import SageMiniChat from '../components/SageMiniChat';
 
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
-const apiRewrite = axios.create({ baseURL: BACKEND_URL, timeout: 30000 });
+const apiRewrite = axios.create({ baseURL: BACKEND_URL, timeout: 90000 });
 
 // ── Demo output shown to public visitors (no real API call) ─────────────────
 const DEMO_RESULT = {
@@ -111,6 +111,7 @@ const SageOS = () => {
     const [researchCheck, setResearchCheck] = useState({ status: 'idle', file: null });
     const researchDebounce = useRef(null);
     const chatInputRef = useRef(null);
+    const nicheResultRef = useRef(null);
 
     const CREATE_PLACEHOLDERS = [
         "e.g. Beginner's guide to passive income with AI",
@@ -467,11 +468,16 @@ const SageOS = () => {
                 ? { content, tone_preset: tonePreset, instruction: '', language: resolvedLang }
                 : { content, instruction, language: resolvedLang };
 
-            const sectionResults = await Promise.allSettled(
-                editedSections.map(s =>
-                    apiRewrite.post('/api/productize/rewrite', rewritePayload(s.content))
-                )
-            );
+            // Sequential rewrite to avoid Groq rate limits (parallel causes 429 → timeout)
+            const sectionResults = [];
+            for (const s of editedSections) {
+                try {
+                    const r = await apiRewrite.post('/api/productize/rewrite', rewritePayload(s.content));
+                    sectionResults.push({ status: 'fulfilled', value: r });
+                } catch (err) {
+                    sectionResults.push({ status: 'rejected', reason: err });
+                }
+            }
             const salesPageRes = editedSalesPage
                 ? await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSalesPage)).catch(() => null)
                 : null;
@@ -631,6 +637,7 @@ const SageOS = () => {
                 setNicheValidation({ status: 'rate_limited', data: res.data });
             } else {
                 setNicheValidation({ status: 'done', data: res.data });
+                setTimeout(() => nicheResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
             }
         } catch (e) {
             if (e?.response?.status === 429) {
@@ -1269,7 +1276,7 @@ const SageOS = () => {
                                         STOP: { wrap: 'border-red-500/30 bg-red-900/10', label: 'text-red-400', score: 'text-red-300', text: '🛑 STOP — 市場性低' },
                                     }[v.recommendation] || { wrap: 'border-slate-500/30 bg-slate-900/10', label: 'text-slate-400', score: 'text-slate-300', text: v.recommendation };
                                     return (
-                                        <div className={`border ${recStyle.wrap} rounded-2xl p-6 space-y-4`}>
+                                        <div ref={nicheResultRef} className={`border ${recStyle.wrap} rounded-2xl p-6 space-y-4`}>
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <div className={`text-lg font-black ${recStyle.label}`}>{recStyle.text}</div>
