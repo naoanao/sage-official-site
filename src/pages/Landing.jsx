@@ -45,7 +45,7 @@ const formatDate = (dateStr) => {
 };
 
 const Landing = () => {
-    const [snsStats, setSnsStats] = useState({ total_posts: 27 });
+    const [snsStats, setSnsStats] = useState({ total_posts: 0 });
     const [demoVisible, setDemoVisible] = useState(false);
     const [inputIndex, setInputIndex] = useState(0);
 

@@ -473,8 +473,27 @@ class LangGraphOrchestrator:
                     res = f"Tool '{tool}' not implemented in v2 engine"
             except Exception as e:
                 res = f"Error: {e}"
+            # Raw dict/list を人間可読な文字列に変換してから追加
+            if isinstance(res, dict):
+                # browser_search 結果を人間が読めるサマリーに変換
+                if res.get("status") == "success" and "results" in res:
+                    search_results = res["results"]
+                    if search_results:
+                        summary_lines = []
+                        for r in search_results[:5]:
+                            title = r.get("title", "")
+                            snippet = r.get("snippet", r.get("description", ""))
+                            link = r.get("link", r.get("url", ""))
+                            summary_lines.append(f"- {title}: {snippet} ({link})")
+                        res = "Search results:\n" + "\n".join(summary_lines)
+                    else:
+                        res = "Search completed but no results found."
+                else:
+                    res = str(res.get("error") or res.get("message") or "Tool returned no useful data.")
+            elif isinstance(res, list):
+                res = "\n".join(str(x) for x in res[:10])
             results.append(f"{tool}: {res}")
-            
+
         context["step_results"] = results
         ret_val = {"context": context, "current_step_index": len(plan)}
         logger.info(f"DEBUG RETURN: {ret_val}")
@@ -497,25 +516,21 @@ class LangGraphOrchestrator:
             step_results = context.get("step_results", [])
             results_str = "\n".join(step_results) if step_results else "No tools executed."
             
-            system_msg = f"""You are Sage, a super-intelligent AI OS that is fully equipped with internet browsing and search capabilities.
-            
-IMPORTANT: You have the ability to browse the real-time internet, search Google/Perplexity, and visit URLs. 
-If a tool returned 'No results found', it simply means that specific search yielded nothing, NOT that you lack the capability.
-NEVER say 'I don't have the capability to access the internet' or 'I am a text-based model and cannot browse'.
-Instead, if results are empty, say: 'I searched for that but couldn't find specific details' and provide information from your memory or ask for a different query.
+            system_msg = f"""You are Sage, a helpful AI assistant.
+
+CRITICAL RULES — NEVER VIOLATE:
+- NEVER output raw Python dicts, JSON objects, or API response structures (e.g. {{'status': 'success', 'results': []}})
+- NEVER output "Task executed but LLM report failed" or "No tools executed" or similar technical boilerplate
+- NEVER say 'I don't have the capability to access the internet'
+- If search results are empty, say so naturally: 'I searched but couldn't find specific details'
+- Always respond in natural, helpful language
 
 Context of actions taken:
 {results_str}
 
-Additional Context:
-{json.dumps(context, default=str)[:2000]}
-
 User Request: {user_msg}
 
-Synthesize a helpful response for the user based on the actions taken. 
-If a search was conducted, summarize the findings accurately.
-If an image was generated, respond with: ![Generated Image](/files/<filename>)
-NOTE: The tool returns a local absolute path. You MUST convert it to '/files/<filename>' for the user.
+Respond helpfully and naturally. If no tools ran or search returned nothing, answer from your knowledge directly.
 """
             # [FIX] Pass FULL HISTORY to LLM, not just the last message
             # messages contains [Human, AI, Human, AI, ... Human(current)]

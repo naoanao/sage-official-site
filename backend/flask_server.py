@@ -1005,10 +1005,10 @@ def init_brain():
                                 try:
                                     sched = SNSDailyScheduler()
                                     while True:
-                                        if not _automation_stop_events.get('sns_poster', threading.Event()).is_set():
+                                        if not _automation_stop_events.get('bluesky', threading.Event()).is_set():
                                             logger.info("[SNS] SNS Scheduler: Checking for Ready content in Notion...")
                                             sched.run_cycle()
-                                            _record_run("sns_poster")
+                                            _record_run("bluesky")  # UIのautomation IDは"bluesky"
                                         time.sleep(3600) # Once per hour
                                 except Exception as e:
                                     logger.error(f"[ERROR] SNS Scheduler Thread Error: {e}")
@@ -1033,7 +1033,8 @@ def init_brain():
                                     blog_sched = BlogScheduler()
                                     while True:
                                         if not _automation_stop_events.get('blog', threading.Event()).is_set():
-                                            blog_sched.run() # Assuming this handles its own schedule internally
+                                            blog_sched.run()
+                                            _record_run("blog")
                                         time.sleep(3600)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Blog Scheduler Thread Error: {e}")
@@ -1045,6 +1046,7 @@ def init_brain():
                                     while True:
                                         if not _automation_stop_events.get('gumroad', threading.Event()).is_set():
                                             gumroad_sched.run()
+                                            _record_run("gumroad")
                                         time.sleep(3600)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Gumroad Scheduler Thread Error: {e}")
@@ -1060,8 +1062,8 @@ def init_brain():
                                 except Exception as e:
                                     logger.error(f"[ERROR] Notion Sync Scheduler Thread Error: {e}")
 
-                            # Initialize events
-                            for auto in ['sns_poster', 'blog', 'gumroad', 'notion_sync']:
+                            # Initialize events (IDはUIのautomation IDと一致させる)
+                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync']:
                                 if auto not in _automation_stop_events:
                                     _automation_stop_events[auto] = threading.Event()
 
@@ -1741,8 +1743,10 @@ def chat_endpoint():
                     "Sorry, the AI is currently slow to respond. Please try again."
                 )
 
-        # --- ボイラープレート除去: LLMが「No tools executed」等を出力した場合に削除 ---
+        # --- ボイラープレート除去 + Raw JSON サニタイズ ---
         import re as _re2
+
+        # 1) ボイラープレート除去
         _bp = [
             r"(?i)^no tools executed[^\n]*\n?",
             r"(?i)^since no tools (were|have been) executed[^\n]*\n?",
@@ -1755,8 +1759,24 @@ def chat_endpoint():
         ]
         for _p in _bp:
             ai_response = _re2.sub(_p, '', ai_response).strip()
+
+        # 2) Raw JSON / Python dict 露出パターンを除去
+        # 例: "browser_search: {'status': 'success', 'results': []}"
+        ai_response = _re2.sub(
+            r"\b\w+:\s*\{['\"]status['\"]:\s*['\"](?:success|error)['\"][^}]*\}",
+            '',
+            ai_response
+        ).strip()
+        # "Raw Output:\n..." 以降を除去
+        ai_response = _re2.sub(r"Raw Output:\n.*", '', ai_response, flags=_re2.DOTALL).strip()
+        # 空になった場合のフォールバック
         if not ai_response:
-            ai_response = "ご質問をありがとうございます。もう少し詳しくお聞かせください。"
+            _lang_fb = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
+            ai_response = (
+                "ご質問をありがとうございます。もう少し詳しくお聞かせください。"
+                if _lang_fb == "ja" else
+                "Got it — could you share a bit more about what you'd like to create?"
+            )
 
         # --- MEMORY SAVE (Synchronize Brain & Database) ---
         if memory:
