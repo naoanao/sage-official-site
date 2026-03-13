@@ -28,7 +28,7 @@ _EN_TEMPLATES = {
         "[Research Backed] {title}",
         "[Expert Verified] {title}",
         "[Evidence Based] {title}",
-        "[Clinically Reviewed] {title}",
+        "[Industry Proven] {title}",
     ],
     "specific": [
         "{title}: The Evidence-Based Approach in 2026",

@@ -74,8 +74,8 @@ class CourseProductionPipeline:
                     err = str(e).lower()
                     is_rate_limit = any(k in err for k in _rate_limit_keywords)
                     if is_rate_limit and attempt == 0:
-                        logger.warning("Groq TPM/quota limit — waiting 15s then retrying once")
-                        time.sleep(15)
+                        logger.warning("Groq TPM/quota limit — waiting 28s then retrying once")
+                        time.sleep(28)
                         continue
                     logger.warning(f"Primary LLM failed (attempt {attempt + 1}): {e}")
                     break
@@ -730,6 +730,12 @@ Content:""")
 
         def _gen(idx_prompt):
             idx, prompt = idx_prompt
+            # Inter-section cooldown for English: allow Groq TPM (rolling 60s window) to recover.
+            # Section 1 often exhausts ~50% of TPM; waiting 20s before sections 2+ lets the
+            # window recover enough for the next request to succeed on the first attempt.
+            if idx > 0 and language == "en":
+                logger.info(f"⏳ English TPM cooldown: waiting 20s before section {idx+1}")
+                time.sleep(20)
             logger.info(f"📝 Generating section {idx+1}/{len(outline)}: {outline[idx]}")
             content = self._invoke_llm(prompt)
             if not content:
