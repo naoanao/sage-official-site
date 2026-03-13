@@ -215,7 +215,7 @@ class ImageGenerationEnhanced:
         Generate a social media image and return a permanent public URL.
         1. HuggingFace SDXL (HF_TOKEN required) → imgbb
         2. Gemini → imgbb
-        3. Pollinations.ai (free AI generation, no API key, content-relevant)
+        3. LoremFlickr (no API key, always works, Instagram-compatible)
 
         section_index: pass the 0-based position of the section so each section
                        gets a unique seed (avoids identical fallback images).
@@ -245,9 +245,9 @@ class ImageGenerationEnhanced:
                 return public_url
             logger.warning("imgbb upload failed after Gemini generation.")
 
-        # Tier 3: Pollinations.ai (free AI generation — no API key, content-relevant)
-        logger.warning(f"HF+Gemini failed, falling back to Pollinations.ai for: {text[:40]}")
-        return self._pollinations_url(prompt, width, height)
+        # Tier 3: LoremFlickr (always works, Instagram-compatible public URL)
+        logger.warning(f"HF+Gemini failed, falling back to LoremFlickr for: {text[:40]}")
+        return self._loremflickr_url(text, width, height, topic_keywords=topic_keywords, section_index=section_index)
 
     def _loremflickr_url_fallback(self, text: str, width: int = 1200, height: int = 675, topic_keywords: str = None, section_index: int = 0) -> str:
         """Emergency Tier 4 fallback kept for reference (not called in normal flow)."""
