@@ -558,9 +558,14 @@ const SageOS = () => {
     const handlePublishInstagram = async () => {
         setPublishChecklist(p => ({ ...p, instagram: 'running' }));
         try {
-            const text = editedSections.map(s => `${s.title}\n\n${s.content}`).join('\n\n');
-            await api.post('/api/instagram/post', { content: text });
-            setPublishChecklist(p => ({ ...p, instagram: 'done' }));
+            const caption = editedCaptions[0] || editedSections.map(s => s.title).join(' · ');
+            const imageUrl = generateData?.images?.[0] || null;
+            const res = await api.post('/api/instagram/post', { caption, image_url: imageUrl });
+            if (res.data?.status === 'success') {
+                setPublishChecklist(p => ({ ...p, instagram: 'done' }));
+            } else {
+                setPublishChecklist(p => ({ ...p, instagram: 'error' }));
+            }
         } catch { setPublishChecklist(p => ({ ...p, instagram: 'error' })); }
     };
 
@@ -1705,7 +1710,7 @@ const SageOS = () => {
                                                         {
                                                             key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram,
                                                             fallbackUrl: 'https://www.instagram.com', fallbackLabel: 'Open Instagram',
-                                                            errorHint: 'Token may be expired — copy caption & post manually',
+                                                            errorHint: 'Instagram requires a public image URL. Copy your caption and post manually.',
                                                         },
                                                     ].map(({ key, icon, label, action, fallbackUrl, fallbackLabel, errorHint }) => (
                                                         <div key={key} className="space-y-1">

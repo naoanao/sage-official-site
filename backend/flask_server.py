@@ -891,19 +891,24 @@ def instagram_status():
 def instagram_post():
     request_data = request.get_json(silent=True) or {}
     image_url = request_data.get("image_url")
-    caption = request_data.get("caption", "Sage System Online")
-    
+    caption = request_data.get("caption") or request_data.get("content", "Sage System Online")
+
     if not image_url:
-        return jsonify({"error": "No image_url provided"}), 400
+        # Instagram Graph API requires a public image URL for feed posts
+        logger.warning("Instagram post attempted without image_url — returning structured error")
+        return jsonify({
+            "status": "error",
+            "error": "no_image",
+            "message": "Instagram requires a public image URL. Please upload an image first or post manually."
+        }), 422
 
     try:
         from backend.integrations.instagram_integration import InstagramBot
         bot = InstagramBot()
-        
+
         result = bot.post_image(image_url, caption)
-        
+
         if result.get("success"):
-            # 収益化ログに記録 (統合版の規律)
             try:
                 from backend.modules.sage_audit import audit_logger
                 if audit_logger:
@@ -912,11 +917,11 @@ def instagram_post():
                 pass
             return jsonify({"status": "success", "result": result}), 200
         else:
-            return jsonify({"error": result.get("error")}), 500
-            
+            return jsonify({"status": "error", "error": result.get("error")}), 500
+
     except Exception as e:
         logger.error(f"Instagram post error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 # --- INITIALIZATION ---
 orchestrator = None
@@ -1702,9 +1707,39 @@ def chat_endpoint():
 
         # 結果の整形 (LangGraphの出力形式に合わせて調整)
         ai_response = result.get("final_response", "") if isinstance(result, dict) else str(result)
-        
+
         if not ai_response:
             ai_response = "[SUCCESS] Task completed (No text output)."
+
+        # --- オーケストレーターが LLM 呼び出し失敗を返した場合: 直接 LLM フォールバック ---
+        _ORCH_FAIL_MARKERS = [
+            "Task executed but LLM report failed",
+            "Sage Offline Mode. Actions taken:",
+            "Raw Output:\nNo tools executed",
+            "System Error during reporting:",
+        ]
+        if any(m in ai_response for m in _ORCH_FAIL_MARKERS):
+            logger.warning(f"[FALLBACK] Orchestrator returned error response, trying direct LLM call")
+            try:
+                from langchain_core.messages import SystemMessage as _SysMsg, HumanMessage as _HumMsg
+                _lang = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
+                _sys = (
+                    "あなたはSage Pilotです。ユーザーのビジネス・コンテンツの質問に具体的かつ丁寧に日本語で答えてください。"
+                    if _lang == "ja" else
+                    "You are Sage Pilot. Answer the user's question helpfully and concisely."
+                )
+                _fallback_msgs = [_SysMsg(content=_sys)] + history_msgs + [_HumMsg(content=user_message)]
+                _fallback_res = orchestrator.llm.invoke(_fallback_msgs)
+                ai_response = _fallback_res.content or ai_response
+                logger.info(f"[FALLBACK] Direct LLM succeeded: {ai_response[:80]}")
+            except Exception as _fe:
+                logger.error(f"[FALLBACK] Direct LLM also failed: {_fe}")
+                _lang2 = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
+                ai_response = (
+                    "申し訳ありません、現在AIの応答が遅延しています。もう一度お試しください。"
+                    if _lang2 == "ja" else
+                    "Sorry, the AI is currently slow to respond. Please try again."
+                )
 
         # --- ボイラープレート除去: LLMが「No tools executed」等を出力した場合に削除 ---
         import re as _re2
