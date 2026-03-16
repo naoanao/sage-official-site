@@ -17,6 +17,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<SageOS />} />
+        <Route path="/dashboard/*" element={<SageOS />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/thank-you" element={<ThankYou />} />
