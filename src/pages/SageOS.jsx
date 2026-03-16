@@ -112,6 +112,7 @@ const SageOS = () => {
     const researchDebounce = useRef(null);
     const chatInputRef = useRef(null);
     const nicheResultRef = useRef(null);
+    const mainScrollRef = useRef(null);
 
     const CREATE_PLACEHOLDERS = [
         "e.g. Beginner's guide to passive income with AI",
@@ -417,7 +418,7 @@ const SageOS = () => {
             setEditedSalesPage(courseData.sales_page || '');
             // Use pipeline-generated SNS captions (proper marketing copy) when available
             const snsCaptions = courseData.whop_captions
-                ? [courseData.whop_captions.bluesky, courseData.whop_captions.instagram, '']
+                ? [courseData.whop_captions.bluesky, courseData.whop_captions.instagram, ...(courseData.sns_captions || []).slice(2)]
                 : courseData.sns_captions
                     || (courseData.sections || []).slice(0, 3).map(s => s.content?.slice(0, 280) || '');
             setEditedCaptions(snsCaptions);
@@ -669,6 +670,16 @@ const SageOS = () => {
         setMessages(prev => [...prev, newMsg]);
         setInputValue('');
 
+        // CF Pages (non-owner): use demo response — backend not accessible via static ngrok URL
+        if (!IS_OWNER) {
+            const isJa = newMsg.content.match(/[\u3000-\u9fff]/);
+            const demoContent = isJa
+                ? `「${newMsg.content.slice(0, 40)}」は面白いテーマですね！Sage AIのフルアクセスで実際のAI会話・市場調査・商品生成が使えます。下の「Get Full Access」から始めてみてください。`
+                : `"${newMsg.content.slice(0, 50)}" sounds like a great topic! Get Full Access to unlock real AI conversation, market research, and product generation.`;
+            setTimeout(() => setMessages(prev => [...prev, { id: Date.now() + 1, role: 'sage', content: demoContent }]), 700);
+            return;
+        }
+
         try {
             const res = await api.post('/api/chat', { message: newMsg.content });
             const reply = { id: Date.now() + 1, role: 'sage', content: res.data.response || 'No response.' };
@@ -697,7 +708,7 @@ const SageOS = () => {
             setActiveTopic(topic);
             setMonetizeTopic(topic);
         }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
     };
 
     const extractTopic = (chatHistory) => {
@@ -824,7 +835,7 @@ const SageOS = () => {
             </div>
 
             {/* ── Main Content ─────────────────────────────────────────────── */}
-            <div className="flex-1 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-black to-black overflow-y-auto" translate="no">
+            <div ref={mainScrollRef} className="flex-1 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-black to-black overflow-y-auto" translate="no">
 
                 {/* Automations Panel */}
                 {showAutomations && (
@@ -1285,7 +1296,7 @@ const SageOS = () => {
                                                     <div className={`text-lg font-black ${recStyle.label}`}>{recStyle.text}</div>
                                                     <div className="text-slate-400 text-sm mt-0.5">総合スコア: <span className={`${recStyle.score} font-bold text-xl`}>{v.overall_score}</span>/100</div>
                                                 </div>
-                                                <button onClick={() => setNicheValidation({ status: 'idle', data: null })} className="text-xs text-slate-500 hover:text-slate-300 px-2 py-1 rounded-lg hover:bg-white/5">✕</button>
+                                                <button onClick={() => { setNicheValidation({ status: 'idle', data: null }); if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0; }} className="text-xs text-slate-500 hover:text-slate-300 px-2 py-1 rounded-lg hover:bg-white/5">✕</button>
                                             </div>
                                             <div className="grid grid-cols-3 gap-3 text-xs">
                                                 <div className="bg-black/30 rounded-xl p-3">
