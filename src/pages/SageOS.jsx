@@ -48,6 +48,97 @@ const DEMO_RESULT = {
     }
 };
 
+// ── Japanese demo result (CF Pages visitors with JP topic) ──────────────────
+const DEMO_RESULT_JA = {
+    qa_status: 'PASS',
+    research_source: 'demo_preview',
+    sections: [
+        {
+            title: 'ChatGPT副業で月3万円を最速90日で達成する全体像',
+            content: `ChatGPT副業で成果を出せる人と出せない人の差は、ツールの知識ではなく「収益化までの設計図」があるかどうかです。今月だけで副業ChatGPT関連のGumroadショップが国内で300件以上新規開設されています（矢野経済研究所 2025年調査より）。
+
+このセクションを読み終えると、自分に合った副業パターンを1つ選んで収益化計画を立てられるようになります。
+
+**副業ChatGPTで稼げる3つのパターン**:
+1. デジタル商品販売（電子書籍・テンプレート）— 月1〜10万円
+2. コンテンツ代行（ブログ・SNS文章作成）— 月2〜15万円
+3. プロンプト設計コンサル — 月5〜30万円
+
+**今すぐできること**:
+1. 上記3パターンのうち「今の自分が最速で始められるもの」を1つ選ぶ — 所要時間: 10分
+2. Gumroadの無料アカウントを作成する — 所要時間: 5分
+3. 最初の商品テーマを1行でメモする — 所要時間: 5分
+
+**よくある失敗と対策**:
+- 失敗1: 3パターン全部やろうとして1つも完成しない → 対策: 最初の30日は1つに絞ること
+- 失敗2: 完璧な商品を作ろうとして公開できない → 対策: 3,000文字の最小商品からスタートする`
+        },
+        {
+            title: 'ChatGPTで売れる電子書籍を48時間で作る手順',
+            content: `国内のGumroad販売者のうち、ChatGPTを使って商品制作期間を1週間以内に短縮したケースは全体の62%に上ります。しかし「ChatGPTに書かせたまま」の商品は返金率が高く、平均レビュー評価が3.1と低い傾向にあります。差を生むのは「編集の質」です。
+
+**48時間タイムライン（実証済みの手順）**:
+
+1日目（24時間）:
+1. テーマリサーチ — ChatGPTで需要確認プロンプト実行 — 所要時間: 30分
+2. 目次生成 — 「10章構成で書いて」プロンプト — 所要時間: 15分
+3. 各章の本文生成 — 1章15分 × 10章 = 150分
+4. 事実確認・数値の修正 — 所要時間: 60分
+
+2日目（24時間）:
+1. Canvaで表紙デザイン — 所要時間: 45分
+2. PDF化とGumroadアップロード — 所要時間: 20分
+3. 価格設定（推奨: 980〜1,980円）と販売開始 — 所要時間: 15分
+
+**よくある失敗と対策**:
+- 失敗1: 1万字の大作を最初に作ろうとして挫折する → 対策: 最初は5,000字・5章の「ミニガイド」から
+- 失敗2: タイトルをChatGPTに決めさせて埋もれる → 対策: Amazon販売ランキング上位のタイトルパターンを参考にする
+- 失敗3: 価格を無料にして価値が伝わらない → 対策: 980円以上に設定すること（無料は「価値がない」のシグナル）`
+        },
+        {
+            title: '初売上を3日以内に出すSNSプロモーション戦略',
+            content: `Bluesky国内ユーザーは2025年末に350万人を突破し、副業・AI関連コンテンツのエンゲージメント率はTwitter/Xの2.3倍という計測結果が出ています（MMD研究所 2026年1月調査）。適切な投稿をすれば、フォロワー0人でも3日以内の初売上は現実的な目標です。
+
+**初売上3日間プラン（実績ベース）**:
+
+Day 1: 商品公開 + Bluesky告知
+1. 「なぜ作ったか」ストーリー投稿（300文字） — 所要時間: 20分
+2. 商品の「Before/After」図解を1枚作成・投稿 — 所要時間: 30分
+3. 関連ハッシュタグ5つ付けて再投稿 — 所要時間: 10分
+
+Day 2: 無料サンプル配布
+1. 商品の「Chapter 1」をまるごと無料公開 — 所要時間: 5分
+2. 「全文はこちら→リンク」でGumroadへ誘導 — 所要時間: 5分
+
+Day 3: フォロワーへのDM + 価格引き上げ
+1. リポストしてくれた人に御礼DM（テンプレ使用） — 所要時間: 15分
+2. 「明日から価格を500円上げます」告知で緊急性を作る — 所要時間: 5分
+
+**よくある失敗と対策**:
+- 失敗1: 「いいね」がつかないと諦める → 対策: いいね数は関係ない。1件でも見てもらえれば購入は起きる
+- 失敗2: 告知文が「商品紹介」になってしまう → 対策: 「読んだ人の悩みが〇〇日で解決する」というアウトカムで語る
+- 失敗3: 1回投稿しただけで「売れなかった」と判断する → 対策: 同じ商品を切り口を変えて最低7回投稿する`
+        }
+    ],
+    sales_page: `# ChatGPT副業 完全実践ガイド — 90日で月3万円を達成する
+
+## あなたの状況に当てはまりませんか？
+
+「ChatGPTで稼げると聞いたけど、何から始めればいいかわからない」
+「副業を始めてみたけど、全然収益にならない」
+「コンサルに30万円払う余裕はない」
+
+## このガイドの内容
+
+✅ 最速90日で月3万円を達成する3ステップロードマップ
+✅ 48時間で電子書籍を完成させるプロンプトテンプレート集
+✅ フォロワー0人から初売上を3日以内に出すSNS戦略
+✅ 返金ゼロを維持するための品質チェックリスト
+
+## 価格: ¥1,980（期間限定）`,
+    images: {},
+};
+
 // ── Rewrite preset definitions (8 presets, 2×4 grid) ────────────────────────
 const PRESETS = [
     { id: 'casual', label: 'Casual', icon: '😊', tonePreset_ja: 'casual', tonePreset_en: 'conversational' },
@@ -348,7 +439,8 @@ const SageOS = () => {
 
         if (!IS_OWNER) {
             await new Promise(r => setTimeout(r, 1200));
-            const courseData = { ...DEMO_RESULT };
+            const isJaTopic = !!(topicToUse || '').match(/[\u3000-\u9fff]/);
+            const courseData = isJaTopic ? { ...DEMO_RESULT_JA } : { ...DEMO_RESULT };
             setIsDemo(true);
             setGenerateData(courseData);
             setEditedSections((courseData.sections || []).map(s => ({ ...s })));
@@ -637,6 +729,23 @@ const SageOS = () => {
         if (/失敗|ミス|注意|間違い|エラー|Mistake|Common Error|Warning|Caution|Avoid/.test(content)) { score += 25; badges.push({ label: 'Mistakes', color: 'orange' }); }
         if (/分間|時間|円|%|km|kg|回|分|秒|minutes|hours|billion|million|\$\d/.test(content)) { score += 25; badges.push({ label: 'Specific', color: 'purple' }); }
         return { score, badges };
+    };
+
+    // Generate targeted auto-improve instruction based on which Q-criteria are missing
+    const getAutoImproveInstruction = (content, isJa) => {
+        const q = analyzeContentQuality(content);
+        const met = new Set(q.badges.map(b => b.label));
+        const missing = [];
+        if (!met.has('Numbers'))  missing.push(isJa ? '具体的な数字や統計データ' : 'specific numbers and statistics');
+        if (!met.has('Action'))   missing.push(isJa ? '番号付きの行動ステップ（1. 2. 3. 形式）' : 'numbered action steps (1. 2. 3.)');
+        if (!met.has('Mistakes')) missing.push(isJa ? 'よくある失敗例と対策（失敗→対策の形式）' : 'common mistakes and fixes');
+        if (!met.has('Specific')) missing.push(isJa ? '具体的な数値（所要時間・金額・割合など）' : 'specific measurements (minutes, %, $)');
+        if (missing.length === 0) return isJa
+            ? '内容をより詳しく実践的に書き直してください。最低600文字以上。'
+            : 'Expand with more detail and practical examples. Minimum 600 characters.';
+        return isJa
+            ? `以下を追加して書き直してください: ${missing.join('、')}。最低600文字以上。`
+            : `Rewrite adding: ${missing.join(', ')}. Minimum 600 characters.`;
     };
 
     const handleNicheValidate = async (topicOverride) => {
@@ -1429,7 +1538,16 @@ const SageOS = () => {
                                                                 {(() => {
                                                                     const q = analyzeContentQuality(section.content);
                                                                     const scoreColor = q.score >= 75 ? 'text-emerald-400' : q.score >= 50 ? 'text-amber-400' : 'text-red-400';
-                                                                    return <span className={`text-xs font-bold ${scoreColor}`}>Q{q.score}</span>;
+                                                                    const met = new Set(q.badges.map(b => b.label));
+                                                                    const criteria = [['Numbers','N'],['Action','A'],['Mistakes','M'],['Specific','S']];
+                                                                    return (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className={`text-xs font-bold ${scoreColor}`}>Q{q.score}</span>
+                                                                            {criteria.map(([key, lbl]) => (
+                                                                                <span key={key} className={`text-[9px] font-bold px-1 py-0.5 rounded ${met.has(key) ? 'bg-emerald-900/50 text-emerald-400' : 'bg-white/5 text-slate-700'}`}>{lbl}</span>
+                                                                            ))}
+                                                                        </div>
+                                                                    );
                                                                 })()}
                                                             </div>
                                                             <span className="text-slate-500 text-xs">{expandedSection === idx ? '▲' : '▼'}</span>
@@ -1469,18 +1587,19 @@ const SageOS = () => {
                                                                         Rewrite
                                                                     </button>
                                                                 </div>
-                                                                {analyzeContentQuality(section.content).score < 50 && (
+                                                                {analyzeContentQuality(section.content).score < 75 && (
                                                                     <button
-                                                                        onClick={() => handleRewriteSection(idx, lang === 'ja' || monetizeTopic.match(/[\u3000-\u9fff]/)
-                                                                            ? '具体的な数字・行動ステップ・よくある失敗例を追加して、このセクションをより詳しく実践的に書き直してください。最低600文字以上。'
-                                                                            : 'Add specific numbers, concrete action steps, and common mistakes to avoid. Expand to at least 600 characters with detailed, practical content.')}
+                                                                        onClick={() => {
+                                                                            const isJa = lang === 'ja' || !!monetizeTopic.match(/[\u3000-\u9fff]/);
+                                                                            handleRewriteSection(idx, getAutoImproveInstruction(section.content, isJa));
+                                                                        }}
                                                                         disabled={rewritingIdx === idx}
                                                                         className="w-full px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 disabled:opacity-40 text-amber-300 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all"
                                                                     >
                                                                         {rewritingIdx === idx
                                                                             ? <div className="w-3 h-3 rounded-full border border-amber-300 border-t-transparent animate-spin" />
                                                                             : '🔧'}
-                                                                        Auto-improve (Q&lt;50)
+                                                                        Auto-improve (Q&lt;75)
                                                                     </button>
                                                                 )}
                                                             </div>
