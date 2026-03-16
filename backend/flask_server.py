@@ -516,6 +516,14 @@ def get_automations():
             "lastRun": _get_last_run_time("bluesky")
         },
         {
+            "id": "engagement",
+            "name": "Engagement AI (Like-back & Reply)",
+            "icon": "🤝",
+            "active": _is_automation_active("engagement"),
+            "schedule": "3x/day · 08:00, 14:00, 20:00 JST",
+            "lastRun": _get_last_run_time("engagement")
+        },
+        {
             "id": "blog",
             "name": "Daily Blog Scheduler",
             "icon": "📝",
@@ -1084,8 +1092,28 @@ def init_brain():
                                 except Exception as e:
                                     logger.error(f"[ERROR] Notion Sync Scheduler Thread Error: {e}")
 
+                            # Engagement Bot (like-back + AI reply — 3x/day)
+                            def run_engagement_bot():
+                                try:
+                                    from backend.integrations.engagement_bot import EngagementBot
+                                    from backend.integrations.bluesky_agent import BlueskyAgent
+                                    _bs_client = BlueskyAgent()
+                                    _groq = getattr(orchestrator, 'groq_llm', None) or getattr(orchestrator, 'llm', None)
+                                    eb = EngagementBot(
+                                        bluesky_client=_bs_client,
+                                        groq_client=_groq,
+                                    )
+                                    while True:
+                                        if not _automation_stop_events.get('engagement', threading.Event()).is_set():
+                                            if eb.should_run_now():
+                                                eb.run_cycle()
+                                                _record_run("engagement")
+                                        time.sleep(600)  # Check every 10 min
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Engagement Bot Thread Error: {e}")
+
                             # Initialize events (IDはUIのautomation IDと一致させる)
-                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync']:
+                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement']:
                                 if auto not in _automation_stop_events:
                                     _automation_stop_events[auto] = threading.Event()
 
@@ -1094,7 +1122,8 @@ def init_brain():
                             threading.Thread(target=run_blog_scheduler, daemon=True, name="SageBlogScheduler").start()
                             threading.Thread(target=run_gumroad_scheduler, daemon=True, name="SageGumroadScheduler").start()
                             threading.Thread(target=run_notion_scheduler, daemon=True, name="SageNotionSyncScheduler").start()
-                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion Threads spawned.")
+                            threading.Thread(target=run_engagement_bot, daemon=True, name="SageEngagementBot").start()
+                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot Threads spawned.")
 
                         run_sns_loops()
                         

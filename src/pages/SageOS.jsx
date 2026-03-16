@@ -50,35 +50,35 @@ const DEMO_RESULT = {
 
 // ── Rewrite preset definitions (8 presets, 2×4 grid) ────────────────────────
 const PRESETS = [
-    { id: 'casual', label: 'カジュアル', icon: '😊', tonePreset_ja: 'casual', tonePreset_en: 'conversational' },
-    { id: 'expert', label: '専門的', icon: '🎓', tonePreset_ja: 'professional', tonePreset_en: 'quest' },
+    { id: 'casual', label: 'Casual', icon: '😊', tonePreset_ja: 'casual', tonePreset_en: 'conversational' },
+    { id: 'expert', label: 'Expert', icon: '🎓', tonePreset_ja: 'professional', tonePreset_en: 'quest' },
     {
-        id: 'bullets', label: '箇条書き', icon: '📋',
+        id: 'bullets', label: 'Bullets', icon: '📋',
         instruction_ja: '内容を箇条書きリスト形式に書き直してください。各項目を3語以内の見出しで整理してください。',
         instruction_en: 'Rewrite this as a bulleted list. Use short, punchy 3-5 word headers for each point.'
     },
     {
-        id: 'shorter', label: '半分の長さ', icon: '✂️',
+        id: 'shorter', label: 'Shorten', icon: '✂️',
         instruction_ja: '半分の長さに要約してください。重要な情報は保持してください。',
         instruction_en: 'Shorten this to half its length. Keep the most important points.'
     },
     {
-        id: 'niche', label: '超ニッチ特化', icon: '🎯',
+        id: 'niche', label: 'Niche Focus', icon: '🎯',
         instruction_ja: 'より具体的なターゲット読者に特化した内容に書き直してください。専門用語と具体例を使ってください。',
         instruction_en: 'Rewrite this for a highly specific niche audience. Use insider terminology and concrete examples.'
     },
     {
-        id: 'data', label: 'データ追加', icon: '📊',
+        id: 'data', label: 'Add Data', icon: '📊',
         instruction_ja: 'データや統計情報を追加するプレースホルダーを含めて書き直してください（例：[統計データ], [調査結果]）。',
         instruction_en: 'Rewrite with data placeholders added (e.g., [STAT: X% of users...], [STUDY: Research shows...]). Make it evidence-based.'
     },
     {
-        id: 'action', label: 'アクション化', icon: '⚡',
+        id: 'action', label: 'Actionable', icon: '⚡',
         instruction_ja: '読者がすぐに行動できる形に書き直してください。各段落の最後に具体的な行動指示を入れてください。',
         instruction_en: 'Rewrite as an action-oriented piece. End each section with a specific, immediate call-to-action.'
     },
     {
-        id: 'positive', label: '失敗削除', icon: '✨',
+        id: 'positive', label: 'Positive', icon: '✨',
         instruction_ja: 'ネガティブな表現・失敗事例・問題点の記述を削除し、ポジティブで希望に満ちた内容に書き直してください。',
         instruction_en: 'Remove all negative examples, failure cases, and problem-focused language. Rewrite as purely positive and aspirational.'
     },
@@ -389,7 +389,7 @@ const SageOS = () => {
                     polls++;
                     if (polls > MAX_POLLS) {
                         clearInterval(pollInterval);
-                        reject(new Error('ジョブタイムアウト (6分) — LLMの処理が完了しませんでした。'));
+                        reject(new Error('Job timeout (6 min) — LLM did not complete. Please try again.'));
                         return;
                     }
                     try {
@@ -450,7 +450,7 @@ const SageOS = () => {
             }
         } catch (e) {
             const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
-            setRewriteError(isTimeout ? 'タイムアウト: LLMの応答が遅れています。もう一度お試しください。' : `書き直し失敗: ${e?.message || 'Unknown error'}`);
+            setRewriteError(isTimeout ? 'Timeout: LLM is taking too long. Please try again.' : `Rewrite failed: ${e?.message || 'Unknown error'}`);
         } finally {
             setRewritingIdx(null);
         }
@@ -620,10 +620,10 @@ const SageOS = () => {
         if (!content) return { score: 0, badges: [] };
         const badges = [];
         let score = 0;
-        if (/\d+/.test(content)) { score += 25; badges.push({ label: '数値', color: 'blue' }); }
-        if (/\d+\.\s|今すぐ|ステップ|手順|Take Action|Step \d|Action \d/.test(content)) { score += 25; badges.push({ label: 'アクション', color: 'green' }); }
-        if (/失敗|ミス|注意|間違い|エラー|Mistake|Common Error|Warning|Caution|Avoid/.test(content)) { score += 25; badges.push({ label: '失敗対策', color: 'orange' }); }
-        if (/分間|時間|円|%|km|kg|回|分|秒|minutes|hours|billion|million|\$\d/.test(content)) { score += 25; badges.push({ label: '具体的', color: 'purple' }); }
+        if (/\d+/.test(content)) { score += 25; badges.push({ label: 'Numbers', color: 'blue' }); }
+        if (/\d+\.\s|今すぐ|ステップ|手順|Take Action|Step \d|Action \d/.test(content)) { score += 25; badges.push({ label: 'Action', color: 'green' }); }
+        if (/失敗|ミス|注意|間違い|エラー|Mistake|Common Error|Warning|Caution|Avoid/.test(content)) { score += 25; badges.push({ label: 'Mistakes', color: 'orange' }); }
+        if (/分間|時間|円|%|km|kg|回|分|秒|minutes|hours|billion|million|\$\d/.test(content)) { score += 25; badges.push({ label: 'Specific', color: 'purple' }); }
         return { score, badges };
     };
 
@@ -912,7 +912,7 @@ const SageOS = () => {
                                                                 }}
                                                                 className="text-sm px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold rounded-xl flex items-center gap-2 transition-all"
                                                             >
-                                                                🚀 このトピックでコンテンツを生成する
+                                                                🚀 Generate Content with This Topic
                                                             </button>
                                                             <button
                                                                 onClick={() => {
@@ -923,7 +923,7 @@ const SageOS = () => {
                                                                 }}
                                                                 className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-xl flex items-center gap-2 transition-all"
                                                             >
-                                                                📊 まずニッチ検証する
+                                                                📊 Validate Niche First
                                                             </button>
                                                             <button
                                                                 onClick={() => {
@@ -1040,13 +1040,13 @@ const SageOS = () => {
                                                 </button>
                                             </div>
                                             {researchCheck.status === 'checking' && (
-                                                <span className="text-xs text-slate-400 flex items-center gap-1"><div className="w-3 h-3 rounded-full border border-slate-400 border-t-white animate-spin" /> リサーチ確認中...</span>
+                                                <span className="text-xs text-slate-400 flex items-center gap-1"><div className="w-3 h-3 rounded-full border border-slate-400 border-t-white animate-spin" /> Checking research...</span>
                                             )}
                                             {researchCheck.status === 'found' && (
-                                                <span className="text-xs text-emerald-400 flex items-center gap-1"><FiCheckCircle /> D1リサーチ済み: {researchCheck.file}</span>
+                                                <span className="text-xs text-emerald-400 flex items-center gap-1"><FiCheckCircle /> D1 Research found: {researchCheck.file}</span>
                                             )}
                                             {researchCheck.status === 'missing' && (
-                                                <span className="text-xs text-amber-400 flex items-center gap-1"><FiAlertTriangle /> D1リサーチ未実行</span>
+                                                <span className="text-xs text-amber-400 flex items-center gap-1"><FiAlertTriangle /> D1 Research not run</span>
                                             )}
                                         </div>
                                         <input
@@ -1071,7 +1071,7 @@ const SageOS = () => {
                                         {nicheValidation.status === 'error' && (
                                             <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
                                                 <div className="text-xs text-red-400 flex items-center gap-2 mb-2">
-                                                    <FiXCircle className="shrink-0" /> API検証失敗 — 外部ツールで手動確認:
+                                                    <FiXCircle className="shrink-0" /> Validation failed — check manually:
                                                     <button onClick={() => setNicheValidation({ status: 'idle', data: null })} className="ml-auto text-red-500 hover:text-red-300">✕</button>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
@@ -1091,7 +1091,7 @@ const SageOS = () => {
                                         {/* Always-visible external research links when topic is entered */}
                                         {monetizeTopic.trim().length >= 2 && nicheValidation.status !== 'error' && (
                                             <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                                <span className="text-xs text-slate-500">手動確認:</span>
+                                                <span className="text-xs text-slate-500">Research:</span>
                                                 {[
                                                     { label: '📈 Trends', url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(monetizeTopic)}` },
                                                     { label: '💬 Reddit', url: `https://www.reddit.com/search/?q=${encodeURIComponent(monetizeTopic)}` },
@@ -1106,16 +1106,16 @@ const SageOS = () => {
                                         )}
                                         {nicheValidation.status === 'done' && nicheValidation.data?.status === 'success' && (
                                             <div className="mt-2 px-3 py-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg text-xs text-emerald-400 flex items-center gap-1">
-                                                <FiCheckCircle className="shrink-0" /> 市場調査完了 — 下にレポートを表示
+                                                <FiCheckCircle className="shrink-0" /> Market research complete — see report below
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Language selector */}
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-300 mb-2">出力言語 / Output Language</label>
+                                        <label className="block text-sm font-bold text-slate-300 mb-2">Output Language</label>
                                         <div className="flex gap-2">
-                                            {[['auto', '🌐 Auto'], ['ja', '🇯🇵 日本語'], ['en', '🇺🇸 English']].map(([val, label]) => (
+                                            {[['auto', '🌐 Auto'], ['ja', '🇯🇵 Japanese'], ['en', '🇺🇸 English']].map(([val, label]) => (
                                                 <button key={val} onClick={() => setLang(val)}
                                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${lang === val ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
                                                     {label}
@@ -1148,14 +1148,14 @@ const SageOS = () => {
                                     {/* D1 research warning */}
                                     {monetizeStatus === 'needs_research' && (
                                         <div className="p-5 bg-amber-900/20 border border-amber-500/30 rounded-2xl space-y-3">
-                                            <div className="text-amber-300 font-bold flex items-center gap-2"><FiAlertTriangle /> D1リサーチが見つかりません</div>
-                                            <p className="text-slate-300 text-sm">「{monetizeTopic}」に一致するリサーチファイルがありません。汚染リスクを避けるため、先にD1リサーチを実行することを推奨します。</p>
+                                            <div className="text-amber-300 font-bold flex items-center gap-2"><FiAlertTriangle /> D1 Research not found</div>
+                                            <p className="text-slate-300 text-sm">No research file found for "{monetizeTopic}". We recommend running D1 Research first to avoid content contamination.</p>
                                             <div className="flex gap-3">
                                                 <button onClick={handleD1ForTopic} className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
-                                                    <FiPlay /> D1リサーチを実行してから生成
+                                                    <FiPlay /> Run D1 Research, Then Generate
                                                 </button>
                                                 <button onClick={() => runMonetizePipeline()} className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-400 text-sm rounded-xl transition-all">
-                                                    このまま生成（リスクあり）
+                                                    Generate anyway (risky)
                                                 </button>
                                             </div>
                                         </div>
@@ -1185,7 +1185,7 @@ const SageOS = () => {
                                                 }`}
                                         >
                                             {monetizeStatus === 'idle' && <>⚡ Generate Product</>}
-                                            {monetizeStatus === 'running_d1' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-amber-400 border-t-white" /> D1リサーチ実行中...</>}
+                                            {monetizeStatus === 'running_d1' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-amber-400 border-t-white" /> Running D1 Research...</>}
                                             {monetizeStatus === 'running' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-slate-400 border-t-white"></div> Running Pipeline...</>}
                                             {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed — Retry</>}
                                         </button>
@@ -1227,22 +1227,22 @@ const SageOS = () => {
                                     {monetizeStatus === 'error' && (
                                         <div className="mt-4 p-4 bg-red-900/30 border border-red-500/40 rounded-xl text-sm space-y-2">
                                             <div className="flex items-center justify-between">
-                                                <div className="text-red-400 font-bold flex items-center gap-2">❌ パイプライン失敗</div>
+                                                <div className="text-red-400 font-bold flex items-center gap-2">❌ Pipeline Failed</div>
                                                 <button
                                                     onClick={() => { setMonetizeStatus('idle'); setMonetizeResult(null); }}
                                                     className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/10 border border-white/10 transition-all"
                                                 >
-                                                    ✕ 閉じる
+                                                    ✕ Close
                                                 </button>
                                             </div>
                                             <div className="text-slate-300 text-xs break-all">
-                                                {monetizeResult || 'LLMパイプラインでエラーが発生しました。再試行するか、しばらくお待ちください。'}
+                                                {monetizeResult || 'An error occurred in the LLM pipeline. Please retry or wait a moment.'}
                                             </div>
                                             <button
                                                 onClick={() => { setMonetizeStatus('idle'); setMonetizeResult(null); setTimeout(() => handleMonetize(), 50); }}
                                                 className="w-full py-2 bg-red-800/40 hover:bg-red-700/50 border border-red-500/30 text-red-300 text-xs font-bold rounded-lg transition-all"
                                             >
-                                                🔄 もう一度試す
+                                                🔄 Try Again
                                             </button>
                                         </div>
                                     )}
@@ -1253,15 +1253,15 @@ const SageOS = () => {
                                             <div className="flex items-center gap-3">
                                                 <FiCheckCircle className="text-emerald-400 text-xl" />
                                                 <div>
-                                                    <div className="text-emerald-300 font-bold">生成完了！</div>
-                                                    <div className="text-slate-400 text-sm">{editedSections.length} sections, sales page, captions が準備完了</div>
+                                                    <div className="text-emerald-300 font-bold">Generation Complete!</div>
+                                                    <div className="text-slate-400 text-sm">{editedSections.length} sections, sales page & captions ready</div>
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => goToPhase(3)}
                                                 className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                                             >
-                                                ✏️ コンテンツを確認・磨く → REFINE
+                                                ✏️ Review & Polish Content → REFINE
                                             </button>
                                         </div>
                                     )}
@@ -1271,9 +1271,9 @@ const SageOS = () => {
                                 {nicheValidation.status === 'done' && nicheValidation.data?.status === 'success' && (() => {
                                     const v = nicheValidation.data;
                                     const recStyle = {
-                                        GO: { wrap: 'border-emerald-500/30 bg-emerald-900/10', label: 'text-emerald-400', score: 'text-emerald-300', text: '✅ GO — 市場性あり' },
-                                        CAUTION: { wrap: 'border-amber-500/30 bg-amber-900/10', label: 'text-amber-400', score: 'text-amber-300', text: '⚠️ CAUTION — 要改善' },
-                                        STOP: { wrap: 'border-red-500/30 bg-red-900/10', label: 'text-red-400', score: 'text-red-300', text: '🛑 STOP — 市場性低' },
+                                        GO: { wrap: 'border-emerald-500/30 bg-emerald-900/10', label: 'text-emerald-400', score: 'text-emerald-300', text: '✅ GO — Market Viable' },
+                                        CAUTION: { wrap: 'border-amber-500/30 bg-amber-900/10', label: 'text-amber-400', score: 'text-amber-300', text: '⚠️ CAUTION — Needs Improvement' },
+                                        STOP: { wrap: 'border-red-500/30 bg-red-900/10', label: 'text-red-400', score: 'text-red-300', text: '🛑 STOP — Low Market Demand' },
                                     }[v.recommendation] || { wrap: 'border-slate-500/30 bg-slate-900/10', label: 'text-slate-400', score: 'text-slate-300', text: v.recommendation };
                                     return (
                                         <div ref={nicheResultRef} className={`border ${recStyle.wrap} rounded-2xl p-6 space-y-4`}>
@@ -1286,21 +1286,21 @@ const SageOS = () => {
                                             </div>
                                             <div className="grid grid-cols-3 gap-3 text-xs">
                                                 <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">需要</div>
+                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Demand</div>
                                                     <div className="text-white font-bold text-base">{v.demand?.score}/100</div>
-                                                    <div className="text-slate-500">{v.demand?.trend} · 検索:{v.demand?.search_volume}</div>
+                                                    <div className="text-slate-500">{v.demand?.trend} · Search: {v.demand?.search_volume}</div>
                                                     <div className="text-slate-400 mt-1 leading-relaxed">{v.demand?.reason}</div>
                                                 </div>
                                                 <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">競合</div>
+                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Competition</div>
                                                     <div className="text-white font-bold text-base">{v.competition?.level}</div>
-                                                    <div className="text-slate-500">平均¥{(v.competition?.avg_price_jpy || 0).toLocaleString()}</div>
+                                                    <div className="text-slate-500">Avg ¥{(v.competition?.avg_price_jpy || 0).toLocaleString()}</div>
                                                     {(v.competition?.gaps || []).length > 0 && (
-                                                        <div className="mt-1 text-indigo-300">ギャップ: {v.competition.gaps[0]}</div>
+                                                        <div className="mt-1 text-indigo-300">Gap: {v.competition.gaps[0]}</div>
                                                     )}
                                                 </div>
                                                 <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">オーディエンス</div>
+                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Audience</div>
                                                     <div className="text-white font-bold text-base">{v.audience?.clarity_score}/100</div>
                                                     <div className="text-slate-500">{v.audience?.persona?.age_range} · {v.audience?.persona?.occupation}</div>
                                                     <div className="text-slate-400 mt-1 leading-relaxed">{v.audience?.persona?.pain_point}</div>
@@ -1324,7 +1324,7 @@ const SageOS = () => {
                                             )}
                                             {(v.improvements || []).length > 0 && (
                                                 <div className="bg-black/20 rounded-xl p-3 text-xs space-y-1">
-                                                    <div className="text-slate-400 uppercase tracking-widest font-bold mb-2">改善提案</div>
+                                                    <div className="text-slate-400 uppercase tracking-widest font-bold mb-2">Suggestions</div>
                                                     {v.improvements.map((imp, i) => (
                                                         <div key={i} className="text-slate-300 flex gap-2"><span className="text-indigo-400">→</span>{imp}</div>
                                                     ))}
@@ -1335,7 +1335,7 @@ const SageOS = () => {
                                 })()}
                                 {nicheValidation.status === 'error' && (
                                     <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-2xl text-sm text-red-400 flex items-center gap-2">
-                                        <FiXCircle /> ニッチ検証に失敗しました。Flaskが起動しているか確認してください。
+                                        <FiXCircle /> Niche validation failed. Please check that Flask is running.
                                     </div>
                                 )}
                             </Motion.div>
@@ -1348,9 +1348,9 @@ const SageOS = () => {
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto py-8 px-8">
                                 {!generateData ? (
                                     <div className="text-center py-20">
-                                        <div className="text-slate-400 mb-4">コンテンツがまだ生成されていません。</div>
+                                        <div className="text-slate-400 mb-4">Content not yet generated.</div>
                                         <button onClick={() => goToPhase(2)} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
-                                            ← Phase 2 で生成する
+                                            ← Generate in Phase 2
                                         </button>
                                     </div>
                                 ) : (
@@ -1388,7 +1388,7 @@ const SageOS = () => {
                                                     onClick={() => { setIsDemo(false); setMonetizeStatus('idle'); setGenerateData(null); goToPhase(2); }}
                                                     className="text-xs text-slate-500 hover:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all"
                                                 >
-                                                    ← やり直す
+                                                    ← Start Over
                                                 </button>
                                             </div>
 
@@ -1403,7 +1403,7 @@ const SageOS = () => {
                                                             <div className="flex items-center gap-3 text-left flex-wrap">
                                                                 <span className="text-xs text-slate-500 font-mono w-5">{idx + 1}</span>
                                                                 <span className="text-sm font-semibold text-white">{section.title}</span>
-                                                                <span className="text-xs text-slate-500">{section.content?.length || 0} 文字</span>
+                                                                <span className="text-xs text-slate-500">{section.content?.length || 0} chars</span>
                                                                 {(() => {
                                                                     const q = analyzeContentQuality(section.content);
                                                                     const scoreColor = q.score >= 75 ? 'text-emerald-400' : q.score >= 50 ? 'text-amber-400' : 'text-red-400';
@@ -1433,7 +1433,7 @@ const SageOS = () => {
                                                                         value={sectionInstructions[idx] || ''}
                                                                         onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
                                                                         onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
-                                                                        placeholder="このセクションだけ書き直す（例: もっと具体的な数字を入れて）"
+                                                                        placeholder="Rewrite this section only (e.g. add more specific numbers)"
                                                                         className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600"
                                                                     />
                                                                     <button
@@ -1444,7 +1444,7 @@ const SageOS = () => {
                                                                         {rewritingIdx === idx
                                                                             ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
                                                                             : <FiPlay />}
-                                                                        書き直す
+                                                                        Rewrite
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -1477,7 +1477,7 @@ const SageOS = () => {
                                             ) : (
                                                 <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl space-y-3">
                                                     <div className="text-xs font-bold text-purple-300 uppercase tracking-widest">
-                                                        全体の口調・スタイルを一括変更
+                                                        Rewrite All — Tone &amp; Style
                                                     </div>
                                                     {/* 2×4 preset grid — per-button loading/done/error */}
                                                     <div className="grid grid-cols-2 gap-2">
@@ -1511,7 +1511,7 @@ const SageOS = () => {
                                                             value={globalInstruction}
                                                             onChange={e => setGlobalInstruction(e.target.value)}
                                                             onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
-                                                            placeholder="カスタム指示: 例: もっとカジュアルに / 英語に翻訳"
+                                                            placeholder="Custom instruction (e.g. make it more casual / translate to English)"
                                                             className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
                                                         />
                                                         <button
@@ -1520,8 +1520,8 @@ const SageOS = () => {
                                                             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
                                                         >
                                                             {globalRewriting
-                                                                ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> 書き直し中</>
-                                                                : <><FiPlay /> 適用</>}
+                                                                ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> Rewriting...</>
+                                                                : <><FiPlay /> Apply</>}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1529,7 +1529,7 @@ const SageOS = () => {
 
                                             {/* Image Regen */}
                                             <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-2xl space-y-2">
-                                                <div className="text-xs font-bold text-blue-300 uppercase tracking-widest">画像の再生成</div>
+                                                <div className="text-xs font-bold text-blue-300 uppercase tracking-widest">Regenerate Images</div>
                                                 {isDemo ? (
                                                     <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
                                                         className="w-full px-4 py-2.5 bg-purple-600/50 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-purple-600">
@@ -1542,11 +1542,11 @@ const SageOS = () => {
                                                         className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
                                                     >
                                                         {imageRegenStatus === 'running'
-                                                            ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> 生成中...</>
+                                                            ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> Generating...</>
                                                             : imageRegenStatus === 'done'
-                                                                ? <>✅ 完了！</>
+                                                                ? <>✅ Done!</>
                                                                 : imageRegenStatus === 'error'
-                                                                    ? <>❌ 失敗 — Retry</>
+                                                                    ? <>❌ Failed — Retry</>
                                                                     : <>🔄 Regenerate Images</>}
                                                     </button>
                                                 )}
@@ -1654,7 +1654,7 @@ const SageOS = () => {
                                                 onClick={() => goToPhase(4)}
                                                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)]"
                                             >
-                                                🚀 投稿フェーズへ → PUBLISH
+                                                🚀 Go to Publish Phase → PUBLISH
                                             </button>
                                         </div>
                                     </div>
@@ -1669,14 +1669,14 @@ const SageOS = () => {
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto py-8 px-8 space-y-6">
                                 <div className="text-center mb-8">
                                     <h2 className="text-4xl font-black mb-2">🚀 Publish</h2>
-                                    <p className="text-slate-400">コンテンツを世界に届けましょう。</p>
+                                    <p className="text-slate-400">Let's get your content out into the world.</p>
                                 </div>
 
                                 {!generateData ? (
                                     <div className="text-center py-16">
-                                        <div className="text-slate-400 mb-4">公開するコンテンツがまだありません。</div>
+                                        <div className="text-slate-400 mb-4">No content to publish yet.</div>
                                         <button onClick={() => goToPhase(2)} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
-                                            ← Phase 2 で生成する
+                                            ← Generate in Phase 2
                                         </button>
                                     </div>
                                 ) : (
@@ -1786,14 +1786,14 @@ const SageOS = () => {
                                                         className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 disabled:opacity-50 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]"
                                                     >
                                                         {monetizeStatus === 'finalizing'
-                                                            ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> 保存中...</>
-                                                            : <><FiCheckCircle /> 確認完了 → Obsidianに保存</>}
+                                                            ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Saving...</>
+                                                            : <><FiCheckCircle /> Confirm &amp; Save to Obsidian</>}
                                                     </button>
                                                 )}
                                             </div>
                                         ) : (
                                             <div className="p-5 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl space-y-2">
-                                                <div className="text-emerald-400 font-bold text-lg flex items-center gap-2"><FiCheck /> 最終版を保存しました</div>
+                                                <div className="text-emerald-400 font-bold text-lg flex items-center gap-2"><FiCheck /> Final version saved!</div>
                                                 <div className="text-slate-300 font-mono text-xs break-all">{monetizeResult}</div>
                                             </div>
                                         )}
@@ -1803,7 +1803,7 @@ const SageOS = () => {
                                             onClick={() => { handleStartNew(); goToPhase(1); }}
                                             className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-all"
                                         >
-                                            ↺ 新しいコンテンツを作成する
+                                            ↺ Create New Content
                                         </button>
                                     </>
                                 )}
