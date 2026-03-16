@@ -566,11 +566,6 @@ const SageOS = () => {
 
     const handleRewriteAll = async (overrideInstruction, tonePreset) => {
         const instruction = overrideInstruction || globalInstruction;
-        if (!tonePreset && !instruction.trim()) {
-            setGlobalEmptyTried(true);
-            setTimeout(() => setGlobalEmptyTried(false), 2500);
-            return;
-        }
         setGlobalRewriting(true);
         setRewriteError(null);
         try {
@@ -1704,14 +1699,29 @@ const SageOS = () => {
                                                         <input
                                                             type="text"
                                                             value={globalInstruction}
-                                                            onChange={e => { setGlobalInstruction(e.target.value); setGlobalEmptyTried(false); }}
-                                                            onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
+                                                            onChange={e => { setGlobalInstruction(e.target.value); if (globalEmptyTried) setGlobalEmptyTried(false); }}
+                                                            onKeyDown={e => {
+                                                                if (e.key !== 'Enter') return;
+                                                                if (!e.target.value.trim()) {
+                                                                    setGlobalEmptyTried(true);
+                                                                    setTimeout(() => setGlobalEmptyTried(false), 2500);
+                                                                } else {
+                                                                    handleRewriteAll();
+                                                                }
+                                                            }}
                                                             placeholder="Custom instruction (e.g. make it more casual / translate to English)"
                                                             style={{ borderColor: globalEmptyTried ? '#ef4444' : undefined }}
                                                             className={`flex-1 bg-black/40 border rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600 transition-colors ${globalEmptyTried ? 'border-red-500' : 'border-purple-500/30'}`}
                                                         />
                                                         <button
-                                                            onClick={() => handleRewriteAll()}
+                                                            onClick={() => {
+                                                                if (!globalInstruction.trim()) {
+                                                                    setGlobalEmptyTried(true);
+                                                                    setTimeout(() => setGlobalEmptyTried(false), 2500);
+                                                                    return;
+                                                                }
+                                                                handleRewriteAll();
+                                                            }}
                                                             disabled={globalRewriting}
                                                             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
                                                         >
