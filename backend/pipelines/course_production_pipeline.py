@@ -649,6 +649,17 @@ Format: Just the titles, one per line, no numbering.
                 "\n   - 「〜かもしれません」「〜と言われています」などの曖昧表現を避ける"
                 "\n   - 具体的な数字・事例・地名・人物名・期間を積極的に使う"
                 "\n   - 理論より手順を優先する（「まず〇〇、次に〇〇」形式）"
+                "\n8. 【統計・数値ルール（厳守）】"
+                "\n   - PRIMARY RESEARCH SOURCE (D1) に数値がある場合のみ、その数値を引用する"
+                "\n   - D1にデータがない場合: 具体的な数値を作造しないこと"
+                "\n     NG例: 「約70%のユーザーが〜」「75%が〜と回答」（根拠なし）"
+                "\n     OK例: 「多くの実践者が報告している」「研究でも確認されている傾向だ」"
+                "\n   - 数値を使う場合: 総務省・厚生労働省・MMD研究所・矢野経済研究所等の"
+                "\n     実在する日本の調査機関名を付けるか、D1の一次ソースを引用すること"
+                "\n9. 【差別化ルール】このセクションには以下を必ず1箇所以上含める:"
+                "\n   - 一般のnote/Qiita無料記事にはない「AIリサーチで発見した実践的フレームワーク」"
+                "\n   - 「なぜこの手順なのか」という因果関係の説明（理由のない手順は差別化にならない）"
+                "\n   - 読者が「これは自分では調べられなかった」と感じる具体的な実例・ツール名・数値"
             )
             section_structure = """## REQUIRED STRUCTURE:
 **導入（2-3文）**: このセクション固有の「読者が今まさに直面している課題」を具体的に述べる。汎用的な「重要です」は禁止。
@@ -1271,9 +1282,14 @@ Order right now and you'll also receive these 3 exclusive bonuses — FREE:
 
 ## 5. このガイドが他と違う理由（3点）
 
-* 理論ではなく実行可能なステップ
+* 理論ではなく実行可能なステップ（「まず〇〇、次に〇〇」の手順書形式）
 * 〇〇（トピック固有の専門性・具体性）
-* AIリサーチで収集した一次情報が根拠
+* AIが自動収集した最新リサーチをベースに構築 — 無料記事では調べきれない深さ
+
+## 5.5. 価格について — なぜ¥4,500か
+
+類似の情報をまとめるには: コンサルタントに依頼→30万円〜 / フリーランスに外注→5万円〜 / 自分で調査→20時間以上
+このガイドは「すでに検証済みの手順書」として提供するため、時間と費用を90%削減できる。
 
 ## 6. こんな人に最適（具体的な人物像、2-3点）
 
@@ -1579,7 +1595,7 @@ Output valid JSON only (no code blocks):
 
 def _build_sns_captions(topic: str, sections: list, sales_page: str = "") -> list:  # noqa: ARG001
     """Generate ready-to-post SNS captions from course content.
-    Returns [bluesky_caption, instagram_caption, general_caption] (max 280/2200/280 chars).
+    Returns 5 captions: [bluesky, instagram, twitter_x, facebook, japanese] (max chars per platform).
     """
     titles = [s.get('title', '') for s in sections[:5]]
     bullet_lines = "\n".join(f"✅ {t}" for t in titles[:4])
@@ -1598,10 +1614,25 @@ def _build_sns_captions(topic: str, sections: list, sales_page: str = "") -> lis
         f"#AItools #PassiveIncome #DigitalProduct #Automation #OnlineBusiness #SolopreNeur #AIcourse"
     )
 
-    general = (
-        f"New digital product: \"{topic}\".\n"
-        f"Covers: {', '.join(titles[:3])}.\n"
-        f"AI-generated and ready to publish."
+    twitter_x = (
+        f"Just built \"{topic}\" with AI in 90 seconds 🚀\n\n"
+        f"{'📌 ' + titles[0] if titles else topic}\n\n"
+        f"Full guide · Ready to sell · Link in bio\n\n"
+        f"#AI #DigitalProducts #SolopreNeur #PassiveIncome"
     )[:280]
 
-    return [bluesky, instagram, general]
+    facebook = (
+        f"Excited to share my latest digital product: \"{topic}\" 🚀\n\n"
+        f"This guide covers:\n{bullet_lines}\n\n"
+        f"Whether you're just starting out or looking to level up, this resource walks you through every step.\n\n"
+        f"Drop a comment if you'd like to know more! 👇"
+    )
+
+    japanese = (
+        f"【新作】「{topic}」のデジタル商品を作りました🚀\n\n"
+        + "\n".join(f"📌 {t}" for t in titles[:3]) +
+        f"\n\nAIで90秒生成・すぐに販売可能です✨\n\n"
+        f"#AI #副業 #デジタル商品 #自動化 #AIビジネス"
+    )[:280]
+
+    return [bluesky, instagram, twitter_x, facebook, japanese]
