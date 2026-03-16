@@ -415,7 +415,12 @@ const SageOS = () => {
             setGenerateData(courseData);
             setEditedSections((courseData.sections || []).map(s => ({ ...s })));
             setEditedSalesPage(courseData.sales_page || '');
-            setEditedCaptions((courseData.sections || []).slice(0, 3).map(s => s.content?.slice(0, 280) || ''));
+            // Use pipeline-generated SNS captions (proper marketing copy) when available
+            const snsCaptions = courseData.whop_captions
+                ? [courseData.whop_captions.bluesky, courseData.whop_captions.instagram, '']
+                : courseData.sns_captions
+                    || (courseData.sections || []).slice(0, 3).map(s => s.content?.slice(0, 280) || '');
+            setEditedCaptions(snsCaptions);
             setSectionInstructions({});
             setExpandedSection(0);
             setContentTab('blog');
@@ -555,8 +560,8 @@ const SageOS = () => {
     const handlePublishBluesky = async () => {
         setPublishChecklist(p => ({ ...p, bluesky: 'running' }));
         try {
-            const text = editedSections.map(s => `${s.title}\n\n${s.content}`).join('\n\n');
-            await api.post('/api/bluesky/post', { content: text });
+            const caption = editedCaptions[0] || (editedSections[0]?.content?.slice(0, 280) ?? '');
+            await api.post('/api/bluesky/post', { content: caption });
             setPublishChecklist(p => ({ ...p, bluesky: 'done' }));
         } catch { setPublishChecklist(p => ({ ...p, bluesky: 'error' })); }
     };
@@ -564,14 +569,12 @@ const SageOS = () => {
     const handlePublishInstagram = async () => {
         setPublishChecklist(p => ({ ...p, instagram: 'running' }));
         try {
-            const caption = editedCaptions[0] || editedSections.map(s => s.title).join(' · ');
-            const imageUrl = generateData?.images?.[0] || null;
-            const res = await api.post('/api/instagram/post', { caption, image_url: imageUrl });
-            if (res.data?.status === 'success') {
-                setPublishChecklist(p => ({ ...p, instagram: 'done' }));
-            } else {
-                setPublishChecklist(p => ({ ...p, instagram: 'error' }));
-            }
+            const imageEntries = generateData?.images ? Object.entries(generateData.images) : [];
+            const firstImageUrl = imageEntries.length > 0 ? imageEntries[0][1]?.url : null;
+            if (!firstImageUrl) throw new Error('No image available');
+            const caption = editedCaptions[0] || (editedSections[0]?.content?.slice(0, 280) ?? '');
+            await api.post('/api/instagram/post', { image_url: firstImageUrl, caption });
+            setPublishChecklist(p => ({ ...p, instagram: 'done' }));
         } catch { setPublishChecklist(p => ({ ...p, instagram: 'error' })); }
     };
 

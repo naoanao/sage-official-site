@@ -772,7 +772,16 @@ def telegram_health():
 
 @app.route('/api/bluesky/status', methods=['GET'])
 def bluesky_status():
-    return jsonify({"status": "wired", "enabled": False, "reason": "legacy_restoration"}), 200
+    handle = os.getenv("BLUESKY_HANDLE") or os.getenv("BLUESKY_USERNAME")
+    password = os.getenv("BLUESKY_APP_PASSWORD") or os.getenv("BLUESKY_PASSWORD")
+    enabled = os.getenv("SAGE_ENABLE_BLUESKY") == "1"
+    configured = bool(handle and password)
+    return jsonify({
+        "status": "wired",
+        "enabled": enabled,
+        "configured": configured,
+        "reason": "restored"
+    }), 200
 
 @app.route('/api/notion/status', methods=['GET'])
 def notion_status():
@@ -812,8 +821,12 @@ def telegram_send():
 
 @app.route('/api/bluesky/post', methods=['POST'])
 def bluesky_post():
-    if os.getenv("SAGE_ENABLE_BLUESKY") != "1":
-        return jsonify({"error": "Feature disabled by default"}), 403
+    handle = os.getenv("BLUESKY_HANDLE") or os.getenv("BLUESKY_USERNAME")
+    password = os.getenv("BLUESKY_APP_PASSWORD") or os.getenv("BLUESKY_PASSWORD")
+    if os.getenv("SAGE_ENABLE_BLUESKY") == "0":
+        return jsonify({"error": "Feature disabled"}), 403
+    if not (handle and password):
+        return jsonify({"error": "Bluesky credentials not configured"}), 403
 
     request_data = request.get_json(silent=True) or {}
     text = request_data.get("text") or request_data.get("content")
@@ -911,9 +924,12 @@ def notion_write():
 def instagram_status():
     from backend.integrations.instagram_integration import InstagramBot
     bot = InstagramBot()
+    configured = bool(bot.access_token and bot.account_id)
+    enabled = os.getenv("SAGE_ENABLE_INSTAGRAM", "1") != "0"
     return jsonify({
-        "status": "wired", 
-        "configured": bot.verify_credentials(),
+        "status": "wired",
+        "enabled": enabled,
+        "configured": configured,
         "reason": "restored"
     }), 200
 

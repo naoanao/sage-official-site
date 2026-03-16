@@ -246,6 +246,7 @@ class CourseProductionPipeline:
                 "bonus_stack": product_extras.get("bonus_stack", []),
                 "product_hook": product_extras.get("product_hook", ""),
                 "launch_checklist": product_extras.get("launch_checklist", []),
+                "sns_captions": _build_sns_captions(topic, sections, sales_page or ""),
             }
 
             # QA Gate — must pass before brain training and final "VERIFIED" status
@@ -679,24 +680,76 @@ Format: Just the titles, one per line, no numbering.
 - Mistake 1: [specific mistake] → Fix: [specific fix]
 - Mistake 2: [specific mistake] → Fix: [specific fix]"""
 
-        # Build all prompts upfront (no cross-section dependency needed for speed)
-        opening_rules = []
-        for i, title in enumerate(outline, 1):
-            if i == 1:
-                opening_rules.append('RESULT-FIRST: The very first sentence must be: "By the end of this section, you will [one specific, measurable outcome]."')
-            else:
-                opening_rules.append(
-                    'HOOK OPENING: Open with a surprising statistic, a counter-intuitive claim, '
-                    'or a direct real-world scenario. Do NOT start with "By the end of this section..."'
-                )
+        # Static banned openers that sound identical across sections
+        if language == "ja":
+            STATIC_FORBIDDEN = [
+                "このセクションを読み終えると",
+                "このセクションでは",
+                "このセクションを終えると",
+                "このセクションが終わると",
+                "このセクションの終わりには",
+                "このセクションを読むと",
+                "はじめに",
+            ]
+        else:
+            STATIC_FORBIDDEN = [
+                "By the end of this section",
+                "In this section",
+                "This section will",
+                "This section covers",
+                "Welcome to",
+                "In this chapter",
+            ]
 
         prompts = []
         for i, title in enumerate(outline, 1):
-            prompts.append(f"""You are writing a high-converting digital course section. The reader bought this product to solve a real problem — give them immediately usable, specific knowledge.
+            # Section-position-aware opening rule
+            if i == 1:
+                if language == "ja":
+                    opening_rule = (
+                        f'0. 冒頭（第1セクション）: 「このセクションを読み終えると、[具体的な達成事項]ができるようになります」'
+                        f'という一文で始めてください。「わかる」「理解できる」は禁止。「できる」「作れる」「稼げる」など行動動詞を使う。'
+                    )
+                else:
+                    opening_rule = (
+                        '0. OPENER (section 1): Start with "By the end of this section, you will [one specific, measurable outcome]." '
+                        'Make the outcome concrete and verifiable — not vague like "understand" or "learn about".'
+                    )
+            else:
+                if language == "ja":
+                    opening_rule = (
+                        f'0. 冒頭フック（第{i}セクション / 全{len(outline)}セクション）: '
+                        f'「このセクションでは〜」「はじめに〜」は前のセクションで使用済みなので禁止。'
+                        f'代わりに以下のどれかで始めてください:\n'
+                        f'   a) このテーマに関する驚くべき数字・事実（例: 「日本の〇〇利用者の87%が〜」）\n'
+                        f'   b) 場面設定（「あなたが今〇〇の状況にいるとします...」）\n'
+                        f'   c) 常識を覆す主張（「多くの人は〜と思っているが、実は逆です」）\n'
+                        f'   d) 緊急性を生む具体的な金額・期間（「この1つの判断で月〇万円の差が出ます」）\n'
+                        f'   2〜3文目で「このセクションを読むと〇〇ができる」という達成事項を入れてください。'
+                    )
+                else:
+                    opening_rule = (
+                        f'0. UNIQUE OPENER (section {i} of {len(outline)}): '
+                        'Do NOT open with "By the end of this section" or "In this section" — '
+                        'those were used earlier. Instead open with ONE of:\n'
+                        '   a) A surprising statistic or counter-intuitive fact specific to this section topic\n'
+                        '   b) A vivid scenario: "Imagine you just [specific situation]..."\n'
+                        '   c) A provocative question that challenges a common assumption\n'
+                        '   d) A specific dollar amount, percentage, or time-frame that creates urgency\n'
+                        '   Then in sentences 2-3, state the outcome: what the reader will be able to DO by the end.'
+                    )
+
+            forbidden_hint = (
+                "\n\nCRITICAL — FORBIDDEN OPENING PHRASES (never start with these):\n"
+                + "\n".join(f'- "{p}"' for p in STATIC_FORBIDDEN)
+                + "\nEach section must open with a DISTINCT hook. Readers see all sections — identical openers kill engagement."
+            )
+
+            prompts.append(f"""You are writing one section of a high-converting digital course. The reader paid money for this — give them immediately usable, specific knowledge that justifies the purchase.
 {identity_context}
 
 COURSE TOPIC: {topic}
-SECTION ({i}/{len(outline)}): {title}
+SECTION {i} of {len(outline)}: {title}
 {brain_context}
 {research_context}
 {semantic_context}
@@ -704,19 +757,20 @@ SECTION ({i}/{len(outline)}): {title}
 ## CONTENT RULES (strictly enforced)
 
 ### What TO include:
-0. {opening_rules[i-1]}
+{opening_rule}
 1. RESEARCH MATCH: If PRIMARY RESEARCH covers "{title}", cite specific data, dates, and place names from it directly.
    If research is off-topic, ignore it and use your own expertise.
 2. REAL NUMBERS: Include at least 2 specific data points (percentages, times, prices, distances, counts).
 3. ACTIONABLE STEPS: A numbered action list (3-5 items), each with estimated time required.
 4. COMMON MISTAKES: List 2-3 mistakes beginners make and how to avoid them.
 5. QUICK WIN: One thing the reader can do in under 10 minutes to see immediate progress.
-6. SPECIFIC EXAMPLES: Name at least one real tool, a real company, or a specific dollar amount.
+6. SPECIFIC EXAMPLES: Name at least one real tool (e.g. Notion, Airtable, ChatGPT, Canva), a real company, or a specific dollar amount. Generic advice without concrete names/numbers is rejected.
+7. SECTION IDENTITY: This section must be clearly distinct from the others. The opening paragraph must NOT be paraphraseable as "here is an introduction to {title}."
 
 ### What NOT to include:
 - Generic statements like "important", "essential", "you should know..."
 - Filler paragraphs without specific information
-- Theoretical content without practical application{lang_instruction}
+- Theoretical content without practical application{lang_instruction}{forbidden_hint}
 
 {section_structure}
 
@@ -1521,3 +1575,33 @@ Output valid JSON only (no code blocks):
                 ],
                 "launch_checklist": ["Update Gumroad listing", "Publish blog post", "Post to Bluesky", "Post to Instagram", "Verify price & go live"],
             }
+
+
+def _build_sns_captions(topic: str, sections: list, sales_page: str = "") -> list:  # noqa: ARG001
+    """Generate ready-to-post SNS captions from course content.
+    Returns [bluesky_caption, instagram_caption, general_caption] (max 280/2200/280 chars).
+    """
+    titles = [s.get('title', '') for s in sections[:5]]
+    bullet_lines = "\n".join(f"✅ {t}" for t in titles[:4])
+
+    bluesky = (
+        f"🚀 New product just built: \"{topic}\"\n\n"
+        + "\n".join(f"📌 {t}" for t in titles[:3]) +
+        "\n\n💡 AI-generated · Ready to sell\n\n"
+        "#AI #DigitalProduct #PassiveIncome #SolopreNeur"
+    )[:280]
+
+    instagram = (
+        f"🚀 Just created: \"{topic}\"\n\n"
+        f"What's inside:\n{bullet_lines}\n\n"
+        f"💰 Available as a digital download · Link in bio 👆\n\n"
+        f"#AItools #PassiveIncome #DigitalProduct #Automation #OnlineBusiness #SolopreNeur #AIcourse"
+    )
+
+    general = (
+        f"New digital product: \"{topic}\".\n"
+        f"Covers: {', '.join(titles[:3])}.\n"
+        f"AI-generated and ready to publish."
+    )[:280]
+
+    return [bluesky, instagram, general]
