@@ -440,10 +440,11 @@ const SageOS = () => {
         }
     };
 
-    const handleRewriteSection = async (idx) => {
-        const instruction = sectionInstructions[idx] || '';
+    const handleRewriteSection = async (idx, instructionOverride) => {
+        const instruction = instructionOverride || sectionInstructions[idx] || '';
         if (!instruction.trim()) return;
         setRewritingIdx(idx);
+        setRewriteError(null);
         try {
             const res = await apiRewrite.post('/api/productize/rewrite', {
                 content: editedSections[idx].content,
@@ -452,7 +453,9 @@ const SageOS = () => {
             });
             if (res.data?.status === 'success') {
                 setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, content: res.data.rewritten } : s));
-                setSectionInstructions(prev => ({ ...prev, [idx]: '' }));
+                if (!instructionOverride) setSectionInstructions(prev => ({ ...prev, [idx]: '' }));
+            } else {
+                setRewriteError(`Rewrite failed: ${res.data?.error || 'Unknown error'}`);
             }
         } catch (e) {
             const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
@@ -1461,6 +1464,20 @@ const SageOS = () => {
                                                                         Rewrite
                                                                     </button>
                                                                 </div>
+                                                                {analyzeContentQuality(section.content).score < 50 && (
+                                                                    <button
+                                                                        onClick={() => handleRewriteSection(idx, lang === 'ja' || monetizeTopic.match(/[\u3000-\u9fff]/)
+                                                                            ? '具体的な数字・行動ステップ・よくある失敗例を追加して、このセクションをより詳しく実践的に書き直してください。最低600文字以上。'
+                                                                            : 'Add specific numbers, concrete action steps, and common mistakes to avoid. Expand to at least 600 characters with detailed, practical content.')}
+                                                                        disabled={rewritingIdx === idx}
+                                                                        className="w-full px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 disabled:opacity-40 text-amber-300 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all"
+                                                                    >
+                                                                        {rewritingIdx === idx
+                                                                            ? <div className="w-3 h-3 rounded-full border border-amber-300 border-t-transparent animate-spin" />
+                                                                            : '🔧'}
+                                                                        Auto-improve (Q&lt;50)
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
