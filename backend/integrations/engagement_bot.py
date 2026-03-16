@@ -174,9 +174,26 @@ def run_bluesky_engagement(bluesky_client, groq_client, state: dict) -> dict:
 # Instagram Engagement
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _instagram_like_comment(base_url: str, comment_id: str, access_token: str) -> bool:
+    """Like a single Instagram comment. Returns True on success."""
+    import requests
+    try:
+        resp = requests.post(
+            f"{base_url}/{comment_id}/likes",
+            data={"access_token": access_token},
+            timeout=15,
+        )
+        return resp.status_code == 200 and resp.json().get("success", False)
+    except Exception as e:
+        logger.warning(f"[Instagram] Like comment {comment_id} failed: {e}")
+        return False
+
+
 def run_instagram_engagement(groq_client, state: dict) -> dict:
     """
-    Read comments on own posts and reply with AI empathy responses.
+    For each comment on own posts:
+      1. ❤️  Like the comment  (POST /{comment-id}/likes)
+      2. 💬 AI empathy reply   (POST /{comment-id}/replies)
     Uses Instagram Graph API (Business/Creator account).
     """
     import requests
@@ -191,6 +208,7 @@ def run_instagram_engagement(groq_client, state: dict) -> dict:
         return state
 
     replied = set(state.get("replied_comments", []))
+    liked  = set(state.get("liked_comments", []))
 
     try:
         # Get recent posts (limit 10)
@@ -207,6 +225,7 @@ def run_instagram_engagement(groq_client, state: dict) -> dict:
         return state
 
     new_replied = set()
+    new_liked   = set()
 
     for post in posts:
         post_id = post.get("id")
@@ -224,39 +243,51 @@ def run_instagram_engagement(groq_client, state: dict) -> dict:
             continue
 
         for comment in comments:
-            cid = comment.get("id")
-            if not cid or cid in replied:
-                continue
-
-            comment_text = comment.get("text", "")
+            cid      = comment.get("id")
             username = comment.get("username", "user")
+            comment_text = comment.get("text", "").strip()
 
-            if not comment_text.strip():
+            if not cid or not comment_text:
                 continue
 
-            # Skip our own replies (avoid loops) — basic heuristic
+            # Skip own account to avoid self-like / reply loops
             our_account_keywords = ["sage", "sageai"]
-            if any(kw in username.lower() for kw in our_account_keywords):
+            is_own = any(kw in username.lower() for kw in our_account_keywords)
+            if is_own:
+                new_liked.add(cid)
                 new_replied.add(cid)
                 continue
 
-            try:
-                reply_text = _generate_reply(groq_client, comment_text, username,
-                                             context="instagram")
-                requests.post(
-                    f"{base_url}/{cid}/replies",
-                    data={"message": reply_text, "access_token": access_token},
-                    timeout=15,
-                )
-                new_replied.add(cid)
-                logger.info(f"[Instagram] 💬 Replied to @{username}: {reply_text[:60]}...")
-                time.sleep(1.5)
-            except Exception as e:
-                logger.warning(f"[Instagram] Reply failed for comment {cid}: {e}")
+            # ── Step 1: Like the comment ──────────────────────────────────
+            if cid not in liked:
+                ok = _instagram_like_comment(base_url, cid, access_token)
+                if ok:
+                    new_liked.add(cid)
+                    logger.info(f"[Instagram] ❤️  Liked comment by @{username}")
+                time.sleep(0.8)
 
-    state["replied_comments"] = list(replied | new_replied)
-    state["replied_comments"] = state["replied_comments"][-1000:]
-    logger.info(f"[Instagram] Engagement cycle done. Replied to {len(new_replied)} new comments.")
+            # ── Step 2: AI reply to the comment ──────────────────────────
+            if cid not in replied:
+                try:
+                    reply_text = _generate_reply(groq_client, comment_text, username,
+                                                 context="instagram")
+                    requests.post(
+                        f"{base_url}/{cid}/replies",
+                        data={"message": reply_text, "access_token": access_token},
+                        timeout=15,
+                    )
+                    new_replied.add(cid)
+                    logger.info(f"[Instagram] 💬 Replied to @{username}: {reply_text[:60]}...")
+                    time.sleep(1.5)
+                except Exception as e:
+                    logger.warning(f"[Instagram] Reply failed for comment {cid}: {e}")
+
+    state["replied_comments"] = list((replied | new_replied))[-1000:]
+    state["liked_comments"]   = list((liked   | new_liked))[-1000:]
+    logger.info(
+        f"[Instagram] Engagement cycle done. "
+        f"Liked {len(new_liked)} / Replied {len(new_replied)} new comments."
+    )
     return state
 
 
