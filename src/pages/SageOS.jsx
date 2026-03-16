@@ -1611,7 +1611,8 @@ const SageOS = () => {
                                                                         onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
                                                                         onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
                                                                         placeholder="Rewrite this section only (e.g. add more specific numbers)"
-                                                                        className={`flex-1 bg-black/40 border rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600 transition-all ${rewriteEmptyIdx === idx ? 'border-red-500 animate-pulse' : 'border-white/10'}`}
+                                                                        style={{ borderColor: rewriteEmptyIdx === idx ? '#ef4444' : undefined }}
+                                                                        className={`flex-1 bg-black/40 border rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600 transition-colors ${rewriteEmptyIdx === idx ? 'border-red-500' : 'border-white/10'}`}
                                                                     />
                                                                     <button
                                                                         onClick={() => handleRewriteSection(idx)}
@@ -1625,7 +1626,7 @@ const SageOS = () => {
                                                                     </button>
                                                                 </div>
                                                                 {rewriteEmptyIdx === idx && (
-                                                                    <p className="text-red-400 text-xs -mt-1">⚠ 指示を入力してください / Enter an instruction</p>
+                                                                    <p style={{ color: '#f87171' }} className="text-xs mt-1">⚠ 指示を入力してください / Enter an instruction</p>
                                                                 )}
                                                                 {analyzeContentQuality(section.content).score < 75 && (
                                                                     <button
@@ -1707,7 +1708,8 @@ const SageOS = () => {
                                                             onChange={e => { setGlobalInstruction(e.target.value); setGlobalEmptyTried(false); }}
                                                             onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
                                                             placeholder="Custom instruction (e.g. make it more casual / translate to English)"
-                                                            className={`flex-1 bg-black/40 border rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600 transition-all ${globalEmptyTried ? 'border-red-500 animate-pulse' : 'border-purple-500/30'}`}
+                                                            style={{ borderColor: globalEmptyTried ? '#ef4444' : undefined }}
+                                                            className={`flex-1 bg-black/40 border rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600 transition-colors ${globalEmptyTried ? 'border-red-500' : 'border-purple-500/30'}`}
                                                         />
                                                         <button
                                                             onClick={() => handleRewriteAll()}
@@ -1720,7 +1722,7 @@ const SageOS = () => {
                                                         </button>
                                                     </div>
                                                     {globalEmptyTried && (
-                                                        <p className="text-red-400 text-xs mt-1">⚠ 指示を入力してください / Enter an instruction</p>
+                                                        <p style={{ color: '#f87171' }} className="text-xs mt-1">⚠ 指示を入力してください / Enter an instruction</p>
                                                     )}
                                                 </div>
                                             )}
