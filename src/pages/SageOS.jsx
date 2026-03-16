@@ -226,6 +226,7 @@ const SageOS = () => {
     const [rewriteError, setRewriteError] = useState(null);
     const [rewriteEmptyIdx, setRewriteEmptyIdx] = useState(null); // shake effect for empty instruction
     const [regeneratingSales, setRegeneratingSales] = useState(false);
+    const [globalEmptyTried, setGlobalEmptyTried] = useState(false);
     const [expandedSection, setExpandedSection] = useState(null);
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
     const [isDemo, setIsDemo] = useState(false);
@@ -565,7 +566,11 @@ const SageOS = () => {
 
     const handleRewriteAll = async (overrideInstruction, tonePreset) => {
         const instruction = overrideInstruction || globalInstruction;
-        if (!tonePreset && !instruction.trim()) return;
+        if (!tonePreset && !instruction.trim()) {
+            setGlobalEmptyTried(true);
+            setTimeout(() => setGlobalEmptyTried(false), 2500);
+            return;
+        }
         if (overrideInstruction && !tonePreset) setGlobalInstruction(overrideInstruction);
         setGlobalRewriting(true);
         setRewriteError(null);
@@ -1699,14 +1704,14 @@ const SageOS = () => {
                                                         <input
                                                             type="text"
                                                             value={globalInstruction}
-                                                            onChange={e => setGlobalInstruction(e.target.value)}
+                                                            onChange={e => { setGlobalInstruction(e.target.value); setGlobalEmptyTried(false); }}
                                                             onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
                                                             placeholder="Custom instruction (e.g. make it more casual / translate to English)"
-                                                            className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
+                                                            className={`flex-1 bg-black/40 border rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600 transition-all ${globalEmptyTried ? 'border-red-500 animate-pulse' : 'border-purple-500/30'}`}
                                                         />
                                                         <button
                                                             onClick={() => handleRewriteAll()}
-                                                            disabled={!globalInstruction.trim() || globalRewriting}
+                                                            disabled={globalRewriting}
                                                             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
                                                         >
                                                             {globalRewriting
@@ -1714,6 +1719,9 @@ const SageOS = () => {
                                                                 : <><FiPlay /> Apply</>}
                                                         </button>
                                                     </div>
+                                                    {globalEmptyTried && (
+                                                        <p className="text-red-400 text-xs mt-1">⚠ 指示を入力してください / Enter an instruction</p>
+                                                    )}
                                                 </div>
                                             )}
 
