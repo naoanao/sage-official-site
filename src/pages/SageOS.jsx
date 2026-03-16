@@ -133,6 +133,7 @@ const SageOS = () => {
     const [rewritingPreset, setRewritingPreset] = useState(null); // preset.id currently running
     const [presetResults, setPresetResults] = useState({}); // { [presetId]: 'success'|'error' }
     const [rewriteError, setRewriteError] = useState(null);
+    const [rewriteEmptyIdx, setRewriteEmptyIdx] = useState(null); // shake effect for empty instruction
     const [expandedSection, setExpandedSection] = useState(null);
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
     const [isDemo, setIsDemo] = useState(false);
@@ -442,7 +443,11 @@ const SageOS = () => {
 
     const handleRewriteSection = async (idx, instructionOverride) => {
         const instruction = instructionOverride || sectionInstructions[idx] || '';
-        if (!instruction.trim()) return;
+        if (!instruction.trim()) {
+            setRewriteEmptyIdx(idx);
+            setTimeout(() => setRewriteEmptyIdx(null), 600);
+            return;
+        }
         setRewritingIdx(idx);
         setRewriteError(null);
         try {
@@ -1451,7 +1456,7 @@ const SageOS = () => {
                                                                         onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
                                                                         onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
                                                                         placeholder="Rewrite this section only (e.g. add more specific numbers)"
-                                                                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600"
+                                                                        className={`flex-1 bg-black/40 border rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600 transition-all ${rewriteEmptyIdx === idx ? 'border-red-500 animate-pulse' : 'border-white/10'}`}
                                                                     />
                                                                     <button
                                                                         onClick={() => handleRewriteSection(idx)}
@@ -1661,7 +1666,15 @@ const SageOS = () => {
                                                         </div>
                                                     )}
                                                     {contentTab === 'sales' && (
-                                                        <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">{editedSalesPage}</div>
+                                                        <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                                                            {editedSalesPage || (
+                                                                <div className="flex flex-col items-center gap-3 py-8 text-center">
+                                                                    <span className="text-2xl">📄</span>
+                                                                    <div className="text-slate-400 text-xs">Sales page not generated yet.</div>
+                                                                    <div className="text-slate-600 text-xs">Re-run the pipeline — LLM may have been rate-limited during generation.</div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     )}
                                                     {contentTab === 'images' && (
                                                         <div className="grid grid-cols-2 gap-2">
