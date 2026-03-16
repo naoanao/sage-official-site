@@ -571,7 +571,6 @@ const SageOS = () => {
             setTimeout(() => setGlobalEmptyTried(false), 2500);
             return;
         }
-        if (overrideInstruction && !tonePreset) setGlobalInstruction(overrideInstruction);
         setGlobalRewriting(true);
         setRewriteError(null);
         try {
@@ -606,7 +605,6 @@ const SageOS = () => {
             if (failCount > 0) {
                 setRewriteError(`${failCount} section(s) failed to rewrite. Others were updated.`);
             }
-            setGlobalInstruction('');
         } catch (e) {
             const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
             const msg = isTimeout
@@ -617,6 +615,7 @@ const SageOS = () => {
             throw e; // let applyPreset catch it for per-button error state
         } finally {
             setGlobalRewriting(false);
+            setGlobalInstruction(''); // always clear — moved from try to prevent stale state on failure
         }
     };
 
