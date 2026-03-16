@@ -218,6 +218,31 @@ class CourseProductionPipeline:
             sales_page = self._generate_sales_page(safe_topic, sections, research_data, language=language)
             if sales_page:
                 logger.info(f"✅ Sales page generated ({len(sales_page)} chars)")
+            else:
+                logger.warning("⚠️ Sales page generation returned None — using fallback template")
+                section_titles = "\n".join(f"- {s['title']}" for s in sections)
+                if language == "ja":
+                    sales_page = (
+                        f"# {safe_topic} — 完全ガイド\n\n"
+                        f"## このガイドで学べること\n\n{section_titles}\n\n"
+                        f"## こんな人におすすめ\n\n"
+                        f"- {safe_topic}を体系的に学びたい方\n"
+                        f"- 実践的なノウハウを身につけたい方\n"
+                        f"- 成果を出すための具体的な手順を知りたい方\n\n"
+                        f"## 価格・購入\n\n"
+                        f"このガイドは現在販売準備中です。詳細は近日公開予定です。\n"
+                    )
+                else:
+                    sales_page = (
+                        f"# {safe_topic} — Complete Guide\n\n"
+                        f"## What You'll Learn\n\n{section_titles}\n\n"
+                        f"## Who This Is For\n\n"
+                        f"- Anyone who wants to master {safe_topic} systematically\n"
+                        f"- People looking for practical, actionable knowledge\n"
+                        f"- Those who want specific steps to get results fast\n\n"
+                        f"## Pricing\n\n"
+                        f"This guide is currently in preparation. Details coming soon.\n"
+                    )
             
             # Step 5: Save to Obsidian
             note_path = self._save_to_obsidian(safe_topic, outline, sections, slides, sales_page, research_data)
@@ -803,6 +828,13 @@ Content:""")
                 time.sleep(20)
             logger.info(f"📝 Generating section {idx+1}/{len(outline)}: {outline[idx]}")
             content = self._invoke_llm(prompt)
+            # Retry if content is too short (LLM truncated or rate-limited)
+            if content and len(content) < 300:
+                logger.warning(f"⚠️ Section {idx+1} too short ({len(content)} chars), retrying with length hint")
+                retry_prompt = prompt + "\n\n[IMPORTANT: The response must be at minimum 600 characters. Be detailed and comprehensive. Do not truncate.]"
+                retry_content = self._invoke_llm(retry_prompt)
+                if retry_content and len(retry_content) > len(content):
+                    content = retry_content
             if not content:
                 title = outline[idx]
                 if language == "en":
