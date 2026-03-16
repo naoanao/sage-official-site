@@ -839,6 +839,9 @@ Content:""")
         t = topic.lower()
         if any(k in t for k in ["npo","ngo","nonprofit","非営利","ボランティア","社会貢献","チャリティ","charity","volunteer","community","コミュニティ","市民","civic"]):
             return "volunteer community nonprofit charity teamwork"
+        # Publishing / e-book / Kindle — check BEFORE generic "money" to get relevant images
+        if any(k in t for k in ["kindle","kdp","出版","ebook","e-book","電子書籍","著作","ロイヤルティ","royalty","publish","publishing","amazon publish","book","writing","author","著者","執筆","manuscript","原稿"]):
+            return "book publishing author writing kindle ebook"
         if any(k in t for k in ["コンテンツ","content marketing","sns","ソーシャルメディア","ブログ","blog","youtube","インフルエンサー","influencer","マーケティング","marketing","creator","クリエイター"]):
             return "content creator media digital marketing"
         if any(k in t for k in ["japan","japanese","日本","tokyo","osaka","kyoto","和","日本語","nippon"]):

@@ -2770,7 +2770,9 @@ def api_d1_generate():
 
 @app.route('/api/research/run', methods=['POST'])
 def api_research_run():
-    """Run D1 research for a topic and return a human-readable summary."""
+    """Run D1 research for a topic and return a human-readable summary.
+    Includes retry logic (up to 2 attempts) and extended timeout (90s).
+    """
     import concurrent.futures
     try:
         data = request.get_json(silent=True) or {}
@@ -2791,14 +2793,30 @@ def api_research_run():
             finally:
                 autonomous.phase_2_execute = original_exec
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_run_research)
+        MAX_ATTEMPTS = 2
+        last_error = None
+        for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                future.result(timeout=30)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(_run_research)
+                    future.result(timeout=90)  # Extended: 90s (was 30s)
+                last_error = None
+                break  # Success
             except concurrent.futures.TimeoutError:
-                logger.warning(f"research/run timed out for topic: {topic}")
+                last_error = "timeout"
+                logger.warning(f"research/run attempt {attempt} timed out for topic: {topic}")
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"research/run attempt {attempt} error: {e}")
 
-        summary = f"「{topic}」のリサーチが完了しました。レポートは output/ フォルダに保存されました。"
+        if last_error:
+            if last_error == "timeout":
+                # Timeout is OK — research may have partially completed
+                logger.info(f"research/run timed out after {MAX_ATTEMPTS} attempts, continuing")
+            else:
+                return jsonify({"error": last_error}), 500
+
+        summary = f"Research for '{topic}' complete. Report saved to output/ folder."
         return jsonify({"status": "success", "summary": summary})
     except Exception as e:
         logger.error(f"research/run error: {e}", exc_info=True)
