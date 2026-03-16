@@ -225,6 +225,7 @@ const SageOS = () => {
     const [presetResults, setPresetResults] = useState({}); // { [presetId]: 'success'|'error' }
     const [rewriteError, setRewriteError] = useState(null);
     const [rewriteEmptyIdx, setRewriteEmptyIdx] = useState(null); // shake effect for empty instruction
+    const [regeneratingSales, setRegeneratingSales] = useState(false);
     const [expandedSection, setExpandedSection] = useState(null);
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
     const [isDemo, setIsDemo] = useState(false);
@@ -537,7 +538,7 @@ const SageOS = () => {
         const instruction = instructionOverride || sectionInstructions[idx] || '';
         if (!instruction.trim()) {
             setRewriteEmptyIdx(idx);
-            setTimeout(() => setRewriteEmptyIdx(null), 600);
+            setTimeout(() => setRewriteEmptyIdx(null), 2500);
             return;
         }
         setRewritingIdx(idx);
@@ -611,6 +612,32 @@ const SageOS = () => {
             throw e; // let applyPreset catch it for per-button error state
         } finally {
             setGlobalRewriting(false);
+        }
+    };
+
+    const handleRegenerateSalesPage = async () => {
+        setRegeneratingSales(true);
+        setRewriteError(null);
+        const isJa = lang === 'ja' || !!(monetizeTopic || '').match(/[\u3000-\u9fff]/);
+        const combined = editedSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n').slice(0, 2500);
+        const instruction = isJa
+            ? 'この内容を元に、Gumroadで販売できる魅力的なセールスページを作成してください。キャッチコピー・提供内容リスト・購入後のベネフィット・CTA（「今すぐ購入」）を含めてください。'
+            : 'Based on this content, write a compelling Gumroad sales page with a headline, bullet-point benefits, and a clear CTA (Buy Now).';
+        try {
+            const res = await apiRewrite.post('/api/productize/rewrite', {
+                content: combined,
+                instruction,
+                language: isJa ? 'ja' : 'en',
+            });
+            if (res.data?.status === 'success') {
+                setEditedSalesPage(res.data.rewritten);
+            } else {
+                setRewriteError('Sales page regeneration failed: ' + (res.data?.error || 'Unknown error'));
+            }
+        } catch (e) {
+            setRewriteError('Sales page regeneration failed: ' + (e?.message || 'Network error'));
+        } finally {
+            setRegeneratingSales(false);
         }
     };
 
@@ -1071,7 +1098,12 @@ const SageOS = () => {
                                                     {msg.role === 'sage' && msg.id !== messages.filter(m => m.role === 'sage').slice(-1)[0]?.id && (
                                                         <div className="mt-2 ml-1">
                                                             <button
-                                                                onClick={() => convertToProduct(msg.content)}
+                                                                onClick={() => {
+                                                                    const msgIdx = messages.findIndex(m => m.id === msg.id);
+                                                                    const prevUser = messages.slice(0, msgIdx).filter(m => m.role === 'user').slice(-1)[0];
+                                                                    const topic = prevUser?.content || extractTopic(messages);
+                                                                    convertToProduct(topic);
+                                                                }}
                                                                 className="text-xs bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-colors"
                                                             >
                                                                 <FiDollarSign /> Productize This (D2)
@@ -1578,7 +1610,7 @@ const SageOS = () => {
                                                                     />
                                                                     <button
                                                                         onClick={() => handleRewriteSection(idx)}
-                                                                        disabled={!sectionInstructions[idx]?.trim() || rewritingIdx === idx}
+                                                                        disabled={rewritingIdx === idx}
                                                                         className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all whitespace-nowrap"
                                                                     >
                                                                         {rewritingIdx === idx
@@ -1587,6 +1619,9 @@ const SageOS = () => {
                                                                         Rewrite
                                                                     </button>
                                                                 </div>
+                                                                {rewriteEmptyIdx === idx && (
+                                                                    <p className="text-red-400 text-xs -mt-1">⚠ 指示を入力してください / Enter an instruction</p>
+                                                                )}
                                                                 {analyzeContentQuality(section.content).score < 75 && (
                                                                     <button
                                                                         onClick={() => {
@@ -1790,7 +1825,16 @@ const SageOS = () => {
                                                                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                                                                     <span className="text-2xl">📄</span>
                                                                     <div className="text-slate-400 text-xs">Sales page not generated yet.</div>
-                                                                    <div className="text-slate-600 text-xs">Re-run the pipeline — LLM may have been rate-limited during generation.</div>
+                                                                    <div className="text-slate-600 text-xs mb-1">LLM may have been rate-limited. Regenerate from your blog sections:</div>
+                                                                    <button
+                                                                        onClick={handleRegenerateSalesPage}
+                                                                        disabled={regeneratingSales || editedSections.length === 0}
+                                                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+                                                                    >
+                                                                        {regeneratingSales
+                                                                            ? <><div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />Generating...</>
+                                                                            : <>📝 Regenerate Sales Page</>}
+                                                                    </button>
                                                                 </div>
                                                             )}
                                                         </div>
