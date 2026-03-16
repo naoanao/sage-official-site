@@ -1,6 +1,7 @@
 import os
 import base64
 import logging
+import random
 import requests
 
 logger = logging.getLogger(__name__)
@@ -148,6 +149,20 @@ class ImageGenerationEnhanced:
     # Public interface
     # ------------------------------------------------------------------
 
+    def _pollinations_url(self, prompt: str, width: int = 1200, height: int = 675) -> str:
+        """Tier 3 fallback: Pollinations.ai — free AI image generation, no API key required.
+        Returns a direct URL that generates an AI image from the prompt.
+        Much more content-relevant than LoremFlickr stock photos.
+        """
+        encoded = requests.utils.quote(prompt)
+        seed = random.randint(1, 999999)
+        url = (
+            f"https://image.pollinations.ai/prompt/{encoded}"
+            f"?seed={seed}&width={width}&height={height}&nologo=true"
+        )
+        logger.info(f"Image ready (Pollinations.ai): seed={seed}, prompt={prompt[:60]}...")
+        return url
+
     def _loremflickr_url(self, text: str, width: int = 1200, height: int = 675, topic_keywords: str = None, section_index: int = 0) -> str:
         """Tier 3 fallback: LoremFlickr keyword URL (no API key required, always works).
 
@@ -198,12 +213,12 @@ class ImageGenerationEnhanced:
     def generate_social_media_image(self, text: str, platform: str = "instagram", topic_keywords: str = None, section_index: int = 0) -> str | None:
         """
         Generate a social media image and return a permanent public URL.
-        1. HuggingFace Flux (HF_TOKEN required) → imgbb
+        1. HuggingFace SDXL (HF_TOKEN required) → imgbb
         2. Gemini → imgbb
-        3. LoremFlickr keyword URL (always succeeds)
+        3. LoremFlickr (no API key, always works, Instagram-compatible)
 
         section_index: pass the 0-based position of the section so each section
-                       gets a unique LoremFlickr seed (avoids identical fallback images).
+                       gets a unique seed (avoids identical fallback images).
         """
         width, height = PLATFORM_SIZES.get(platform.lower(), (1080, 1080))
         prompt = (
@@ -230,8 +245,12 @@ class ImageGenerationEnhanced:
                 return public_url
             logger.warning("imgbb upload failed after Gemini generation.")
 
-        # Tier 3: LoremFlickr (always returns a URL — keyword-based)
+        # Tier 3: LoremFlickr (always works, Instagram-compatible public URL)
         logger.warning(f"HF+Gemini failed, falling back to LoremFlickr for: {text[:40]}")
+        return self._loremflickr_url(text, width, height, topic_keywords=topic_keywords, section_index=section_index)
+
+    def _loremflickr_url_fallback(self, text: str, width: int = 1200, height: int = 675, topic_keywords: str = None, section_index: int = 0) -> str:
+        """Emergency Tier 4 fallback kept for reference (not called in normal flow)."""
         return self._loremflickr_url(text, width, height, topic_keywords=topic_keywords, section_index=section_index)
 
     def generate_blog_image(self, topic: str, style: str = "realistic") -> str | None:

@@ -74,8 +74,8 @@ class CourseProductionPipeline:
                     err = str(e).lower()
                     is_rate_limit = any(k in err for k in _rate_limit_keywords)
                     if is_rate_limit and attempt == 0:
-                        logger.warning("Groq TPM/quota limit — waiting 15s then retrying once")
-                        time.sleep(15)
+                        logger.warning("Groq TPM/quota limit — waiting 28s then retrying once")
+                        time.sleep(28)
                         continue
                     logger.warning(f"Primary LLM failed (attempt {attempt + 1}): {e}")
                     break
@@ -145,7 +145,7 @@ class CourseProductionPipeline:
             f"Your voice is {tone}. Write all content from this perspective."
         )
 
-    def generate_course(self, topic: str, num_sections: int = 5, generate_narration: bool = False, reference_audio: str = None, language: str = 'auto', **kwargs) -> Dict:
+    def generate_course(self, topic: str, num_sections: int = 3, generate_narration: bool = False, reference_audio: str = None, language: str = 'auto', **kwargs) -> Dict:
         """
         Generate complete course
 
@@ -228,6 +228,10 @@ class CourseProductionPipeline:
             if blog_post:
                 logger.info(f"✅ Blog post generated ({len(blog_post)} chars)")
 
+            # Step 7: Generate product package extras (bonus stack, product hook, launch checklist)
+            product_extras = self._generate_product_extras(safe_topic, sections, language=language)
+            logger.info(f"✅ Product extras generated")
+
             result = {
                 "status": "success",
                 "topic": topic,
@@ -239,6 +243,9 @@ class CourseProductionPipeline:
                 "blog_post": blog_post,
                 "research_source": research_data['filename'] if research_data else None,
                 "obsidian_note": str(note_path),
+                "bonus_stack": product_extras.get("bonus_stack", []),
+                "product_hook": product_extras.get("product_hook", ""),
+                "launch_checklist": product_extras.get("launch_checklist", []),
                 "sns_captions": _build_sns_captions(topic, sections, sales_page or ""),
             }
 
@@ -673,8 +680,6 @@ Format: Just the titles, one per line, no numbering.
 - Mistake 1: [specific mistake] → Fix: [specific fix]
 - Mistake 2: [specific mistake] → Fix: [specific fix]"""
 
-        used_intro_phrases: list = []
-
         # Static banned openers that sound identical across sections
         if language == "ja":
             STATIC_FORBIDDEN = [
@@ -696,9 +701,8 @@ Format: Just the titles, one per line, no numbering.
                 "In this chapter",
             ]
 
+        prompts = []
         for i, title in enumerate(outline, 1):
-            logger.info(f"📝 Generating section {i}/{len(outline)}: {title}")
-
             # Section-position-aware opening rule
             if i == 1:
                 if language == "ja":
@@ -735,17 +739,13 @@ Format: Just the titles, one per line, no numbering.
                         '   Then in sentences 2-3, state the outcome: what the reader will be able to DO by the end.'
                     )
 
-            # Dynamically forbid already-used opening phrases
-            forbidden_lines_parts = [f'- "{p}"' for p in STATIC_FORBIDDEN]
-            if used_intro_phrases:
-                forbidden_lines_parts += [f'- "{p[:90]}..."' for p in used_intro_phrases[-4:]]
             forbidden_hint = (
                 "\n\nCRITICAL — FORBIDDEN OPENING PHRASES (never start with these):\n"
-                + "\n".join(forbidden_lines_parts)
+                + "\n".join(f'- "{p}"' for p in STATIC_FORBIDDEN)
                 + "\nEach section must open with a DISTINCT hook. Readers see all sections — identical openers kill engagement."
             )
 
-            prompt = f"""You are writing one section of a high-converting digital course. The reader paid money for this — give them immediately usable, specific knowledge that justifies the purchase.
+            prompts.append(f"""You are writing one section of a high-converting digital course. The reader paid money for this — give them immediately usable, specific knowledge that justifies the purchase.
 {identity_context}
 
 COURSE TOPIC: {topic}
@@ -769,36 +769,55 @@ SECTION {i} of {len(outline)}: {title}
 
 ### What NOT to include:
 - Generic statements like "important", "essential", "you should know..."
-- AI productivity tools, automation, virtual assistants (unless topic is AI-related)
 - Filler paragraphs without specific information
 - Theoretical content without practical application{lang_instruction}{forbidden_hint}
 
 {section_structure}
 
-Content:"""
-            
+Content:""")
+
+        # Parallel generation — English uses 1 worker to avoid Groq TPM rate limits
+        # (English prompts are longer → hit rate limits faster when parallel)
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        results = [None] * len(outline)
+        _workers = 1 if language == "en" else 3
+
+        def _gen(idx_prompt):
+            idx, prompt = idx_prompt
+            # Inter-section cooldown for English: allow Groq TPM (rolling 60s window) to recover.
+            # Section 1 often exhausts ~50% of TPM; waiting 20s before sections 2+ lets the
+            # window recover enough for the next request to succeed on the first attempt.
+            if idx > 0 and language == "en":
+                logger.info(f"⏳ English TPM cooldown: waiting 20s before section {idx+1}")
+                time.sleep(20)
+            logger.info(f"📝 Generating section {idx+1}/{len(outline)}: {outline[idx]}")
             content = self._invoke_llm(prompt)
-
             if not content:
-                content = f"**{title}**\n\nThis section covers important aspects of {title}. Key concepts will be explained with practical examples and real-world applications."
+                title = outline[idx]
+                if language == "en":
+                    content = (
+                        f"## {title}\n\n"
+                        f"By the end of this section, you will have 3 actionable steps to apply {title} immediately.\n\n"
+                        f"Most people spend 80% of their time on the wrong 20% of {title}. Here's the fix: focus on what moves the needle in under 30 minutes.\n\n"
+                        f"**Take Action Now**:\n"
+                        f"1. Step 1: Audit your current approach — Time required: 10 minutes\n"
+                        f"2. Step 2: Identify the 1 bottleneck blocking progress — Time required: 15 minutes\n"
+                        f"3. Step 3: Implement the fix and measure results — Time required: 20 minutes\n\n"
+                        f"**Common Mistakes**:\n"
+                        f"- Mistake 1: Skipping the audit step → Fix: Always start with a 10-minute review\n"
+                        f"- Mistake 2: Trying to fix everything at once → Fix: Focus on 1 bottleneck at a time"
+                    )
+                else:
+                    content = f"**{title}**\n\nこのセクションでは{title}の重要なポイントを解説します。実践的な例と行動ステップを参考にしてください。"
+            return idx, self._reduce_data_overload(content, language)
 
-            content = self._reduce_data_overload(content, language)
+        with ThreadPoolExecutor(max_workers=_workers) as pool:
+            futures = {pool.submit(_gen, (i, p)): i for i, p in enumerate(prompts)}
+            for future in as_completed(futures):
+                idx, content = future.result()
+                results[idx] = {"number": idx + 1, "title": outline[idx], "content": content}
 
-            # Track the first real sentence so the next section's prompt can forbid it
-            first_real_line = next(
-                (ln.strip()[:100] for ln in content.split('\n')
-                 if ln.strip() and not ln.strip().startswith(('**', '#', '-', '*', '|'))),
-                ""
-            )
-            if first_real_line:
-                used_intro_phrases.append(first_real_line)
-
-            sections.append({
-                "number": i,
-                "title": title,
-                "content": content
-            })
-
+        sections = [r for r in results if r is not None]
         return sections
 
     @staticmethod
@@ -874,6 +893,9 @@ Content:"""
         t = topic.lower()
         if any(k in t for k in ["npo","ngo","nonprofit","非営利","ボランティア","社会貢献","チャリティ","charity","volunteer","community","コミュニティ","市民","civic"]):
             return "volunteer community nonprofit charity teamwork"
+        # Publishing / e-book / Kindle — check BEFORE generic "money" to get relevant images
+        if any(k in t for k in ["kindle","kdp","出版","ebook","e-book","電子書籍","著作","ロイヤルティ","royalty","publish","publishing","amazon publish","book","writing","author","著者","執筆","manuscript","原稿"]):
+            return "book publishing author writing kindle ebook"
         if any(k in t for k in ["コンテンツ","content marketing","sns","ソーシャルメディア","ブログ","blog","youtube","インフルエンサー","influencer","マーケティング","marketing","creator","クリエイター"]):
             return "content creator media digital marketing"
         if any(k in t for k in ["japan","japanese","日本","tokyo","osaka","kyoto","和","日本語","nippon"]):
@@ -1466,6 +1488,93 @@ Output Markdown only.
         except Exception as e:
             logger.warning(f"Blog post generation failed: {e}")
             return None
+
+    def _generate_product_extras(self, topic: str, sections: List[Dict], language: str = "en") -> dict:
+        """Generate bonus_stack, product_hook, and launch_checklist to complete the product package."""
+        section_titles = [s['title'] for s in sections[:5]]
+        titles_str = "\n".join(f"- {t}" for t in section_titles)
+
+        if language == "ja":
+            prompt = f"""以下のデジタル商品のボーナススタック・製品フック・ローンチチェックリストをJSONで生成してください。
+
+トピック: {topic}
+セクション:
+{titles_str}
+
+以下のJSON形式で出力してください（コードブロックなし・JSONのみ）:
+{{
+  "product_hook": "1文の強力なオファー概要（ベネフィット明示、具体的な数値を含む）",
+  "bonus_stack": [
+    {{"title": "ボーナス1タイトル", "description": "20字以内の説明", "value": "¥3,000相当"}},
+    {{"title": "ボーナス2タイトル", "description": "20字以内の説明", "value": "¥2,000相当"}},
+    {{"title": "ボーナス3タイトル", "description": "20字以内の説明", "value": "¥1,500相当"}}
+  ],
+  "launch_checklist": [
+    "Gumroadページの商品説明を更新",
+    "ブログ記事を公開してGumroadへリンク",
+    "Blueskyに告知ポストを投稿",
+    "Instagramにキャプションを投稿",
+    "価格を確認して公開"
+  ]
+}}"""
+        else:
+            prompt = f"""Generate a bonus stack, product hook, and launch checklist for this digital product as JSON.
+
+Topic: {topic}
+Sections:
+{titles_str}
+
+Output valid JSON only (no code blocks):
+{{
+  "product_hook": "One powerful sentence summarizing the offer — include a specific benefit and number",
+  "bonus_stack": [
+    {{"title": "Bonus 1 title", "description": "Under 15 words", "value": "$29 value"}},
+    {{"title": "Bonus 2 title", "description": "Under 15 words", "value": "$19 value"}},
+    {{"title": "Bonus 3 title", "description": "Under 15 words", "value": "$15 value"}}
+  ],
+  "launch_checklist": [
+    "Update Gumroad product description",
+    "Publish blog post with Gumroad link",
+    "Post to Bluesky with hook",
+    "Post to Instagram with caption",
+    "Verify price and go live"
+  ]
+}}"""
+
+        try:
+            import json as _json
+            raw = self._invoke_llm(prompt)
+            if not raw:
+                raise ValueError("Empty LLM response")
+            # Strip markdown code fences if present
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = "\n".join(raw.split("\n")[1:])
+            if raw.endswith("```"):
+                raw = "\n".join(raw.split("\n")[:-1])
+            return _json.loads(raw.strip())
+        except Exception as e:
+            logger.warning(f"Product extras generation failed: {e}")
+            # Return safe defaults so the pipeline never breaks
+            if language == "ja":
+                return {
+                    "product_hook": f"「{topic}」で成果を出すための完全ガイド — 今すぐ実践できる手順付き",
+                    "bonus_stack": [
+                        {"title": "クイックスタートチェックリスト", "description": "すぐ使える実践チェックリスト", "value": "¥2,000相当"},
+                        {"title": "キャプションスワイプファイル", "description": "SNS投稿用コピペテンプレート集", "value": "¥1,500相当"},
+                        {"title": "ローンチデイ投稿プラン", "description": "初日に何を投稿するかの計画書", "value": "¥1,000相当"},
+                    ],
+                    "launch_checklist": ["Gumroadを更新", "ブログ記事を公開", "Blueskyに告知", "Instagramに投稿", "価格を確認して公開"],
+                }
+            return {
+                "product_hook": f"Master {topic} with this complete step-by-step guide — actionable results guaranteed",
+                "bonus_stack": [
+                    {"title": "Quick-Start Checklist", "description": "Get results from day one", "value": "$29 value"},
+                    {"title": "Caption Swipe File", "description": "Copy-paste social captions ready to post", "value": "$19 value"},
+                    {"title": "Launch Day Posting Plan", "description": "Your first 24 hours mapped out", "value": "$15 value"},
+                ],
+                "launch_checklist": ["Update Gumroad listing", "Publish blog post", "Post to Bluesky", "Post to Instagram", "Verify price & go live"],
+            }
 
 
 def _build_sns_captions(topic: str, sections: list, sales_page: str = "") -> list:  # noqa: ARG001

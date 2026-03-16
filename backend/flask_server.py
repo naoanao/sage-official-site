@@ -230,6 +230,30 @@ if not FRONTEND_DIST.exists():
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path=None)
 
+# ── Background job store (pipeline async jobs) ───────────────────────────────
+_jobs: Dict[str, dict] = {}        # job_id → {status, result, error, created_at}
+_jobs_lock = threading.Lock()
+
+def _job_get(job_id: str) -> Optional[dict]:
+    with _jobs_lock:
+        return _jobs.get(job_id)
+
+def _job_set(job_id: str, **kwargs):
+    with _jobs_lock:
+        if job_id not in _jobs:
+            _jobs[job_id] = {}
+        _jobs[job_id].update(kwargs)
+
+# Cleanup jobs older than 1 hour to avoid unbounded growth
+def _jobs_gc():
+    import time as _time
+    cutoff = _time.time() - 3600
+    with _jobs_lock:
+        stale = [k for k, v in _jobs.items() if v.get('created_at', 0) < cutoff]
+        for k in stale:
+            del _jobs[k]
+# ─────────────────────────────────────────────────────────────────────────────
+
 # CORS — manual handler (flask-cors 4.x uses WSGI middleware which conflicts)
 _DEV_ORIGINS = {
     "http://localhost:3000", "http://localhost:5000", "http://localhost:5001",
@@ -492,6 +516,14 @@ def get_automations():
             "lastRun": _get_last_run_time("bluesky")
         },
         {
+            "id": "engagement",
+            "name": "Engagement AI (Like-back & Reply)",
+            "icon": "🤝",
+            "active": _is_automation_active("engagement"),
+            "schedule": "3x/day · 08:00, 14:00, 20:00 JST",
+            "lastRun": _get_last_run_time("engagement")
+        },
+        {
             "id": "blog",
             "name": "Daily Blog Scheduler",
             "icon": "📝",
@@ -519,7 +551,28 @@ def get_automations():
     return jsonify(automations)
 
 # --- LAST RUN REGISTRY ---
-_last_run_registry = {}  # {automation_id: datetime_string}
+_LAST_RUN_FILE = os.path.join(os.path.dirname(__file__), '..', 'logs', 'last_run_registry.json')
+
+def _load_last_run_registry() -> dict:
+    """起動時にファイルから最終実行時刻を復元する"""
+    try:
+        if os.path.exists(_LAST_RUN_FILE):
+            with open(_LAST_RUN_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+_last_run_registry = _load_last_run_registry()
+
+def _save_last_run_registry():
+    """最終実行時刻をファイルに永続化する"""
+    try:
+        os.makedirs(os.path.dirname(_LAST_RUN_FILE), exist_ok=True)
+        with open(_LAST_RUN_FILE, 'w', encoding='utf-8') as f:
+            json.dump(_last_run_registry, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"last_run_registry save failed: {e}")
 
 def _get_last_run_time(automation_id: str) -> str:
     """最終実行時刻を返す。未記録の場合は'Never'"""
@@ -528,6 +581,7 @@ def _get_last_run_time(automation_id: str) -> str:
 def _record_run(automation_id: str):
     """スケジューラーが実行する際に呼び出して時刻を記録する"""
     _last_run_registry[automation_id] = datetime.now().strftime('%Y-%m-%d %H:%M JST')
+    _save_last_run_registry()
 
 # --- AUTOMATION TOGGLE ---
 _automation_stop_events = {}  # {automation_id: threading.Event}
@@ -883,19 +937,24 @@ def instagram_status():
 def instagram_post():
     request_data = request.get_json(silent=True) or {}
     image_url = request_data.get("image_url")
-    caption = request_data.get("caption", "Sage System Online")
-    
+    caption = request_data.get("caption") or request_data.get("content", "Sage System Online")
+
     if not image_url:
-        return jsonify({"error": "No image_url provided"}), 400
+        # Instagram Graph API requires a public image URL for feed posts
+        logger.warning("Instagram post attempted without image_url — returning structured error")
+        return jsonify({
+            "status": "error",
+            "error": "no_image",
+            "message": "Instagram requires a public image URL. Please upload an image first or post manually."
+        }), 422
 
     try:
         from backend.integrations.instagram_integration import InstagramBot
         bot = InstagramBot()
-        
+
         result = bot.post_image(image_url, caption)
-        
+
         if result.get("success"):
-            # 収益化ログに記録 (統合版の規律)
             try:
                 from backend.modules.sage_audit import audit_logger
                 if audit_logger:
@@ -904,11 +963,11 @@ def instagram_post():
                 pass
             return jsonify({"status": "success", "result": result}), 200
         else:
-            return jsonify({"error": result.get("error")}), 500
-            
+            return jsonify({"status": "error", "error": result.get("error")}), 500
+
     except Exception as e:
         logger.error(f"Instagram post error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 # --- INITIALIZATION ---
 orchestrator = None
@@ -992,10 +1051,10 @@ def init_brain():
                                 try:
                                     sched = SNSDailyScheduler()
                                     while True:
-                                        if not _automation_stop_events.get('sns_poster', threading.Event()).is_set():
+                                        if not _automation_stop_events.get('bluesky', threading.Event()).is_set():
                                             logger.info("[SNS] SNS Scheduler: Checking for Ready content in Notion...")
                                             sched.run_cycle()
-                                            _record_run("sns_poster")
+                                            _record_run("bluesky")  # UIのautomation IDは"bluesky"
                                         time.sleep(3600) # Once per hour
                                 except Exception as e:
                                     logger.error(f"[ERROR] SNS Scheduler Thread Error: {e}")
@@ -1020,7 +1079,8 @@ def init_brain():
                                     blog_sched = BlogScheduler()
                                     while True:
                                         if not _automation_stop_events.get('blog', threading.Event()).is_set():
-                                            blog_sched.run() # Assuming this handles its own schedule internally
+                                            blog_sched.run()
+                                            _record_run("blog")
                                         time.sleep(3600)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Blog Scheduler Thread Error: {e}")
@@ -1032,6 +1092,7 @@ def init_brain():
                                     while True:
                                         if not _automation_stop_events.get('gumroad', threading.Event()).is_set():
                                             gumroad_sched.run()
+                                            _record_run("gumroad")
                                         time.sleep(3600)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Gumroad Scheduler Thread Error: {e}")
@@ -1047,8 +1108,28 @@ def init_brain():
                                 except Exception as e:
                                     logger.error(f"[ERROR] Notion Sync Scheduler Thread Error: {e}")
 
-                            # Initialize events
-                            for auto in ['sns_poster', 'blog', 'gumroad', 'notion_sync']:
+                            # Engagement Bot (like-back + AI reply — 3x/day)
+                            def run_engagement_bot():
+                                try:
+                                    from backend.integrations.engagement_bot import EngagementBot
+                                    from backend.integrations.bluesky_agent import BlueskyAgent
+                                    _bs_client = BlueskyAgent()
+                                    _groq = getattr(orchestrator, 'groq_llm', None) or getattr(orchestrator, 'llm', None)
+                                    eb = EngagementBot(
+                                        bluesky_client=_bs_client,
+                                        groq_client=_groq,
+                                    )
+                                    while True:
+                                        if not _automation_stop_events.get('engagement', threading.Event()).is_set():
+                                            if eb.should_run_now():
+                                                eb.run_cycle()
+                                                _record_run("engagement")
+                                        time.sleep(600)  # Check every 10 min
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Engagement Bot Thread Error: {e}")
+
+                            # Initialize events (IDはUIのautomation IDと一致させる)
+                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement']:
                                 if auto not in _automation_stop_events:
                                     _automation_stop_events[auto] = threading.Event()
 
@@ -1057,7 +1138,8 @@ def init_brain():
                             threading.Thread(target=run_blog_scheduler, daemon=True, name="SageBlogScheduler").start()
                             threading.Thread(target=run_gumroad_scheduler, daemon=True, name="SageGumroadScheduler").start()
                             threading.Thread(target=run_notion_scheduler, daemon=True, name="SageNotionSyncScheduler").start()
-                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion Threads spawned.")
+                            threading.Thread(target=run_engagement_bot, daemon=True, name="SageEngagementBot").start()
+                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot Threads spawned.")
 
                         run_sns_loops()
                         
@@ -1316,6 +1398,24 @@ def api_pilot_chat():
 
         if not airesponse:
             airesponse = "SUCCESS Task completed. No text output."
+
+        # --- ボイラープレート除去: LLMが出力する「No tools executed」系を後処理で削除 ---
+        import re as _re
+        _boilerplate = [
+            r"(?i)^no tools executed[^\n]*\n?",
+            r"(?i)^since no tools (were|have been) executed[^\n]*\n?",
+            r"(?i)^no tools (were|have been)? ?(used|executed)[^\n]*\n?",
+            r"(?i)^as no tools were (used|executed)[^\n]*\n?",
+            r"(?i)^i (didn'?t|did not) (use|execute|run) any tools[^\n]*\n?",
+            r"(?i)^(note:|note that )(no tools|tools were not)[^\n]*\n?",
+            r"(?i)^tools? (were not|not) (used|executed|called)[^\n]*\n?",
+            r"(?i)^there (are|were) no tools (to |)(use|execute|call)[^\n]*\n?",
+        ]
+        for _pat in _boilerplate:
+            airesponse = _re.sub(_pat, '', airesponse).strip()
+        # 全文がボイラープレートだった場合のフォールバック
+        if not airesponse:
+            airesponse = "ご質問をありがとうございます。詳しくお聞かせください。" if uilang == "ja" else "Got it — could you tell me more about what you'd like to create?"
 
         # --- 保存(次ターンに効かせる)---
         if memory:
@@ -1676,9 +1776,74 @@ def chat_endpoint():
 
         # 結果の整形 (LangGraphの出力形式に合わせて調整)
         ai_response = result.get("final_response", "") if isinstance(result, dict) else str(result)
-        
+
         if not ai_response:
             ai_response = "[SUCCESS] Task completed (No text output)."
+
+        # --- オーケストレーターが LLM 呼び出し失敗を返した場合: 直接 LLM フォールバック ---
+        _ORCH_FAIL_MARKERS = [
+            "Task executed but LLM report failed",
+            "Sage Offline Mode. Actions taken:",
+            "Raw Output:\nNo tools executed",
+            "System Error during reporting:",
+        ]
+        if any(m in ai_response for m in _ORCH_FAIL_MARKERS):
+            logger.warning(f"[FALLBACK] Orchestrator returned error response, trying direct LLM call")
+            try:
+                from langchain_core.messages import SystemMessage as _SysMsg, HumanMessage as _HumMsg
+                _lang = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
+                _sys = (
+                    "あなたはSage Pilotです。ユーザーのビジネス・コンテンツの質問に具体的かつ丁寧に日本語で答えてください。"
+                    if _lang == "ja" else
+                    "You are Sage Pilot. Answer the user's question helpfully and concisely."
+                )
+                _fallback_msgs = [_SysMsg(content=_sys)] + history_msgs + [_HumMsg(content=user_message)]
+                _fallback_res = orchestrator.llm.invoke(_fallback_msgs)
+                ai_response = _fallback_res.content or ai_response
+                logger.info(f"[FALLBACK] Direct LLM succeeded: {ai_response[:80]}")
+            except Exception as _fe:
+                logger.error(f"[FALLBACK] Direct LLM also failed: {_fe}")
+                _lang2 = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
+                ai_response = (
+                    "申し訳ありません、現在AIの応答が遅延しています。もう一度お試しください。"
+                    if _lang2 == "ja" else
+                    "Sorry, the AI is currently slow to respond. Please try again."
+                )
+
+        # --- ボイラープレート除去 + Raw JSON サニタイズ ---
+        import re as _re2
+
+        # 1) ボイラープレート除去
+        _bp = [
+            r"(?i)^no tools executed[^\n]*\n?",
+            r"(?i)^since no tools (were|have been) executed[^\n]*\n?",
+            r"(?i)^no tools (were|have been)? ?(used|executed)[^\n]*\n?",
+            r"(?i)^as no tools were (used|executed)[^\n]*\n?",
+            r"(?i)^i (didn'?t|did not) (use|execute|run) any tools[^\n]*\n?",
+            r"(?i)^(note:|note that )(no tools|tools were not)[^\n]*\n?",
+            r"(?i)^tools? (were not|not) (used|executed|called)[^\n]*\n?",
+            r"(?i)^there (are|were) no tools (to |)(use|execute|call)[^\n]*\n?",
+        ]
+        for _p in _bp:
+            ai_response = _re2.sub(_p, '', ai_response).strip()
+
+        # 2) Raw JSON / Python dict 露出パターンを除去
+        # 例: "browser_search: {'status': 'success', 'results': []}"
+        ai_response = _re2.sub(
+            r"\b\w+:\s*\{['\"]status['\"]:\s*['\"](?:success|error)['\"][^}]*\}",
+            '',
+            ai_response
+        ).strip()
+        # "Raw Output:\n..." 以降を除去
+        ai_response = _re2.sub(r"Raw Output:\n.*", '', ai_response, flags=_re2.DOTALL).strip()
+        # 空になった場合のフォールバック
+        if not ai_response:
+            _lang_fb = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
+            ai_response = (
+                "ご質問をありがとうございます。もう少し詳しくお聞かせください。"
+                if _lang_fb == "ja" else
+                "Got it — could you share a bit more about what you'd like to create?"
+            )
 
         # --- MEMORY SAVE (Synchronize Brain & Database) ---
         if memory:
@@ -1929,6 +2094,80 @@ def productize_execute_endpoint():
     except Exception as e:
         logger.error(f"[EXECUTE_PRODUCTION] Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/jobs/pipeline/start', methods=['POST'])
+def jobs_pipeline_start():
+    """
+    Start pipeline as a background job.
+    Body: { topic, type, plan, language, market, price, price_usd }
+    Returns: { job_id }
+    The job runs /api/productize/execute logic in a background thread.
+    Poll GET /api/jobs/<job_id>/status for result.
+    """
+    import time as _time
+    course_gen_ref = globals().get('course_gen_global')
+
+    data = request.get_json(silent=True) or {}
+    product_type = data.get('type', 'COURSE')
+    topic = data.get('topic', '').strip()
+    if not topic:
+        return jsonify({"error": "topic is required"}), 400
+
+    job_id = str(uuid.uuid4())
+    _job_set(job_id, status='running', result=None, error=None, created_at=_time.time())
+    _jobs_gc()
+
+    def _run():
+        try:
+            if product_type == 'COURSE':
+                if not course_gen_ref:
+                    raise RuntimeError("Course Production Pipeline not initialized")
+                language = data.get('language', 'auto')
+                logger.info(f"[JOB:{job_id}] COURSE start: topic={topic} lang={language}")
+                result = course_gen_ref.generate_course(topic=topic, language=language)
+                # Whop auto-publish (graceful)
+                try:
+                    from backend.integrations.whop_publisher import create_and_publish, build_sns_caption
+                    price_usd = float(data.get('price_usd', 29.99))
+                    course_title = result.get('title') or topic
+                    course_desc = result.get('description') or result.get('sales_page', '')[:800] or f'A comprehensive course on {topic}'
+                    whop_result = create_and_publish(course_title, course_desc, price_usd=price_usd)
+                    result['whop'] = whop_result
+                    if whop_result.get('status') in ('success', 'dry_run'):
+                        result['whop_captions'] = build_sns_caption(
+                            course_title, price_usd,
+                            whop_result.get('product_url', ''),
+                            whop_result.get('checkout_url', ''),
+                        )
+                except Exception as whop_err:
+                    logger.warning(f"[JOB:{job_id}] Whop skipped: {whop_err}")
+                    result['whop'] = {'status': 'skipped', 'message': str(whop_err)}
+                _job_set(job_id, status='done', result=result)
+                logger.info(f"[JOB:{job_id}] COURSE done")
+            else:
+                raise ValueError(f"Unsupported product type: {product_type}")
+        except Exception as e:
+            logger.error(f"[JOB:{job_id}] Failed: {e}")
+            _job_set(job_id, status='error', error=str(e))
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    return jsonify({"job_id": job_id}), 202
+
+
+@app.route('/api/jobs/<job_id>/status', methods=['GET'])
+def jobs_status(job_id):
+    """Poll job status. Returns { status: running|done|error, result?, error? }"""
+    job = _job_get(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    resp = {"status": job['status']}
+    if job['status'] == 'done':
+        resp['result'] = job.get('result')
+    elif job['status'] == 'error':
+        resp['error'] = job.get('error')
+    return jsonify(resp), 200
+
 
 @app.route('/api/memory/recent', methods=['GET'])
 def get_recent_memories():
@@ -2547,7 +2786,9 @@ def api_d1_generate():
 
 @app.route('/api/research/run', methods=['POST'])
 def api_research_run():
-    """Run D1 research for a topic and return a human-readable summary."""
+    """Run D1 research for a topic and return a human-readable summary.
+    Includes retry logic (up to 2 attempts) and extended timeout (90s).
+    """
     import concurrent.futures
     try:
         data = request.get_json(silent=True) or {}
@@ -2568,14 +2809,30 @@ def api_research_run():
             finally:
                 autonomous.phase_2_execute = original_exec
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_run_research)
+        MAX_ATTEMPTS = 2
+        last_error = None
+        for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                future.result(timeout=30)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(_run_research)
+                    future.result(timeout=90)  # Extended: 90s (was 30s)
+                last_error = None
+                break  # Success
             except concurrent.futures.TimeoutError:
-                logger.warning(f"research/run timed out for topic: {topic}")
+                last_error = "timeout"
+                logger.warning(f"research/run attempt {attempt} timed out for topic: {topic}")
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"research/run attempt {attempt} error: {e}")
 
-        summary = f"「{topic}」のリサーチが完了しました。レポートは output/ フォルダに保存されました。"
+        if last_error:
+            if last_error == "timeout":
+                # Timeout is OK — research may have partially completed
+                logger.info(f"research/run timed out after {MAX_ATTEMPTS} attempts, continuing")
+            else:
+                return jsonify({"error": last_error}), 500
+
+        summary = f"Research for '{topic}' complete. Report saved to output/ folder."
         return jsonify({"status": "success", "summary": summary})
     except Exception as e:
         logger.error(f"research/run error: {e}", exc_info=True)

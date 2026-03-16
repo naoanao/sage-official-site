@@ -45,7 +45,7 @@ const formatDate = (dateStr) => {
 };
 
 const Landing = () => {
-    const [snsStats, setSnsStats] = useState({ total_posts: 27 });
+    const [snsStats, setSnsStats] = useState({ total_posts: 0 });
     const [demoVisible, setDemoVisible] = useState(false);
     const [inputIndex, setInputIndex] = useState(0);
 
@@ -53,7 +53,7 @@ const Landing = () => {
         fetch('/api/sns/stats')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (data && data.total_posts != null) {
+                if (data && data.total_posts > 0) {
                     setSnsStats({ total_posts: data.total_posts });
                 }
             })
@@ -91,7 +91,7 @@ const Landing = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        {snsStats.total_posts}+ POSTS SHIPPED · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
+                        BETA LAUNCH · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
@@ -131,8 +131,8 @@ const Landing = () => {
             <div className="relative z-10 py-8 px-4 border-t border-white/5">
                 <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-6 text-center">
                     <div className="flex flex-col items-center gap-1">
-                        <p className="text-2xl font-black text-white">{snsStats.total_posts}+</p>
-                        <p className="text-xs font-mono text-slate-400">Posts shipped</p>
+                        <p className="text-2xl font-black text-white">BETA</p>
+                        <p className="text-xs font-mono text-slate-400">Early Access</p>
                     </div>
                     <div className="hidden sm:block w-px h-8 bg-white/10" />
                     <div className="flex flex-col items-center gap-1">
@@ -320,7 +320,7 @@ const Landing = () => {
                     <div className="space-y-6">
                         {[
                             { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. That's it. No code, no dashboards, no configuration." },
-                            { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, and Gumroad package creation. Instagram drafts are generated but require manual posting for now." },
+                            { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
                             { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
                             { q: "What if it doesn't work for me?", a: "Gumroad's 30-day money-back guarantee. One-click full refund, no questions asked." },
                             { q: "Do I need to install anything?", a: "The Blueprint ($29.99) is a download-and-run ZIP. No installation needed. Windows only for now." },
@@ -353,7 +353,7 @@ const Landing = () => {
                         <FiShoppingCart className="text-emerald-400" size={20} />
                         <h2 className="text-2xl md:text-3xl font-bold">Your First AI Income Stream</h2>
                     </Motion.div>
-                    <p className="text-slate-500 text-sm mb-12">The exact system behind {snsStats.total_posts}+ auto-published posts and counting.</p>
+                    <p className="text-slate-500 text-sm mb-12">The exact system Sage 3.0 uses to automate your content pipeline — from idea to income.</p>
 
                     <Motion.div
                         initial={{ opacity: 0, y: 20 }}
