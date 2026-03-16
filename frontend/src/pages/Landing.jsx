@@ -4,7 +4,7 @@ import { FiMessageSquare, FiCpu, FiShare2, FiDollarSign, FiLayout, FiArrowRight,
 import SpaceBackground from '../components/SpaceBackground';
 
 const Landing = () => {
-    const [snsStats, setSnsStats] = useState({ total_posts: 27, success_rate: '100%' });
+    const [snsStats, setSnsStats] = useState({ total_posts: 0, success_rate: '100%' });
 
     useEffect(() => {
         fetch('/api/sns/stats')
@@ -90,7 +90,7 @@ const Landing = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        FOR SOLOPRENEURS & CREATORS — 27 POSTS SHIPPED AUTONOMOUSLY
+                        FOR SOLOPRENEURS & CREATORS — AUTONOMOUS AI SYSTEM LIVE
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
@@ -221,7 +221,7 @@ const Landing = () => {
                         {/* Pro — Highlighted */}
                         <div className="p-8 rounded-2xl bg-blue-600/10 border border-blue-500/30 relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-                            <div className="text-sm font-mono text-blue-400 mb-2">PRO — {snsStats.total_posts}+ POSTS SHIPPED LAST MONTH</div>
+                            <div className="text-sm font-mono text-blue-400 mb-2">PRO — {snsStats.total_posts > 0 ? `${snsStats.total_posts}+ POSTS SHIPPED` : 'AUTONOMOUS AI POSTING'}</div>
                             <div className="text-4xl font-black mb-1">$29<span className="text-lg font-normal text-slate-500">/mo</span></div>
                             <div className="text-sm text-slate-400 mb-8">~<span className="text-white font-medium">$1/day</span> · You sleep. Sage ships.</div>
                             <ul className="space-y-3 text-sm text-slate-300 mb-8">

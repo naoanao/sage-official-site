@@ -8,6 +8,7 @@ import PhaseStepperBar from '../components/PhaseStepperBar';
 import SageMiniChat from '../components/SageMiniChat';
 
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
+const apiRewrite = axios.create({ baseURL: BACKEND_URL, timeout: 90000 });
 
 // ── Demo output shown to public visitors (no real API call) ─────────────────
 const DEMO_RESULT = {
@@ -49,44 +50,50 @@ const DEMO_RESULT = {
 
 // ── Rewrite preset definitions (8 presets, 2×4 grid) ────────────────────────
 const PRESETS = [
-    { id: 'casual', label: 'カジュアル', icon: '😊', tonePreset_ja: 'casual', tonePreset_en: 'conversational' },
-    { id: 'expert', label: '専門的', icon: '🎓', tonePreset_ja: 'professional', tonePreset_en: 'quest' },
+    { id: 'casual', label: 'Casual', icon: '😊', tonePreset_ja: 'casual', tonePreset_en: 'conversational' },
+    { id: 'expert', label: 'Expert', icon: '🎓', tonePreset_ja: 'professional', tonePreset_en: 'quest' },
     {
-        id: 'bullets', label: '箇条書き', icon: '📋',
+        id: 'bullets', label: 'Bullets', icon: '📋',
         instruction_ja: '内容を箇条書きリスト形式に書き直してください。各項目を3語以内の見出しで整理してください。',
         instruction_en: 'Rewrite this as a bulleted list. Use short, punchy 3-5 word headers for each point.'
     },
     {
-        id: 'shorter', label: '半分の長さ', icon: '✂️',
+        id: 'shorter', label: 'Shorten', icon: '✂️',
         instruction_ja: '半分の長さに要約してください。重要な情報は保持してください。',
         instruction_en: 'Shorten this to half its length. Keep the most important points.'
     },
     {
-        id: 'niche', label: '超ニッチ特化', icon: '🎯',
+        id: 'niche', label: 'Niche Focus', icon: '🎯',
         instruction_ja: 'より具体的なターゲット読者に特化した内容に書き直してください。専門用語と具体例を使ってください。',
         instruction_en: 'Rewrite this for a highly specific niche audience. Use insider terminology and concrete examples.'
     },
     {
-        id: 'data', label: 'データ追加', icon: '📊',
+        id: 'data', label: 'Add Data', icon: '📊',
         instruction_ja: 'データや統計情報を追加するプレースホルダーを含めて書き直してください（例：[統計データ], [調査結果]）。',
         instruction_en: 'Rewrite with data placeholders added (e.g., [STAT: X% of users...], [STUDY: Research shows...]). Make it evidence-based.'
     },
     {
-        id: 'action', label: 'アクション化', icon: '⚡',
+        id: 'action', label: 'Actionable', icon: '⚡',
         instruction_ja: '読者がすぐに行動できる形に書き直してください。各段落の最後に具体的な行動指示を入れてください。',
         instruction_en: 'Rewrite as an action-oriented piece. End each section with a specific, immediate call-to-action.'
     },
     {
-        id: 'positive', label: '失敗削除', icon: '✨',
+        id: 'positive', label: 'Positive', icon: '✨',
         instruction_ja: 'ネガティブな表現・失敗事例・問題点の記述を削除し、ポジティブで希望に満ちた内容に書き直してください。',
         instruction_en: 'Remove all negative examples, failure cases, and problem-focused language. Rewrite as purely positive and aspirational.'
     },
 ];
 
+const _ls = {
+    get: (k, d) => { try { const v = localStorage.getItem(k); return v != null ? JSON.parse(v) : d; } catch { return d; } },
+    set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del: (k) => { try { localStorage.removeItem(k); } catch {} },
+};
+
 const SageOS = () => {
     // ── Phase navigation state ───────────────────────────────────────────────
-    const [currentPhase, setCurrentPhase] = useState(1); // 1=TALK 2=CREATE 3=REFINE 4=PUBLISH
-    const [activeTopic, setActiveTopic] = useState('');
+    const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
+    const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(false);
 
     const [d1Status, setD1Status] = useState('idle');
@@ -94,7 +101,7 @@ const SageOS = () => {
     const [stats, setStats] = useState({ cpu: '3%', memory: '2GB', upTime: '144:20:10' });
 
     // Monetization state
-    const [monetizeTopic, setMonetizeTopic] = useState('');
+    const [monetizeTopic, setMonetizeTopic] = useState(() => _ls.get('sage_topic', ''));
     const [market, setMarket] = useState('US');
     const [price, setPrice] = useState('$29.99');
     const [lang, setLang] = useState('auto');
@@ -104,6 +111,7 @@ const SageOS = () => {
     const [researchCheck, setResearchCheck] = useState({ status: 'idle', file: null });
     const researchDebounce = useRef(null);
     const chatInputRef = useRef(null);
+    const nicheResultRef = useRef(null);
 
     const CREATE_PLACEHOLDERS = [
         "e.g. Beginner's guide to passive income with AI",
@@ -121,10 +129,16 @@ const SageOS = () => {
     const [sectionInstructions, setSectionInstructions] = useState({});
     const [rewritingIdx, setRewritingIdx] = useState(null);
     const [globalRewriting, setGlobalRewriting] = useState(false);
+    const [rewritingPreset, setRewritingPreset] = useState(null); // preset.id currently running
+    const [presetResults, setPresetResults] = useState({}); // { [presetId]: 'success'|'error' }
     const [rewriteError, setRewriteError] = useState(null);
     const [expandedSection, setExpandedSection] = useState(null);
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
     const [isDemo, setIsDemo] = useState(false);
+    const [quickPreview, setQuickPreview] = useState(null); // { headline, buyer, price, hooks[] }
+    const [progressPercent, setProgressPercent] = useState(0);
+    const [copyStatus, setCopyStatus] = useState('idle'); // 'idle'|'success'|'error'
+    const [copyToast, setCopyToast] = useState(null); // null | 'success' | 'error'
 
     // Content tabs & publish
     const [contentTab, setContentTab] = useState('blog');
@@ -146,6 +160,21 @@ const SageOS = () => {
         { id: 1, role: 'system', content: 'Hi. What would you like to create today?' }
     ]);
     const [inputValue, setInputValue] = useState('');
+
+    // Quick Monetize Preview — local heuristic, no API needed
+    const buildQuickPreview = (topic) => {
+        if (!topic || topic.trim().length < 2) return null;
+        const isJa = /[\u3000-\u9fff]/.test(topic);
+        const hooks = isJa
+            ? [`「${topic}」で月5万円稼ぐ人がやっている3つのこと`, `今すぐ始められる！${topic}で副収入を作る最短ルート`, `失敗しない${topic}の完全マップ`]
+            : [`The exact ${topic} system generating passive income in 2026`, `3 steps to your first $500 with ${topic}`, `Why most people fail at ${topic} — and how to be different`];
+        return {
+            headline: isJa ? `「${topic}」で結果を出すための完全ガイド` : `The Complete ${topic} Blueprint`,
+            buyer: isJa ? '副業・収益化を目指す社会人' : 'Solopreneurs & creators looking for their first income stream',
+            price: price || '$29.99',
+            hooks,
+        };
+    };
 
     const fetchAutomations = async () => {
         try {
@@ -219,6 +248,16 @@ const SageOS = () => {
         return () => clearInterval(t);
     }, []);
 
+    useEffect(() => {
+        const t = setTimeout(() => setQuickPreview(buildQuickPreview(monetizeTopic)), 600);
+        return () => clearTimeout(t);
+    }, [monetizeTopic, price]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Persist phase + topic to localStorage so refresh restores state
+    useEffect(() => { _ls.set('sage_phase', currentPhase); }, [currentPhase]);
+    useEffect(() => { _ls.set('sage_topic', monetizeTopic); }, [monetizeTopic]);
+    useEffect(() => { _ls.set('sage_activeTopic', activeTopic); }, [activeTopic]);
+
     const handleD1Run = async () => {
         setD1Status('running');
         try {
@@ -244,13 +283,17 @@ const SageOS = () => {
         } catch (e) {
             setMonetizeStatus('error');
             setMonetizeResult('D1リサーチに失敗しました: ' + (e.message || ''));
-            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
+            // エラーは自動リセットしない
         }
     };
 
     const handleRunResearch = async () => {
         const topic = monetizeTopic || inputValue;
-        if (!topic.trim()) return;
+        if (!topic.trim()) {
+            chatInputRef.current?.focus();
+            setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: '🔍 リサーチするトピックを入力してください。' }]);
+            return;
+        }
         setMonetizeStatus('running_d1');
         try {
             const res = await api.post('/api/research/run', { topic });
@@ -286,15 +329,19 @@ const SageOS = () => {
         setMonetizeResult(null);
 
         const _progressSteps = [
-            [0,      '🔍 Analyzing your topic...'],
-            [4000,   '🧠 Building product structure...'],
-            [12000,  '✍️ Generating content...'],
-            [30000,  '💡 Refining with market data...'],
-            [60000,  '⏳ Still working (LLM processing)...'],
-            [100000, '🔥 Almost there...'],
+            [0,      '🔍 Analyzing your topic...',             5],
+            [4000,   '🧠 Building product structure...',       18],
+            [12000,  '✍️ Generating content...',               40],
+            [30000,  '💡 Refining with market data...',        62],
+            [60000,  '⏳ Still working (LLM processing)...',   80],
+            [100000, '🔥 Almost there...',                     93],
+            [130000, '🔥 Almost there... (LLM slow today)',    94],
+            [155000, '⏳ Finalizing your product...',          95],
+            [180000, '🔥 Just wrapping up, hang tight!',      96],
+            [210000, '⏳ Nearly done...',                      97],
         ];
-        const _progressTimers = _progressSteps.map(([delay, msg]) =>
-            setTimeout(() => setGenerateProgress(msg), delay)
+        const _progressTimers = _progressSteps.map(([delay, msg, pct]) =>
+            setTimeout(() => { setGenerateProgress(msg); setProgressPercent(pct); }, delay)
         );
 
         if (!IS_OWNER) {
@@ -316,14 +363,14 @@ const SageOS = () => {
         }
 
         try {
-            const [planRes] = await Promise.all([
-                api.post('/api/productize', { topic: topicToUse, market, price, language: lang }),
-                Promise.resolve(null)
-            ]);
+            // ── Step 1: Generate product plan (fast, ~2s) ───────────────────
+            const planRes = await api.post('/api/productize', { topic: topicToUse, market, price, language: lang });
             const plan = planRes?.data;
             if (!plan || plan.status === 'error') throw new Error(plan?.error || 'Plan failed');
 
-            const execResult = await api.post('/api/productize/execute', {
+            // ── Step 2: Start background job (returns immediately) ──────────
+            // Uses short timeout — CF Pages Function only needs to start the job (<30s)
+            const startRes = await api.post('/api/jobs/pipeline/start', {
                 type: 'COURSE',
                 topic: topicToUse,
                 plan: plan.plan,
@@ -331,7 +378,37 @@ const SageOS = () => {
                 market,
                 price
             });
-            const courseData = execResult?.data;
+            const jobId = startRes?.data?.job_id;
+            if (!jobId) throw new Error('Failed to start background job');
+
+            // ── Step 3: Poll for result every 3 seconds ─────────────────────
+            const MAX_POLLS = 120; // 6 minutes max
+            let polls = 0;
+            const courseData = await new Promise((resolve, reject) => {
+                const pollInterval = setInterval(async () => {
+                    polls++;
+                    if (polls > MAX_POLLS) {
+                        clearInterval(pollInterval);
+                        reject(new Error('Job timeout (6 min) — LLM did not complete. Please try again.'));
+                        return;
+                    }
+                    try {
+                        const statusRes = await api.get(`/api/jobs/${jobId}/status`);
+                        const { status, result, error } = statusRes.data;
+                        if (status === 'done') {
+                            clearInterval(pollInterval);
+                            resolve(result);
+                        } else if (status === 'error') {
+                            clearInterval(pollInterval);
+                            reject(new Error(error || 'Pipeline failed'));
+                        }
+                        // 'running' → keep polling
+                    } catch (pollErr) {
+                        // Network blip — keep polling until MAX_POLLS
+                    }
+                }, 3000);
+            });
+
             if (!courseData || courseData.status === 'error') throw new Error(courseData?.error || 'Execute failed');
 
             setIsDemo(false);
@@ -350,13 +427,15 @@ const SageOS = () => {
             setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
+            setProgressPercent(100);
             setMonetizeStatus('review');
         } catch (e) {
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
+            setProgressPercent(0);
             setMonetizeResult(e.message || 'Pipeline failed');
             setMonetizeStatus('error');
-            setTimeout(() => { setMonetizeStatus('idle'); setMonetizeResult(null); }, 8000);
+            // エラーは自動リセットしない — ユーザーが明示的にRetryするまで表示
         }
     };
 
@@ -365,7 +444,7 @@ const SageOS = () => {
         if (!instruction.trim()) return;
         setRewritingIdx(idx);
         try {
-            const res = await api.post('/api/productize/rewrite', {
+            const res = await apiRewrite.post('/api/productize/rewrite', {
                 content: editedSections[idx].content,
                 instruction,
                 language: lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang
@@ -375,7 +454,8 @@ const SageOS = () => {
                 setSectionInstructions(prev => ({ ...prev, [idx]: '' }));
             }
         } catch (e) {
-            console.error('Rewrite failed', e);
+            const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
+            setRewriteError(isTimeout ? 'Timeout: LLM is taking too long. Please try again.' : `Rewrite failed: ${e?.message || 'Unknown error'}`);
         } finally {
             setRewritingIdx(null);
         }
@@ -393,13 +473,18 @@ const SageOS = () => {
                 ? { content, tone_preset: tonePreset, instruction: '', language: resolvedLang }
                 : { content, instruction, language: resolvedLang };
 
-            const sectionResults = await Promise.allSettled(
-                editedSections.map(s =>
-                    api.post('/api/productize/rewrite', rewritePayload(s.content))
-                )
-            );
+            // Sequential rewrite to avoid Groq rate limits (parallel causes 429 → timeout)
+            const sectionResults = [];
+            for (const s of editedSections) {
+                try {
+                    const r = await apiRewrite.post('/api/productize/rewrite', rewritePayload(s.content));
+                    sectionResults.push({ status: 'fulfilled', value: r });
+                } catch (err) {
+                    sectionResults.push({ status: 'rejected', reason: err });
+                }
+            }
             const salesPageRes = editedSalesPage
-                ? await api.post('/api/productize/rewrite', rewritePayload(editedSalesPage)).catch(() => null)
+                ? await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSalesPage)).catch(() => null)
                 : null;
 
             setEditedSections(prev => prev.map((s, i) => {
@@ -416,9 +501,13 @@ const SageOS = () => {
             }
             setGlobalInstruction('');
         } catch (e) {
-            const msg = e?.response?.data?.error || e?.message || 'Rewrite failed';
-            setRewriteError(`${msg} — Please try again.`);
+            const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
+            const msg = isTimeout
+                ? 'タイムアウト: LLMの応答が遅れています（30秒）。もう一度お試しください。'
+                : (e?.response?.data?.error || e?.message || 'Rewrite failed') + ' — Please try again.';
+            setRewriteError(msg);
             console.error('Global rewrite failed', e);
+            throw e; // let applyPreset catch it for per-button error state
         } finally {
             setGlobalRewriting(false);
         }
@@ -442,7 +531,7 @@ const SageOS = () => {
         } catch (e) {
             setMonetizeResult(e.message);
             setMonetizeStatus('error');
-            setTimeout(() => { setMonetizeStatus('review'); setMonetizeResult(null); }, 6000);
+            // エラーは自動消去しない — ユーザーが✕閉じるで明示的に閉じる
         }
     };
 
@@ -456,11 +545,15 @@ const SageOS = () => {
             });
             if (res.data?.status === 'success' && res.data.images) {
                 setGenerateData(prev => ({ ...prev, images: res.data.images }));
+                setImageRegenStatus('done');
+            } else {
+                setImageRegenStatus('error');
             }
         } catch (e) {
             console.error('Image regen failed', e);
+            setImageRegenStatus('error');
         } finally {
-            setImageRegenStatus('idle');
+            setTimeout(() => setImageRegenStatus('idle'), 3000);
         }
     };
 
@@ -487,9 +580,11 @@ const SageOS = () => {
 
     const handleCopyBlogPost = async () => {
         const text = editedSections.map(s => `## ${s.title}\n\n${s.content}`).join('\n\n');
+        let success = false;
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).catch(() => {});
+                await navigator.clipboard.writeText(text);
+                success = true;
             } else {
                 const el = document.createElement('textarea');
                 el.value = text;
@@ -497,12 +592,18 @@ const SageOS = () => {
                 el.style.opacity = '0';
                 document.body.appendChild(el);
                 el.select();
-                document.execCommand('copy');
+                success = document.execCommand('copy');
                 document.body.removeChild(el);
             }
-        } catch (e) {}
-        setPublishChecklist(p => ({ ...p, copied: true }));
-        setTimeout(() => setPublishChecklist(p => ({ ...p, copied: false })), 2000);
+        } catch (e) { success = false; }
+        setCopyStatus(success ? 'success' : 'error');
+        setCopyToast(success ? 'success' : 'error');
+        setPublishChecklist(p => ({ ...p, copied: success }));
+        setTimeout(() => {
+            setCopyStatus('idle');
+            setCopyToast(null);
+            setPublishChecklist(p => ({ ...p, copied: false }));
+        }, 3500);
     };
 
     const handleStartNew = () => {
@@ -513,16 +614,19 @@ const SageOS = () => {
         setContentTab('blog');
         setEditedCaptions([]);
         setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
+        _ls.del('sage_phase');
+        _ls.del('sage_topic');
+        _ls.del('sage_activeTopic');
     };
 
     const analyzeContentQuality = (content) => {
         if (!content) return { score: 0, badges: [] };
         const badges = [];
         let score = 0;
-        if (/\d+/.test(content)) { score += 25; badges.push({ label: '数値', color: 'blue' }); }
-        if (/\d+\.\s|今すぐ|ステップ|手順|Take Action|Step \d|Action \d/.test(content)) { score += 25; badges.push({ label: 'アクション', color: 'green' }); }
-        if (/失敗|ミス|注意|間違い|エラー|Mistake|Common Error|Warning|Caution|Avoid/.test(content)) { score += 25; badges.push({ label: '失敗対策', color: 'orange' }); }
-        if (/分間|時間|円|%|km|kg|回|分|秒|minutes|hours|billion|million|\$\d/.test(content)) { score += 25; badges.push({ label: '具体的', color: 'purple' }); }
+        if (/\d+/.test(content)) { score += 25; badges.push({ label: 'Numbers', color: 'blue' }); }
+        if (/\d+\.\s|今すぐ|ステップ|手順|Take Action|Step \d|Action \d/.test(content)) { score += 25; badges.push({ label: 'Action', color: 'green' }); }
+        if (/失敗|ミス|注意|間違い|エラー|Mistake|Common Error|Warning|Caution|Avoid/.test(content)) { score += 25; badges.push({ label: 'Mistakes', color: 'orange' }); }
+        if (/分間|時間|円|%|km|kg|回|分|秒|minutes|hours|billion|million|\$\d/.test(content)) { score += 25; badges.push({ label: 'Specific', color: 'purple' }); }
         return { score, badges };
     };
 
@@ -536,6 +640,7 @@ const SageOS = () => {
                 setNicheValidation({ status: 'rate_limited', data: res.data });
             } else {
                 setNicheValidation({ status: 'done', data: res.data });
+                setTimeout(() => nicheResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
             }
         } catch (e) {
             if (e?.response?.status === 429) {
@@ -600,15 +705,23 @@ const SageOS = () => {
         return lastUserMsg?.content || '';
     };
 
-    const applyPreset = (preset) => {
+    const applyPreset = async (preset) => {
+        if (rewritingPreset || globalRewriting) return;
+        setRewritingPreset(preset.id);
+        setPresetResults(prev => { const n = { ...prev }; delete n[preset.id]; return n; });
         const isJa = lang === 'ja' || (lang === 'auto' && monetizeTopic.match(/[\u3000-\u9fff]/));
-        if (isJa && preset.tonePreset_ja) {
-            handleRewriteAll(undefined, preset.tonePreset_ja);
-        } else if (!isJa && preset.tonePreset_en) {
-            handleRewriteAll(undefined, preset.tonePreset_en);
-        } else {
-            const instr = isJa ? preset.instruction_ja : preset.instruction_en;
-            handleRewriteAll(instr, undefined);
+        let tonePreset, instruction;
+        if (isJa && preset.tonePreset_ja) tonePreset = preset.tonePreset_ja;
+        else if (!isJa && preset.tonePreset_en) tonePreset = preset.tonePreset_en;
+        else instruction = isJa ? preset.instruction_ja : preset.instruction_en;
+        try {
+            await handleRewriteAll(instruction, tonePreset);
+            setPresetResults(prev => ({ ...prev, [preset.id]: 'success' }));
+        } catch {
+            setPresetResults(prev => ({ ...prev, [preset.id]: 'error' }));
+        } finally {
+            setRewritingPreset(null);
+            setTimeout(() => setPresetResults(prev => { const n = { ...prev }; delete n[preset.id]; return n; }), 3000);
         }
     };
 
@@ -620,6 +733,17 @@ const SageOS = () => {
     // ── Render ───────────────────────────────────────────────────────────────
     return (
         <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-hidden flex" translate="no">
+
+            {/* ── Copy Toast (fixed overlay) ──────────────────────────────── */}
+            {copyToast && (
+                <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border text-sm font-bold pointer-events-none transition-all
+                    ${copyToast === 'success'
+                        ? 'bg-emerald-600 border-emerald-400/60 text-white shadow-emerald-900/50'
+                        : 'bg-red-700 border-red-500/60 text-white shadow-red-900/50'}`}>
+                    <span className="text-base">{copyToast === 'success' ? '✅' : '❌'}</span>
+                    <span>{copyToast === 'success' ? 'Blog post copied to clipboard!' : 'Copy failed — please try again'}</span>
+                </div>
+            )}
 
             {/* ── Sidebar ─────────────────────────────────────────────────── */}
             <div className="w-64 bg-slate-900/50 border-r border-white/5 flex flex-col p-4 backdrop-blur-md z-10 shrink-0">
@@ -791,7 +915,7 @@ const SageOS = () => {
                                                                 }}
                                                                 className="text-sm px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold rounded-xl flex items-center gap-2 transition-all"
                                                             >
-                                                                🚀 このトピックでコンテンツを生成する
+                                                                🚀 Generate Content with This Topic
                                                             </button>
                                                             <button
                                                                 onClick={() => {
@@ -802,7 +926,7 @@ const SageOS = () => {
                                                                 }}
                                                                 className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-xl flex items-center gap-2 transition-all"
                                                             >
-                                                                📊 まずニッチ検証する
+                                                                📊 Validate Niche First
                                                             </button>
                                                             <button
                                                                 onClick={() => {
@@ -901,21 +1025,31 @@ const SageOS = () => {
                                                 <button
                                                     onClick={handleNicheValidate}
                                                     disabled={!monetizeTopic.trim() || nicheValidation.status === 'running'}
-                                                    className="text-xs px-3 py-1 bg-indigo-900/40 hover:bg-indigo-800/60 disabled:opacity-40 text-indigo-300 border border-indigo-500/30 rounded-lg flex items-center gap-1.5 transition-all"
+                                                    className={`text-xs px-3 py-1 disabled:opacity-40 rounded-lg flex items-center gap-1.5 transition-all border ${
+                                                        nicheValidation.status === 'error'
+                                                            ? 'bg-red-900/30 text-red-300 border-red-500/30 hover:bg-red-800/40'
+                                                            : nicheValidation.status === 'done'
+                                                                ? 'bg-emerald-900/30 text-emerald-300 border-emerald-500/30 hover:bg-emerald-800/40'
+                                                                : 'bg-indigo-900/40 hover:bg-indigo-800/60 text-indigo-300 border-indigo-500/30'
+                                                    }`}
                                                 >
                                                     {nicheValidation.status === 'running'
                                                         ? <><div className="w-3 h-3 rounded-full border border-indigo-300 border-t-transparent animate-spin" /> Checking...</>
-                                                        : <>📊 Check Market Demand</>}
+                                                        : nicheValidation.status === 'error'
+                                                            ? <>❌ Failed — Retry</>
+                                                            : nicheValidation.status === 'done'
+                                                                ? <>✅ Checked</>
+                                                                : <>📊 Check Market Demand</>}
                                                 </button>
                                             </div>
                                             {researchCheck.status === 'checking' && (
-                                                <span className="text-xs text-slate-400 flex items-center gap-1"><div className="w-3 h-3 rounded-full border border-slate-400 border-t-white animate-spin" /> リサーチ確認中...</span>
+                                                <span className="text-xs text-slate-400 flex items-center gap-1"><div className="w-3 h-3 rounded-full border border-slate-400 border-t-white animate-spin" /> Checking research...</span>
                                             )}
                                             {researchCheck.status === 'found' && (
-                                                <span className="text-xs text-emerald-400 flex items-center gap-1"><FiCheckCircle /> D1リサーチ済み: {researchCheck.file}</span>
+                                                <span className="text-xs text-emerald-400 flex items-center gap-1"><FiCheckCircle /> D1 Research found: {researchCheck.file}</span>
                                             )}
                                             {researchCheck.status === 'missing' && (
-                                                <span className="text-xs text-amber-400 flex items-center gap-1"><FiAlertTriangle /> D1リサーチ未実行</span>
+                                                <span className="text-xs text-amber-400 flex items-center gap-1"><FiAlertTriangle /> D1 Research not run</span>
                                             )}
                                         </div>
                                         <input
@@ -937,13 +1071,54 @@ const SageOS = () => {
                                                 </a>
                                             </div>
                                         )}
+                                        {nicheValidation.status === 'error' && (
+                                            <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                                                <div className="text-xs text-red-400 flex items-center gap-2 mb-2">
+                                                    <FiXCircle className="shrink-0" /> Validation failed — check manually:
+                                                    <button onClick={() => setNicheValidation({ status: 'idle', data: null })} className="ml-auto text-red-500 hover:text-red-300">✕</button>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {[
+                                                        { label: '📈 Google Trends', url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(monetizeTopic)}` },
+                                                        { label: '💬 Reddit', url: `https://www.reddit.com/search/?q=${encodeURIComponent(monetizeTopic)}` },
+                                                        { label: '▶️ YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
+                                                    ].map(({ label, url }) => (
+                                                        <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                                                            className="text-xs px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-white/10 transition-all font-medium">
+                                                            {label}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Always-visible external research links when topic is entered */}
+                                        {monetizeTopic.trim().length >= 2 && nicheValidation.status !== 'error' && (
+                                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                                <span className="text-xs text-slate-500">Research:</span>
+                                                {[
+                                                    { label: '📈 Trends', url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(monetizeTopic)}` },
+                                                    { label: '💬 Reddit', url: `https://www.reddit.com/search/?q=${encodeURIComponent(monetizeTopic)}` },
+                                                    { label: '▶️ YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
+                                                ].map(({ label, url }) => (
+                                                    <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                                                        className="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-white/10 transition-all font-medium">
+                                                        {label}
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {nicheValidation.status === 'done' && nicheValidation.data?.status === 'success' && (
+                                            <div className="mt-2 px-3 py-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg text-xs text-emerald-400 flex items-center gap-1">
+                                                <FiCheckCircle className="shrink-0" /> Market research complete — see report below
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Language selector */}
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-300 mb-2">出力言語 / Output Language</label>
+                                        <label className="block text-sm font-bold text-slate-300 mb-2">Output Language</label>
                                         <div className="flex gap-2">
-                                            {[['auto', '🌐 Auto'], ['ja', '🇯🇵 日本語'], ['en', '🇺🇸 English']].map(([val, label]) => (
+                                            {[['auto', '🌐 Auto'], ['ja', '🇯🇵 Japanese'], ['en', '🇺🇸 English']].map(([val, label]) => (
                                                 <button key={val} onClick={() => setLang(val)}
                                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${lang === val ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
                                                     {label}
@@ -976,14 +1151,14 @@ const SageOS = () => {
                                     {/* D1 research warning */}
                                     {monetizeStatus === 'needs_research' && (
                                         <div className="p-5 bg-amber-900/20 border border-amber-500/30 rounded-2xl space-y-3">
-                                            <div className="text-amber-300 font-bold flex items-center gap-2"><FiAlertTriangle /> D1リサーチが見つかりません</div>
-                                            <p className="text-slate-300 text-sm">「{monetizeTopic}」に一致するリサーチファイルがありません。汚染リスクを避けるため、先にD1リサーチを実行することを推奨します。</p>
+                                            <div className="text-amber-300 font-bold flex items-center gap-2"><FiAlertTriangle /> D1 Research not found</div>
+                                            <p className="text-slate-300 text-sm">No research file found for "{monetizeTopic}". We recommend running D1 Research first to avoid content contamination.</p>
                                             <div className="flex gap-3">
                                                 <button onClick={handleD1ForTopic} className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
-                                                    <FiPlay /> D1リサーチを実行してから生成
+                                                    <FiPlay /> Run D1 Research, Then Generate
                                                 </button>
                                                 <button onClick={() => runMonetizePipeline()} className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-400 text-sm rounded-xl transition-all">
-                                                    このまま生成（リスクあり）
+                                                    Generate anyway (risky)
                                                 </button>
                                             </div>
                                         </div>
@@ -1013,20 +1188,65 @@ const SageOS = () => {
                                                 }`}
                                         >
                                             {monetizeStatus === 'idle' && <>⚡ Generate Product</>}
-                                            {monetizeStatus === 'running_d1' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-amber-400 border-t-white" /> D1リサーチ実行中...</>}
+                                            {monetizeStatus === 'running_d1' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-amber-400 border-t-white" /> Running D1 Research...</>}
                                             {monetizeStatus === 'running' && <><div className="animate-spin w-5 h-5 rounded-full border-2 border-slate-400 border-t-white"></div> Running Pipeline...</>}
                                             {monetizeStatus === 'error' && <><FiXCircle /> Pipeline Failed — Retry</>}
                                         </button>
                                     )}
 
-                                    {monetizeStatus === 'running' && generateProgress && (
-                                        <p className="text-xs text-violet-300 mt-2 animate-pulse text-center">{generateProgress}</p>
+                                    {monetizeStatus === 'running' && (
+                                        <div className="mt-3 space-y-2">
+                                            {/* Progress bar */}
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 bg-slate-800 rounded-full h-2.5 overflow-hidden border border-white/10">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full transition-all ease-out"
+                                                        style={{ width: `${progressPercent}%`, transitionDuration: '2000ms' }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs text-slate-400 shrink-0 w-8 text-right">{progressPercent}%</span>
+                                            </div>
+                                            <p className="text-xs text-violet-300 animate-pulse text-center">{generateProgress}</p>
+                                        </div>
                                     )}
 
-                                    {monetizeResult && monetizeStatus === 'error' && (
-                                        <div className="mt-4 p-4 bg-red-900/30 border border-red-500/30 rounded-xl text-sm">
-                                            <div className="text-red-400 font-bold mb-1">❌ エラー詳細</div>
-                                            <div className="text-slate-300 text-xs break-all">{monetizeResult}</div>
+                                    {/* Quick Monetize Preview — shows while typing, generating, or on error */}
+                                    {!['review', 'finalizing', 'finalized'].includes(monetizeStatus) && quickPreview && (
+                                        <div className="mt-4 p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl space-y-3">
+                                            <div className="text-xs font-bold text-purple-400 uppercase tracking-widest">⚡ Quick Preview</div>
+                                            <div className="text-white font-bold text-sm">{quickPreview.headline}</div>
+                                            <div className="text-xs text-slate-400">👤 {quickPreview.buyer}</div>
+                                            <div className="text-xs text-emerald-400 font-bold">💰 {quickPreview.price}</div>
+                                            <div className="space-y-1">
+                                                {quickPreview.hooks.map((h, i) => (
+                                                    <div key={i} className="text-xs text-slate-300 flex gap-2">
+                                                        <span className="text-purple-400 shrink-0">→</span>{h}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {monetizeStatus === 'error' && (
+                                        <div className="mt-4 p-4 bg-red-900/30 border border-red-500/40 rounded-xl text-sm space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-red-400 font-bold flex items-center gap-2">❌ Pipeline Failed</div>
+                                                <button
+                                                    onClick={() => { setMonetizeStatus('idle'); setMonetizeResult(null); }}
+                                                    className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/10 border border-white/10 transition-all"
+                                                >
+                                                    ✕ Close
+                                                </button>
+                                            </div>
+                                            <div className="text-slate-300 text-xs break-all">
+                                                {monetizeResult || 'An error occurred in the LLM pipeline. Please retry or wait a moment.'}
+                                            </div>
+                                            <button
+                                                onClick={() => { setMonetizeStatus('idle'); setMonetizeResult(null); setTimeout(() => handleMonetize(), 50); }}
+                                                className="w-full py-2 bg-red-800/40 hover:bg-red-700/50 border border-red-500/30 text-red-300 text-xs font-bold rounded-lg transition-all"
+                                            >
+                                                🔄 Try Again
+                                            </button>
                                         </div>
                                     )}
 
@@ -1036,15 +1256,15 @@ const SageOS = () => {
                                             <div className="flex items-center gap-3">
                                                 <FiCheckCircle className="text-emerald-400 text-xl" />
                                                 <div>
-                                                    <div className="text-emerald-300 font-bold">生成完了！</div>
-                                                    <div className="text-slate-400 text-sm">{editedSections.length} sections, sales page, captions が準備完了</div>
+                                                    <div className="text-emerald-300 font-bold">Generation Complete!</div>
+                                                    <div className="text-slate-400 text-sm">{editedSections.length} sections, sales page & captions ready</div>
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => goToPhase(3)}
                                                 className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                                             >
-                                                ✏️ コンテンツを確認・磨く → REFINE
+                                                ✏️ Review & Polish Content → REFINE
                                             </button>
                                         </div>
                                     )}
@@ -1054,12 +1274,12 @@ const SageOS = () => {
                                 {nicheValidation.status === 'done' && nicheValidation.data?.status === 'success' && (() => {
                                     const v = nicheValidation.data;
                                     const recStyle = {
-                                        GO: { wrap: 'border-emerald-500/30 bg-emerald-900/10', label: 'text-emerald-400', score: 'text-emerald-300', text: '✅ GO — 市場性あり' },
-                                        CAUTION: { wrap: 'border-amber-500/30 bg-amber-900/10', label: 'text-amber-400', score: 'text-amber-300', text: '⚠️ CAUTION — 要改善' },
-                                        STOP: { wrap: 'border-red-500/30 bg-red-900/10', label: 'text-red-400', score: 'text-red-300', text: '🛑 STOP — 市場性低' },
+                                        GO: { wrap: 'border-emerald-500/30 bg-emerald-900/10', label: 'text-emerald-400', score: 'text-emerald-300', text: '✅ GO — Market Viable' },
+                                        CAUTION: { wrap: 'border-amber-500/30 bg-amber-900/10', label: 'text-amber-400', score: 'text-amber-300', text: '⚠️ CAUTION — Needs Improvement' },
+                                        STOP: { wrap: 'border-red-500/30 bg-red-900/10', label: 'text-red-400', score: 'text-red-300', text: '🛑 STOP — Low Market Demand' },
                                     }[v.recommendation] || { wrap: 'border-slate-500/30 bg-slate-900/10', label: 'text-slate-400', score: 'text-slate-300', text: v.recommendation };
                                     return (
-                                        <div className={`border ${recStyle.wrap} rounded-2xl p-6 space-y-4`}>
+                                        <div ref={nicheResultRef} className={`border ${recStyle.wrap} rounded-2xl p-6 space-y-4`}>
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <div className={`text-lg font-black ${recStyle.label}`}>{recStyle.text}</div>
@@ -1069,21 +1289,21 @@ const SageOS = () => {
                                             </div>
                                             <div className="grid grid-cols-3 gap-3 text-xs">
                                                 <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">需要</div>
+                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Demand</div>
                                                     <div className="text-white font-bold text-base">{v.demand?.score}/100</div>
-                                                    <div className="text-slate-500">{v.demand?.trend} · 検索:{v.demand?.search_volume}</div>
+                                                    <div className="text-slate-500">{v.demand?.trend} · Search: {v.demand?.search_volume}</div>
                                                     <div className="text-slate-400 mt-1 leading-relaxed">{v.demand?.reason}</div>
                                                 </div>
                                                 <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">競合</div>
+                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Competition</div>
                                                     <div className="text-white font-bold text-base">{v.competition?.level}</div>
-                                                    <div className="text-slate-500">平均¥{(v.competition?.avg_price_jpy || 0).toLocaleString()}</div>
+                                                    <div className="text-slate-500">Avg ¥{(v.competition?.avg_price_jpy || 0).toLocaleString()}</div>
                                                     {(v.competition?.gaps || []).length > 0 && (
-                                                        <div className="mt-1 text-indigo-300">ギャップ: {v.competition.gaps[0]}</div>
+                                                        <div className="mt-1 text-indigo-300">Gap: {v.competition.gaps[0]}</div>
                                                     )}
                                                 </div>
                                                 <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">オーディエンス</div>
+                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Audience</div>
                                                     <div className="text-white font-bold text-base">{v.audience?.clarity_score}/100</div>
                                                     <div className="text-slate-500">{v.audience?.persona?.age_range} · {v.audience?.persona?.occupation}</div>
                                                     <div className="text-slate-400 mt-1 leading-relaxed">{v.audience?.persona?.pain_point}</div>
@@ -1107,7 +1327,7 @@ const SageOS = () => {
                                             )}
                                             {(v.improvements || []).length > 0 && (
                                                 <div className="bg-black/20 rounded-xl p-3 text-xs space-y-1">
-                                                    <div className="text-slate-400 uppercase tracking-widest font-bold mb-2">改善提案</div>
+                                                    <div className="text-slate-400 uppercase tracking-widest font-bold mb-2">Suggestions</div>
                                                     {v.improvements.map((imp, i) => (
                                                         <div key={i} className="text-slate-300 flex gap-2"><span className="text-indigo-400">→</span>{imp}</div>
                                                     ))}
@@ -1118,7 +1338,7 @@ const SageOS = () => {
                                 })()}
                                 {nicheValidation.status === 'error' && (
                                     <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-2xl text-sm text-red-400 flex items-center gap-2">
-                                        <FiXCircle /> ニッチ検証に失敗しました。Flaskが起動しているか確認してください。
+                                        <FiXCircle /> Niche validation failed. Please check that Flask is running.
                                     </div>
                                 )}
                             </Motion.div>
@@ -1131,9 +1351,9 @@ const SageOS = () => {
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto py-8 px-8">
                                 {!generateData ? (
                                     <div className="text-center py-20">
-                                        <div className="text-slate-400 mb-4">コンテンツがまだ生成されていません。</div>
+                                        <div className="text-slate-400 mb-4">Content not yet generated.</div>
                                         <button onClick={() => goToPhase(2)} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
-                                            ← Phase 2 で生成する
+                                            ← Generate in Phase 2
                                         </button>
                                     </div>
                                 ) : (
@@ -1171,7 +1391,7 @@ const SageOS = () => {
                                                     onClick={() => { setIsDemo(false); setMonetizeStatus('idle'); setGenerateData(null); goToPhase(2); }}
                                                     className="text-xs text-slate-500 hover:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all"
                                                 >
-                                                    ← やり直す
+                                                    ← Start Over
                                                 </button>
                                             </div>
 
@@ -1186,7 +1406,7 @@ const SageOS = () => {
                                                             <div className="flex items-center gap-3 text-left flex-wrap">
                                                                 <span className="text-xs text-slate-500 font-mono w-5">{idx + 1}</span>
                                                                 <span className="text-sm font-semibold text-white">{section.title}</span>
-                                                                <span className="text-xs text-slate-500">{section.content?.length || 0} 文字</span>
+                                                                <span className="text-xs text-slate-500">{section.content?.length || 0} chars</span>
                                                                 {(() => {
                                                                     const q = analyzeContentQuality(section.content);
                                                                     const scoreColor = q.score >= 75 ? 'text-emerald-400' : q.score >= 50 ? 'text-amber-400' : 'text-red-400';
@@ -1216,7 +1436,7 @@ const SageOS = () => {
                                                                         value={sectionInstructions[idx] || ''}
                                                                         onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
                                                                         onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
-                                                                        placeholder="このセクションだけ書き直す（例: もっと具体的な数字を入れて）"
+                                                                        placeholder="Rewrite this section only (e.g. add more specific numbers)"
                                                                         className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600"
                                                                     />
                                                                     <button
@@ -1227,7 +1447,7 @@ const SageOS = () => {
                                                                         {rewritingIdx === idx
                                                                             ? <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
                                                                             : <FiPlay />}
-                                                                        書き直す
+                                                                        Rewrite
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -1260,21 +1480,32 @@ const SageOS = () => {
                                             ) : (
                                                 <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl space-y-3">
                                                     <div className="text-xs font-bold text-purple-300 uppercase tracking-widest">
-                                                        全体の口調・スタイルを一括変更
+                                                        Rewrite All — Tone &amp; Style
                                                     </div>
-                                                    {/* 2×4 preset grid */}
+                                                    {/* 2×4 preset grid — per-button loading/done/error */}
                                                     <div className="grid grid-cols-2 gap-2">
-                                                        {PRESETS.map(preset => (
-                                                            <button
-                                                                key={preset.id}
-                                                                onClick={() => applyPreset(preset)}
-                                                                disabled={globalRewriting}
-                                                                className="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-purple-600/30 hover:text-white disabled:opacity-40 text-slate-300 rounded-xl transition-all text-sm font-medium border border-white/10 hover:border-purple-400/40 text-left"
-                                                            >
-                                                                <span className="text-base">{preset.icon}</span>
-                                                                <span className="text-xs">{preset.label}</span>
-                                                            </button>
-                                                        ))}
+                                                        {PRESETS.map(preset => {
+                                                            const isThis = rewritingPreset === preset.id;
+                                                            const result = presetResults[preset.id];
+                                                            return (
+                                                                <button
+                                                                    key={preset.id}
+                                                                    onClick={() => applyPreset(preset)}
+                                                                    disabled={!!(rewritingPreset || globalRewriting)}
+                                                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium border text-left
+                                                                        ${result === 'success' ? 'bg-emerald-900/30 border-emerald-500/40 text-emerald-300'
+                                                                        : result === 'error' ? 'bg-red-900/20 border-red-500/30 text-red-400'
+                                                                        : isThis ? 'bg-purple-600/30 border-purple-400/40 text-white'
+                                                                        : 'bg-white/5 hover:bg-purple-600/30 hover:text-white disabled:opacity-40 text-slate-300 border-white/10 hover:border-purple-400/40'}`}
+                                                                >
+                                                                    {isThis
+                                                                        ? <div className="w-4 h-4 rounded-full border-2 border-purple-300 border-t-transparent animate-spin shrink-0" />
+                                                                        : <span className="text-base shrink-0">{result === 'success' ? '✅' : result === 'error' ? '❌' : preset.icon}</span>
+                                                                    }
+                                                                    <span className="text-xs">{isThis ? 'Rewriting...' : result === 'success' ? 'Done!' : result === 'error' ? 'Failed — Retry' : preset.label}</span>
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
                                                     {/* Custom instruction */}
                                                     <div className="flex gap-2">
@@ -1283,7 +1514,7 @@ const SageOS = () => {
                                                             value={globalInstruction}
                                                             onChange={e => setGlobalInstruction(e.target.value)}
                                                             onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
-                                                            placeholder="カスタム指示: 例: もっとカジュアルに / 英語に翻訳"
+                                                            placeholder="Custom instruction (e.g. make it more casual / translate to English)"
                                                             className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
                                                         />
                                                         <button
@@ -1292,8 +1523,8 @@ const SageOS = () => {
                                                             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
                                                         >
                                                             {globalRewriting
-                                                                ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> 書き直し中</>
-                                                                : <><FiPlay /> 適用</>}
+                                                                ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> Rewriting...</>
+                                                                : <><FiPlay /> Apply</>}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1301,7 +1532,7 @@ const SageOS = () => {
 
                                             {/* Image Regen */}
                                             <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-2xl space-y-2">
-                                                <div className="text-xs font-bold text-blue-300 uppercase tracking-widest">画像の再生成</div>
+                                                <div className="text-xs font-bold text-blue-300 uppercase tracking-widest">Regenerate Images</div>
                                                 {isDemo ? (
                                                     <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
                                                         className="w-full px-4 py-2.5 bg-purple-600/50 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-purple-600">
@@ -1314,11 +1545,64 @@ const SageOS = () => {
                                                         className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
                                                     >
                                                         {imageRegenStatus === 'running'
-                                                            ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> 生成中...</>
-                                                            : <>🔄 Regenerate Images</>}
+                                                            ? <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> Generating...</>
+                                                            : imageRegenStatus === 'done'
+                                                                ? <>✅ Done!</>
+                                                                : imageRegenStatus === 'error'
+                                                                    ? <>❌ Failed — Retry</>
+                                                                    : <>🔄 Regenerate Images</>}
                                                     </button>
                                                 )}
                                             </div>
+
+                                            {/* Product Value Stack */}
+                                            {generateData && (generateData.bonus_stack || generateData.product_hook || generateData.launch_checklist) && (
+                                                <div className="p-4 bg-emerald-900/10 border border-emerald-500/20 rounded-2xl space-y-3">
+                                                    <div className="text-xs font-bold text-emerald-300 uppercase tracking-widest">🎁 商品一式 Product Stack</div>
+
+                                                    {/* Product Hook */}
+                                                    {generateData.product_hook && (
+                                                        <div className="space-y-1">
+                                                            <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Product Hook</div>
+                                                            <div className="text-xs text-white/90 bg-black/30 rounded-xl px-3 py-2 leading-relaxed">
+                                                                "{generateData.product_hook}"
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Bonus Stack */}
+                                                    {generateData.bonus_stack && generateData.bonus_stack.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                            <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Bonus Stack (3 bonuses)</div>
+                                                            {generateData.bonus_stack.map((bonus, i) => (
+                                                                <div key={i} className="flex items-start gap-2 text-xs bg-black/20 rounded-lg px-3 py-2">
+                                                                    <span className="text-emerald-400 font-bold shrink-0">B{i + 1}</span>
+                                                                    <div>
+                                                                        <div className="text-white font-semibold">{bonus.title}</div>
+                                                                        {bonus.description && <div className="text-slate-400 text-[11px] mt-0.5">{bonus.description}</div>}
+                                                                        {bonus.value && <div className="text-emerald-400 text-[10px] mt-0.5">Value: {bonus.value}</div>}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Launch Checklist */}
+                                                    {generateData.launch_checklist && generateData.launch_checklist.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                            <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Launch Checklist</div>
+                                                            <div className="space-y-1">
+                                                                {generateData.launch_checklist.map((item, i) => (
+                                                                    <div key={i} className="flex items-center gap-2 text-xs text-slate-300">
+                                                                        <div className="w-4 h-4 rounded border border-emerald-500/40 flex items-center justify-center shrink-0 text-[10px] text-emerald-400">{i + 1}</div>
+                                                                        <span>{item}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {/* Preview tabs */}
                                             <div className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
@@ -1373,7 +1657,7 @@ const SageOS = () => {
                                                 onClick={() => goToPhase(4)}
                                                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)]"
                                             >
-                                                🚀 投稿フェーズへ → PUBLISH
+                                                🚀 Go to Publish Phase → PUBLISH
                                             </button>
                                         </div>
                                     </div>
@@ -1388,14 +1672,14 @@ const SageOS = () => {
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto py-8 px-8 space-y-6">
                                 <div className="text-center mb-8">
                                     <h2 className="text-4xl font-black mb-2">🚀 Publish</h2>
-                                    <p className="text-slate-400">コンテンツを世界に届けましょう。</p>
+                                    <p className="text-slate-400">Let's get your content out into the world.</p>
                                 </div>
 
                                 {!generateData ? (
                                     <div className="text-center py-16">
-                                        <div className="text-slate-400 mb-4">公開するコンテンツがまだありません。</div>
+                                        <div className="text-slate-400 mb-4">No content to publish yet.</div>
                                         <button onClick={() => goToPhase(2)} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
-                                            ← Phase 2 で生成する
+                                            ← Generate in Phase 2
                                         </button>
                                     </div>
                                 ) : (
@@ -1429,22 +1713,62 @@ const SageOS = () => {
                                             ) : (
                                                 <div className="space-y-2">
                                                     {[
-                                                        { key: 'bluesky', icon: '🚀', label: 'Post to Bluesky', action: handlePublishBluesky },
-                                                        { key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram },
-                                                    ].map(({ key, icon, label, action }) => (
-                                                        <button key={key} onClick={action}
-                                                            disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
-                                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
-                                                            <span>{publishChecklist[key] === 'done' ? '✅' : publishChecklist[key] === 'running' ? '⏳' : icon}</span>
-                                                            <span>{label}</span>
-                                                            {publishChecklist[key] === 'done' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
-                                                            {publishChecklist[key] === 'error' && <span className="ml-auto text-xs text-red-400">Failed</span>}
-                                                        </button>
+                                                        {
+                                                            key: 'bluesky', icon: '🚀', label: 'Post to Bluesky', action: handlePublishBluesky,
+                                                            fallbackUrl: 'https://bsky.app', fallbackLabel: 'Open Bluesky',
+                                                        },
+                                                        {
+                                                            key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram,
+                                                            fallbackUrl: 'https://www.instagram.com', fallbackLabel: 'Open Instagram',
+                                                            errorHint: 'Instagram requires a public image URL. Copy your caption and post manually.',
+                                                        },
+                                                    ].map(({ key, icon, label, action, fallbackUrl, fallbackLabel, errorHint }) => (
+                                                        <div key={key} className="space-y-1">
+                                                            <button onClick={action}
+                                                                disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
+                                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-white/5 border-white/10 text-slate-400' : publishChecklist[key] === 'error' ? 'bg-red-900/10 border-red-500/20 text-red-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
+                                                                <span>{publishChecklist[key] === 'done' ? '✅' : publishChecklist[key] === 'running' ? '⏳' : publishChecklist[key] === 'error' ? '❌' : icon}</span>
+                                                                <span>{label}</span>
+                                                                {publishChecklist[key] === 'done' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
+                                                                {publishChecklist[key] === 'error' && <span className="ml-auto text-xs text-red-400">Failed — Retry?</span>}
+                                                            </button>
+                                                            {/* Fallback actions shown on failure */}
+                                                            {publishChecklist[key] === 'error' && (
+                                                                <div className="space-y-1.5 pl-2">
+                                                                    {errorHint && (
+                                                                        <div className="text-[10px] text-amber-400/80 px-1">⚠️ {errorHint}</div>
+                                                                    )}
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                const caption = editedCaptions[0] || editedSections.map(s => s.title).join(' ');
+                                                                                try {
+                                                                                    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(caption);
+                                                                                    else { const el = document.createElement('textarea'); el.value = caption; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); }
+                                                                                } catch {}
+                                                                            }}
+                                                                            className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5"
+                                                                        >
+                                                                            📋 Copy Caption
+                                                                        </button>
+                                                                        <a href={fallbackUrl} target="_blank" rel="noopener noreferrer"
+                                                                            className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                                                                            🔗 {fallbackLabel}
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     ))}
                                                     <button onClick={handleCopyBlogPost}
-                                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist.copied ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
-                                                        <span>{publishChecklist.copied ? '✅' : '📝'}</span>
-                                                        <span>{publishChecklist.copied ? 'Copied!' : 'Copy Blog Post'}</span>
+                                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all border ${
+                                                            copyStatus === 'success' ? 'bg-emerald-600/30 border-emerald-400/50 text-emerald-200 scale-[1.01]'
+                                                            : copyStatus === 'error' ? 'bg-red-900/30 border-red-500/50 text-red-300'
+                                                            : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
+                                                        <span className="text-base">{copyStatus === 'success' ? '✅' : copyStatus === 'error' ? '❌' : '📝'}</span>
+                                                        <span>{copyStatus === 'success' ? 'Copied!' : copyStatus === 'error' ? 'Copy Failed' : 'Copy Blog Post'}</span>
+                                                        {copyStatus === 'success' && <span className="ml-auto text-xs font-bold text-emerald-300 animate-pulse">Done!</span>}
+                                                        {copyStatus === 'error' && <span className="ml-auto text-xs text-red-400">Retry?</span>}
                                                     </button>
                                                 </div>
                                             )}
@@ -1465,14 +1789,14 @@ const SageOS = () => {
                                                         className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 disabled:opacity-50 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]"
                                                     >
                                                         {monetizeStatus === 'finalizing'
-                                                            ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> 保存中...</>
-                                                            : <><FiCheckCircle /> 確認完了 → Obsidianに保存</>}
+                                                            ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Saving...</>
+                                                            : <><FiCheckCircle /> Confirm &amp; Save to Obsidian</>}
                                                     </button>
                                                 )}
                                             </div>
                                         ) : (
                                             <div className="p-5 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl space-y-2">
-                                                <div className="text-emerald-400 font-bold text-lg flex items-center gap-2"><FiCheck /> 最終版を保存しました</div>
+                                                <div className="text-emerald-400 font-bold text-lg flex items-center gap-2"><FiCheck /> Final version saved!</div>
                                                 <div className="text-slate-300 font-mono text-xs break-all">{monetizeResult}</div>
                                             </div>
                                         )}
@@ -1482,7 +1806,7 @@ const SageOS = () => {
                                             onClick={() => { handleStartNew(); goToPhase(1); }}
                                             className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-all"
                                         >
-                                            ↺ 新しいコンテンツを作成する
+                                            ↺ Create New Content
                                         </button>
                                     </>
                                 )}
