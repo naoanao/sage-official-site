@@ -1595,7 +1595,7 @@ Output valid JSON only (no code blocks):
 
 def _build_sns_captions(topic: str, sections: list, sales_page: str = "") -> list:  # noqa: ARG001
     """Generate ready-to-post SNS captions from course content.
-    Returns [bluesky_caption, instagram_caption, general_caption] (max 280/2200/280 chars).
+    Returns 5 captions: [bluesky, instagram, twitter_x, facebook, japanese] (max chars per platform).
     """
     titles = [s.get('title', '') for s in sections[:5]]
     bullet_lines = "\n".join(f"✅ {t}" for t in titles[:4])
@@ -1614,10 +1614,25 @@ def _build_sns_captions(topic: str, sections: list, sales_page: str = "") -> lis
         f"#AItools #PassiveIncome #DigitalProduct #Automation #OnlineBusiness #SolopreNeur #AIcourse"
     )
 
-    general = (
-        f"New digital product: \"{topic}\".\n"
-        f"Covers: {', '.join(titles[:3])}.\n"
-        f"AI-generated and ready to publish."
+    twitter_x = (
+        f"Just built \"{topic}\" with AI in 90 seconds 🚀\n\n"
+        f"{'📌 ' + titles[0] if titles else topic}\n\n"
+        f"Full guide · Ready to sell · Link in bio\n\n"
+        f"#AI #DigitalProducts #SolopreNeur #PassiveIncome"
     )[:280]
 
-    return [bluesky, instagram, general]
+    facebook = (
+        f"Excited to share my latest digital product: \"{topic}\" 🚀\n\n"
+        f"This guide covers:\n{bullet_lines}\n\n"
+        f"Whether you're just starting out or looking to level up, this resource walks you through every step.\n\n"
+        f"Drop a comment if you'd like to know more! 👇"
+    )
+
+    japanese = (
+        f"【新作】「{topic}」のデジタル商品を作りました🚀\n\n"
+        + "\n".join(f"📌 {t}" for t in titles[:3]) +
+        f"\n\nAIで90秒生成・すぐに販売可能です✨\n\n"
+        f"#AI #副業 #デジタル商品 #自動化 #AIビジネス"
+    )[:280]
+
+    return [bluesky, instagram, twitter_x, facebook, japanese]
