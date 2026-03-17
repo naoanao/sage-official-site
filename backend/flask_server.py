@@ -209,7 +209,8 @@ try:
         from backend.scheduler.blog_scheduler import BlogScheduler
         from backend.scheduler.gumroad_scheduler import GumroadScheduler
         from backend.scheduler.notion_sync_scheduler import NotionSyncScheduler
-        logger.info("[SUCCESS] SNS, Blog, Gumroad, and Notion schedulers imported.")
+        from backend.scheduler.market_scan_scheduler import MarketScanScheduler
+        logger.info("[SUCCESS] SNS, Blog, Gumroad, Notion, and MarketScan schedulers imported.")
     except Exception as e:
         logger.error(f"[ERROR] SNS Startup Import Failure: {e}")
 
@@ -1128,8 +1129,16 @@ def init_brain():
                                 except Exception as e:
                                     logger.error(f"[ERROR] Engagement Bot Thread Error: {e}")
 
+                            # Market Scan Scheduler (JST 06:00 = UTC 21:00)
+                            def run_market_scan_scheduler():
+                                try:
+                                    market_sched = MarketScanScheduler()
+                                    market_sched.run()
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Market Scan Scheduler Thread Error: {e}")
+
                             # Initialize events (IDはUIのautomation IDと一致させる)
-                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement']:
+                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement', 'market_scan']:
                                 if auto not in _automation_stop_events:
                                     _automation_stop_events[auto] = threading.Event()
 
@@ -1139,7 +1148,8 @@ def init_brain():
                             threading.Thread(target=run_gumroad_scheduler, daemon=True, name="SageGumroadScheduler").start()
                             threading.Thread(target=run_notion_scheduler, daemon=True, name="SageNotionSyncScheduler").start()
                             threading.Thread(target=run_engagement_bot, daemon=True, name="SageEngagementBot").start()
-                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot Threads spawned.")
+                            threading.Thread(target=run_market_scan_scheduler, daemon=True, name="SageMarketScanScheduler").start()
+                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot + MarketScan Threads spawned.")
 
                         run_sns_loops()
                         
