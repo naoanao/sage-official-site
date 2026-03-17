@@ -486,21 +486,78 @@ class TestMarketScanNotifierTelegram(unittest.TestCase):
 
 
 class TestMarketScanNotifierNotion(unittest.TestCase):
-    """Notion投入ロジックを検証する。"""
+    """Notion通知（タスク管理DB）ロジックを検証する。"""
 
     def setUp(self):
         self.notifier = _make_notifier(dry_run=True)
 
-    def test_notify_notion_skips_when_no_env(self):
-        """DB IDがない場合はFalseを返す（クラッシュしない）。"""
-        with patch.dict(os.environ, {}, clear=True):
-            os.environ.pop("NOTION_CONTENT_POOL_DB_ID", None)
-            os.environ.pop("NOTION_API_KEY", None)
+    def test_notify_notion_skips_when_no_api_key(self):
+        """NOTION_API_KEY がない場合はFalseを返す（クラッシュしない）。"""
+        env = {k: v for k, v in os.environ.items() if k != "NOTION_API_KEY"}
+        with patch.dict(os.environ, env, clear=True):
             result = self.notifier.notify_notion(_fake_scan_result())
         self.assertFalse(result)
 
-    def test_notify_notion_dry_run_returns_true_with_env(self):
+    def test_notify_notion_dry_run_returns_true_with_api_key(self):
+        """NOTION_API_KEY があってDRY_RUNならTrueを返す（notion_logger 呼び出しなし）。"""
+        with patch.dict(os.environ, {"NOTION_API_KEY": "dummy-key"}):
+            result = self.notifier.notify_notion(_fake_scan_result())
+        self.assertTrue(result)
+
+    def test_notify_notion_uses_notion_logger(self):
+        """DRY_RUN=False 時に notion_logger.log_market_scan() を呼ぶことを確認。"""
+        notifier = _make_notifier(dry_run=False)
+        mock_logger = MagicMock()
+        mock_logger_module = types.ModuleType("backend.integrations.notion_logger")
+        mock_logger_module.notion_logger = mock_logger
+
+        with patch.dict(os.environ, {"NOTION_API_KEY": "dummy-key"}), \
+             patch.dict("sys.modules", {"backend.integrations.notion_logger": mock_logger_module}):
+            result = notifier.notify_notion(_fake_scan_result())
+
+        mock_logger.log_market_scan.assert_called_once()
+        self.assertTrue(result)
+
+
+class TestMarketScanNotifierBlogQueue(unittest.TestCase):
+    """queue_to_blog（Content Pool DB投入）ロジックを検証する。"""
+
+    def setUp(self):
+        self.notifier = _make_notifier(dry_run=True)
+
+    def test_queue_to_blog_skips_when_no_db_id(self):
+        """NOTION_CONTENT_POOL_DB_ID がなければFalseを返す。"""
+        env = {k: v for k, v in os.environ.items()
+               if k not in ("NOTION_CONTENT_POOL_DB_ID", "NOTION_API_KEY")}
+        with patch.dict(os.environ, env, clear=True):
+            result = self.notifier.queue_to_blog(_fake_scan_result())
+        self.assertFalse(result)
+
+    def test_queue_to_blog_dry_run_returns_true_with_env(self):
         """環境変数が揃っていてDRY_RUNならTrueを返す。"""
+        mock_notion_module = types.ModuleType("backend.integrations.notion_integration")
+        mock_notion_module.NotionIntegration = MagicMock()
+        with patch.dict(os.environ, {
+            "NOTION_CONTENT_POOL_DB_ID": "dummy-db-id",
+            "NOTION_API_KEY": "dummy-key",
+        }), patch.dict("sys.modules", {
+            "backend.integrations.notion_integration": mock_notion_module
+        }):
+            result = self.notifier.queue_to_blog(_fake_scan_result())
+        self.assertTrue(result)
+
+    def test_queue_to_blog_skips_empty_opportunities(self):
+        empty_result = {"scanned_at": "2026-03-17T21:00:00", "total_signals": 0, "opportunities": []}
+        with patch.dict(os.environ, {
+            "NOTION_CONTENT_POOL_DB_ID": "dummy-db-id",
+            "NOTION_API_KEY": "dummy-key",
+        }):
+            result = self.notifier.queue_to_blog(empty_result)
+        self.assertFalse(result)
+
+    def test_queue_to_blog_uses_notion_integration(self):
+        """DRY_RUN=False 時に NotionIntegration.add_to_database() を呼ぶことを確認。"""
+        notifier = _make_notifier(dry_run=False)
         mock_notion_cls = MagicMock()
         mock_notion_cls.return_value.add_to_database.return_value = {"id": "page-123"}
         mock_notion_module = types.ModuleType("backend.integrations.notion_integration")
@@ -512,35 +569,31 @@ class TestMarketScanNotifierNotion(unittest.TestCase):
         }), patch.dict("sys.modules", {
             "backend.integrations.notion_integration": mock_notion_module
         }):
-            result = self.notifier.notify_notion(_fake_scan_result())
-        self.assertTrue(result)
+            result = notifier.queue_to_blog(_fake_scan_result())
 
-    def test_notify_notion_skips_empty_opportunities(self):
-        empty_result = {"scanned_at": "2026-03-17T21:00:00", "total_signals": 0, "opportunities": []}
-        with patch.dict(os.environ, {
-            "NOTION_CONTENT_POOL_DB_ID": "dummy-db-id",
-            "NOTION_API_KEY": "dummy-key",
-        }):
-            result = self.notifier.notify_notion(empty_result)
-        self.assertFalse(result)
+        mock_notion_cls.return_value.add_to_database.assert_called_once()
+        self.assertTrue(result)
 
 
 class TestMarketScanNotifierNotifyAll(unittest.TestCase):
-    """notify_all が3チャンネル分の結果を辞書で返すことを検証する。"""
+    """notify_all が4チャンネル分の結果を辞書で返すことを検証する。"""
 
     def test_notify_all_returns_dict_with_all_keys(self):
         notifier = _make_notifier(dry_run=True)
         with patch.object(notifier, "notify_slack", return_value=True), \
              patch.object(notifier, "notify_telegram", return_value=True), \
-             patch.object(notifier, "notify_notion", return_value=False):
+             patch.object(notifier, "notify_notion", return_value=True), \
+             patch.object(notifier, "queue_to_blog", return_value=False):
             result = notifier.notify_all(_fake_scan_result())
 
         self.assertIn("slack", result)
         self.assertIn("telegram", result)
         self.assertIn("notion", result)
+        self.assertIn("blog_queue", result)
         self.assertTrue(result["slack"])
         self.assertTrue(result["telegram"])
-        self.assertFalse(result["notion"])
+        self.assertTrue(result["notion"])
+        self.assertFalse(result["blog_queue"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -576,7 +629,7 @@ class TestMarketScanSchedulerWithNotifier(unittest.TestCase):
              patch("backend.modules.market_scan_notifier.MarketScanNotifier") as MockNotifier:
             MockAgent.return_value.run_scan.return_value = fake_result
             MockNotifier.return_value.notify_all.return_value = {
-                "slack": True, "telegram": True, "notion": True
+                "slack": True, "telegram": True, "notion": True, "blog_queue": True
             }
             sched.run_once()
             MockNotifier.return_value.notify_all.assert_called_once_with(fake_result)
