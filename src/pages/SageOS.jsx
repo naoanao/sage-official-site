@@ -529,7 +529,7 @@ const SageOS = () => {
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
             setProgressPercent(0);
-            setMonetizeResult(e.message || 'Pipeline failed');
+            setMonetizeResult('Content generation failed. Please retry or try a different topic.');
             setMonetizeStatus('error');
             // エラーは自動リセットしない — ユーザーが明示的にRetryするまで表示
         }
@@ -655,8 +655,8 @@ const SageOS = () => {
             } else {
                 throw new Error(res.data?.error || 'Finalize failed');
             }
-        } catch (e) {
-            setMonetizeResult(e.message);
+        } catch {
+            setMonetizeResult('Failed to finalize. Please retry.');
             setMonetizeStatus('error');
             // エラーは自動消去しない — ユーザーが✕閉じるで明示的に閉じる
         }
@@ -835,11 +835,10 @@ const SageOS = () => {
                 return next;
             });
         } catch (e) {
-            const errMsg = e?.response?.data?.error || e?.message || 'Backend unreachable';
             setMessages(prev => [...prev, {
                 id: Date.now() + 1,
                 role: 'sage',
-                content: `${errMsg} — Make sure Flask is running on port 8080.`
+                content: 'Sage is temporarily unavailable. Please try again in a moment.'
             }]);
         }
     };
@@ -1016,6 +1015,13 @@ const SageOS = () => {
                 {/* Phase Pages */}
                 {!showAutomations && (
                     <>
+                        {/* Demo mode persistent banner (CF Pages visitors) */}
+                        {!IS_OWNER && (
+                            <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/20 text-amber-400 text-xs font-mono shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0"></span>
+                                DEMO MODE — sample output only ·&nbsp;<span className="underline cursor-pointer hover:text-amber-300">Get Full Access</span>&nbsp;to generate real content
+                            </div>
+                        )}
                         {/* PhaseStepperBar (phases 2-4) */}
                         {currentPhase >= 2 && (
                             <PhaseStepperBar currentPhase={currentPhase} topic={activeTopic} onPhaseClick={goToPhase} />
@@ -1605,8 +1611,8 @@ const SageOS = () => {
                                                                         onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
                                                                         onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
                                                                         placeholder="Rewrite this section only (e.g. add more specific numbers)"
-                                                                        style={{ borderColor: rewriteEmptyIdx === idx ? '#ef4444' : undefined }}
-                                                                        className={`flex-1 bg-black/40 border rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600 transition-colors ${rewriteEmptyIdx === idx ? 'border-red-500' : 'border-white/10'}`}
+                                                                        style={{ borderColor: rewriteEmptyIdx === idx ? '#ef4444' : undefined, boxShadow: rewriteEmptyIdx === idx ? '0 0 0 2px #ef4444' : undefined }}
+                                                                        className={`flex-1 bg-black/40 border rounded-lg px-3 py-2 text-white text-xs focus:outline-none placeholder:text-slate-600 transition-colors ${rewriteEmptyIdx === idx ? 'border-red-500 animate-shake' : 'border-white/10 focus:border-blue-400'}`}
                                                                     />
                                                                     <button
                                                                         onClick={() => handleRewriteSection(idx)}
@@ -1710,8 +1716,8 @@ const SageOS = () => {
                                                                 }
                                                             }}
                                                             placeholder="Custom instruction (e.g. make it more casual / translate to English)"
-                                                            style={{ borderColor: globalEmptyTried ? '#ef4444' : undefined }}
-                                                            className={`flex-1 bg-black/40 border rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600 transition-colors ${globalEmptyTried ? 'border-red-500' : 'border-purple-500/30'}`}
+                                                            style={{ borderColor: globalEmptyTried ? '#ef4444' : undefined, boxShadow: globalEmptyTried ? '0 0 0 2px #ef4444' : undefined }}
+                                                            className={`flex-1 bg-black/40 border rounded-xl px-3 py-2 text-white text-sm focus:outline-none placeholder:text-slate-600 transition-colors ${globalEmptyTried ? 'border-red-500 animate-shake' : 'border-purple-500/30 focus:border-purple-400'}`}
                                                         />
                                                         <button
                                                             onClick={() => {

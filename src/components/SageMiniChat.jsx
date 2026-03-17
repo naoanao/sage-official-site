@@ -38,9 +38,8 @@ const SageMiniChat = ({ phase, topic }) => {
             const systemContext = `[Current Phase: ${phaseLabel}${topic ? ` | Topic: ${topic}` : ''}]`;
             const res = await api.post('/api/chat', { message: `${systemContext} ${userMsg}` });
             setMessages(prev => [...prev, { role: 'sage', content: res.data.response || 'No response.' }]);
-        } catch (e) {
-            const err = e?.response?.data?.error || e?.message || 'Backend unreachable';
-            setMessages(prev => [...prev, { role: 'sage', content: `${err} — Make sure Flask is running.` }]);
+        } catch {
+            setMessages(prev => [...prev, { role: 'sage', content: 'Sage is temporarily unavailable. Please try again in a moment.' }]);
         } finally {
             setLoading(false);
         }
