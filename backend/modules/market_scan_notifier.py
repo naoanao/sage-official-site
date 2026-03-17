@@ -62,7 +62,13 @@ class MarketScanNotifier:
     # ── Telegram ───────────────────────────────────────────────────────────
 
     def notify_telegram(self, scan_result: dict[str, Any]) -> bool:
-        """トップ3機会を TelegramBot.send_message() で通知する。"""
+        """トップ3機会を TelegramBot.send_message() で通知する。
+        flask_server.py と同じく SAGE_ENABLE_TELEGRAM=1 でゲート。
+        """
+        if os.getenv("SAGE_ENABLE_TELEGRAM") != "1":
+            logger.info("[NOTIFIER] Telegram is disabled (SAGE_ENABLE_TELEGRAM != 1). Skipping.")
+            return False
+
         try:
             from backend.integrations.telegram_bot import TelegramBot
             bot = TelegramBot()

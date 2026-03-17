@@ -473,14 +473,24 @@ class TestMarketScanNotifierTelegram(unittest.TestCase):
         self.notifier = _make_notifier(dry_run=True)
 
     def test_notify_telegram_dry_run_returns_true(self):
+        """SAGE_ENABLE_TELEGRAM=1 かつ DRY_RUN なら True を返す。"""
         mock_bot_cls = MagicMock()
         mock_bot_cls.return_value.send_message.return_value = True
-        with patch("backend.integrations.telegram_bot.TelegramBot", mock_bot_cls):
+        with patch.dict(os.environ, {"SAGE_ENABLE_TELEGRAM": "1"}), \
+             patch("backend.integrations.telegram_bot.TelegramBot", mock_bot_cls):
             result = self.notifier.notify_telegram(_fake_scan_result())
         self.assertTrue(result)
 
+    def test_notify_telegram_skips_when_disabled(self):
+        """SAGE_ENABLE_TELEGRAM が未設定なら False を返す（クラッシュしない）。"""
+        env = {k: v for k, v in os.environ.items() if k != "SAGE_ENABLE_TELEGRAM"}
+        with patch.dict(os.environ, env, clear=True):
+            result = self.notifier.notify_telegram(_fake_scan_result())
+        self.assertFalse(result)
+
     def test_notify_telegram_handles_import_error(self):
-        with patch.dict("sys.modules", {"backend.integrations.telegram_bot": None}):
+        with patch.dict(os.environ, {"SAGE_ENABLE_TELEGRAM": "1"}), \
+             patch.dict("sys.modules", {"backend.integrations.telegram_bot": None}):
             result = self.notifier.notify_telegram(_fake_scan_result())
             self.assertFalse(result)
 
