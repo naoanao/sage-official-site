@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion as Motion } from 'framer-motion';
-import { FiMessageSquare, FiCpu, FiShare2, FiDollarSign, FiLayout, FiArrowRight, FiActivity, FiShield, FiGlobe, FiDatabase } from 'react-icons/fi';
+import { FiMessageSquare, FiCpu, FiShare2, FiDollarSign, FiLayout, FiArrowRight, FiActivity, FiShield, FiGlobe, FiDatabase, FiCode } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
 
 const Landing = () => {
@@ -123,6 +123,16 @@ const Landing = () => {
                             className="px-10 py-5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl text-lg font-bold backdrop-blur-md transition-all flex items-center gap-3"
                         >
                             Get the Full Blueprint <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-white/70">$29</span>
+                        </Motion.a>
+
+                        <Motion.a
+                            href="/builder"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="px-10 py-5 border text-slate-300 hover:text-white rounded-xl text-lg font-bold backdrop-blur-md transition-all flex items-center gap-3"
+                            style={{ borderColor: 'rgba(124,58,237,0.4)', background: 'rgba(124,58,237,0.08)' }}
+                        >
+                            <FiCode /> AI Builder
                         </Motion.a>
                     </div>
                 </Motion.div>
