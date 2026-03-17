@@ -143,6 +143,35 @@ class NotionLogger:
             url=sample_url,
         )
 
+    def log_market_scan(self, scan_result: dict) -> None:
+        """市場スキャン結果をタスク管理DBに記録する。"""
+        from datetime import datetime, timezone, timedelta
+        JST = timezone(timedelta(hours=9))
+
+        opportunities = scan_result.get("opportunities", [])
+        total = scan_result.get("total_signals", 0)
+        scanned_at = scan_result.get("scanned_at", "")[:10]
+
+        lines = [f"総シグナル数: {total}", f"スキャン日: {scanned_at}", ""]
+        for opp in opportunities[:3]:
+            rank = opp.get("rank", "?")
+            keyword = opp.get("keyword", "")
+            idea = opp.get("product_idea", "")
+            score = opp.get("total_score", 0)
+            reason = opp.get("reason", "")
+            lines.append(f"#{rank} [{score:.1f}/10] {keyword}")
+            lines.append(f"  → {idea}")
+            lines.append(f"  {reason}")
+            lines.append("")
+
+        _create_page(
+            title=f"[市場スキャン] トップ機会 — {scanned_at}",
+            status="完了",
+            category="マーケティング",
+            priority="中",
+            memo="\n".join(lines),
+        )
+
     def log_error(self, context: str, error_msg: str) -> None:
         """エラー発生を即座に記録。"""
         commit = _get_commit()
