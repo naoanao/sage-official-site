@@ -150,3 +150,37 @@ try {
 
 Add-Content $LogFile "[$ts] === Sage 3.0 startup complete. Tunnel: $TunnelUrl ==="
 
+# ── Flask Watchdog (auto-restart on crash) ────────────────────────────────
+$flaskPid = $proc.Id
+Add-Content $LogFile "[$ts] Watchdog monitoring Flask PID $flaskPid"
+
+while ($true) {
+    Start-Sleep -Seconds 30
+    $alive = Get-Process -Id $flaskPid -ErrorAction SilentlyContinue
+    if (-not $alive) {
+        $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        Add-Content $LogFile "[$ts] [WATCHDOG] Flask process ($flaskPid) died. Restarting..."
+
+        # Port 8080 cleanup before restart
+        $existing8080 = netstat -ano | Select-String ":8080 " | Select-String "LISTENING"
+        foreach ($line in $existing8080) {
+            $pid8080 = ($line -split '\s+')[-1]
+            if ($pid8080 -match '^\d+$') {
+                Stop-Process -Id $pid8080 -Force -ErrorAction SilentlyContinue
+            }
+        }
+        Start-Sleep -Seconds 2
+
+        $proc = Start-Process `
+            -FilePath $Python `
+            -ArgumentList "-m", "backend.flask_server" `
+            -WorkingDirectory $SageDir `
+            -RedirectStandardOutput "$SageDir\logs\flask_stdout.log" `
+            -RedirectStandardError  "$SageDir\logs\flask_stderr.log" `
+            -WindowStyle Hidden `
+            -PassThru
+        $flaskPid = $proc.Id
+        Add-Content $LogFile "[$ts] [WATCHDOG] Flask restarted. New PID: $flaskPid"
+    }
+}
+

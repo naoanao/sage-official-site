@@ -406,20 +406,56 @@ def self_test_run():
 
 @app.route('/api/self-test/results', methods=['GET'])
 def self_test_results():
-    """最新の自己テスト結果JSONを返す。"""
+    """最新の自己テスト結果JSONを返す。?date=YYYY-MM-DD で日付指定も可能。"""
     import pathlib, json as _json
     logs_dir = pathlib.Path("logs/self_test")
     if not logs_dir.exists():
         return jsonify({"status": "no_results", "message": "No self-test results yet."}), 200
-    files = sorted(logs_dir.glob("*.json"), reverse=True)
-    if not files:
-        return jsonify({"status": "no_results", "message": "No self-test results yet."}), 200
+
+    date_param = request.args.get("date")
+    if date_param:
+        target = logs_dir / f"{date_param}.json"
+        if not target.exists():
+            return jsonify({"status": "not_found", "date": date_param}), 404
+        files = [target]
+    else:
+        files = sorted(logs_dir.glob("*.json"), reverse=True)
+        if not files:
+            return jsonify({"status": "no_results", "message": "No self-test results yet."}), 200
+
     try:
         with open(files[0], encoding="utf-8") as f:
             data = _json.load(f)
         return jsonify(data), 200
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route('/api/self-test/history', methods=['GET'])
+def self_test_history():
+    """過去の自己テスト実行履歴一覧を返す（最新30件）。
+    Response: [{date, overall, duration_sec, timestamp}, ...]
+    """
+    import pathlib, json as _json
+    logs_dir = pathlib.Path("logs/self_test")
+    if not logs_dir.exists():
+        return jsonify([]), 200
+    files = sorted(logs_dir.glob("*.json"), reverse=True)[:30]
+    history = []
+    for f in files:
+        try:
+            data = _json.loads(f.read_text(encoding="utf-8"))
+            history.append({
+                "date": data.get("date", f.stem),
+                "overall": data.get("overall", "?"),
+                "duration_sec": data.get("duration_sec", 0),
+                "timestamp": data.get("timestamp", ""),
+                "tier1_pass": all(v.get("pass", False) for v in data.get("tier1", {}).values()),
+                "tier2_skipped": data.get("tier2", {}).get("skipped", False),
+            })
+        except Exception:
+            continue
+    return jsonify(history), 200
 
 
 @app.route('/api/system/kpi', methods=['GET'])
