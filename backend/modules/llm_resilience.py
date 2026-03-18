@@ -188,9 +188,17 @@ class ResilientLLMWrapper:
             contents.append({"role": role, "parts": [{"text": text}]})
             
         payload = {"contents": contents}
-        resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
+        last_resp = None
+        for attempt in range(3):
+            last_resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
+            if last_resp.status_code == 429:
+                wait = 2 ** attempt  # 1s, 2s, 4s
+                logger.warning(f"[Gemini] 429 RESOURCE_EXHAUSTED — retrying in {wait}s (attempt {attempt + 1}/3)")
+                time.sleep(wait)
+                continue
+            break
+        last_resp.raise_for_status()
+        data = last_resp.json()
         return data["candidates"][0]["content"]["parts"][0]["text"]
 
     def _call_groq(self, messages: List[Dict[str, str]]) -> str:

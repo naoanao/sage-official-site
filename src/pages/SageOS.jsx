@@ -1845,7 +1845,7 @@ const SageOS = () => {
                                                             {generateData.images && Object.entries(generateData.images).map(([title, data]) => (
                                                                 <div key={title} className="rounded-lg overflow-hidden border border-white/10">
                                                                     {data.type === 'generated' && data.url ? (
-                                                                        <img src={data.url} alt={title} className="w-full h-16 object-cover" onError={e => { e.target.style.display = 'none'; }} />
+                                                                        <img src={data.url} alt={title} className="w-full h-16 object-cover" onError={e => { e.currentTarget.outerHTML = '<div class="w-full h-16 flex items-center justify-center bg-slate-800/60 text-[9px] text-slate-500">No Preview</div>'; }} />
                                                                     ) : (
                                                                         <div className="w-full h-16 flex items-center justify-center bg-slate-800/60 text-[9px] text-slate-500">Prompt Only</div>
                                                                     )}
