@@ -161,7 +161,7 @@ class ExternalHealthChecker:
         )
 
         # 連続 FAIL 通知
-        self._notify_if_needed(results)
+        self._notify_if_needed(results, classification)
 
         return report
 
@@ -232,7 +232,7 @@ class ExternalHealthChecker:
         else:
             self._consecutive_fails[name] = 0
 
-    def _notify_if_needed(self, results: list[dict]) -> None:
+    def _notify_if_needed(self, results: list[dict], classification: str | None) -> None:
         """連続 FAIL が閾値に達したエンドポイントを Telegram 通知する。"""
         triggered = [
             r for r in results
@@ -242,18 +242,49 @@ class ExternalHealthChecker:
         if not triggered:
             return
 
+        # 分類ごとの対応ヒント
+        _RECOVERY_HINT = {
+            "flask_runtime_failure": "Flask 再起動を検討してください（内部設定は正常）。",
+            "internal_and_external_failure": "コード・設定破損の可能性があります。Tier 1 ログを確認してください。",
+            "external_failure": "外部エンドポイントが応答していません。ネットワーク・ポートを確認してください。",
+        }
+        hint = _RECOVERY_HINT.get(classification or "", "詳細はログを確認してください。")
+
         try:
             from backend.integrations.telegram_bot import TelegramBot
             bot = TelegramBot()
-            lines = [f"*[Sage 外部ヘルスチェック ALERT]*"]
+
+            lines = [
+                "*[Sage 外部ヘルスチェック ALERT]*",
+                "",
+            ]
+
             for r in triggered:
-                lines.append(
-                    f"• `{r['name']}` — {CONSECUTIVE_FAIL_THRESHOLD} 回連続 FAIL"
-                    f" (reason: {r.get('reason', '?')})"
+                consecutive = self._consecutive_fails.get(r["name"], 0)
+                latency_str = (
+                    f"{r['latency_sec']:.3f}s" if r["latency_sec"] is not None else "N/A"
                 )
-            lines.append(f"_ran_at: {datetime.now(timezone.utc).isoformat()}_")
+                http_str = str(r["http_status"]) if r["http_status"] is not None else "N/A"
+                lines.append(
+                    f"• `{r['name']}`\n"
+                    f"  HTTP: {http_str}  |  latency: {latency_str}\n"
+                    f"  連続 FAIL: {consecutive} 回  |  reason: `{r.get('reason', '?')}`"
+                )
+
+            lines += [
+                "",
+                f"*分類:* `{classification or 'unknown'}`",
+                f"*対応:* {hint}",
+                "",
+                f"_ran\\_at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}_",
+            ]
+
             bot.send_message("\n".join(lines))
-            logger.warning("[EXT_HEALTH] Telegram alert sent for: %s", [r["name"] for r in triggered])
+            logger.warning(
+                "[EXT_HEALTH] Telegram alert sent. classification=%s endpoints=%s",
+                classification,
+                [r["name"] for r in triggered],
+            )
         except Exception as e:
             logger.error("[EXT_HEALTH] Telegram notify failed: %s", e)
 
