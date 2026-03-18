@@ -123,15 +123,35 @@ class SageSelfTester:
     async def _run_tier2_async(self) -> dict:
         """Browser Use Agentで4フェーズUIフローを確認。"""
         try:
-            from browser_use import Agent, ChatGoogle
+            from browser_use import Agent
         except ImportError:
             logger.warning("[SELF_TEST][T2] browser-use not installed. Skipping.")
             return {"skipped": True, "reason": "browser-use not installed"}
 
+        # LLM選択: Groq優先 → Gemini fallback
+        llm = None
+        groq_key = os.getenv("GROQ_API_KEY")
         gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not gemini_key:
-            logger.warning("[SELF_TEST][T2] GEMINI_API_KEY not set. Skipping Tier 2.")
-            return {"skipped": True, "reason": "GEMINI_API_KEY not set"}
+
+        if groq_key:
+            try:
+                from langchain_groq import ChatGroq
+                llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=groq_key, temperature=0)
+                logger.info("[SELF_TEST][T2] Using Groq LLM for browser agent")
+            except Exception as e:
+                logger.warning(f"[SELF_TEST][T2] Groq init failed: {e}")
+
+        if llm is None and gemini_key:
+            try:
+                from browser_use import ChatGoogle
+                llm = ChatGoogle(model="gemini-2.0-flash", api_key=gemini_key)
+                logger.info("[SELF_TEST][T2] Using Gemini LLM for browser agent")
+            except Exception as e:
+                logger.warning(f"[SELF_TEST][T2] Gemini init failed: {e}")
+
+        if llm is None:
+            logger.warning("[SELF_TEST][T2] No LLM available (GROQ_API_KEY / GEMINI_API_KEY not set). Skipping.")
+            return {"skipped": True, "reason": "No LLM available"}
 
         url = self.frontend_url
         task = (
@@ -146,8 +166,6 @@ class SageSelfTester:
         results = {}
         t0 = time.time()
         try:
-            # browser-use 公式推奨: ChatGoogle (Pydantic v2 互換)
-            llm = ChatGoogle(model="gemini-2.0-flash", api_key=gemini_key)
             agent = Agent(task=task, llm=llm)
             agent_result = await agent.run(max_steps=20)
 
