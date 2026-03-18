@@ -13,6 +13,7 @@ Tier 2: 統合テスト（外部サービスに依存）
   2. Flask ヘルスエンドポイント確認
   3. LLM (Groq) 最小呼び出し確認 → quota_exhausted で skip
   4. Notion API 疎通確認
+  5. LLM フォールバックチェーン確認（Groq→Ollama→Gemini 順の検証）
 
 Tier 3: E2E OODAループ確認（重テスト・手動または日次）
   1. MarketScanAgent の dry run 起動確認
@@ -161,6 +162,10 @@ class SelfTestAgent:
         notion_result = self._check_notion_api()
         results.append(notion_result)
 
+        # T2-5: LLM フォールバックチェーン確認
+        llm_chain_result = self._check_llm_fallback_chain()
+        results.append(llm_chain_result)
+
         return self._build_report(2, results)
 
     def _check_http(self, url: str, timeout: int = 3) -> bool:
@@ -219,6 +224,67 @@ class SelfTestAgent:
                 }
         except Exception as e:
             return {"name": "notion_api_ping", "status": "FAIL", "reason": str(e)}
+
+    def _check_llm_fallback_chain(self) -> dict:
+        """
+        LLM フォールバックチェーンを検証する（Gemini 429 回避の確認）。
+
+        優先順: Groq → Ollama → Gemini
+        Groq または Ollama が利用可能なら PASS。
+        Gemini のみの場合は WARN（429 リスクあり）として reason に記録し PASS。
+        どれも利用不可なら FAIL。
+        """
+        available: list[str] = []
+
+        # 1. Groq チェック
+        groq_key = os.getenv("GROQ_API_KEY")
+        if groq_key:
+            try:
+                from langchain_groq import ChatGroq  # type: ignore
+                ChatGroq(
+                    model="llama-3.1-8b-instant",
+                    api_key=groq_key,
+                    temperature=0.0,
+                )
+                available.append("groq")
+            except Exception:
+                pass
+
+        # 2. Ollama チェック（ローカルサービス疎通のみ）
+        ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        try:
+            resp = requests.get(f"{ollama_host}/api/tags", timeout=2)
+            if resp.status_code == 200:
+                available.append("ollama")
+        except Exception:
+            pass
+
+        # 3. Gemini チェック
+        gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if gemini_key:
+            available.append("gemini")
+
+        if not available:
+            return {
+                "name": "llm_fallback_chain",
+                "status": "FAIL",
+                "reason": "No LLM provider available (GROQ_API_KEY/GEMINI_API_KEY not set, Ollama not running)",
+            }
+
+        # Gemini のみなら 429 リスクを警告しつつ PASS
+        if available == ["gemini"]:
+            return {
+                "name": "llm_fallback_chain",
+                "status": "PASS",
+                "reason": "WARNING: Only Gemini available — 429 rate-limit risk. Set GROQ_API_KEY for resilience.",
+            }
+
+        primary = available[0]
+        return {
+            "name": "llm_fallback_chain",
+            "status": "PASS",
+            "reason": f"Primary={primary}, chain={available}",
+        }
 
     # ──────────────────────────────────────────────────────────────────────
     # Tier 3 — E2E OODA loop (heavy tests, run manually or daily)

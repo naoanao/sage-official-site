@@ -35,7 +35,7 @@ class ResilientLLMWrapper:
                 self.config = config or sage_config.get("privacy")
             except ImportError:
                 self.config = {}
-            self.provider_order = self.config.get("fallback_order", ["gemini", "groq", "ollama"])
+            self.provider_order = self.config.get("fallback_order", ["groq", "gemini", "ollama"])
             self.mode = "config"
             logger.info(f"Resilient Circuit (Config) Initialized. Order: {self.provider_order}")
             
@@ -303,3 +303,76 @@ class ResilientLLMWrapper:
 
     def __call__(self, messages, **kwargs):
         return self.invoke(messages, **kwargs)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Module-level helper: Gemini 429 回避のための LLM ファクトリ
+# 優先順: Groq（無料・高速）→ Ollama（ローカル）→ Gemini（フォールバック）
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_llm_with_fallback(temperature: float = 0.0):
+    """
+    Groq → Ollama → Gemini の順で利用可能な LLM を返す。
+
+    Gemini の無料枠 RPM 制限（429）を回避するため、
+    ローカル/高速プロバイダを優先する。
+
+    Returns:
+        tuple[llm, provider_name: str]
+
+    Example::
+        llm, provider = get_llm_with_fallback()
+        print(f"Using: {provider}")
+    """
+    import os
+
+    # 1st: Groq（最速・無料・14,400 req/day）
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        try:
+            from langchain_groq import ChatGroq
+            llm = ChatGroq(
+                model="llama-3.3-70b-versatile",
+                api_key=groq_key,
+                temperature=temperature,
+            )
+            logger.info("[get_llm_with_fallback] Provider: Groq (llama-3.3-70b-versatile)")
+            return llm, "groq/llama-3.3-70b-versatile"
+        except Exception as e:
+            logger.warning(f"[get_llm_with_fallback] Groq init failed: {e}")
+
+    # 2nd: Ollama（完全ローカル・コスト永久ゼロ）
+    ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    try:
+        import requests as _req
+        _req.get(f"{ollama_host}/api/tags", timeout=2)
+        from langchain_ollama import ChatOllama
+        model = os.getenv("OLLAMA_DEFAULT_MODEL", "qwen2.5:7b")
+        llm = ChatOllama(
+            model=model,
+            base_url=ollama_host,
+            temperature=temperature,
+        )
+        logger.info(f"[get_llm_with_fallback] Provider: Ollama ({model})")
+        return llm, f"ollama/{model}"
+    except Exception as e:
+        logger.warning(f"[get_llm_with_fallback] Ollama unavailable: {e}")
+
+    # 3rd: Gemini（レート制限あり・最終手段）
+    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if gemini_key:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-2.0-flash",
+                google_api_key=gemini_key,
+                temperature=temperature,
+            )
+            logger.warning("[get_llm_with_fallback] Provider: Gemini (429 risk — no Groq/Ollama available)")
+            return llm, "gemini/gemini-2.0-flash"
+        except Exception as e:
+            logger.error(f"[get_llm_with_fallback] Gemini init failed: {e}")
+
+    raise RuntimeError(
+        "No LLM provider available. Set GROQ_API_KEY, ensure Ollama is running, or set GEMINI_API_KEY."
+    )

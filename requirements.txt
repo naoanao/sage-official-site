@@ -55,6 +55,8 @@ python-dotenv
 watchdog
 PyGithub
 groq>=0.4.0
+langchain-groq>=0.1.0
+langchain-ollama>=0.1.0
 pytrends>=4.9.2
 gunicorn
 notion-client
