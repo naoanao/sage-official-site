@@ -390,6 +390,38 @@ def get_system_health():
         "llm_provider": "groq",
     }), 200
 
+@app.route('/api/self-test/run', methods=['POST'])
+def self_test_run():
+    """Sage自己テストを手動トリガー。バックグラウンドスレッドで実行して即座に受付応答を返す。"""
+    import threading as _threading
+    def _run():
+        try:
+            from backend.agents.self_test_agent import SageSelfTester
+            SageSelfTester().run_full_test()
+        except Exception as _e:
+            logger.error(f"[SELF_TEST] manual run failed: {_e}")
+    _threading.Thread(target=_run, daemon=True, name="SageSelfTestManual").start()
+    return jsonify({"status": "started", "message": "Self-test running in background. Check /api/self-test/results."}), 202
+
+
+@app.route('/api/self-test/results', methods=['GET'])
+def self_test_results():
+    """最新の自己テスト結果JSONを返す。"""
+    import pathlib, json as _json
+    logs_dir = pathlib.Path("logs/self_test")
+    if not logs_dir.exists():
+        return jsonify({"status": "no_results", "message": "No self-test results yet."}), 200
+    files = sorted(logs_dir.glob("*.json"), reverse=True)
+    if not files:
+        return jsonify({"status": "no_results", "message": "No self-test results yet."}), 200
+    try:
+        with open(files[0], encoding="utf-8") as f:
+            data = _json.load(f)
+        return jsonify(data), 200
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @app.route('/api/system/kpi', methods=['GET'])
 def get_system_kpi():
     # Calculates MTTR and Availability from healing history
@@ -1138,7 +1170,7 @@ def init_brain():
                                     logger.error(f"[ERROR] Market Scan Scheduler Thread Error: {e}")
 
                             # Initialize events (IDはUIのautomation IDと一致させる)
-                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement', 'market_scan']:
+                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement', 'market_scan', 'self_test']:
                                 if auto not in _automation_stop_events:
                                     _automation_stop_events[auto] = threading.Event()
 
@@ -1149,7 +1181,17 @@ def init_brain():
                             threading.Thread(target=run_notion_scheduler, daemon=True, name="SageNotionSyncScheduler").start()
                             threading.Thread(target=run_engagement_bot, daemon=True, name="SageEngagementBot").start()
                             threading.Thread(target=run_market_scan_scheduler, daemon=True, name="SageMarketScanScheduler").start()
-                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot + MarketScan Threads spawned.")
+
+                            # Self-Test Scheduler (JST 07:00 = UTC 22:00)
+                            def run_self_test_scheduler():
+                                try:
+                                    from backend.scheduler.self_test_scheduler import SelfTestScheduler
+                                    SelfTestScheduler().run()
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Self Test Scheduler Thread Error: {e}")
+
+                            threading.Thread(target=run_self_test_scheduler, daemon=True, name="SageSelfTestScheduler").start()
+                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot + MarketScan + SelfTest Threads spawned.")
 
                         run_sns_loops()
                         
@@ -1677,6 +1719,9 @@ def chat_endpoint():
     session_id = data.get('session_id') or request.headers.get('X-Session-ID') or "global_session"
     user_id = data.get('user_id', 'anon')
     
+    if request.headers.get('X-Sage-Test-Mode') == '1':
+        return jsonify({"reply": "[TEST] Stub response from Sage.", "phase": 1, "test_mode": True}), 200
+
     if not user_message:
         return jsonify({"error": "message または text が必要です (message or text is required)"}), 400
 
@@ -1947,6 +1992,9 @@ def productize_endpoint():
     market = data.get('market', 'US')
     price = data.get('price', '$29')
     session_id = data.get('session_id') or request.headers.get('X-Session-ID') or "global_session"
+
+    if request.headers.get('X-Sage-Test-Mode') == '1':
+        return jsonify({"status": "ok", "product": {"title": f"[TEST] {topic} Course", "sections": [], "score": 85}, "test_mode": True}), 200
 
     # If topic is provided directly (from SageOS monetization form), use Groq to generate product
     if topic:
@@ -2870,6 +2918,8 @@ def api_research_run():
 @app.route('/api/research/check', methods=['GET'])
 def check_research_for_topic():
     """Check if D1 research files exist for a given topic."""
+    if request.headers.get('X-Sage-Test-Mode') == '1':
+        return jsonify({"has_research": True, "file": "test_research.md", "test_mode": True}), 200
     import pathlib
     topic = request.args.get('topic', '').strip()
     if not topic:
@@ -2897,6 +2947,8 @@ def check_research_for_topic():
 @app.route('/api/niche/validate', methods=['POST'])
 def niche_validate():
     """5-axis niche validation before product generation."""
+    if request.headers.get('X-Sage-Test-Mode') == '1':
+        return jsonify({"score": 85, "tier": "A", "verdict": "[TEST] Strong niche (stub)", "test_mode": True}), 200
     data = request.get_json(silent=True) or {}
     topic = data.get('topic', '').strip()
     if not topic:
@@ -2979,6 +3031,9 @@ def productize_rewrite():
     instruction = data.get('instruction', '').strip()
     tone_preset = data.get('tone_preset', '').strip()
     language = data.get('language', 'en')
+
+    if request.headers.get('X-Sage-Test-Mode') == '1':
+        return jsonify({"rewritten": "[TEST] Stub rewritten content.", "test_mode": True}), 200
 
     # tone_preset takes priority over raw instruction
     if tone_preset:
@@ -3159,6 +3214,8 @@ def productize_regenerate_images():
 @app.route('/api/productize/finalize', methods=['POST'])
 def productize_finalize():
     """Save user-edited course content back to Obsidian vault."""
+    if request.headers.get('X-Sage-Test-Mode') == '1':
+        return jsonify({"status": "ok", "published": True, "test_mode": True}), 200
     import pathlib
     data = request.get_json(silent=True) or {}
     topic = data.get('topic', 'Untitled')
