@@ -2310,6 +2310,45 @@ def get_system_stats():
             "status": "online"
         })
 
+# --- SELF-TEST API ---
+@app.route('/api/system/self_test', methods=['GET'])
+def run_self_test_api():
+    """
+    Sage OODA ループ自己診断。ダッシュボードの Self-Test パネルから呼ばれる。
+
+    Query params:
+      tier=1|2|3|all  (default: all, max_tier=2)
+      check=<name>    特定チェック名のみ返す（tier と組み合わせて使用）
+    """
+    tier = request.args.get('tier', 'all')
+    check_name = request.args.get('check', None)
+    try:
+        from backend.agents.self_test_agent import SelfTestAgent
+        agent = SelfTestAgent()
+
+        if tier == '1':
+            report = agent.run_tier1()
+        elif tier == '2':
+            report = agent.run_tier2()
+        elif tier == '3':
+            report = agent.run_tier3()
+        else:
+            report = agent.run_all(max_tier=2)
+
+        # 特定チェックのみを返す
+        if check_name and tier in ('1', '2', '3'):
+            tests = report.get('tests', [])
+            matched = [t for t in tests if t['name'] == check_name]
+            if matched:
+                return jsonify({'status': 'ok', 'check': matched[0], 'ran_at': report.get('ran_at')}), 200
+            return jsonify({'status': 'error', 'message': f"Check '{check_name}' not found in Tier {tier}"}), 404
+
+        return jsonify({'status': 'ok', 'report': report}), 200
+    except Exception as e:
+        logger.error(f"[SELF_TEST_API] {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 @app.route('/api/memory/clear', methods=['POST'])
 def clear_memory():
     # 記憶のクリア
