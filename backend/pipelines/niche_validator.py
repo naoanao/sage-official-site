@@ -3,9 +3,11 @@ Niche Validator — 5ステップでトピックの市場性を検証する。
 
 D1リサーチ前の「出す価値があるか」チェックポイント。
 
+LLM優先順: Groq → Ollama → Gemini（get_llm_with_fallback 経由）
+
 Usage:
     from backend.pipelines.niche_validator import NicheValidator
-    validator = NicheValidator(groq_api_key=os.getenv("GROQ_API_KEY"))
+    validator = NicheValidator()
     result = validator.validate(topic="早朝釣り完全攻略 小田原港 2026")
 """
 import json
@@ -35,21 +37,34 @@ def _extract_json(text: str) -> dict:
 
 
 class NicheValidator:
-    """Groqを使ってトピックの市場性を5軸で判定する。"""
+    """LLM フォールバックチェーン（Groq→Ollama→Gemini）でトピックの市場性を5軸判定する。"""
 
     def __init__(self, groq_api_key: Optional[str] = None):
-        self._key = groq_api_key or os.getenv("GROQ_API_KEY", "")
+        # groq_api_key が渡された場合は環境変数を上書き（後方互換）
+        if groq_api_key:
+            os.environ.setdefault("GROQ_API_KEY", groq_api_key)
 
+        # LLM をフォールバックチェーンで初期化
+        try:
+            from backend.modules.llm_resilience import get_llm_with_fallback
+            self._llm, self._provider = get_llm_with_fallback(temperature=0.3)
+            logger.info(f"[NicheValidator] LLM provider: {self._provider}")
+        except RuntimeError as e:
+            self._llm = None
+            self._provider = "none"
+            logger.warning(f"[NicheValidator] No LLM available: {e}")
+
+    def _call_llm(self, prompt: str, max_tokens: int = 600) -> str:
+        """LLM を呼び出す。フォールバックチェーン済みの self._llm を使用。"""
+        if self._llm is None:
+            raise RuntimeError("No LLM provider available (GROQ_API_KEY / Ollama / GEMINI_API_KEY を確認してください)")
+        from langchain_core.messages import HumanMessage
+        resp = self._llm.invoke([HumanMessage(content=prompt)])
+        return (resp.content if hasattr(resp, "content") else str(resp)).strip()
+
+    # 後方互換エイリアス
     def _call_groq(self, prompt: str, max_tokens: int = 600) -> str:
-        from groq import Groq
-        client = Groq(api_key=self._key)
-        resp = client.chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            temperature=0.3,
-        )
-        return resp.choices[0].message.content.strip()
+        return self._call_llm(prompt, max_tokens)
 
     # ──────────────────────────────────────────────
     # 5軸分析
