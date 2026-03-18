@@ -162,12 +162,22 @@ class SageSelfTester:
     # ──────────────────────────────────────────────
 
     def _check_frontend_alive(self) -> bool:
-        """フロントエンドが localhost:5175 等で起動しているか確認。"""
-        try:
-            r = requests.get(self.frontend_url, timeout=3)
-            return r.status_code < 500
-        except Exception:
-            return False
+        """フロントエンドが起動しているか確認。5173→5174→5175 の順にポートを試す。"""
+        candidates = [self.frontend_url] + [
+            f"http://localhost:{p}" for p in (5173, 5174, 5175)
+            if f"http://localhost:{p}" != self.frontend_url
+        ]
+        for url in candidates:
+            try:
+                r = requests.get(url, timeout=3)
+                if r.status_code < 500:
+                    if url != self.frontend_url:
+                        logger.info(f"[SELF_TEST] Frontend found at {url} (was {self.frontend_url})")
+                        self.frontend_url = url
+                    return True
+            except Exception:
+                continue
+        return False
 
     def _classify_t2_error(self, error_str: str) -> str:
         """Tier 2 失敗を3分類して返す。
@@ -250,14 +260,14 @@ class SageSelfTester:
 
     def _count_consecutive_fails(self) -> int:
         """logs/self_test/ の最新ファイルから連続FAIL回数をカウント（現在のログ含む）。"""
-        count = 0
+        count: int = 0
         try:
             files = sorted(LOGS_DIR.glob("*.json"), reverse=True)[:30]
             for f in files:
                 try:
                     data = json.loads(f.read_text(encoding="utf-8"))
                     if data.get("overall") == "FAIL":
-                        count += 1
+                        count = count + 1
                     else:
                         break
                 except Exception:
