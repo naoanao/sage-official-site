@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart } from 'react-icons/fi';
+import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 import PhaseStepperBar from '../components/PhaseStepperBar';
@@ -186,6 +186,10 @@ const SageOS = () => {
     const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(false);
+    const [showSelfTest, setShowSelfTest] = useState(false);
+    const [selfTestRunning, setSelfTestRunning] = useState(false);
+    const [selfTestResult, setSelfTestResult] = useState(null);
+    const selfTestPollRef = useRef(null);
 
     const [d1Status, setD1Status] = useState('idle');
     const [brakeEnabled, setBrakeEnabled] = useState(false);
@@ -919,10 +923,18 @@ const SageOS = () => {
 
                     {/* Automations toggle */}
                     <button
-                        onClick={() => setShowAutomations(p => !p)}
+                        onClick={() => { setShowAutomations(p => !p); setShowSelfTest(false); }}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showAutomations ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
                     >
                         <FiActivity /> <span>Automations</span>
+                    </button>
+
+                    {/* Self-Test toggle */}
+                    <button
+                        onClick={() => { setShowSelfTest(p => !p); setShowAutomations(false); }}
+                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showSelfTest ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                    >
+                        <FiCpu /> <span>Self-Test</span>
                     </button>
 
                     {/* Whop member link */}
@@ -958,7 +970,7 @@ const SageOS = () => {
                 {showAutomations && (
                     <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-8 max-w-4xl mx-auto">
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-black">Active Automations</h2>
+                            <h2 className="text-2xl font-black" style={{ color: '#1A56DB' }}>Active Automations</h2>
                             <button onClick={() => setShowAutomations(false)} className="text-[var(--c-muted)] hover:text-[var(--c-text)] text-sm px-3 py-1 bg-[var(--c-raised)] rounded-lg">✕ Close</button>
                         </div>
                         <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
@@ -987,8 +999,113 @@ const SageOS = () => {
                     </Motion.div>
                 )}
 
+                {/* Self-Test Panel */}
+                {showSelfTest && (
+                    <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-8 max-w-4xl mx-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-black" style={{ color: '#1A56DB' }}>Sage Self-Test</h2>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={async () => {
+                                        setSelfTestRunning(true);
+                                        setSelfTestResult(null);
+                                        try {
+                                            await api.post('/api/self-test/run');
+                                        } catch (_) { /* 202 Accepted is expected */ }
+                                        // Poll every 2s until result appears
+                                        let attempts = 0;
+                                        clearInterval(selfTestPollRef.current);
+                                        selfTestPollRef.current = setInterval(async () => {
+                                            attempts++;
+                                            try {
+                                                const r = await api.get('/api/self-test/results');
+                                                if (r.data && r.data.overall) {
+                                                    setSelfTestResult(r.data);
+                                                    setSelfTestRunning(false);
+                                                    clearInterval(selfTestPollRef.current);
+                                                }
+                                            } catch (_) {}
+                                            if (attempts > 60) { setSelfTestRunning(false); clearInterval(selfTestPollRef.current); }
+                                        }, 2000);
+                                    }}
+                                    disabled={selfTestRunning}
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all"
+                                >
+                                    {selfTestRunning ? <><FiRefreshCw className="animate-spin" /> Running...</> : <><FiPlay /> Run Test</>}
+                                </button>
+                                <button onClick={() => { setShowSelfTest(false); clearInterval(selfTestPollRef.current); }} className="text-[var(--c-muted)] hover:text-[var(--c-text)] text-sm px-3 py-1 bg-[var(--c-raised)] rounded-lg">✕ Close</button>
+                            </div>
+                        </div>
+
+                        {selfTestRunning && !selfTestResult && (
+                            <div className="p-8 text-center text-[var(--c-muted)] text-sm animate-pulse">
+                                🔬 Testing all Sage API endpoints... (up to 30s)
+                            </div>
+                        )}
+
+                        {selfTestResult && (() => {
+                            const t1 = selfTestResult.tier1 || {};
+                            const t2 = selfTestResult.tier2 || {};
+                            const overall = selfTestResult.overall;
+                            const CHECK_LABELS = {
+                                health: '/api/health', system_health: '/api/system/health',
+                                niche_validate: '/api/niche/validate', research_check: '/api/research/check',
+                                productize: '/api/productize', whop_api_key: 'Whop API Key',
+                            };
+                            return (
+                                <div className="space-y-4 animate-fadeIn">
+                                    {/* Overall badge */}
+                                    <div className={`flex items-center gap-3 px-5 py-3 rounded-xl border ${overall === 'PASS' ? 'bg-emerald-900/10 border-emerald-500/30 text-emerald-400' : 'bg-red-900/10 border-red-500/30 text-red-400'}`}>
+                                        {overall === 'PASS' ? <FiCheckCircle className="text-xl" /> : <FiAlertTriangle className="text-xl" />}
+                                        <div>
+                                            <div className="font-black text-lg">{overall === 'PASS' ? '✅ All Systems Go' : '🚨 Issues Detected'}</div>
+                                            <div className="text-xs opacity-70">{selfTestResult.timestamp?.slice(0, 19).replace('T', ' ')} UTC · {selfTestResult.duration_sec}s</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Tier 1 grid */}
+                                    <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
+                                        <div className="text-xs font-mono text-[var(--c-muted)] uppercase tracking-widest mb-3">Tier 1 — API Health</div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {Object.entries(t1).map(([key, val]) => (
+                                                <div key={key} className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${val.pass ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
+                                                    <div>
+                                                        <div className="text-xs font-semibold text-[var(--c-text)]">{CHECK_LABELS[key] || key}</div>
+                                                        {val.latency_ms != null && <div className="text-xs text-[var(--c-subtle)]">{val.latency_ms}ms</div>}
+                                                        {val.error && <div className="text-xs text-red-400 truncate max-w-[160px]">{val.error}</div>}
+                                                    </div>
+                                                    <span className="text-lg">{val.pass ? '✅' : '❌'}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Tier 2 */}
+                                    {!t2.skipped && Object.keys(t2).length > 0 && (
+                                        <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
+                                            <div className="text-xs font-mono text-[var(--c-muted)] uppercase tracking-widest mb-3">Tier 2 — UI Flow (Browser Use)</div>
+                                            {t2.agent_output && <div className="text-xs text-[var(--c-muted)] bg-[var(--c-surface)] rounded-lg p-3 font-mono whitespace-pre-wrap">{t2.agent_output}</div>}
+                                        </div>
+                                    )}
+                                    {t2.skipped && (
+                                        <div className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl text-xs text-[var(--c-muted)]">
+                                            Tier 2 (Browser Use) skipped: {t2.reason}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {!selfTestRunning && !selfTestResult && (
+                            <div className="p-8 text-center text-[var(--c-subtle)] text-sm">
+                                Hit <strong>Run Test</strong> to verify all Sage API endpoints.
+                            </div>
+                        )}
+                    </Motion.div>
+                )}
+
                 {/* Phase Pages */}
-                {!showAutomations && (
+                {!showAutomations && !showSelfTest && (
                     <>
                         {/* PhaseStepperBar (phases 2-4) */}
                         {currentPhase >= 2 && (
@@ -1003,7 +1120,7 @@ const SageOS = () => {
                                 className="max-w-3xl mx-auto py-8 px-4 flex flex-col" style={{ minHeight: 'calc(100vh - 0px)' }}>
                                 <div className="text-center mb-8">
                                     <div className="text-5xl mb-4">🤖</div>
-                                    <h1 className="text-3xl font-black mb-2" style={{ color: '#1A56DB' }}>Hi, I'm Sage.</h1>
+                                    <h1 className="text-3xl font-black mb-2" style={{ background: 'linear-gradient(135deg, #0284C7 0%, #1A56DB 50%, #1E40AF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Hi, I'm Sage.</h1>
                                     <p className="text-[var(--c-muted)]">Tell me your idea — I'll help you build a full product around it.</p>
                                 </div>
 
@@ -1129,7 +1246,7 @@ const SageOS = () => {
                                 )}
 
                                 <div className="text-center mb-6">
-                                    <h2 className="text-4xl font-black mb-4">Create Your Product</h2>
+                                    <h2 className="text-4xl font-black mb-4" style={{ color: '#1A56DB' }}>Create Your Product</h2>
                                     <p className="text-[var(--c-muted)]">One topic. Blog post, social captions, and a product. In 90 seconds.</p>
                                 </div>
 
@@ -1831,7 +1948,7 @@ const SageOS = () => {
                         {currentPhase === 4 && (
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto py-8 px-8 space-y-6">
                                 <div className="text-center mb-8">
-                                    <h2 className="text-4xl font-black mb-2">🚀 Publish</h2>
+                                    <h2 className="text-4xl font-black mb-2" style={{ color: '#1A56DB' }}>🚀 Publish</h2>
                                     <p className="text-[var(--c-muted)]">Let's get your content out into the world.</p>
                                 </div>
 
@@ -1977,7 +2094,7 @@ const SageOS = () => {
             </div>
 
             {/* ── SageMiniChat FAB (phases 2-4) ─────────────────────────────── */}
-            {currentPhase >= 2 && !showAutomations && (
+            {currentPhase >= 2 && !showAutomations && !showSelfTest && (
                 <SageMiniChat phase={currentPhase} topic={activeTopic} />
             )}
         </div>
