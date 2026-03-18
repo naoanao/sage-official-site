@@ -38,7 +38,7 @@ class SageSelfTester:
 
     def run_tier1(self) -> dict:
         """5つのAPIエンドポイントを検証。全チェックの pass/fail と latency を返す。"""
-        results = {}
+        results: dict = {}
 
         checks = [
             ("health", "GET", "/api/system/health", None,
@@ -85,6 +85,34 @@ class SageSelfTester:
                 latency_ms = int((time.time() - t0) * 1000)
                 results[name] = {"pass": False, "error": str(e), "latency_ms": latency_ms}
                 logger.warning(f"[SELF_TEST][T1] {name}: ❌ {e}")
+
+        # ── External API: Whop キー有効性チェック ──
+        whop_key = os.getenv("WHOP_API_KEY", "")
+        if whop_key:
+            t0 = time.time()
+            try:
+                r = requests.get(
+                    "https://api.whop.com/api/v2/products",
+                    headers={"Authorization": f"Bearer {whop_key}"},
+                    timeout=10,
+                )
+                latency_ms = int((time.time() - t0) * 1000)
+                passed = r.status_code == 200
+                results["whop_api_key"] = {
+                    "pass": passed,
+                    "status_code": r.status_code,
+                    "latency_ms": latency_ms,
+                }
+                logger.info(
+                    f"[SELF_TEST][T1] whop_api_key: {'✅' if passed else '❌'} "
+                    f"({r.status_code}, {latency_ms}ms)"
+                )
+            except Exception as e:
+                results["whop_api_key"] = {"pass": False, "error": str(e)}
+                logger.warning(f"[SELF_TEST][T1] whop_api_key: ❌ {e}")
+        else:
+            results["whop_api_key"] = {"pass": False, "error": "WHOP_API_KEY not set"}
+            logger.warning("[SELF_TEST][T1] whop_api_key: ❌ key not set in env")
 
         return results
 
@@ -267,7 +295,7 @@ class SageSelfTester:
                 try:
                     data = json.loads(f.read_text(encoding="utf-8"))
                     if data.get("overall") == "FAIL":
-                        count = count + 1
+                        count += 1
                     else:
                         break
                 except Exception:
