@@ -380,17 +380,13 @@ const Landing = () => {
                             fontSize: 'clamp(3rem, 9vw, 6.5rem)',
                             letterSpacing: '-0.045em',
                             lineHeight: '0.92',
-                            color: '#1A56DB',
-                        }}>
-                        One Chat.<br />
-                        <span style={{
                             background: 'linear-gradient(135deg, #0284C7 0%, #1A56DB 50%, #1E40AF 100%)',
                             WebkitBackgroundClip: 'text',
                             backgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                         }}>
-                            Full Business.
-                        </span>
+                        One Chat.<br />
+                        Full Business.
                     </h1>
 
                     {/* Sub */}
@@ -479,7 +475,7 @@ const Landing = () => {
                         <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                             Everything included
                         </p>
-                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.03em', color: 'var(--c-text)' }}>
+                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.03em', color: '#1A56DB' }}>
                             The complete autonomous system
                         </h2>
                     </Motion.div>
@@ -515,7 +511,7 @@ const Landing = () => {
                         <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                             How it works
                         </p>
-                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: 'var(--c-text)' }}>
+                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: '#1A56DB' }}>
                             Three steps to your first AI income
                         </h2>
                     </Motion.div>
@@ -556,7 +552,7 @@ const Landing = () => {
                                 <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                                     Auto-published content
                                 </p>
-                                <h2 className="font-black" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)', letterSpacing: '-0.02em', color: 'var(--c-text)' }}>
+                                <h2 className="font-black" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)', letterSpacing: '-0.02em', color: '#1A56DB' }}>
                                     Latest from Sage
                                 </h2>
                             </div>
@@ -616,7 +612,7 @@ const Landing = () => {
                         <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                             FAQ
                         </p>
-                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: 'var(--c-text)' }}>
+                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: '#1A56DB' }}>
                             Common questions
                         </h2>
                     </Motion.div>
@@ -657,7 +653,7 @@ const Landing = () => {
                         <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                             Get started today
                         </p>
-                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: 'var(--c-text)' }}>
+                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: '#1A56DB' }}>
                             Your first AI income stream
                         </h2>
                         <p className="mt-2 text-sm" style={{ color: 'var(--c-muted)' }}>
