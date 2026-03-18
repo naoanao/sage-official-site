@@ -4,6 +4,7 @@
 # Logs & transient data
 backend/logs/
 backend/data/jobs.json
+backend/data/market_scans.json
 
 # Vector / SQLite memory databases
 memorydb/
