@@ -144,7 +144,7 @@ def create_and_publish(
     # SAGE_POST_DRY_RUN is intentionally ignored here to allow Whop to publish
     # even while other Sage dry-run guards are active.
     if os.getenv("WHOP_DRY_RUN", "0") == "1":
-        mock_route = title.lower().replace(" ", "-")[:40]
+        mock_route = title.lower().replace(" ", "-")[:40]  # type: ignore
         logger.info(f"[WHOP][DRY_RUN] Skipping real API call for: {title!r}")
         return {
             "status": "dry_run",
@@ -195,7 +195,7 @@ def build_sns_caption(title: str, price_usd: float, product_url: str, checkout_u
     Returns:
         {"bluesky": str, "instagram": str}
     """
-    short_title = title[:60] if len(title) > 60 else title
+    short_title = title[:60] if len(title) > 60 else title  # type: ignore
     bluesky_text = (
         f"🚀 New digital product just launched!\n\n"
         f"'{short_title}'\n\n"
