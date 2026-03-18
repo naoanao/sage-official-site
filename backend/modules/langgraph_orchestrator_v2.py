@@ -349,6 +349,41 @@ class LangGraphOrchestrator:
                  logger.info(f"DEBUG RETURN: {ret_val}")
                  return ret_val
             
+        # WHOP OVERRIDE — 商品作成・入れ替え
+        _whop_create_kw  = ["whop", "ウォップ", "商品を作", "商品作成", "whop商品", "出品して", "出品する"]
+        _whop_replace_kw = ["入れ替え", "入れかえ", "replace", "旧商品", "更新して", "商品を更新"]
+        _whop_list_kw    = ["商品一覧", "whop一覧", "list products", "今の商品", "whopの商品"]
+
+        if any(k in req for k in _whop_create_kw) or any(k in req for k in _whop_replace_kw):
+            # タイトルと説明を抽出（「」で囲まれていれば使い、なければ LLM に任せる）
+            title_match = re.search(r'[「\'"](.*?)[」\'"]', user_request)
+            title = title_match.group(1) if title_match else ""
+            # 価格を抽出（"$29" "29ドル" "29.99" 等）
+            price_match = re.search(r'\$?(\d+(?:\.\d+)?)\s*(?:ドル|USD|usd|\$)?', user_request)
+            price_usd = float(price_match.group(1)) if price_match else 29.99
+
+            if any(k in req for k in _whop_replace_kw):
+                override_plan = [{
+                    "step_id": 1,
+                    "tool": "whop_replace_product",
+                    "params": {"title": title, "price_usd": price_usd, "raw_request": user_request},
+                }]
+            else:
+                override_plan = [{
+                    "step_id": 1,
+                    "tool": "whop_create_product",
+                    "params": {"title": title, "price_usd": price_usd, "raw_request": user_request},
+                }]
+            ret_val = {"plan": override_plan, "context": context}
+            logger.info(f"DEBUG RETURN (whop): {ret_val}")
+            return ret_val
+
+        if any(k in req for k in _whop_list_kw):
+            override_plan = [{"step_id": 1, "tool": "whop_list_products", "params": {}}]
+            ret_val = {"plan": override_plan, "context": context}
+            logger.info(f"DEBUG RETURN (whop_list): {ret_val}")
+            return ret_val
+
         # WEB DEPLOY OVERRIDE (Publish to Blog)
         if any(k in req for k in ["publish", "deploy", "公開", "デプロイ", "ブログ投稿"]):
              title_match = re.search(r'[「\'"](.*?)[」\'"]', user_request)
@@ -468,6 +503,26 @@ class LangGraphOrchestrator:
                         res = self.file_ops.execute_command(params.get("command", ""))
                     else:
                         res = "FileOperationsAgent (execute_command) not available"
+
+                # ─── WHOP TOOLS ────────────────────────────────────────────
+                elif tool == "whop_list_products":
+                    res = _whop_list_products_tool()
+
+                elif tool == "whop_create_product":
+                    res = _whop_create_product_tool(
+                        title=params.get("title", ""),
+                        price_usd=float(params.get("price_usd", 29.99)),
+                        raw_request=params.get("raw_request", ""),
+                        llm=self.llm,
+                    )
+
+                elif tool == "whop_replace_product":
+                    res = _whop_replace_product_tool(
+                        title=params.get("title", ""),
+                        price_usd=float(params.get("price_usd", 29.99)),
+                        raw_request=params.get("raw_request", ""),
+                        llm=self.llm,
+                    )
 
                 else:
                     res = f"Tool '{tool}' not implemented in v2 engine"
@@ -602,4 +657,132 @@ Respond helpfully and naturally. If no tools ran or search returned nothing, ans
         return "reporter"
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Whop Tool Helpers  (モジュールレベル関数 — LangGraph の外から呼べる)
+# ──────────────────────────────────────────────────────────────────────────────
 
+def _whop_generate_product_copy(raw_request: str, llm) -> tuple[str, str]:
+    """
+    LLM を使って Whop 商品タイトルと説明文を自動生成する。
+
+    Returns:
+        (title: str, description: str)
+    """
+    from langchain_core.messages import HumanMessage
+
+    prompt = f"""You are a copywriter creating a Whop digital product listing.
+
+User request: "{raw_request}"
+
+Generate a compelling product title (max 60 chars) and description (2-3 sentences, benefit-focused).
+Respond in this exact format:
+TITLE: <title here>
+DESCRIPTION: <description here>"""
+
+    try:
+        resp = llm.invoke([HumanMessage(content=prompt)])
+        text = resp.content.strip()
+        title = ""
+        description = ""
+        for line in text.splitlines():
+            if line.startswith("TITLE:"):
+                title = line.replace("TITLE:", "").strip()
+            elif line.startswith("DESCRIPTION:"):
+                description = line.replace("DESCRIPTION:", "").strip()
+        if not title:
+            title = "Sage AI Digital Product"
+        if not description:
+            description = raw_request[:200]
+        return title, description
+    except Exception as e:
+        logger.warning(f"[WHOP] LLM copy generation failed: {e}")
+        return "Sage AI Digital Product", raw_request[:200]
+
+
+def _whop_list_products_tool() -> str:
+    """whop_list_products ツールの実行本体。"""
+    try:
+        from backend.integrations.whop_publisher import list_products
+        products = list_products(limit=10)
+        if not products:
+            return "Whop に商品が見つかりませんでした。"
+        lines = ["現在の Whop 商品一覧:"]
+        for p in products:
+            status = "🟢 公開中" if p.get("visibility") == "visible" else "⚫ 非公開"
+            lines.append(f"  {status} [{p.get('id', '?')}] {p.get('title', '?')}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Whop 商品一覧の取得に失敗しました: {e}"
+
+
+def _whop_create_product_tool(title: str, price_usd: float, raw_request: str, llm) -> str:
+    """whop_create_product ツールの実行本体。"""
+    try:
+        from backend.integrations.whop_publisher import create_and_publish, build_sns_caption
+
+        # タイトルが空なら LLM で生成
+        if not title:
+            title, description = _whop_generate_product_copy(raw_request, llm)
+        else:
+            _, description = _whop_generate_product_copy(raw_request, llm)
+
+        result = create_and_publish(title, description, price_usd)
+
+        if result.get("status") in ("success", "dry_run"):
+            captions = build_sns_caption(
+                title, price_usd,
+                result.get("product_url", ""),
+                result.get("checkout_url", ""),
+            )
+            return (
+                f"✅ Whop 商品を出品しました！\n\n"
+                f"**タイトル:** {title}\n"
+                f"**価格:** ${price_usd:.2f}\n"
+                f"**URL:** {result.get('product_url', '')}\n"
+                f"**チェックアウト:** {result.get('checkout_url', '')}\n\n"
+                f"**SNS キャプション (Bluesky):**\n{captions['bluesky']}"
+            )
+        else:
+            return f"❌ 出品に失敗しました: {result.get('message', 'unknown error')}"
+    except Exception as e:
+        return f"❌ Whop 商品作成エラー: {e}"
+
+
+def _whop_replace_product_tool(title: str, price_usd: float, raw_request: str, llm) -> str:
+    """whop_replace_product ツールの実行本体。"""
+    try:
+        from backend.integrations.whop_publisher import replace_latest_product, build_sns_caption
+
+        # タイトルが空なら LLM で生成
+        if not title:
+            title, description = _whop_generate_product_copy(raw_request, llm)
+        else:
+            _, description = _whop_generate_product_copy(raw_request, llm)
+
+        result = replace_latest_product(title, description, price_usd)
+
+        if result.get("status") in ("success", "dry_run"):
+            new_p = result.get("new_product", {})
+            hidden = result.get("hidden_product")
+            captions = build_sns_caption(
+                title, price_usd,
+                new_p.get("product_url", ""),
+                new_p.get("checkout_url", ""),
+            )
+            hidden_line = (
+                f"**旧商品 (非公開化):** {hidden['id']} — {hidden['title']}\n"
+                if hidden else "（旧商品なし）\n"
+            )
+            return (
+                f"✅ Whop 商品を入れ替えました！\n\n"
+                f"**新商品タイトル:** {title}\n"
+                f"**価格:** ${price_usd:.2f}\n"
+                f"**URL:** {new_p.get('product_url', '')}\n"
+                f"**チェックアウト:** {new_p.get('checkout_url', '')}\n"
+                f"{hidden_line}\n"
+                f"**SNS キャプション (Bluesky):**\n{captions['bluesky']}"
+            )
+        else:
+            return f"❌ 入れ替えに失敗しました: {result.get('message', 'unknown error')}"
+    except Exception as e:
+        return f"❌ Whop 入れ替えエラー: {e}"

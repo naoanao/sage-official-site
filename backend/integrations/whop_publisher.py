@@ -2,12 +2,15 @@
 """
 backend/integrations/whop_publisher.py
 =======================================
-Whop API v5 integration for Sage auto-monetization pipeline.
+Whop API v2 integration for Sage auto-monetization pipeline.
 
 Flow:
-  1. Create product  (POST /api/v5/products)
-  2. Create one-time purchase plan attached to that product (POST /api/v5/plans)
-  3. Return public product URL + plan_id for downstream SNS posting
+  1. list_products()            — 現在の商品一覧を取得
+  2. create_product()           — 新商品を作成
+  3. create_plan()              — 価格プランを紐付け
+  4. update_product()           — 既存商品の visibility を変更（入れ替え用）
+  5. replace_latest_product()   — 旧商品を hidden にして新商品を出版（入れ替え）
+  6. create_and_publish()       — 新規出版のワンコール
 
 Environment Variables Required:
   WHOP_API_KEY      - Bearer token from Whop Developer Dashboard
@@ -25,8 +28,6 @@ from typing import Optional
 logger = logging.getLogger("WhopPublisher")
 
 WHOP_BASE_URL = "https://api.whop.com/api/v2"
-WHOP_API_KEY = None   # Loaded lazily to pick up runtime env changes
-WHOP_COMPANY_ID = None
 
 
 def _get_headers() -> dict:
@@ -51,6 +52,54 @@ def _company_id() -> str:
         )
     return cid
 
+
+def _is_dry_run() -> bool:
+    return os.getenv("WHOP_DRY_RUN", "0") == "1"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Read
+# ──────────────────────────────────────────────────────────────────────────────
+
+def list_products(limit: int = 10) -> list[dict]:
+    """
+    会社の商品一覧を取得する。
+
+    Returns:
+        商品 dict のリスト。各要素に id / title / visibility / route が含まれる。
+        visibility が "visible" のものが現在公開中。
+    """
+    if _is_dry_run():
+        logger.info("[WHOP][DRY_RUN] list_products() skipped.")
+        return [
+            {
+                "id": "prod_DRY_RUN_1",
+                "title": "Sample Product A",
+                "visibility": "visible",
+                "route": "sample-product-a",
+            }
+        ]
+
+    headers = _get_headers()
+    cid = _company_id()
+    params = {"company_id": cid, "limit": limit}
+    resp = requests.get(f"{WHOP_BASE_URL}/products", headers=headers, params=params, timeout=15)
+    if not resp.ok:
+        raise RuntimeError(
+            f"Whop list_products failed [{resp.status_code}]: {resp.text[:400]}"
+        )
+    data = resp.json()
+    # Whop API returns {"data": [...]} or a direct list depending on version
+    if isinstance(data, dict) and "data" in data:
+        return data["data"]
+    if isinstance(data, list):
+        return data
+    return []
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Write
+# ──────────────────────────────────────────────────────────────────────────────
 
 def create_product(title: str, description: str, visibility: str = "visible") -> dict:
     """
@@ -117,6 +166,43 @@ def create_plan(
     return data
 
 
+def update_product(product_id: str, visibility: str) -> dict:
+    """
+    既存商品の visibility を更新する。
+
+    Args:
+        product_id  - Whop product ID (prod_xxxx)
+        visibility  - "visible" | "hidden" | "archived"
+
+    Returns:
+        更新後の商品 dict
+    """
+    if _is_dry_run():
+        logger.info(f"[WHOP][DRY_RUN] update_product({product_id}, {visibility}) skipped.")
+        return {"id": product_id, "visibility": visibility, "status": "dry_run"}
+
+    headers = _get_headers()
+    payload = {"visibility": visibility}
+    logger.info(f"[WHOP] Updating product {product_id}: visibility → {visibility}")
+    resp = requests.patch(
+        f"{WHOP_BASE_URL}/products/{product_id}",
+        headers=headers,
+        json=payload,
+        timeout=15,
+    )
+    if not resp.ok:
+        raise RuntimeError(
+            f"Whop update_product failed [{resp.status_code}]: {resp.text[:400]}"
+        )
+    data = resp.json()
+    logger.info(f"[WHOP] Product {product_id} updated: visibility={data.get('visibility')}")
+    return data
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Compound operations
+# ──────────────────────────────────────────────────────────────────────────────
+
 def create_and_publish(
     title: str,
     description: str,
@@ -125,7 +211,7 @@ def create_and_publish(
     currency: str = "usd",
 ) -> dict:
     """
-    Main entry point: Create a Whop product + plan in one call.
+    新規出版のメインエントリポイント: Whop 商品 + プランをワンコールで作成する。
 
     Returns:
     {
@@ -139,11 +225,7 @@ def create_and_publish(
         "message":      "human-readable status"
     }
     """
-    # --- DRY RUN MODE ---
-    # Only WHOP_DRY_RUN controls Whop publishing.
-    # SAGE_POST_DRY_RUN is intentionally ignored here to allow Whop to publish
-    # even while other Sage dry-run guards are active.
-    if os.getenv("WHOP_DRY_RUN", "0") == "1":
+    if _is_dry_run():
         mock_route = title.lower().replace(" ", "-")[:40]
         logger.info(f"[WHOP][DRY_RUN] Skipping real API call for: {title!r}")
         return {
@@ -185,6 +267,89 @@ def create_and_publish(
     except Exception as e:
         logger.error(f"[WHOP] Unexpected error: {e}")
         return {"status": "error", "message": f"Unexpected error: {e}"}
+
+
+def replace_latest_product(
+    new_title: str,
+    new_description: str,
+    price_usd: float = 29.99,
+    currency: str = "usd",
+    hide_old: bool = True,
+) -> dict:
+    """
+    現在公開中の最新商品を hidden にして、新商品を公開する（入れ替え）。
+
+    手順:
+      1. list_products() で visibility=visible の商品を取得
+      2. 最新 1 件を hidden に更新
+      3. create_and_publish() で新商品を作成
+      4. 結果を返す
+
+    Args:
+        new_title        - 新商品のタイトル
+        new_description  - 新商品の説明文
+        price_usd        - 価格 (USD)
+        currency         - 通貨コード
+        hide_old         - True の場合、旧商品を hidden にする（False なら入れ替えのみ）
+
+    Returns:
+    {
+        "status":         "success" | "dry_run" | "error",
+        "new_product":    { ...create_and_publish の戻り値 },
+        "hidden_product": { "id": ..., "title": ..., "previous_visibility": "visible" }
+                          | None (旧商品なし or hide_old=False),
+        "message":        str
+    }
+    """
+    hidden_info = None
+
+    try:
+        # Step 1: 公開中商品を取得
+        if hide_old:
+            try:
+                products = list_products(limit=20)
+                visible = [p for p in products if p.get("visibility") == "visible"]
+                if visible:
+                    # 最新 1 件（リスト先頭 = 最新）を非公開に
+                    old = visible[0]
+                    update_product(old["id"], "hidden")
+                    hidden_info = {
+                        "id": old["id"],
+                        "title": old.get("title", ""),
+                        "previous_visibility": "visible",
+                    }
+                    logger.info(
+                        f"[WHOP] Old product hidden: {old['id']} '{old.get('title', '')}'"
+                    )
+                else:
+                    logger.info("[WHOP] No visible products found to replace.")
+            except Exception as list_err:
+                # 旧商品の取得失敗は致命的ではない — 新商品は出版する
+                logger.warning(f"[WHOP] Could not hide old product: {list_err}")
+
+        # Step 2: 新商品を出版
+        new_result = create_and_publish(new_title, new_description, price_usd, "visible", currency)
+
+        if new_result.get("status") in ("success", "dry_run"):
+            msg = (
+                f"New product published: {new_result.get('product_url', '')}"
+                + (f" | Old product hidden: {hidden_info['id']}" if hidden_info else "")
+            )
+        else:
+            msg = f"Publish failed: {new_result.get('message', 'unknown error')}"
+
+        return {
+            "status": new_result.get("status", "error"),
+            "new_product": new_result,
+            "hidden_product": hidden_info,
+            "message": msg,
+        }
+
+    except ValueError as ve:
+        return {"status": "error", "new_product": None, "hidden_product": None, "message": str(ve)}
+    except Exception as e:
+        logger.error(f"[WHOP] replace_latest_product error: {e}")
+        return {"status": "error", "new_product": None, "hidden_product": None, "message": str(e)}
 
 
 def build_sns_caption(title: str, price_usd: float, product_url: str, checkout_url: str) -> dict:
