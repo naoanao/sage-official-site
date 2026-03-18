@@ -238,10 +238,102 @@ class SageSelfTester:
         }
 
         self._save_results(result, date_str)
+        self._log_to_notion(result)
         self._notify(result)
 
         logger.info(f"[SELF_TEST] ======= {overall} ({duration_sec}s) =======")
         return result
+
+    # ──────────────────────────────────────────────
+    # Notion 一元化
+    # ──────────────────────────────────────────────
+
+    def _count_consecutive_fails(self) -> int:
+        """logs/self_test/ の最新ファイルから連続FAIL回数をカウント（現在のログ含む）。"""
+        count = 0
+        try:
+            files = sorted(LOGS_DIR.glob("*.json"), reverse=True)[:30]
+            for f in files:
+                try:
+                    data = json.loads(f.read_text(encoding="utf-8"))
+                    if data.get("overall") == "FAIL":
+                        count += 1
+                    else:
+                        break
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return count
+
+    def _log_to_notion(self, result: dict) -> None:
+        """Self-Test結果を Evidence Ledger DB に1行記録する。
+        - 通常: overall / tier1レイテンシ / tier2スキップ理由 を記録
+        - FAIL時: failed_checks / tier3診断 / 連続FAIL回数 を追加
+        """
+        try:
+            from backend.modules.notion_evidence_ledger import evidence_ledger
+        except ImportError:
+            logger.warning("[SELF_TEST][Notion] notion_evidence_ledger not available. Skipping.")
+            return
+
+        overall = result.get("overall", "?")
+        date_str = result.get("date", "")
+        tier1 = result.get("tier1", {})
+        tier2 = result.get("tier2", {})
+        tier3 = result.get("tier3", {})
+        duration = result.get("duration_sec", 0)
+
+        # ログ抜粋を構築
+        log_lines = []
+
+        # 失敗チェック名
+        failed_checks = [k for k, v in tier1.items() if not v.get("pass", True)]
+        if failed_checks:
+            log_lines.append(f"failed_checks: {', '.join(failed_checks)}")
+
+        # Tier 3 診断
+        for phase, diag in tier3.items():
+            reason = diag.get("reason", "")
+            raw = diag.get("raw_error", "")[:80]
+            log_lines.append(f"[T3] {phase}: {reason} — {raw}")
+
+        # Tier 2 スキップ理由
+        if tier2.get("skipped"):
+            log_lines.append(f"tier2_skip: {tier2.get('reason', '')}")
+
+        # 連続FAIL回数 (FAIL時のみ)
+        consecutive_fails = 0
+        if overall == "FAIL":
+            consecutive_fails = self._count_consecutive_fails()
+            if consecutive_fails > 1:
+                log_lines.append(f"consecutive_fails: {consecutive_fails}")
+
+        log_lines.append(f"duration: {duration}s")
+        log_excerpt = "\n".join(log_lines) if log_lines else "All checks passed."
+
+        # Tier 1 レイテンシ → 外部API成否フィールドへ
+        api_parts = []
+        for k, v in tier1.items():
+            icon = "✅" if v.get("pass") else "❌"
+            lat = v.get("latency_ms", "?")
+            api_parts.append(f"{icon}{k}:{lat}ms")
+        api_status = "  ".join(api_parts)
+
+        # ステータスマッピング
+        notion_status = "成功" if overall == "PASS" else "失敗"
+
+        # source log path (成果物名フィールド流用)
+        log_path = str(LOGS_DIR / f"{date_str}.json") if date_str else ""
+
+        evidence_ledger.log_d1_run(
+            topic=f"SelfTest {date_str}",
+            status=notion_status,
+            log_excerpt=log_excerpt,
+            api_status=api_status,
+            obsidian_file=log_path,
+        )
+        logger.info(f"[SELF_TEST][Notion] Evidence Ledger logged: {overall} (consecutive_fails={consecutive_fails})")
 
     # ──────────────────────────────────────────────
     # 保存 / 通知
