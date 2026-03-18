@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiArrowRight, FiShoppingCart, FiClock, FiZap } from 'react-icons/fi';
-import SpaceBackground from '../components/SpaceBackground';
+import {
+    FiArrowRight, FiShoppingCart, FiClock, FiZap,
+    FiTrendingUp, FiGlobe, FiShield, FiCode,
+    FiCheckCircle, FiActivity, FiTerminal
+} from 'react-icons/fi';
 
-// ── Blog posts (latest 3) ──────────────────────────────────────────────────
+// ── Blog posts (latest 3) ─────────────────────────────────────────────────────
 const postModules = import.meta.glob('../blog/posts/*.mdx', { eager: true, query: '?raw', import: 'default' });
 const allPosts = Object.entries(postModules).map(([path, raw]) => {
     const parts = raw.split('---');
@@ -20,10 +23,10 @@ const allPosts = Object.entries(postModules).map(([path, raw]) => {
 }).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
 
 const DEMO_RESULTS = [
-    { icon: '📝', label: 'Blog post generated', detail: '1,200 words · SEO optimized · ready to publish' },
-    { icon: '📱', label: '5 social captions ready', detail: 'Bluesky · Instagram · formatted & reviewed' },
-    { icon: '💰', label: 'Gumroad package ready', detail: 'ZIP bundle · sales copy · ready to upload' },
-    { icon: '🚀', label: 'Posted to Bluesky', detail: 'Auto-published · Instagram draft ready' },
+    { icon: '✦', label: 'Blog post generated', detail: '1,200 words · SEO optimized · ready to publish', color: '#10B981' },
+    { icon: '✦', label: '5 social captions ready', detail: 'Bluesky · Instagram · formatted & reviewed', color: '#3B82F6' },
+    { icon: '✦', label: 'Gumroad package ready', detail: 'ZIP bundle · sales copy · ready to upload', color: '#F59E0B' },
+    { icon: '✦', label: 'Posted to Bluesky', detail: 'Auto-published · Instagram draft ready', color: '#8B5CF6' },
 ];
 
 const DEMO_INPUTS = [
@@ -33,9 +36,9 @@ const DEMO_INPUTS = [
 ];
 
 const HOW_IT_WORKS = [
-    { step: '01', icon: '💬', title: 'Type your idea', desc: 'Tell Sage what you want to build or sell. Plain English. No setup.' },
-    { step: '02', icon: '⚡', title: 'Sage builds it', desc: 'Blog post, 5 social captions, and a Gumroad package. In 90 seconds.' },
-    { step: '03', icon: '💰', title: 'Publish & earn', desc: 'Review the output, hit publish. Bluesky posts automatically.' },
+    { step: '01', title: 'Type your idea', desc: 'Tell Sage what you want to build or sell. Plain English. No setup required.' },
+    { step: '02', title: 'Sage builds it', desc: 'Blog post, 5 social captions, and a Gumroad package — in 90 seconds.' },
+    { step: '03', title: 'Publish & earn', desc: 'Review the output, hit publish. Bluesky posts automatically.' },
 ];
 
 const formatDate = (dateStr) => {
@@ -44,261 +47,550 @@ const formatDate = (dateStr) => {
     return isNaN(d) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
+// ── Bento Card: Pipeline Demo ─────────────────────────────────────────────────
+const PipelineCard = ({ demoVisible, inputIndex }) => (
+    <div className="bento-card card-accent-top md:col-span-7 p-6 flex flex-col gap-5">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <FiTerminal size={14} style={{ color: '#71717A' }} />
+                <span style={{ fontSize: '0.72rem', fontFamily: 'Fira Code', color: '#71717A', letterSpacing: '0.08em' }}>
+                    SAGE PIPELINE
+                </span>
+            </div>
+            <div className="sage-badge" style={{ color: '#10B981', borderColor: 'rgba(16,185,129,0.2)' }}>
+                <span className="live-dot" />
+                Running
+            </div>
+        </div>
+
+        {/* Input row */}
+        <div className="flex gap-3 items-center">
+            <div className="flex-1 rounded-lg px-4 py-2.5 text-sm font-mono overflow-hidden"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ color: '#3F3F46' }}>$ </span>
+                <Motion.span
+                    key={inputIndex}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.35 }}
+                    style={{ color: '#EEEDE9' }}
+                >
+                    {DEMO_INPUTS[inputIndex]}
+                </Motion.span>
+                <span className="inline-block w-1.5 h-4 ml-0.5 align-text-bottom animate-pulse"
+                    style={{ background: '#3B82F6' }} />
+            </div>
+        </div>
+
+        {/* Results */}
+        <div className="space-y-2">
+            {DEMO_RESULTS.map((r, i) => (
+                <Motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={demoVisible ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: 0.2 + i * 0.2, duration: 0.4 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg"
+                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+                >
+                    <span style={{ color: r.color, fontSize: '0.7rem' }}>{r.icon}</span>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium" style={{ color: '#EEEDE9' }}>{r.label}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: '#71717A' }}>{r.detail}</div>
+                    </div>
+                    <Motion.div
+                        initial={{ scale: 0 }}
+                        animate={demoVisible ? { scale: 1 } : {}}
+                        transition={{ delay: 0.4 + i * 0.2, type: 'spring', stiffness: 350 }}
+                    >
+                        <FiCheckCircle size={15} style={{ color: r.color }} />
+                    </Motion.div>
+                </Motion.div>
+            ))}
+        </div>
+
+        <div className="text-xs font-mono mt-auto" style={{ color: '#3F3F46' }}>
+            ↳ completed in 87s
+        </div>
+    </div>
+);
+
+// ── Bento Card: Market Scan ───────────────────────────────────────────────────
+const MarketScanCard = () => (
+    <div className="bento-card card-accent-emerald md:col-span-5 p-6 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+            <FiTrendingUp size={14} style={{ color: '#10B981' }} />
+            <span style={{ fontSize: '0.72rem', fontFamily: 'Fira Code', color: '#71717A', letterSpacing: '0.08em' }}>
+                MARKETSCAN AGENT
+            </span>
+        </div>
+        <div>
+            <p className="font-bold text-base mb-0.5" style={{ color: '#EEEDE9', letterSpacing: '-0.01em' }}>
+                Sage finds your next opportunity
+            </p>
+            <p className="text-xs" style={{ color: '#71717A' }}>
+                Autonomous market research — every morning at 6 AM
+            </p>
+        </div>
+
+        {/* Scan result card */}
+        <div className="rounded-lg p-4 flex flex-col gap-3"
+            style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.12)' }}>
+            <div className="text-xs font-mono" style={{ color: '#10B981' }}>Latest scan</div>
+            <div className="font-semibold text-sm" style={{ color: '#EEEDE9' }}>
+                AI productivity tools for freelancers
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+                {[
+                    { label: 'Demand', value: '92', unit: '/100' },
+                    { label: 'Competition', value: 'Low', unit: '' },
+                    { label: 'AI-ready', value: '✓', unit: '' },
+                ].map((s) => (
+                    <div key={s.label} className="rounded py-2 px-1"
+                        style={{ background: 'rgba(255,255,255,0.03)' }}>
+                        <div className="text-sm font-bold" style={{ color: '#10B981' }}>
+                            {s.value}<span className="text-[10px] font-normal" style={{ color: '#71717A' }}>{s.unit}</span>
+                        </div>
+                        <div className="text-[10px] mt-0.5" style={{ color: '#71717A' }}>{s.label}</div>
+                    </div>
+                ))}
+            </div>
+            <div className="text-[10px] font-mono flex items-center gap-1.5" style={{ color: '#71717A' }}>
+                <FiCheckCircle size={10} style={{ color: '#10B981' }} />
+                Added to content queue → Blog scheduled
+            </div>
+        </div>
+
+        <p className="text-xs mt-auto" style={{ color: '#3F3F46' }}>
+            Google Trends · Reddit · DuckDuckGo — scored with Groq LLM
+        </p>
+    </div>
+);
+
+// ── Bento Card: Auto-Publish ──────────────────────────────────────────────────
+const AutoPublishCard = () => (
+    <div className="bento-card card-accent-top md:col-span-4 p-5 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+            <FiGlobe size={13} style={{ color: '#3B82F6' }} />
+            <span style={{ fontSize: '0.72rem', fontFamily: 'Fira Code', color: '#71717A', letterSpacing: '0.08em' }}>
+                AUTO-PUBLISH
+            </span>
+        </div>
+        <p className="font-bold text-sm leading-snug" style={{ color: '#EEEDE9' }}>
+            Posts while you sleep
+        </p>
+        <div className="space-y-2">
+            {[
+                { name: 'Bluesky', active: true },
+                { name: 'Instagram', active: true },
+                { name: 'Notion', active: true },
+                { name: 'Medium', active: false },
+                { name: 'WordPress', active: false },
+            ].map((p) => (
+                <div key={p.name} className="flex items-center justify-between py-1.5 px-3 rounded"
+                    style={{ background: 'rgba(255,255,255,0.02)' }}>
+                    <span className="text-xs" style={{ color: p.active ? '#EEEDE9' : '#3F3F46' }}>{p.name}</span>
+                    <div className="flex items-center gap-1.5">
+                        {p.active
+                            ? <><span className="live-dot" style={{ width: 5, height: 5 }} /><span className="text-[10px] font-mono" style={{ color: '#10B981' }}>live</span></>
+                            : <span className="text-[10px] font-mono" style={{ color: '#3F3F46' }}>off</span>}
+                    </div>
+                </div>
+            ))}
+        </div>
+        <p className="text-[10px] font-mono mt-auto" style={{ color: '#3F3F46' }}>
+            40+ platforms available
+        </p>
+    </div>
+);
+
+// ── Bento Card: OODA Self-Monitor ─────────────────────────────────────────────
+const OodaCard = () => (
+    <div className="bento-card card-accent-violet md:col-span-4 p-5 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+            <FiShield size={13} style={{ color: '#8B5CF6' }} />
+            <span style={{ fontSize: '0.72rem', fontFamily: 'Fira Code', color: '#71717A', letterSpacing: '0.08em' }}>
+                OODA SELF-MONITOR
+            </span>
+        </div>
+        <p className="font-bold text-sm leading-snug" style={{ color: '#EEEDE9' }}>
+            Always on, always watching
+        </p>
+        <div className="space-y-2">
+            {[
+                { tier: 'Tier 1', label: 'Internal checks', interval: '30 min', status: 'PASS' },
+                { tier: 'Tier 2', label: 'Service health', interval: '2 hr', status: 'PASS' },
+                { tier: 'Tier 3', label: 'E2E pipeline', interval: '24 hr', status: 'PASS' },
+            ].map((t) => (
+                <div key={t.tier} className="flex items-center justify-between py-1.5 px-3 rounded"
+                    style={{ background: 'rgba(255,255,255,0.02)' }}>
+                    <div>
+                        <div className="text-xs font-medium" style={{ color: '#EEEDE9' }}>{t.tier}</div>
+                        <div className="text-[10px]" style={{ color: '#71717A' }}>{t.label} · {t.interval}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className="live-dot" style={{ background: '#8B5CF6', width: 5, height: 5 }} />
+                        <span className="text-[10px] font-mono" style={{ color: '#8B5CF6' }}>{t.status}</span>
+                    </div>
+                </div>
+            ))}
+        </div>
+        <p className="text-[10px] font-mono mt-auto" style={{ color: '#3F3F46' }}>
+            Telegram alert on 2× consecutive FAIL
+        </p>
+    </div>
+);
+
+// ── Bento Card: Whop Integration ──────────────────────────────────────────────
+const WhopCard = () => (
+    <div className="bento-card card-accent-amber md:col-span-4 p-5 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+            <FiShoppingCart size={13} style={{ color: '#F59E0B' }} />
+            <span style={{ fontSize: '0.72rem', fontFamily: 'Fira Code', color: '#71717A', letterSpacing: '0.08em' }}>
+                WHOP INTEGRATION
+            </span>
+        </div>
+        <p className="font-bold text-sm leading-snug" style={{ color: '#EEEDE9' }}>
+            One command to publish your product
+        </p>
+        <div className="rounded-lg p-3 flex flex-col gap-2"
+            style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.12)' }}>
+            <div className="text-[10px] font-mono" style={{ color: '#71717A' }}>
+                &gt; "Publish my AI tips guide for $29.99"
+            </div>
+            <div className="w-full h-px" style={{ background: 'rgba(255,255,255,0.04)' }} />
+            <div className="flex items-center justify-between">
+                <div>
+                    <div className="text-xs font-semibold" style={{ color: '#EEEDE9' }}>AI Tips 2026</div>
+                    <div className="text-[10px]" style={{ color: '#71717A' }}>$29.99 · Whop</div>
+                </div>
+                <div className="sage-badge" style={{ color: '#F59E0B', borderColor: 'rgba(245,158,11,0.25)' }}>
+                    <span className="live-dot" style={{ background: '#F59E0B', width: 4, height: 4 }} />
+                    Live
+                </div>
+            </div>
+        </div>
+        <p className="text-[10px] font-mono mt-auto" style={{ color: '#3F3F46' }}>
+            Gumroad · Stripe · PayPal also supported
+        </p>
+    </div>
+);
+
+// ── Bento Card: SAGE Builder ──────────────────────────────────────────────────
+const BuilderCard = () => (
+    <div className="bento-card bento-card-accent card-accent-top md:col-span-12 p-6 flex flex-col md:flex-row gap-6 items-center">
+        <div className="flex-1">
+            <div className="flex items-center gap-2 mb-3">
+                <FiCode size={13} style={{ color: '#3B82F6' }} />
+                <span style={{ fontSize: '0.72rem', fontFamily: 'Fira Code', color: '#71717A', letterSpacing: '0.08em' }}>
+                    SAGE BUILDER — AI CODE GENERATION
+                </span>
+            </div>
+            <h3 className="font-bold text-lg mb-1" style={{ color: '#EEEDE9', letterSpacing: '-0.02em' }}>
+                Build apps by talking to them
+            </h3>
+            <p className="text-sm" style={{ color: '#71717A' }}>
+                Gemini 2.0 Flash + function calling. 3-panel editor: file explorer, AI chat, live preview.
+                Create, edit, and delete files — all from the chat window.
+            </p>
+        </div>
+        <div className="rounded-lg px-4 py-3 font-mono text-xs flex-shrink-0 w-full md:w-72"
+            style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.12)' }}>
+            <div style={{ color: '#3F3F46' }}>// sage builder</div>
+            <div className="mt-1">
+                <span style={{ color: '#8B5CF6' }}>create_file</span>
+                <span style={{ color: '#71717A' }}>(</span>
+                <span style={{ color: '#F59E0B' }}>"landing.jsx"</span>
+                <span style={{ color: '#71717A' }}>)</span>
+            </div>
+            <div>
+                <span style={{ color: '#8B5CF6' }}>read_file</span>
+                <span style={{ color: '#71717A' }}>(</span>
+                <span style={{ color: '#F59E0B' }}>"package.json"</span>
+                <span style={{ color: '#71717A' }}>)</span>
+            </div>
+            <div className="mt-1" style={{ color: '#10B981' }}>✓ 3 files created</div>
+        </div>
+    </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 const Landing = () => {
-    const [snsStats, setSnsStats] = useState({ total_posts: 0 });
     const [demoVisible, setDemoVisible] = useState(false);
     const [inputIndex, setInputIndex] = useState(0);
 
     useEffect(() => {
-        fetch('/api/sns/stats')
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-                if (data && data.total_posts > 0) {
-                    setSnsStats({ total_posts: data.total_posts });
-                }
-            })
-            .catch(() => { });
-    }, []);
-
-    useEffect(() => {
-        const t = setInterval(() => setInputIndex(i => (i + 1) % DEMO_INPUTS.length), 3000);
+        const t = setInterval(() => setInputIndex(i => (i + 1) % DEMO_INPUTS.length), 3200);
         return () => clearInterval(t);
     }, []);
 
     return (
-        <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
-            <SpaceBackground />
+        <div className="min-h-screen mesh-bg noise text-white font-sans selection:bg-blue-500/20 overflow-x-hidden"
+            style={{ color: 'var(--c-text)' }}>
 
-            {/* Navbar */}
-            <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-sm border-b border-white/5 bg-black/50">
-                <div className="text-xl font-bold tracking-tighter flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            {/* ── Navbar ────────────────────────────────────────────────── */}
+            <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center"
+                style={{
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    background: 'rgba(12, 14, 20, 0.82)',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                <div className="text-base font-bold tracking-tight flex items-center gap-2.5">
+                    <span className="live-dot" />
                     SAGE 3.0
                 </div>
-                <div className="flex gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap pr-2">
-                    <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
-                    <Link to="/shop" className="hover:text-white transition-colors">Shop</Link>
+                <div className="flex items-center gap-5">
+                    <div className="hidden sm:flex gap-5 text-sm" style={{ color: 'var(--c-muted)' }}>
+                        <Link to="/blog" className="hover:text-white transition-colors duration-150">Blog</Link>
+                        <Link to="/shop" className="hover:text-white transition-colors duration-150">Shop</Link>
+                    </div>
+                    <Link
+                        to="/dashboard"
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-white text-sm font-semibold transition-all duration-150"
+                        style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.28)' }}
+                    >
+                        Dashboard <FiArrowRight size={12} />
+                    </Link>
                 </div>
             </nav>
 
-            {/* ① Hero ─────────────────────────────────────────────────── */}
-            <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-20 z-10 text-center">
+            {/* ── Hero ──────────────────────────────────────────────────── */}
+            <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-24 pb-16 z-10 text-center">
                 <Motion.div
-                    initial={{ opacity: 0, y: 30 }}
+                    initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
+                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                     className="max-w-5xl mx-auto"
                 >
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    {/* Status badge */}
+                    <div className="inline-flex items-center gap-2 mb-8 sage-badge">
+                        <span className="live-dot" />
                         BETA LAUNCH · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
                     </div>
 
-                    <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
+                    {/* Headline */}
+                    <h1 className="mb-6 font-black"
+                        style={{
+                            fontSize: 'clamp(3rem, 9vw, 6.5rem)',
+                            letterSpacing: '-0.045em',
+                            lineHeight: '0.92',
+                            color: 'var(--c-text)',
+                        }}>
                         One Chat.<br />
-                        <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                        <span style={{
+                            background: 'linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #34D399 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text',
+                        }}>
                             Full Business.
                         </span>
                     </h1>
 
-                    <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
-                        Type one idea. Get a <span className="text-white">blog post</span>, <span className="text-white">5 captions</span>,
-                        and a <span className="text-white">product — ready to sell</span>. In 90 seconds.
+                    {/* Sub */}
+                    <p className="mb-10 font-light"
+                        style={{ fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: 'var(--c-muted)', maxWidth: 560, margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
+                        Type one idea. Get a <span style={{ color: 'var(--c-text)' }}>blog post</span>,{' '}
+                        <span style={{ color: 'var(--c-text)' }}>5 captions</span>, and a{' '}
+                        <span style={{ color: 'var(--c-text)' }}>product ready to sell</span>. In 90 seconds.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    {/* CTAs */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
+                        <Motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                             <Link
                                 to="/dashboard"
-                                className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_50px_rgba(37,99,235,0.4)] flex items-center gap-3 transition-all"
+                                className="flex items-center gap-2 px-8 py-4 rounded-xl text-white font-bold transition-all duration-200"
+                                style={{
+                                    background: '#3B82F6',
+                                    boxShadow: '0 0 40px rgba(59,130,246,0.35)',
+                                    fontSize: '0.95rem',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#2563EB'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#3B82F6'}
                             >
-                                Dashboard <FiArrowRight />
+                                Launch Dashboard <FiArrowRight size={16} />
                             </Link>
                         </Motion.div>
-                        <Motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                             <Link
                                 to="/sales"
-                                className="px-10 py-5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-lg font-bold flex items-center gap-3 transition-all backdrop-blur-xl"
+                                className="flex items-center gap-2 px-8 py-4 rounded-xl text-white font-bold transition-all duration-200"
+                                style={{
+                                    background: 'rgba(255,255,255,0.06)',
+                                    border: '1px solid rgba(255,255,255,0.12)',
+                                    backdropFilter: 'blur(8px)',
+                                    fontSize: '0.95rem',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.09)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                             >
-                                Get Full Access <FiShoppingCart />
+                                Get Full Access <FiShoppingCart size={15} />
                             </Link>
                         </Motion.div>
                     </div>
                 </Motion.div>
+
+                {/* Scroll cue */}
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 opacity-30">
+                    <div className="w-px h-10" style={{ background: 'linear-gradient(to bottom, transparent, var(--c-muted))' }} />
+                    <span style={{ fontSize: '0.6rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.12em' }}>SCROLL</span>
+                </div>
             </section>
 
-            {/* ① Social Proof bar ─────────────────────────────────────── */}
-            <div className="relative z-10 py-8 px-4 border-t border-white/5">
-                <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-6 text-center">
-                    <div className="flex flex-col items-center gap-1">
-                        <p className="text-2xl font-black text-white">BETA</p>
-                        <p className="text-xs font-mono text-slate-400">Early Access</p>
-                    </div>
-                    <div className="hidden sm:block w-px h-8 bg-white/10" />
-                    <div className="flex flex-col items-center gap-1">
-                        <p className="text-2xl font-black text-white">Feb 2026</p>
-                        <p className="text-xs font-mono text-slate-400">First release</p>
-                    </div>
-                    <div className="hidden sm:block w-px h-8 bg-white/10" />
-                    <div className="flex flex-col items-center gap-1">
-                        <p className="text-2xl font-black text-white">🇯🇵</p>
-                        <p className="text-xs font-mono text-slate-400">Built in Yokohama, Japan</p>
-                    </div>
+            {/* ── Stats Bar ─────────────────────────────────────────────── */}
+            <div className="relative z-10 section-divider py-8 px-4">
+                <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-center gap-8 text-center">
+                    {[
+                        { value: 'BETA', label: 'Early Access' },
+                        { value: 'Feb 2026', label: 'First Release' },
+                        { value: '90s', label: 'Idea to Income' },
+                        { value: '🇯🇵', label: 'Yokohama, Japan' },
+                    ].map((stat, i, arr) => (
+                        <React.Fragment key={stat.label}>
+                            <div>
+                                <p className="font-black text-xl" style={{ color: 'var(--c-text)', letterSpacing: '-0.02em' }}>
+                                    {stat.value}
+                                </p>
+                                <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)' }}>
+                                    {stat.label}
+                                </p>
+                            </div>
+                            {i < arr.length - 1 && (
+                                <div className="hidden sm:block w-px h-7" style={{ background: 'rgba(255,255,255,0.07)' }} />
+                            )}
+                        </React.Fragment>
+                    ))}
                 </div>
             </div>
 
-            {/* ② How It Works ──────────────────────────────────────────── */}
-            <section className="relative z-10 py-24 px-4 border-t border-white/5">
-                <div className="max-w-4xl mx-auto text-center">
+            {/* ── Bento Grid ────────────────────────────────────────────── */}
+            <section className="relative z-10 py-24 px-4 section-divider">
+                <div className="max-w-6xl mx-auto">
                     <Motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 16 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
+                        transition={{ duration: 0.5 }}
+                        className="text-center mb-12"
                     >
-                        <h2 className="text-3xl md:text-4xl font-bold mb-16">How It Works</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-                            {HOW_IT_WORKS.map(({ step, icon, title, desc }, i) => (
-                                <Motion.div
-                                    key={step}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: i * 0.15 }}
-                                    className="flex flex-col items-center"
-                                >
-                                    <div className="text-xs font-mono text-purple-400 tracking-widest mb-4">STEP {step}</div>
-                                    <div className="text-4xl mb-4">{icon}</div>
-                                    <h3 className="text-lg font-bold text-white mb-3">{title}</h3>
-                                    <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
-                                </Motion.div>
-                            ))}
-                        </div>
+                        <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                            Everything included
+                        </p>
+                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.03em', color: 'var(--c-text)' }}>
+                            The complete autonomous system
+                        </h2>
                     </Motion.div>
-                </div>
-            </section>
 
-            {/* ③ Before → After Demo ──────────────────────────────────── */}
-            <section className="relative z-10 py-24 px-4 bg-gradient-to-b from-black via-slate-900/20 to-black">
-                <div className="max-w-2xl mx-auto">
                     <Motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
                         onViewportEnter={() => setDemoVisible(true)}
+                        className="grid grid-cols-1 md:grid-cols-12 gap-3"
                     >
-                        <div className="flex items-center gap-3 mb-3">
-                            <FiZap className="text-blue-400" size={20} />
-                            <h2 className="text-2xl font-bold">You type. Sage does everything else.</h2>
-                        </div>
-                        <p className="text-slate-500 text-sm mb-8">This is what happens 90 seconds after you hit send.</p>
-
-                        {/* Input mockup */}
-                        <div className="flex gap-3 mb-6">
-                            <div className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono overflow-hidden">
-                                <span className="text-slate-600 select-none">$ </span>
-                                <Motion.span
-                                    key={inputIndex}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ duration: 0.4 }}
-                                    className="text-white"
-                                >
-                                    {DEMO_INPUTS[inputIndex]}
-                                </Motion.span>
-                                <span className="inline-block w-2 h-4 bg-blue-400 ml-0.5 align-text-bottom animate-pulse" />
-                            </div>
-                            <div className="px-5 py-3 bg-blue-600/80 text-white rounded-xl font-bold text-sm flex items-center gap-2 cursor-default select-none">
-                                <FiZap size={16} /> Running
-                            </div>
-                        </div>
-
-                        {/* Results — cascade in */}
-                        <div className="space-y-3">
-                            {DEMO_RESULTS.map((r, i) => (
-                                <Motion.div
-                                    key={i}
-                                    initial={{ opacity: 0, x: -16 }}
-                                    animate={demoVisible ? { opacity: 1, x: 0 } : {}}
-                                    transition={{ delay: 0.3 + i * 0.25, duration: 0.5 }}
-                                    className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/5"
-                                >
-                                    <span className="text-2xl flex-shrink-0">{r.icon}</span>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                                            {r.label}
-                                        </div>
-                                        <div className="text-xs text-slate-500 mt-0.5 truncate">{r.detail}</div>
-                                    </div>
-                                    <Motion.span
-                                        initial={{ scale: 0 }}
-                                        animate={demoVisible ? { scale: 1 } : {}}
-                                        transition={{ delay: 0.5 + i * 0.25, type: 'spring', stiffness: 300 }}
-                                        className="text-emerald-400 text-lg flex-shrink-0"
-                                    >✓</Motion.span>
-                                </Motion.div>
-                            ))}
-                        </div>
-
-                        {/* CTA */}
-                        <Motion.div
-                            initial={{ opacity: 0 }}
-                            animate={demoVisible ? { opacity: 1 } : {}}
-                            transition={{ delay: 1.6 }}
-                            className="mt-8"
-                        >
-                            <Link
-                                to="/dashboard"
-                                className="block text-center px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
-                            >
-                                Try Sage Free →
-                            </Link>
-                        </Motion.div>
+                        <PipelineCard demoVisible={demoVisible} inputIndex={inputIndex} />
+                        <MarketScanCard />
+                        <AutoPublishCard />
+                        <OodaCard />
+                        <WhopCard />
+                        <BuilderCard />
                     </Motion.div>
                 </div>
             </section>
 
-            {/* ④ Blog ─────────────────────────────────────────────────── */}
+            {/* ── How It Works ──────────────────────────────────────────── */}
+            <section className="relative z-10 py-24 px-4 section-divider">
+                <div className="max-w-4xl mx-auto">
+                    <Motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5 }}
+                        className="text-center mb-14"
+                    >
+                        <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                            How it works
+                        </p>
+                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: 'var(--c-text)' }}>
+                            Three steps to your first AI income
+                        </h2>
+                    </Motion.div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {HOW_IT_WORKS.map(({ step, title, desc }, i) => (
+                            <Motion.div
+                                key={step}
+                                initial={{ opacity: 0, y: 16 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.12, duration: 0.4 }}
+                                className="bento-card p-6"
+                            >
+                                <div className="font-mono text-5xl font-black mb-4" style={{ color: 'rgba(255,255,255,0.05)', lineHeight: 1 }}>
+                                    {step}
+                                </div>
+                                <h3 className="font-bold mb-2" style={{ color: 'var(--c-text)', fontSize: '1rem' }}>{title}</h3>
+                                <p className="text-sm leading-relaxed" style={{ color: 'var(--c-muted)' }}>{desc}</p>
+                            </Motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── Blog ──────────────────────────────────────────────────── */}
             {allPosts.length > 0 && (
-                <section className="relative z-10 py-24 px-4 border-t border-white/5">
+                <section className="relative z-10 py-24 px-4 section-divider">
                     <div className="max-w-6xl mx-auto">
                         <Motion.div
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 16 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
-                            className="flex items-center justify-between mb-12"
+                            transition={{ duration: 0.5 }}
+                            className="flex items-center justify-between mb-10"
                         >
-                            <h2 className="text-2xl md:text-3xl font-bold">Latest from Sage</h2>
-                            <Link to="/blog" className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1">
-                                All posts <FiArrowRight size={14} />
+                            <div>
+                                <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                                    Auto-published content
+                                </p>
+                                <h2 className="font-black" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)', letterSpacing: '-0.02em', color: 'var(--c-text)' }}>
+                                    Latest from Sage
+                                </h2>
+                            </div>
+                            <Link to="/blog" className="flex items-center gap-1 text-sm transition-colors duration-150"
+                                style={{ color: '#3B82F6' }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#60A5FA'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#3B82F6'}>
+                                All posts <FiArrowRight size={13} />
                             </Link>
                         </Motion.div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {allPosts.map((post, i) => (
                                 <Motion.div
                                     key={post.slug}
-                                    initial={{ opacity: 0, y: 20 }}
+                                    initial={{ opacity: 0, y: 12 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
-                                    transition={{ delay: i * 0.1 }}
+                                    transition={{ delay: i * 0.08 }}
                                 >
-                                    <Link
-                                        to={`/blog/${post.slug}`}
-                                        className="block group p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all h-full"
-                                    >
+                                    <Link to={`/blog/${post.slug}`}
+                                        className="bento-card block p-6 h-full group">
                                         {post.date && (
-                                            <div className="text-xs font-mono text-slate-600 mb-3 flex items-center gap-1">
-                                                <FiClock size={10} /> {formatDate(post.date)}
+                                            <div className="flex items-center gap-1 mb-3"
+                                                style={{ fontSize: '0.65rem', fontFamily: 'Fira Code', color: 'var(--c-subtle)' }}>
+                                                <FiClock size={9} /> {formatDate(post.date)}
                                             </div>
                                         )}
-                                        <h3 className="text-base font-bold text-white group-hover:text-blue-200 transition-colors mb-3 leading-snug line-clamp-2">
+                                        <h3 className="font-bold leading-snug mb-2 line-clamp-2 transition-colors duration-150"
+                                            style={{ fontSize: '0.9rem', color: 'var(--c-text)' }}>
                                             {post.title}
                                         </h3>
                                         {post.excerpt && (
-                                            <p className="text-xs text-slate-500 leading-relaxed line-clamp-3">
+                                            <p className="text-xs leading-relaxed line-clamp-3"
+                                                style={{ color: 'var(--c-muted)' }}>
                                                 {post.excerpt}
                                             </p>
                                         )}
@@ -310,16 +602,26 @@ const Landing = () => {
                 </section>
             )}
 
-            {/* ⑤ FAQ ───────────────────────────────────────────────────── */}
-            <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-slate-900/10 to-black">
+            {/* ── FAQ ───────────────────────────────────────────────────── */}
+            <section className="relative z-10 py-24 px-4 section-divider">
                 <div className="max-w-3xl mx-auto">
-                    <div className="mb-16 text-center">
-                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h2>
-                        <p className="text-slate-500">Everything you need to know before getting started.</p>
-                    </div>
-                    <div className="space-y-6">
+                    <Motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5 }}
+                        className="text-center mb-12"
+                    >
+                        <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                            FAQ
+                        </p>
+                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: 'var(--c-text)' }}>
+                            Common questions
+                        </h2>
+                    </Motion.div>
+                    <div className="space-y-2">
                         {[
-                            { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. That's it. No code, no dashboards, no configuration." },
+                            { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. No code, no dashboards, no configuration." },
                             { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
                             { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
                             { q: "What if it doesn't work for me?", a: "Gumroad's 30-day money-back guarantee. One-click full refund, no questions asked." },
@@ -327,74 +629,122 @@ const Landing = () => {
                         ].map((item, i) => (
                             <Motion.div
                                 key={i}
-                                initial={{ opacity: 0, y: 10 }}
+                                initial={{ opacity: 0, y: 8 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: i * 0.05 }}
-                                className="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all"
+                                className="bento-card p-5"
                             >
-                                <h3 className="text-lg font-bold text-white mb-3">{item.q}</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">{item.a}</p>
+                                <h3 className="font-bold mb-2" style={{ fontSize: '0.9rem', color: 'var(--c-text)' }}>{item.q}</h3>
+                                <p className="text-sm leading-relaxed" style={{ color: 'var(--c-muted)' }}>{item.a}</p>
                             </Motion.div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* ⑥ Shop / Monetization ─────────────────────────────────── */}
-            <section className="relative z-10 py-32 px-4 border-t border-white/5 bg-gradient-to-b from-black to-slate-900/30">
+            {/* ── Shop / CTA ────────────────────────────────────────────── */}
+            <section className="relative z-10 py-24 px-4 section-divider">
                 <div className="max-w-4xl mx-auto">
                     <Motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 16 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="flex items-center gap-3 mb-4"
+                        transition={{ duration: 0.5 }}
+                        className="mb-10"
                     >
-                        <FiShoppingCart className="text-emerald-400" size={20} />
-                        <h2 className="text-2xl md:text-3xl font-bold">Your First AI Income Stream</h2>
+                        <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                            Get started today
+                        </p>
+                        <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: 'var(--c-text)' }}>
+                            Your first AI income stream
+                        </h2>
+                        <p className="mt-2 text-sm" style={{ color: 'var(--c-muted)' }}>
+                            The exact system Sage 3.0 uses to automate your content pipeline.
+                        </p>
                     </Motion.div>
-                    <p className="text-slate-500 text-sm mb-12">The exact system Sage 3.0 uses to automate your content pipeline — from idea to income.</p>
 
                     <Motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 16 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="relative group p-8 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] transition-all overflow-hidden max-w-xl"
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        className="bento-card bento-card-accent card-accent-top p-8 max-w-md"
                     >
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-                        <div className="text-sm font-mono text-blue-400 mb-4">FEATURED PRODUCT</div>
-                        <h3 className="text-xl font-bold text-white mb-2">2026 AI Influencer Monetization Express</h3>
-                        <div className="text-3xl font-black text-white mb-6">$29.99</div>
-                        <ul className="space-y-2 text-sm text-slate-300 mb-8">
-                            {['Full AI Influencer Blueprint', 'Autonomous SNS posting templates', 'Monetization funnel step-by-step', 'Lifetime access + updates'].map((f, i) => (
-                                <li key={i} className="flex items-center gap-2">
-                                    <span className="text-emerald-400">✓</span> {f}
+                        <div className="sage-badge mb-5" style={{ color: '#3B82F6', borderColor: 'rgba(59,130,246,0.2)' }}>
+                            Featured Product
+                        </div>
+                        <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--c-text)', letterSpacing: '-0.01em' }}>
+                            2026 AI Influencer Monetization Express
+                        </h3>
+                        <div className="font-black text-3xl my-4" style={{ color: 'var(--c-text)', letterSpacing: '-0.03em' }}>
+                            $29.99
+                        </div>
+                        <ul className="space-y-2 mb-7">
+                            {[
+                                'Full AI Influencer Blueprint',
+                                'Autonomous SNS posting templates',
+                                'Monetization funnel step-by-step',
+                                'Lifetime access + updates',
+                            ].map((f) => (
+                                <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-muted)' }}>
+                                    <FiCheckCircle size={13} style={{ color: '#10B981', flexShrink: 0 }} />
+                                    {f}
                                 </li>
                             ))}
                         </ul>
                         <Link
                             to="/sales"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-200"
+                            style={{ background: '#3B82F6', boxShadow: '0 0 30px rgba(59,130,246,0.25)' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#2563EB'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#3B82F6'}
                         >
-                            <FiShoppingCart size={16} /> Get Access — $29.99 →
+                            <FiShoppingCart size={15} /> Get Access — $29.99
                         </Link>
                     </Motion.div>
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="relative z-10 py-12 px-6 border-t border-white/5 bg-black">
+            {/* ── Footer ────────────────────────────────────────────────── */}
+            <footer className="relative z-10 py-12 px-6 section-divider">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex gap-6 text-xs font-mono text-slate-500">
-                        <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-                        <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-                        <a href="mailto:sage@onelovepeople.com" className="hover:text-white transition-colors">Contact</a>
-                        <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
-                        <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
+                    <div className="flex flex-wrap gap-5">
+                        {[
+                            { label: 'Privacy Policy', to: '/privacy', internal: true },
+                            { label: 'Terms of Service', to: '/terms', internal: true },
+                            { label: 'Contact', to: 'mailto:sage@onelovepeople.com', internal: false },
+                            { label: 'Bluesky', to: 'https://bsky.app/profile/naofumi.bsky.social', internal: false },
+                            { label: 'Instagram', to: 'https://www.instagram.com/sege.ai/', internal: false },
+                        ].map((link) =>
+                            link.internal ? (
+                                <Link key={link.label} to={link.to}
+                                    className="text-xs font-mono transition-colors duration-150"
+                                    style={{ color: 'var(--c-subtle)' }}
+                                    onMouseEnter={e => e.currentTarget.style.color = 'var(--c-muted)'}
+                                    onMouseLeave={e => e.currentTarget.style.color = 'var(--c-subtle)'}>
+                                    {link.label}
+                                </Link>
+                            ) : (
+                                <a key={link.label} href={link.to}
+                                    target={link.to.startsWith('http') ? '_blank' : undefined}
+                                    rel={link.to.startsWith('http') ? 'noopener noreferrer' : undefined}
+                                    className="text-xs font-mono transition-colors duration-150"
+                                    style={{ color: 'var(--c-subtle)' }}
+                                    onMouseEnter={e => e.currentTarget.style.color = 'var(--c-muted)'}
+                                    onMouseLeave={e => e.currentTarget.style.color = 'var(--c-subtle)'}>
+                                    {link.label}
+                                </a>
+                            )
+                        )}
                     </div>
-                    <div className="text-center md:text-right">
-                        <p className="text-slate-600 text-xs font-mono mb-1">© 2026 SAGE AI | Autonomous Architect Protocol</p>
-                        <p className="text-slate-700 text-[10px] font-mono uppercase tracking-widest">Made with Sage in Yokohama, Japan</p>
+                    <div className="text-right">
+                        <p className="text-xs font-mono" style={{ color: 'var(--c-subtle)' }}>
+                            © 2026 SAGE AI · Autonomous Architect Protocol
+                        </p>
+                        <p style={{ fontSize: '0.65rem', fontFamily: 'Fira Code', color: 'var(--c-raised)', marginTop: '0.2rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                            Made with Sage in Yokohama, Japan
+                        </p>
                     </div>
                 </div>
             </footer>
