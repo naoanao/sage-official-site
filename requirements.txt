@@ -68,3 +68,5 @@ langchain_community
 pyautogui>=0.9.54
 Pillow>=10.0.0
 psutil
+browser-use>=0.12.0
+playwright>=1.40.0
