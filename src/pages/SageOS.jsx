@@ -860,7 +860,7 @@ const SageOS = () => {
 
     // ── Render ───────────────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-hidden flex" translate="no">
+        <div className="min-h-screen bg-[var(--c-bg)] text-[var(--c-text)] font-sans selection:bg-blue-500/30 overflow-hidden flex" translate="no">
 
             {/* ── Copy Toast (fixed overlay) ──────────────────────────────── */}
             {copyToast && (
@@ -874,7 +874,7 @@ const SageOS = () => {
             )}
 
             {/* ── Sidebar ─────────────────────────────────────────────────── */}
-            <div className="w-64 bg-slate-900/50 border-r border-white/5 flex flex-col p-4 backdrop-blur-md z-10 shrink-0">
+            <div className="w-64 bg-[var(--c-surface)] border-r border-[var(--c-border)] flex flex-col p-4 z-10 shrink-0 shadow-sm">
                 <div className="text-xl font-bold tracking-tighter mb-8 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" translate="no"></span>
                     <span>SAGE COCKPIT</span>
@@ -883,7 +883,7 @@ const SageOS = () => {
                 <div className="space-y-2 flex-grow">
                     <Link
                         to="/"
-                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-white/5 text-slate-400 hover:text-white"
+                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
                     >
                         <FiHome /> <span>Landing Page</span>
                     </Link>
@@ -891,7 +891,7 @@ const SageOS = () => {
                     {/* Phase navigation (visible in phases 2-4) */}
                     {currentPhase >= 2 && (
                         <div className="mt-2 space-y-1">
-                            <div className="text-xs text-slate-600 uppercase tracking-widest px-2 mb-2">Phases</div>
+                            <div className="text-xs text-[var(--c-subtle)] uppercase tracking-widest px-2 mb-2">Phases</div>
                             {[
                                 { id: 1, label: 'TALK', icon: '💬' },
                                 { id: 2, label: 'CREATE', icon: '⚡' },
@@ -905,8 +905,8 @@ const SageOS = () => {
                                     className={`w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all text-sm ${currentPhase === p.id
                                         ? 'bg-purple-600 text-white'
                                         : currentPhase > p.id
-                                            ? 'text-emerald-400 hover:bg-white/5'
-                                            : 'text-slate-600 cursor-not-allowed'
+                                            ? 'text-emerald-400 hover:bg-[var(--c-raised)]'
+                                            : 'text-[var(--c-subtle)] cursor-not-allowed'
                                         }`}
                                 >
                                     <span>{p.icon}</span>
@@ -920,7 +920,7 @@ const SageOS = () => {
                     {/* Automations toggle */}
                     <button
                         onClick={() => setShowAutomations(p => !p)}
-                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showAutomations ? 'bg-slate-700 text-white' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
+                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showAutomations ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
                     >
                         <FiActivity /> <span>Automations</span>
                     </button>
@@ -930,21 +930,21 @@ const SageOS = () => {
                         href="https://whop.com/joined/segeai/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-white/5 text-slate-400 hover:text-white"
+                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
                     >
                         <FiShoppingCart /> <span>Whop Members</span>
                     </a>
                 </div>
 
                 {/* Brake Widget */}
-                <div className="mt-auto p-4 bg-black/40 border border-white/5 rounded-xl">
+                <div className="mt-auto p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-mono text-slate-400 flex items-center gap-2"><FiShield /> <span>SAGE BRAKE</span></span>
+                        <span className="text-xs font-mono text-[var(--c-muted)] flex items-center gap-2"><FiShield /> <span>SAGE BRAKE</span></span>
                         <div className={`w-2 h-2 rounded-full ${brakeEnabled ? 'bg-red-500 animate-pulse' : 'bg-slate-600'}`}></div>
                     </div>
                     <button
                         onClick={toggleBrake}
-                        className={`w-full py-2 rounded-lg text-xs font-bold uppercase transition-all flex justify-center items-center gap-2 ${brakeEnabled ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'}`}
+                        className={`w-full py-2 rounded-lg text-xs font-bold uppercase transition-all flex justify-center items-center gap-2 ${brakeEnabled ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-[var(--c-raised)] hover:bg-[var(--c-border)] text-[var(--c-text)] border border-[var(--c-border)]'}`}
                     >
                         {brakeEnabled ? <><FiXCircle /> <span>BRAKE ACTIVE</span></> : <><FiCheckCircle /> <span>● Online</span></>}
                     </button>
@@ -952,29 +952,29 @@ const SageOS = () => {
             </div>
 
             {/* ── Main Content ─────────────────────────────────────────────── */}
-            <div ref={mainScrollRef} className="flex-1 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-black to-black overflow-y-auto" translate="no">
+            <div ref={mainScrollRef} className="flex-1 bg-[var(--c-bg)] overflow-y-auto" translate="no">
 
                 {/* Automations Panel */}
                 {showAutomations && (
                     <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-8 max-w-4xl mx-auto">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-black">Active Automations</h2>
-                            <button onClick={() => setShowAutomations(false)} className="text-slate-400 hover:text-white text-sm px-3 py-1 bg-white/5 rounded-lg">✕ Close</button>
+                            <button onClick={() => setShowAutomations(false)} className="text-[var(--c-muted)] hover:text-[var(--c-text)] text-sm px-3 py-1 bg-[var(--c-raised)] rounded-lg">✕ Close</button>
                         </div>
-                        <div className="p-5 bg-white/3 border border-white/8 rounded-2xl">
+                        <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
                             <div className="flex items-center justify-between mb-4">
-                                <div className="text-sm font-bold text-slate-300 flex items-center gap-2">⚡ Active Automations</div>
+                                <div className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2">⚡ Active Automations</div>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {automations.map(a => (
-                                    <div key={a.id} className={`p-4 rounded-xl border transition-all ${a.active ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-white/3 border-white/8'}`}>
+                                    <div key={a.id} className={`p-4 rounded-xl border transition-all ${a.active ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-[var(--c-raised)] border-[var(--c-border)]'}`}>
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-xl">{a.icon}</span>
                                             <div className={`w-2 h-2 rounded-full ${a.active ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}></div>
                                         </div>
-                                        <div className="text-sm font-semibold text-white mb-0.5">{a.name}</div>
-                                        <div className="text-xs text-slate-500">{a.schedule}</div>
-                                        <div className="text-xs text-slate-500 mb-3">{a.lastRun || 'Never'}</div>
+                                        <div className="text-sm font-semibold text-[var(--c-text)] mb-0.5">{a.name}</div>
+                                        <div className="text-xs text-[var(--c-subtle)]">{a.schedule}</div>
+                                        <div className="text-xs text-[var(--c-subtle)] mb-3">{a.lastRun || 'Never'}</div>
                                         <button
                                             onClick={() => handleToggle(a.id, a.active)}
                                             className={`w-full text-xs py-1.5 rounded-lg transition-all ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}>
@@ -1003,18 +1003,18 @@ const SageOS = () => {
                                 className="max-w-3xl mx-auto py-8 px-4 flex flex-col" style={{ minHeight: 'calc(100vh - 0px)' }}>
                                 <div className="text-center mb-8">
                                     <div className="text-5xl mb-4">🤖</div>
-                                    <h1 className="text-3xl font-black mb-2">Hi, I'm Sage.</h1>
-                                    <p className="text-slate-400">Tell me your idea — I'll help you build a full product around it.</p>
+                                    <h1 className="text-3xl font-black mb-2" style={{ color: '#1A56DB' }}>Hi, I'm Sage.</h1>
+                                    <p className="text-[var(--c-muted)]">Tell me your idea — I'll help you build a full product around it.</p>
                                 </div>
 
-                                <div className="flex flex-col bg-white/3 border border-white/8 rounded-2xl overflow-hidden" style={{ minHeight: '480px' }}>
+                                <div className="flex flex-col bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl overflow-hidden" style={{ minHeight: '480px' }}>
                                     <div className="flex-1 overflow-y-auto space-y-4 p-4 no-scrollbar">
                                         {messages.map(msg =>
                                             msg.role === 'upgrade_banner' ? (
                                                 <div key={msg.id} className="flex justify-center my-2">
                                                     <div className="w-full max-w-xl p-4 rounded-2xl bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 text-center">
-                                                        <div className="text-sm font-bold text-white mb-1">🔒 Free demo limit reached (3 messages)</div>
-                                                        <p className="text-xs text-slate-400 mb-3">Upgrade to unlock unlimited Sage conversations, automation control, and product generation.</p>
+                                                        <div className="text-sm font-bold text-[var(--c-text)] mb-1">🔒 Free demo limit reached (3 messages)</div>
+                                                        <p className="text-xs text-[var(--c-muted)] mb-3">Upgrade to unlock unlimited Sage conversations, automation control, and product generation.</p>
                                                         <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
                                                             className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-sm transition-all">
                                                             💎 Get Full Access on Whop →
@@ -1026,8 +1026,8 @@ const SageOS = () => {
                                                     <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user'
                                                         ? 'bg-blue-600 rounded-tr-none'
                                                         : msg.role === 'system'
-                                                            ? 'bg-white/5 border border-white/10 text-slate-400 text-center mx-auto text-xs font-mono uppercase'
-                                                            : 'bg-slate-800 rounded-tl-none border border-slate-700'
+                                                            ? 'bg-[var(--c-raised)] border border-[var(--c-border)] text-[var(--c-muted)] text-center mx-auto text-xs font-mono uppercase'
+                                                            : 'bg-[var(--c-raised)] rounded-tl-none border border-[var(--c-border)]'
                                                         }`}>
                                                         {msg.content}
                                                     </div>
@@ -1052,7 +1052,7 @@ const SageOS = () => {
                                                                     goToPhase(2, topic);
                                                                     handleNicheValidate(topic);
                                                                 }}
-                                                                className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-xl flex items-center gap-2 transition-all"
+                                                                className="text-sm px-4 py-2 bg-white/10 hover:bg-[var(--c-border)] text-[var(--c-text)] font-medium rounded-xl flex items-center gap-2 transition-all"
                                                             >
                                                                 📊 Validate Niche First
                                                             </button>
@@ -1061,7 +1061,7 @@ const SageOS = () => {
                                                                     chatInputRef.current?.focus();
                                                                     chatInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                                                 }}
-                                                                className="text-sm px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl flex items-center gap-2 transition-all"
+                                                                className="text-sm px-4 py-2 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] rounded-xl flex items-center gap-2 transition-all"
                                                             >
                                                                 💬 もう少し話す
                                                             </button>
@@ -1082,7 +1082,7 @@ const SageOS = () => {
                                             )
                                         )}
                                     </div>
-                                    <form onSubmit={sendMessage} className="p-4 bg-black/60 border-t border-white/5">
+                                    <form onSubmit={sendMessage} className="p-4 bg-[var(--c-surface)] border-t border-[var(--c-border)]">
                                         <div className="flex relative">
                                             <input
                                                 ref={chatInputRef}
@@ -1090,7 +1090,7 @@ const SageOS = () => {
                                                 value={inputValue}
                                                 onChange={e => setInputValue(e.target.value)}
                                                 placeholder="あなたのビジネスやコンテンツのアイデアを話してください..."
-                                                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-14 py-4 focus:outline-none focus:border-blue-500 transition-colors"
+                                                className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl pl-4 pr-14 py-4 focus:outline-none focus:border-blue-500 transition-colors"
                                             />
                                             <button type="submit" className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
                                                 <FiPlay className="w-5 h-5 ml-0.5" />
@@ -1102,11 +1102,11 @@ const SageOS = () => {
                                                 {d1Status === 'running' ? <><div className="animate-spin w-3 h-3 rounded-full border-2 border-white/30 border-t-white mr-1"></div> Processing...</> : d1Status === 'complete' ? <><FiCheck /> Done</> : d1Status === 'error' ? <><FiXCircle /> Error</> : <>🚀 Run Research (D1)</>}
                                             </button>
                                             <button type="button" onClick={() => setInputValue('Research a topic for me: ')}
-                                                className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">🔍 Find ideas</button>
+                                                className="text-xs px-3 py-2 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)] rounded-lg border border-[var(--c-border)] transition-all">🔍 Find ideas</button>
                                             <button type="button" onClick={() => setInputValue('Generate content about: ')}
-                                                className="text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all">⚡ Generate content</button>
+                                                className="text-xs px-3 py-2 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)] rounded-lg border border-[var(--c-border)] transition-all">⚡ Generate content</button>
                                             <button type="button" onClick={() => goToPhase(2, monetizeTopic || extractTopic(messages))}
-                                                className="text-xs px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 hover:text-white rounded-lg border border-purple-500/30 transition-all">⚡ Skip to Create</button>
+                                                className="text-xs px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 hover:text-[var(--c-text)] rounded-lg border border-purple-500/30 transition-all">⚡ Skip to Create</button>
                                         </div>
                                     </form>
                                 </div>
@@ -1123,24 +1123,24 @@ const SageOS = () => {
                                 {activeTopic && (
                                     <div className="p-4 bg-purple-900/20 border border-purple-500/30 rounded-2xl flex items-center gap-3">
                                         <span className="text-purple-300 text-sm">💬</span>
-                                        <span className="text-white font-semibold truncate">{activeTopic}</span>
-                                        <button onClick={() => setActiveTopic('')} className="ml-auto text-slate-500 hover:text-slate-300 text-xs">✕</button>
+                                        <span className="text-[var(--c-text)] font-semibold truncate">{activeTopic}</span>
+                                        <button onClick={() => setActiveTopic('')} className="ml-auto text-[var(--c-subtle)] hover:text-[var(--c-text)] text-xs">✕</button>
                                     </div>
                                 )}
 
                                 <div className="text-center mb-6">
                                     <h2 className="text-4xl font-black mb-4">Create Your Product</h2>
-                                    <p className="text-slate-400">One topic. Blog post, social captions, and a product. In 90 seconds.</p>
+                                    <p className="text-[var(--c-muted)]">One topic. Blog post, social captions, and a product. In 90 seconds.</p>
                                 </div>
 
-                                <div className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-6 backdrop-blur-sm">
+                                <div className="bg-[var(--c-raised)] border border-[var(--c-border)] p-8 rounded-3xl space-y-6 backdrop-blur-sm">
                                     {/* Identity Panel */}
-                                    <details className="group border border-white/10 bg-black/30 rounded-2xl overflow-hidden cursor-pointer transition-all">
-                                        <summary className="px-6 py-4 flex items-center justify-between text-sm font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-colors focus:outline-none">
-                                            <span className="flex items-center gap-2">🎭 Your AI Clone Identity <span className="text-xs font-normal text-slate-500 ml-2">Review before creating...</span></span>
+                                    <details className="group border border-[var(--c-border)] bg-[var(--c-raised)] rounded-2xl overflow-hidden cursor-pointer transition-all">
+                                        <summary className="px-6 py-4 flex items-center justify-between text-sm font-bold text-[var(--c-text)] hover:text-[var(--c-text)] hover:bg-[var(--c-raised)] transition-colors focus:outline-none">
+                                            <span className="flex items-center gap-2">🎭 Your AI Clone Identity <span className="text-xs font-normal text-[var(--c-subtle)] ml-2">Review before creating...</span></span>
                                             <span className="group-open:-rotate-180 transition-transform duration-300">▼</span>
                                         </summary>
-                                        <div className="p-2 border-t border-white/10 bg-black/50 cursor-default">
+                                        <div className="p-2 border-t border-[var(--c-border)] bg-[var(--c-surface)] cursor-default">
                                             <IdentityPanel />
                                         </div>
                                     </details>
@@ -1149,7 +1149,7 @@ const SageOS = () => {
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-3">
-                                                <label className="text-sm font-bold text-slate-300">Topic / Idea</label>
+                                                <label className="text-sm font-bold text-[var(--c-text)]">Topic / Idea</label>
                                                 <button
                                                     onClick={handleNicheValidate}
                                                     disabled={!monetizeTopic.trim() || nicheValidation.status === 'running'}
@@ -1171,7 +1171,7 @@ const SageOS = () => {
                                                 </button>
                                             </div>
                                             {researchCheck.status === 'checking' && (
-                                                <span className="text-xs text-slate-400 flex items-center gap-1"><div className="w-3 h-3 rounded-full border border-slate-400 border-t-white animate-spin" /> Checking research...</span>
+                                                <span className="text-xs text-[var(--c-muted)] flex items-center gap-1"><div className="w-3 h-3 rounded-full border border-slate-400 border-t-white animate-spin" /> Checking research...</span>
                                             )}
                                             {researchCheck.status === 'found' && (
                                                 <span className="text-xs text-emerald-400 flex items-center gap-1"><FiCheckCircle /> D1 Research found: {researchCheck.file}</span>
@@ -1185,13 +1185,13 @@ const SageOS = () => {
                                             value={monetizeTopic}
                                             onChange={(e) => { setMonetizeTopic(e.target.value); setMonetizeStatus('idle'); setNicheValidation({ status: 'idle', data: null }); }}
                                             placeholder={CREATE_PLACEHOLDERS[placeholderIdx]}
-                                            className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors ${researchCheck.status === 'missing' ? 'border-amber-500/50 focus:border-amber-400' : 'border-white/10 focus:border-purple-500'}`}
+                                            className={`w-full bg-[var(--c-surface)] border rounded-xl px-4 py-3 text-[var(--c-text)] focus:outline-none transition-colors ${researchCheck.status === 'missing' ? 'border-amber-500/50 focus:border-amber-400' : 'border-[var(--c-border)] focus:border-purple-500'}`}
                                         />
                                         {nicheValidation.status === 'rate_limited' && (
                                             <div className="mt-3 p-4 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-xl flex items-center justify-between gap-4">
                                                 <div>
-                                                    <div className="text-sm font-bold text-white">🔒 Free demo limit reached (1/day)</div>
-                                                    <p className="text-xs text-slate-400 mt-0.5">Upgrade for unlimited market demand checks.</p>
+                                                    <div className="text-sm font-bold text-[var(--c-text)]">🔒 Free demo limit reached (1/day)</div>
+                                                    <p className="text-xs text-[var(--c-muted)] mt-0.5">Upgrade for unlimited market demand checks.</p>
                                                 </div>
                                                 <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
                                                     className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all">
@@ -1212,7 +1212,7 @@ const SageOS = () => {
                                                         { label: '▶️ YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
                                                     ].map(({ label, url }) => (
                                                         <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                                                            className="text-xs px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-white/10 transition-all font-medium">
+                                                            className="text-xs px-2 py-1.5 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-text)] rounded-lg border border-[var(--c-border)] transition-all font-medium">
                                                             {label}
                                                         </a>
                                                     ))}
@@ -1222,14 +1222,14 @@ const SageOS = () => {
                                         {/* Always-visible external research links when topic is entered */}
                                         {monetizeTopic.trim().length >= 2 && nicheValidation.status !== 'error' && (
                                             <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                                <span className="text-xs text-slate-500">Research:</span>
+                                                <span className="text-xs text-[var(--c-subtle)]">Research:</span>
                                                 {[
                                                     { label: '📈 Trends', url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(monetizeTopic)}` },
                                                     { label: '💬 Reddit', url: `https://www.reddit.com/search/?q=${encodeURIComponent(monetizeTopic)}` },
                                                     { label: '▶️ YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(monetizeTopic)}` },
                                                 ].map(({ label, url }) => (
                                                     <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                                                        className="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-white/10 transition-all font-medium">
+                                                        className="text-xs px-2 py-1 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-text)] hover:text-[var(--c-text)] rounded-lg border border-[var(--c-border)] transition-all font-medium">
                                                         {label}
                                                     </a>
                                                 ))}
@@ -1244,11 +1244,11 @@ const SageOS = () => {
 
                                     {/* Language selector */}
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-300 mb-2">Output Language</label>
+                                        <label className="block text-sm font-bold text-[var(--c-text)] mb-2">Output Language</label>
                                         <div className="flex gap-2">
                                             {[['auto', '🌐 Auto'], ['ja', '🇯🇵 Japanese'], ['en', '🇺🇸 English']].map(([val, label]) => (
                                                 <button key={val} onClick={() => setLang(val)}
-                                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${lang === val ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+                                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${lang === val ? 'bg-purple-600 text-white' : 'bg-[var(--c-raised)] text-[var(--c-muted)] hover:bg-[var(--c-raised)] hover:text-[var(--c-text)]'}`}>
                                                     {label}
                                                 </button>
                                             ))}
@@ -1257,9 +1257,9 @@ const SageOS = () => {
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-bold text-slate-300 mb-2">Target Market</label>
+                                            <label className="block text-sm font-bold text-[var(--c-text)] mb-2">Target Market</label>
                                             <select value={market} onChange={(e) => setMarket(e.target.value)}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 appearance-none">
+                                                className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 text-[var(--c-text)] focus:outline-none focus:border-purple-500 appearance-none">
                                                 <option value="US">🇺🇸 US Market</option>
                                                 <option value="JP">🇯🇵 Japan Market</option>
                                                 <option value="CN">🇨🇳 China Market</option>
@@ -1268,24 +1268,24 @@ const SageOS = () => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-slate-300 mb-2">Suggested Price</label>
+                                            <label className="block text-sm font-bold text-[var(--c-text)] mb-2">Suggested Price</label>
                                             <input type="text" value={price} onChange={(e) => setPrice(e.target.value)}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                                                className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 text-[var(--c-text)] focus:outline-none focus:border-purple-500" />
                                         </div>
                                     </div>
 
-                                    <hr className="border-white/5 my-6" />
+                                    <hr className="border-[var(--c-border)] my-6" />
 
                                     {/* D1 research warning */}
                                     {monetizeStatus === 'needs_research' && (
                                         <div className="p-5 bg-amber-900/20 border border-amber-500/30 rounded-2xl space-y-3">
                                             <div className="text-amber-300 font-bold flex items-center gap-2"><FiAlertTriangle /> D1 Research not found</div>
-                                            <p className="text-slate-300 text-sm">No research file found for "{monetizeTopic}". We recommend running D1 Research first to avoid content contamination.</p>
+                                            <p className="text-[var(--c-text)] text-sm">No research file found for "{monetizeTopic}". We recommend running D1 Research first to avoid content contamination.</p>
                                             <div className="flex gap-3">
                                                 <button onClick={handleD1ForTopic} className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
                                                     <FiPlay /> Run D1 Research, Then Generate
                                                 </button>
-                                                <button onClick={() => runMonetizePipeline()} className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-400 text-sm rounded-xl transition-all">
+                                                <button onClick={() => runMonetizePipeline()} className="px-4 py-3 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] text-sm rounded-xl transition-all">
                                                     Generate anyway (risky)
                                                 </button>
                                             </div>
@@ -1308,8 +1308,8 @@ const SageOS = () => {
                                         <button
                                             onClick={() => handleMonetize()}
                                             disabled={!monetizeTopic || ['running', 'running_d1'].includes(monetizeStatus)}
-                                            className={`w-full py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-3 transition-all ${!monetizeTopic ? 'bg-slate-800 text-slate-500 cursor-not-allowed' :
-                                                monetizeStatus === 'running' ? 'bg-slate-700 text-slate-400' :
+                                            className={`w-full py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-3 transition-all ${!monetizeTopic ? 'bg-[var(--c-raised)] text-[var(--c-subtle)] cursor-not-allowed' :
+                                                monetizeStatus === 'running' ? 'bg-[var(--c-raised)] text-[var(--c-muted)]' :
                                                     monetizeStatus === 'running_d1' ? 'bg-amber-800 text-amber-200' :
                                                         monetizeStatus === 'error' ? 'bg-red-700 text-white' :
                                                             'bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white shadow-[0_0_40px_rgba(147,51,234,0.4)]'
@@ -1326,13 +1326,13 @@ const SageOS = () => {
                                         <div className="mt-3 space-y-2">
                                             {/* Progress bar */}
                                             <div className="flex items-center gap-2">
-                                                <div className="flex-1 bg-slate-800 rounded-full h-2.5 overflow-hidden border border-white/10">
+                                                <div className="flex-1 bg-[var(--c-raised)] rounded-full h-2.5 overflow-hidden border border-[var(--c-border)]">
                                                     <div
                                                         className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full transition-all ease-out"
                                                         style={{ width: `${progressPercent}%`, transitionDuration: '2000ms' }}
                                                     />
                                                 </div>
-                                                <span className="text-xs text-slate-400 shrink-0 w-8 text-right">{progressPercent}%</span>
+                                                <span className="text-xs text-[var(--c-muted)] shrink-0 w-8 text-right">{progressPercent}%</span>
                                             </div>
                                             <p className="text-xs text-violet-300 animate-pulse text-center">{generateProgress}</p>
                                         </div>
@@ -1342,12 +1342,12 @@ const SageOS = () => {
                                     {!['review', 'finalizing', 'finalized'].includes(monetizeStatus) && quickPreview && (
                                         <div className="mt-4 p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl space-y-3">
                                             <div className="text-xs font-bold text-purple-400 uppercase tracking-widest">⚡ Quick Preview</div>
-                                            <div className="text-white font-bold text-sm">{quickPreview.headline}</div>
-                                            <div className="text-xs text-slate-400">👤 {quickPreview.buyer}</div>
+                                            <div className="text-[var(--c-text)] font-bold text-sm">{quickPreview.headline}</div>
+                                            <div className="text-xs text-[var(--c-muted)]">👤 {quickPreview.buyer}</div>
                                             <div className="text-xs text-emerald-400 font-bold">💰 {quickPreview.price}</div>
                                             <div className="space-y-1">
                                                 {quickPreview.hooks.map((h, i) => (
-                                                    <div key={i} className="text-xs text-slate-300 flex gap-2">
+                                                    <div key={i} className="text-xs text-[var(--c-text)] flex gap-2">
                                                         <span className="text-purple-400 shrink-0">→</span>{h}
                                                     </div>
                                                 ))}
@@ -1361,12 +1361,12 @@ const SageOS = () => {
                                                 <div className="text-red-400 font-bold flex items-center gap-2">❌ Pipeline Failed</div>
                                                 <button
                                                     onClick={() => { setMonetizeStatus('idle'); setMonetizeResult(null); }}
-                                                    className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/10 border border-white/10 transition-all"
+                                                    className="text-xs text-[var(--c-muted)] hover:text-[var(--c-text)] px-2 py-1 rounded hover:bg-[var(--c-raised)] border border-[var(--c-border)] transition-all"
                                                 >
                                                     ✕ Close
                                                 </button>
                                             </div>
-                                            <div className="text-slate-300 text-xs break-all">
+                                            <div className="text-[var(--c-text)] text-xs break-all">
                                                 {monetizeResult || 'An error occurred in the LLM pipeline. Please retry or wait a moment.'}
                                             </div>
                                             <button
@@ -1385,7 +1385,7 @@ const SageOS = () => {
                                                 <FiCheckCircle className="text-emerald-400 text-xl" />
                                                 <div>
                                                     <div className="text-emerald-300 font-bold">Generation Complete!</div>
-                                                    <div className="text-slate-400 text-sm">{editedSections.length} sections, sales page & captions ready</div>
+                                                    <div className="text-[var(--c-muted)] text-sm">{editedSections.length} sections, sales page & captions ready</div>
                                                 </div>
                                             </div>
                                             <button
@@ -1405,59 +1405,59 @@ const SageOS = () => {
                                         GO: { wrap: 'border-emerald-500/30 bg-emerald-900/10', label: 'text-emerald-400', score: 'text-emerald-300', text: '✅ GO — Market Viable' },
                                         CAUTION: { wrap: 'border-amber-500/30 bg-amber-900/10', label: 'text-amber-400', score: 'text-amber-300', text: '⚠️ CAUTION — Needs Improvement' },
                                         STOP: { wrap: 'border-red-500/30 bg-red-900/10', label: 'text-red-400', score: 'text-red-300', text: '🛑 STOP — Low Market Demand' },
-                                    }[v.recommendation] || { wrap: 'border-slate-500/30 bg-slate-900/10', label: 'text-slate-400', score: 'text-slate-300', text: v.recommendation };
+                                    }[v.recommendation] || { wrap: 'border-[var(--c-border)] bg-[var(--c-raised)]', label: 'text-[var(--c-muted)]', score: 'text-[var(--c-text)]', text: v.recommendation };
                                     return (
                                         <div ref={nicheResultRef} className={`border ${recStyle.wrap} rounded-2xl p-6 space-y-4`}>
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <div className={`text-lg font-black ${recStyle.label}`}>{recStyle.text}</div>
-                                                    <div className="text-slate-400 text-sm mt-0.5">総合スコア: <span className={`${recStyle.score} font-bold text-xl`}>{v.overall_score}</span>/100</div>
+                                                    <div className="text-[var(--c-muted)] text-sm mt-0.5">総合スコア: <span className={`${recStyle.score} font-bold text-xl`}>{v.overall_score}</span>/100</div>
                                                 </div>
-                                                <button onClick={() => { setNicheValidation({ status: 'idle', data: null }); if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0; }} className="text-xs text-slate-500 hover:text-slate-300 px-2 py-1 rounded-lg hover:bg-white/5">✕</button>
+                                                <button onClick={() => { setNicheValidation({ status: 'idle', data: null }); if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0; }} className="text-xs text-[var(--c-subtle)] hover:text-[var(--c-text)] px-2 py-1 rounded-lg hover:bg-[var(--c-raised)]">✕</button>
                                             </div>
                                             <div className="grid grid-cols-3 gap-3 text-xs">
-                                                <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Demand</div>
-                                                    <div className="text-white font-bold text-base">{v.demand?.score}/100</div>
-                                                    <div className="text-slate-500">{v.demand?.trend} · Search: {v.demand?.search_volume}</div>
-                                                    <div className="text-slate-400 mt-1 leading-relaxed">{v.demand?.reason}</div>
+                                                <div className="bg-[var(--c-raised)] rounded-xl p-3">
+                                                    <div className="text-[var(--c-muted)] mb-1 uppercase tracking-widest font-bold">Demand</div>
+                                                    <div className="text-[var(--c-text)] font-bold text-base">{v.demand?.score}/100</div>
+                                                    <div className="text-[var(--c-subtle)]">{v.demand?.trend} · Search: {v.demand?.search_volume}</div>
+                                                    <div className="text-[var(--c-muted)] mt-1 leading-relaxed">{v.demand?.reason}</div>
                                                 </div>
-                                                <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Competition</div>
-                                                    <div className="text-white font-bold text-base">{v.competition?.level}</div>
-                                                    <div className="text-slate-500">Avg ¥{(v.competition?.avg_price_jpy || 0).toLocaleString()}</div>
+                                                <div className="bg-[var(--c-raised)] rounded-xl p-3">
+                                                    <div className="text-[var(--c-muted)] mb-1 uppercase tracking-widest font-bold">Competition</div>
+                                                    <div className="text-[var(--c-text)] font-bold text-base">{v.competition?.level}</div>
+                                                    <div className="text-[var(--c-subtle)]">Avg ¥{(v.competition?.avg_price_jpy || 0).toLocaleString()}</div>
                                                     {(v.competition?.gaps || []).length > 0 && (
                                                         <div className="mt-1 text-indigo-300">Gap: {v.competition.gaps[0]}</div>
                                                     )}
                                                 </div>
-                                                <div className="bg-black/30 rounded-xl p-3">
-                                                    <div className="text-slate-400 mb-1 uppercase tracking-widest font-bold">Audience</div>
-                                                    <div className="text-white font-bold text-base">{v.audience?.clarity_score}/100</div>
-                                                    <div className="text-slate-500">{v.audience?.persona?.age_range} · {v.audience?.persona?.occupation}</div>
-                                                    <div className="text-slate-400 mt-1 leading-relaxed">{v.audience?.persona?.pain_point}</div>
+                                                <div className="bg-[var(--c-raised)] rounded-xl p-3">
+                                                    <div className="text-[var(--c-muted)] mb-1 uppercase tracking-widest font-bold">Audience</div>
+                                                    <div className="text-[var(--c-text)] font-bold text-base">{v.audience?.clarity_score}/100</div>
+                                                    <div className="text-[var(--c-subtle)]">{v.audience?.persona?.age_range} · {v.audience?.persona?.occupation}</div>
+                                                    <div className="text-[var(--c-muted)] mt-1 leading-relaxed">{v.audience?.persona?.pain_point}</div>
                                                 </div>
                                             </div>
                                             {v.pricing && (
                                                 <div className="flex gap-3 text-xs">
-                                                    <div className="bg-black/30 rounded-xl px-4 py-2 flex-1 text-center">
-                                                        <div className="text-slate-400">Basic</div>
-                                                        <div className="text-white font-bold">¥{(v.pricing.japan?.basic || 0).toLocaleString()}</div>
+                                                    <div className="bg-[var(--c-raised)] rounded-xl px-4 py-2 flex-1 text-center">
+                                                        <div className="text-[var(--c-muted)]">Basic</div>
+                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.basic || 0).toLocaleString()}</div>
                                                     </div>
                                                     <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl px-4 py-2 flex-1 text-center">
                                                         <div className="text-purple-300">Standard ★</div>
-                                                        <div className="text-white font-bold">¥{(v.pricing.japan?.standard || 0).toLocaleString()}</div>
+                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.standard || 0).toLocaleString()}</div>
                                                     </div>
-                                                    <div className="bg-black/30 rounded-xl px-4 py-2 flex-1 text-center">
-                                                        <div className="text-slate-400">Premium</div>
-                                                        <div className="text-white font-bold">¥{(v.pricing.japan?.premium || 0).toLocaleString()}</div>
+                                                    <div className="bg-[var(--c-raised)] rounded-xl px-4 py-2 flex-1 text-center">
+                                                        <div className="text-[var(--c-muted)]">Premium</div>
+                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.premium || 0).toLocaleString()}</div>
                                                     </div>
                                                 </div>
                                             )}
                                             {(v.improvements || []).length > 0 && (
-                                                <div className="bg-black/20 rounded-xl p-3 text-xs space-y-1">
-                                                    <div className="text-slate-400 uppercase tracking-widest font-bold mb-2">Suggestions</div>
+                                                <div className="bg-[var(--c-raised)] rounded-xl p-3 text-xs space-y-1">
+                                                    <div className="text-[var(--c-muted)] uppercase tracking-widest font-bold mb-2">Suggestions</div>
                                                     {v.improvements.map((imp, i) => (
-                                                        <div key={i} className="text-slate-300 flex gap-2"><span className="text-indigo-400">→</span>{imp}</div>
+                                                        <div key={i} className="text-[var(--c-text)] flex gap-2"><span className="text-indigo-400">→</span>{imp}</div>
                                                     ))}
                                                 </div>
                                             )}
@@ -1479,7 +1479,7 @@ const SageOS = () => {
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto py-8 px-8">
                                 {!generateData ? (
                                     <div className="text-center py-20">
-                                        <div className="text-slate-400 mb-4">Content not yet generated.</div>
+                                        <div className="text-[var(--c-muted)] mb-4">Content not yet generated.</div>
                                         <button onClick={() => goToPhase(2)} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
                                             ← Generate in Phase 2
                                         </button>
@@ -1493,7 +1493,7 @@ const SageOS = () => {
                                                 <div className="p-4 bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/40 rounded-2xl flex items-center justify-between gap-4">
                                                     <div>
                                                         <div className="text-sm font-bold text-amber-300 flex items-center gap-2">⚡ Demo Preview — Sample Output</div>
-                                                        <p className="text-xs text-slate-400 mt-0.5">This is pre-built demo content. Upgrade to generate real AI output for your topic.</p>
+                                                        <p className="text-xs text-[var(--c-muted)] mt-0.5">This is pre-built demo content. Upgrade to generate real AI output for your topic.</p>
                                                     </div>
                                                     <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
                                                         className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all whitespace-nowrap">
@@ -1503,21 +1503,21 @@ const SageOS = () => {
                                             )}
 
                                             {/* Header bar */}
-                                            <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                            <div className="flex items-center justify-between p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
                                                 <div>
                                                     <div className="flex items-center gap-3">
                                                         <span className={`text-xs font-bold px-2 py-1 rounded ${generateData.qa_status === 'PASS' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
                                                             QA {generateData.qa_status || 'WARN'}
                                                         </span>
-                                                        <span className="text-white font-bold truncate max-w-xs">{isDemo ? 'Demo: AI Passive Income Guide' : monetizeTopic}</span>
+                                                        <span className="text-[var(--c-text)] font-bold truncate max-w-xs">{isDemo ? 'Demo: AI Passive Income Guide' : monetizeTopic}</span>
                                                     </div>
                                                     {generateData.research_source && (
-                                                        <div className="text-xs text-slate-500 mt-1">D1: {generateData.research_source}</div>
+                                                        <div className="text-xs text-[var(--c-subtle)] mt-1">D1: {generateData.research_source}</div>
                                                     )}
                                                 </div>
                                                 <button
                                                     onClick={() => { setIsDemo(false); setMonetizeStatus('idle'); setGenerateData(null); goToPhase(2); }}
-                                                    className="text-xs text-slate-500 hover:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all"
+                                                    className="text-xs text-[var(--c-subtle)] hover:text-[var(--c-text)] px-3 py-1.5 rounded-lg hover:bg-[var(--c-raised)] transition-all"
                                                 >
                                                     ← Start Over
                                                 </button>
@@ -1526,15 +1526,15 @@ const SageOS = () => {
                                             {/* Blog sections list */}
                                             <div className="space-y-3">
                                                 {editedSections.map((section, idx) => (
-                                                    <div key={idx} className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
+                                                    <div key={idx} className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl overflow-hidden">
                                                         <button
-                                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-all"
+                                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-[var(--c-raised)] transition-all"
                                                             onClick={() => setExpandedSection(expandedSection === idx ? null : idx)}
                                                         >
                                                             <div className="flex items-center gap-3 text-left flex-wrap">
-                                                                <span className="text-xs text-slate-500 font-mono w-5">{idx + 1}</span>
-                                                                <span className="text-sm font-semibold text-white">{section.title}</span>
-                                                                <span className="text-xs text-slate-500">{section.content?.length || 0} chars</span>
+                                                                <span className="text-xs text-[var(--c-subtle)] font-mono w-5">{idx + 1}</span>
+                                                                <span className="text-sm font-semibold text-[var(--c-text)]">{section.title}</span>
+                                                                <span className="text-xs text-[var(--c-subtle)]">{section.content?.length || 0} chars</span>
                                                                 {(() => {
                                                                     const q = analyzeContentQuality(section.content);
                                                                     const scoreColor = q.score >= 75 ? 'text-emerald-400' : q.score >= 50 ? 'text-amber-400' : 'text-red-400';
@@ -1544,28 +1544,28 @@ const SageOS = () => {
                                                                         <div className="flex items-center gap-1">
                                                                             <span className={`text-xs font-bold ${scoreColor}`}>Q{q.score}</span>
                                                                             {criteria.map(([key, lbl]) => (
-                                                                                <span key={key} className={`text-[9px] font-bold px-1 py-0.5 rounded ${met.has(key) ? 'bg-emerald-900/50 text-emerald-400' : 'bg-white/5 text-slate-700'}`}>{lbl}</span>
+                                                                                <span key={key} className={`text-[9px] font-bold px-1 py-0.5 rounded ${met.has(key) ? 'bg-emerald-900/50 text-emerald-400' : 'bg-[var(--c-raised)] text-[var(--c-subtle)]'}`}>{lbl}</span>
                                                                             ))}
                                                                         </div>
                                                                     );
                                                                 })()}
                                                             </div>
-                                                            <span className="text-slate-500 text-xs">{expandedSection === idx ? '▲' : '▼'}</span>
+                                                            <span className="text-[var(--c-subtle)] text-xs">{expandedSection === idx ? '▲' : '▼'}</span>
                                                         </button>
                                                         {expandedSection === idx && (
-                                                            <div className="px-5 pb-5 space-y-3 border-t border-white/5">
+                                                            <div className="px-5 pb-5 space-y-3 border-t border-[var(--c-border)]">
                                                                 <input
                                                                     type="text"
                                                                     value={section.title}
                                                                     onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, title: e.target.value } : s))}
-                                                                    className="w-full mt-3 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-semibold text-sm focus:outline-none focus:border-blue-400"
+                                                                    className="w-full mt-3 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-lg px-3 py-2 text-[var(--c-text)] font-semibold text-sm focus:outline-none focus:border-blue-400"
                                                                     placeholder="セクションタイトル"
                                                                 />
                                                                 <textarea
                                                                     value={section.content}
                                                                     onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, content: e.target.value } : s))}
                                                                     rows={10}
-                                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 text-sm leading-relaxed focus:outline-none focus:border-blue-400 resize-y font-mono"
+                                                                    className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-lg px-3 py-2 text-[var(--c-text)] text-sm leading-relaxed focus:outline-none focus:border-blue-400 resize-y font-mono"
                                                                 />
                                                                 <div className="flex gap-2">
                                                                     <input
@@ -1574,7 +1574,7 @@ const SageOS = () => {
                                                                         onChange={e => setSectionInstructions(prev => ({ ...prev, [idx]: e.target.value }))}
                                                                         onKeyDown={e => e.key === 'Enter' && handleRewriteSection(idx)}
                                                                         placeholder="Rewrite this section only (e.g. add more specific numbers)"
-                                                                        className={`flex-1 bg-black/40 border rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 placeholder:text-slate-600 transition-all ${rewriteEmptyIdx === idx ? 'border-red-500 animate-pulse' : 'border-white/10'}`}
+                                                                        className={`flex-1 bg-[var(--c-surface)] border rounded-lg px-3 py-2 text-[var(--c-text)] text-xs focus:outline-none focus:border-blue-400 placeholder:text-[var(--c-subtle)] transition-all ${rewriteEmptyIdx === idx ? 'border-red-500 animate-pulse' : 'border-[var(--c-border)]'}`}
                                                                     />
                                                                     <button
                                                                         onClick={() => handleRewriteSection(idx)}
@@ -1622,8 +1622,8 @@ const SageOS = () => {
 
                                             {/* Rewrite presets */}
                                             {isDemo ? (
-                                                <div className="p-4 bg-white/3 border border-white/8 rounded-2xl flex items-center justify-between gap-4">
-                                                    <div className="text-xs text-slate-500">🔒 Rewrite & editing locked in demo mode</div>
+                                                <div className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl flex items-center justify-between gap-4">
+                                                    <div className="text-xs text-[var(--c-subtle)]">🔒 Rewrite & editing locked in demo mode</div>
                                                     <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
                                                         className="text-xs px-3 py-1.5 bg-purple-600/50 hover:bg-purple-600 text-white rounded-lg font-bold transition-all whitespace-nowrap">
                                                         Upgrade →
@@ -1648,7 +1648,7 @@ const SageOS = () => {
                                                                         ${result === 'success' ? 'bg-emerald-900/30 border-emerald-500/40 text-emerald-300'
                                                                         : result === 'error' ? 'bg-red-900/20 border-red-500/30 text-red-400'
                                                                         : isThis ? 'bg-purple-600/30 border-purple-400/40 text-white'
-                                                                        : 'bg-white/5 hover:bg-purple-600/30 hover:text-white disabled:opacity-40 text-slate-300 border-white/10 hover:border-purple-400/40'}`}
+                                                                        : 'bg-[var(--c-raised)] hover:bg-purple-600/30 hover:text-[var(--c-text)] disabled:opacity-40 text-[var(--c-text)] border-[var(--c-border)] hover:border-purple-400/40'}`}
                                                                 >
                                                                     {isThis
                                                                         ? <div className="w-4 h-4 rounded-full border-2 border-purple-300 border-t-transparent animate-spin shrink-0" />
@@ -1667,7 +1667,7 @@ const SageOS = () => {
                                                             onChange={e => setGlobalInstruction(e.target.value)}
                                                             onKeyDown={e => e.key === 'Enter' && handleRewriteAll()}
                                                             placeholder="Custom instruction (e.g. make it more casual / translate to English)"
-                                                            className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-600"
+                                                            className="flex-1 bg-[var(--c-surface)] border border-purple-500/30 rounded-xl px-3 py-2 text-[var(--c-text)] text-sm focus:outline-none focus:border-purple-400 placeholder:text-[var(--c-subtle)]"
                                                         />
                                                         <button
                                                             onClick={() => handleRewriteAll()}
@@ -1716,7 +1716,7 @@ const SageOS = () => {
                                                     {generateData.product_hook && (
                                                         <div className="space-y-1">
                                                             <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Product Hook</div>
-                                                            <div className="text-xs text-white/90 bg-black/30 rounded-xl px-3 py-2 leading-relaxed">
+                                                            <div className="text-xs text-[var(--c-text)]/90 bg-[var(--c-raised)] rounded-xl px-3 py-2 leading-relaxed">
                                                                 "{generateData.product_hook}"
                                                             </div>
                                                         </div>
@@ -1727,11 +1727,11 @@ const SageOS = () => {
                                                         <div className="space-y-1.5">
                                                             <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Bonus Stack (3 bonuses)</div>
                                                             {generateData.bonus_stack.map((bonus, i) => (
-                                                                <div key={i} className="flex items-start gap-2 text-xs bg-black/20 rounded-lg px-3 py-2">
+                                                                <div key={i} className="flex items-start gap-2 text-xs bg-[var(--c-raised)] rounded-lg px-3 py-2">
                                                                     <span className="text-emerald-400 font-bold shrink-0">B{i + 1}</span>
                                                                     <div>
-                                                                        <div className="text-white font-semibold">{bonus.title}</div>
-                                                                        {bonus.description && <div className="text-slate-400 text-[11px] mt-0.5">{bonus.description}</div>}
+                                                                        <div className="text-[var(--c-text)] font-semibold">{bonus.title}</div>
+                                                                        {bonus.description && <div className="text-[var(--c-muted)] text-[11px] mt-0.5">{bonus.description}</div>}
                                                                         {bonus.value && <div className="text-emerald-400 text-[10px] mt-0.5">Value: {bonus.value}</div>}
                                                                     </div>
                                                                 </div>
@@ -1745,7 +1745,7 @@ const SageOS = () => {
                                                             <div className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Launch Checklist</div>
                                                             <div className="space-y-1">
                                                                 {generateData.launch_checklist.map((item, i) => (
-                                                                    <div key={i} className="flex items-center gap-2 text-xs text-slate-300">
+                                                                    <div key={i} className="flex items-center gap-2 text-xs text-[var(--c-text)]">
                                                                         <div className="w-4 h-4 rounded border border-emerald-500/40 flex items-center justify-center shrink-0 text-[10px] text-emerald-400">{i + 1}</div>
                                                                         <span>{item}</span>
                                                                     </div>
@@ -1757,11 +1757,11 @@ const SageOS = () => {
                                             )}
 
                                             {/* Preview tabs */}
-                                            <div className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
-                                                <div className="flex gap-0.5 p-1 bg-white/5 border-b border-white/8">
+                                            <div className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl overflow-hidden">
+                                                <div className="flex gap-0.5 p-1 bg-[var(--c-raised)] border-b border-[var(--c-border)]">
                                                     {[['blog', '📝 Blog'], ['captions', '📱 Cap'], ['sales', '💰 Sales'], ['images', '🖼 Img']].map(([id, icon]) => (
                                                         <button key={id} onClick={() => setContentTab(id)}
-                                                            className={`flex-1 py-2 px-1 rounded-lg text-xs font-semibold transition-all ${contentTab === id ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                                                            className={`flex-1 py-2 px-1 rounded-lg text-xs font-semibold transition-all ${contentTab === id ? 'bg-purple-600 text-white' : 'text-[var(--c-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-raised)]'}`}>
                                                             {icon}
                                                         </button>
                                                     ))}
@@ -1771,8 +1771,8 @@ const SageOS = () => {
                                                         <div className="space-y-2">
                                                             {editedSections.map((s, i) => (
                                                                 <div key={i} className="text-xs">
-                                                                    <div className="font-bold text-white mb-1">{s.title}</div>
-                                                                    <div className="text-slate-400 leading-relaxed line-clamp-2">{s.content}</div>
+                                                                    <div className="font-bold text-[var(--c-text)] mb-1">{s.title}</div>
+                                                                    <div className="text-[var(--c-muted)] leading-relaxed line-clamp-2">{s.content}</div>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -1780,17 +1780,17 @@ const SageOS = () => {
                                                     {contentTab === 'captions' && (
                                                         <div className="space-y-2">
                                                             {editedCaptions.map((c, i) => (
-                                                                <div key={i} className="p-2 bg-black/30 rounded-lg text-xs text-slate-300">{c}</div>
+                                                                <div key={i} className="p-2 bg-[var(--c-raised)] rounded-lg text-xs text-[var(--c-text)]">{c}</div>
                                                             ))}
                                                         </div>
                                                     )}
                                                     {contentTab === 'sales' && (
-                                                        <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                                                        <div className="text-xs text-[var(--c-text)] leading-relaxed whitespace-pre-line">
                                                             {editedSalesPage || (
                                                                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                                                                     <span className="text-2xl">📄</span>
-                                                                    <div className="text-slate-400 text-xs">Sales page not generated yet.</div>
-                                                                    <div className="text-slate-600 text-xs">Re-run the pipeline — LLM may have been rate-limited during generation.</div>
+                                                                    <div className="text-[var(--c-muted)] text-xs">Sales page not generated yet.</div>
+                                                                    <div className="text-[var(--c-subtle)] text-xs">Re-run the pipeline — LLM may have been rate-limited during generation.</div>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1798,13 +1798,13 @@ const SageOS = () => {
                                                     {contentTab === 'images' && (
                                                         <div className="grid grid-cols-2 gap-2">
                                                             {generateData.images && Object.entries(generateData.images).map(([title, data]) => (
-                                                                <div key={title} className="rounded-lg overflow-hidden border border-white/10">
+                                                                <div key={title} className="rounded-lg overflow-hidden border border-[var(--c-border)]">
                                                                     {data.type === 'generated' && data.url ? (
                                                                         <img src={data.url} alt={title} className="w-full h-16 object-cover" onError={e => { e.target.style.display = 'none'; }} />
                                                                     ) : (
-                                                                        <div className="w-full h-16 flex items-center justify-center bg-slate-800/60 text-[9px] text-slate-500">Prompt Only</div>
+                                                                        <div className="w-full h-16 flex items-center justify-center bg-[var(--c-raised)]/60 text-[9px] text-[var(--c-subtle)]">Prompt Only</div>
                                                                     )}
-                                                                    <div className="p-1"><p className="text-[9px] text-slate-400 truncate">{title}</p></div>
+                                                                    <div className="p-1"><p className="text-[9px] text-[var(--c-muted)] truncate">{title}</p></div>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -1832,12 +1832,12 @@ const SageOS = () => {
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto py-8 px-8 space-y-6">
                                 <div className="text-center mb-8">
                                     <h2 className="text-4xl font-black mb-2">🚀 Publish</h2>
-                                    <p className="text-slate-400">Let's get your content out into the world.</p>
+                                    <p className="text-[var(--c-muted)]">Let's get your content out into the world.</p>
                                 </div>
 
                                 {!generateData ? (
                                     <div className="text-center py-16">
-                                        <div className="text-slate-400 mb-4">No content to publish yet.</div>
+                                        <div className="text-[var(--c-muted)] mb-4">No content to publish yet.</div>
                                         <button onClick={() => goToPhase(2)} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
                                             ← Generate in Phase 2
                                         </button>
@@ -1849,7 +1849,7 @@ const SageOS = () => {
                                             <div className="p-4 bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/40 rounded-2xl flex items-center justify-between gap-4">
                                                 <div>
                                                     <div className="text-sm font-bold text-amber-300 flex items-center gap-2">⚡ Demo Preview</div>
-                                                    <p className="text-xs text-slate-400 mt-0.5">Upgrade to publish real AI-generated content.</p>
+                                                    <p className="text-xs text-[var(--c-muted)] mt-0.5">Upgrade to publish real AI-generated content.</p>
                                                 </div>
                                                 <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
                                                     className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all whitespace-nowrap">
@@ -1859,13 +1859,13 @@ const SageOS = () => {
                                         )}
 
                                         {/* Publish checklist */}
-                                        <div className="p-5 bg-slate-900/60 border border-white/10 rounded-2xl space-y-3">
-                                            <div className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">📋 Publish Checklist</div>
+                                        <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl space-y-3">
+                                            <div className="text-sm font-bold text-[var(--c-text)] mb-3 flex items-center gap-2">📋 Publish Checklist</div>
                                             {isDemo ? (
                                                 <div className="space-y-2">
                                                     {['🚀 Post to Bluesky', '📸 Post to Instagram'].map(label => (
                                                         <a key={label} href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
-                                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-white/3 border border-white/8 text-slate-500 cursor-pointer hover:bg-white/5 transition-all">
+                                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-[var(--c-raised)] border border-[var(--c-border)] text-[var(--c-subtle)] cursor-pointer hover:bg-[var(--c-raised)] transition-all">
                                                             <span>🔒</span><span>{label}</span><span className="ml-auto text-xs text-purple-400">Upgrade →</span>
                                                         </a>
                                                     ))}
@@ -1886,7 +1886,7 @@ const SageOS = () => {
                                                         <div key={key} className="space-y-1">
                                                             <button onClick={action}
                                                                 disabled={publishChecklist[key] === 'running' || publishChecklist[key] === 'done'}
-                                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-white/5 border-white/10 text-slate-400' : publishChecklist[key] === 'error' ? 'bg-red-900/10 border-red-500/20 text-red-300' : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
+                                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${publishChecklist[key] === 'done' ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : publishChecklist[key] === 'running' ? 'bg-[var(--c-raised)] border-[var(--c-border)] text-[var(--c-muted)]' : publishChecklist[key] === 'error' ? 'bg-red-900/10 border-red-500/20 text-red-300' : 'bg-[var(--c-raised)] hover:bg-[var(--c-raised)] border-[var(--c-border)] hover:border-[var(--c-border-hv)] text-[var(--c-text)]'}`}>
                                                                 <span>{publishChecklist[key] === 'done' ? '✅' : publishChecklist[key] === 'running' ? '⏳' : publishChecklist[key] === 'error' ? '❌' : icon}</span>
                                                                 <span>{label}</span>
                                                                 {publishChecklist[key] === 'done' && <span className="ml-auto text-xs text-emerald-400">Done!</span>}
@@ -1907,12 +1907,12 @@ const SageOS = () => {
                                                                                     else { const el = document.createElement('textarea'); el.value = caption; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); }
                                                                                 } catch {}
                                                                             }}
-                                                                            className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5"
+                                                                            className="flex-1 py-1.5 px-3 bg-[var(--c-raised)]/60 hover:bg-[var(--c-raised)]/60 border border-[var(--c-border)] rounded-lg text-[11px] text-[var(--c-text)] transition-all flex items-center justify-center gap-1.5"
                                                                         >
                                                                             📋 Copy Caption
                                                                         </button>
                                                                         <a href={fallbackUrl} target="_blank" rel="noopener noreferrer"
-                                                                            className="flex-1 py-1.5 px-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-[11px] text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                                                                            className="flex-1 py-1.5 px-3 bg-[var(--c-raised)]/60 hover:bg-[var(--c-raised)]/60 border border-[var(--c-border)] rounded-lg text-[11px] text-[var(--c-text)] transition-all flex items-center justify-center gap-1.5">
                                                                             🔗 {fallbackLabel}
                                                                         </a>
                                                                     </div>
@@ -1924,7 +1924,7 @@ const SageOS = () => {
                                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all border ${
                                                             copyStatus === 'success' ? 'bg-emerald-600/30 border-emerald-400/50 text-emerald-200 scale-[1.01]'
                                                             : copyStatus === 'error' ? 'bg-red-900/30 border-red-500/50 text-red-300'
-                                                            : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-slate-300'}`}>
+                                                            : 'bg-[var(--c-raised)] hover:bg-[var(--c-raised)] border-[var(--c-border)] hover:border-[var(--c-border-hv)] text-[var(--c-text)]'}`}>
                                                         <span className="text-base">{copyStatus === 'success' ? '✅' : copyStatus === 'error' ? '❌' : '📝'}</span>
                                                         <span>{copyStatus === 'success' ? 'Copied!' : copyStatus === 'error' ? 'Copy Failed' : 'Copy Blog Post'}</span>
                                                         {copyStatus === 'success' && <span className="ml-auto text-xs font-bold text-emerald-300 animate-pulse">Done!</span>}
@@ -1957,14 +1957,14 @@ const SageOS = () => {
                                         ) : (
                                             <div className="p-5 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl space-y-2">
                                                 <div className="text-emerald-400 font-bold text-lg flex items-center gap-2"><FiCheck /> Final version saved!</div>
-                                                <div className="text-slate-300 font-mono text-xs break-all">{monetizeResult}</div>
+                                                <div className="text-[var(--c-text)] font-mono text-xs break-all">{monetizeResult}</div>
                                             </div>
                                         )}
 
                                         {/* Start new */}
                                         <button
                                             onClick={() => { handleStartNew(); goToPhase(1); }}
-                                            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-all"
+                                            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl text-sm font-medium text-[var(--c-muted)] hover:text-[var(--c-text)] transition-all"
                                         >
                                             ↺ Create New Content
                                         </button>
@@ -2033,24 +2033,24 @@ const IdentityPanel = () => {
     ];
 
     return (
-        <div className="p-5 bg-white/3 border border-white/8 rounded-2xl space-y-4">
-            <div className="text-sm font-bold text-slate-300 flex items-center gap-2">🎭 Your AI Clone Identity</div>
+        <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl space-y-4">
+            <div className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2">🎭 Your AI Clone Identity</div>
             <div className="grid grid-cols-2 gap-3">
                 {fields.map(({ key, label, placeholder }) => (
                     <div key={key} className="space-y-1">
-                        <label className="text-xs text-slate-500 uppercase tracking-widest">{label}</label>
+                        <label className="text-xs text-[var(--c-subtle)] uppercase tracking-widest">{label}</label>
                         <input
                             value={identity[key] || ''}
                             onChange={e => setIdentity(prev => ({ ...prev, [key]: e.target.value }))}
                             placeholder={placeholder}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors"
+                            className="w-full bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl px-3 py-2 text-sm text-[var(--c-text)] placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors"
                         />
                     </div>
                 ))}
             </div>
             <div className="flex gap-2">
                 <button onClick={handleReset} disabled={resetting}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10 disabled:opacity-50">
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] border border-[var(--c-border)] disabled:opacity-50">
                     {resetting ? '↩ Resetting...' : '↩ Reset to Default'}
                 </button>
                 <button onClick={handleSave} disabled={saving}
