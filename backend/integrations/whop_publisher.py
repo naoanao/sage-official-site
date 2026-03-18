@@ -2,15 +2,24 @@
 """
 backend/integrations/whop_publisher.py
 =======================================
-Whop API v2 integration for Sage auto-monetization pipeline.
+Whop API v1 integration for Sage auto-monetization pipeline.
+(Base URL confirmed from official SDK: https://api.whop.com/api/v1)
 
 Flow:
   1. list_products()            — 現在の商品一覧を取得
-  2. create_product()           — 新商品を作成
+  2. create_product()           — 新商品を作成（タイトル最大40文字）
   3. create_plan()              — 価格プランを紐付け
   4. update_product()           — 既存商品の visibility を変更（入れ替え用）
   5. replace_latest_product()   — 旧商品を hidden にして新商品を出版（入れ替え）
   6. create_and_publish()       — 新規出版のワンコール
+
+API Notes (from official docs/SDK research):
+  - POST /products: title max 40 chars, company_id required
+  - POST /plans: plan_type="one_time"|"renewal", initial_price in cents
+  - PATCH /products/{id}: visibility "visible"|"hidden"|"archived"|"quick_link"
+  - GET /products: visibilities[] filter, cursor-based pagination
+  - external_identifier: supports upsert (update if exists)
+  - Rate limit: 429 = wait 60s (Retry-After header)
 
 Environment Variables Required:
   WHOP_API_KEY      - Bearer token from Whop Developer Dashboard
@@ -22,12 +31,16 @@ Optional:
 
 import os
 import logging
+import time
 import requests
 from typing import Optional
 
 logger = logging.getLogger("WhopPublisher")
 
-WHOP_BASE_URL = "https://api.whop.com/api/v2"
+WHOP_BASE_URL = "https://api.whop.com/api/v1"
+
+# Whop product title max length (API enforced)
+_TITLE_MAX_LEN = 40
 
 
 def _get_headers() -> dict:
@@ -57,17 +70,42 @@ def _is_dry_run() -> bool:
     return os.getenv("WHOP_DRY_RUN", "0") == "1"
 
 
+def _truncate_title(title: str) -> str:
+    """Whop enforces a 40-character title limit."""
+    if len(title) > _TITLE_MAX_LEN:
+        truncated = title[:_TITLE_MAX_LEN - 1].rstrip() + "…"
+        logger.warning(f"[WHOP] Title truncated to {_TITLE_MAX_LEN} chars: {truncated!r}")
+        return truncated
+    return title
+
+
+def _handle_rate_limit(resp: requests.Response) -> None:
+    """429 時に Retry-After 秒だけ待機してから RuntimeError を上げる。"""
+    if resp.status_code == 429:
+        wait = int(resp.headers.get("Retry-After", 60))
+        logger.warning(f"[WHOP] Rate limited. Waiting {wait}s …")
+        time.sleep(wait)
+        raise RuntimeError(f"Whop API rate limited (429). Retry after {wait}s.")
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Read
 # ──────────────────────────────────────────────────────────────────────────────
 
-def list_products(limit: int = 10) -> list[dict]:
+def list_products(
+    limit: int = 10,
+    visibilities: Optional[list] = None,
+) -> list[dict]:
     """
     会社の商品一覧を取得する。
 
+    Args:
+        limit       - 取得件数 (max 100)
+        visibilities - フィルター例: ["visible"] / ["hidden"] / ["visible","hidden"]
+                       None の場合はすべて返す
+
     Returns:
         商品 dict のリスト。各要素に id / title / visibility / route が含まれる。
-        visibility が "visible" のものが現在公開中。
     """
     if _is_dry_run():
         logger.info("[WHOP][DRY_RUN] list_products() skipped.")
@@ -82,14 +120,21 @@ def list_products(limit: int = 10) -> list[dict]:
 
     headers = _get_headers()
     cid = _company_id()
-    params = {"company_id": cid, "limit": limit}
-    resp = requests.get(f"{WHOP_BASE_URL}/products", headers=headers, params=params, timeout=15)
+    params: dict = {"company_id": cid, "first": limit}
+    if visibilities:
+        # Whop API accepts repeated query param: visibilities[]=visible
+        params["visibilities[]"] = visibilities
+
+    resp = requests.get(
+        f"{WHOP_BASE_URL}/products", headers=headers, params=params, timeout=15
+    )
+    _handle_rate_limit(resp)
     if not resp.ok:
         raise RuntimeError(
             f"Whop list_products failed [{resp.status_code}]: {resp.text[:400]}"
         )
     data = resp.json()
-    # Whop API returns {"data": [...]} or a direct list depending on version
+    # Response: {"data": [...], "paging": {...}} or direct list
     if isinstance(data, dict) and "data" in data:
         return data["data"]
     if isinstance(data, list):
@@ -101,23 +146,43 @@ def list_products(limit: int = 10) -> list[dict]:
 # Write
 # ──────────────────────────────────────────────────────────────────────────────
 
-def create_product(title: str, description: str, visibility: str = "visible") -> dict:
+def create_product(
+    title: str,
+    description: str,
+    headline: str = "",
+    visibility: str = "visible",
+    external_identifier: Optional[str] = None,
+) -> dict:
     """
-    Step 1: Create a Whop product.
+    Whop 商品を作成する（既存商品のアップサートにも対応）。
 
-    Returns the raw Whop API response dict containing at minimum:
-      id, route, title, visibility
+    Args:
+        title               - 商品名（最大40文字、自動トランケート）
+        description         - 説明文
+        headline            - キャッチコピー（短い1行）
+        visibility          - "visible" | "hidden" | "archived" | "quick_link"
+        external_identifier - 指定すると同一 ID の商品を update（upsert）
+
+    Returns the raw Whop API response dict.
     """
     headers = _get_headers()
-    payload = {
+    title = _truncate_title(title)
+    payload: dict = {
         "title": title,
         "description": description,
         "visibility": visibility,
         "company_id": _company_id(),
     }
-    logger.info(f"[WHOP] Creating product: {title!r}")
-    resp = requests.post(f"{WHOP_BASE_URL}/products", headers=headers, json=payload, timeout=30)
+    if headline:
+        payload["headline"] = headline[:80]  # reasonable limit
+    if external_identifier:
+        payload["external_identifier"] = external_identifier
 
+    logger.info(f"[WHOP] Creating product: {title!r} visibility={visibility}")
+    resp = requests.post(
+        f"{WHOP_BASE_URL}/products", headers=headers, json=payload, timeout=30
+    )
+    _handle_rate_limit(resp)
     if not resp.ok:
         raise RuntimeError(
             f"Whop product creation failed [{resp.status_code}]: {resp.text[:400]}"
@@ -131,38 +196,47 @@ def create_plan(
     product_id: str,
     price_usd: float = 29.99,
     currency: str = "usd",
-    billing_period: int = 1,
-    billing_period_unit: str = "one_time",
+    plan_type: str = "one_time",
+    billing_period: int = 30,
 ) -> dict:
     """
-    Step 2: Attach a purchase plan to a product.
+    商品に価格プランを紐付ける。
 
     Args:
-        product_id        - Whop product ID from create_product()
-        price_usd         - Price in USD (float), converted internally to cents
-        currency          - ISO 4217 currency code (default: "usd")
-        billing_period    - 1 for one-time
-        billing_period_unit - "one_time" | "month" | "year"
+        product_id    - Whop product ID from create_product()
+        price_usd     - Price in USD, converted internally to cents
+        currency      - ISO 4217 currency code (default: "usd")
+        plan_type     - "one_time" | "renewal"
+        billing_period - renewal の場合の請求間隔（日数、one_time では無視）
 
     Returns the raw Whop API plan dict.
     """
     headers = _get_headers()
-    payload = {
+    payload: dict = {
         "product_id": product_id,
-        "initial_price": int(price_usd * 100),  # Convert to cents
+        "company_id": _company_id(),
+        "plan_type": plan_type,
+        "initial_price": int(price_usd * 100),  # cents
         "currency": currency,
-        "billing_period": billing_period,
-        "billing_period_unit": billing_period_unit,
     }
-    logger.info(f"[WHOP] Creating plan for product {product_id}: ${price_usd} {billing_period_unit}")
-    resp = requests.post(f"{WHOP_BASE_URL}/plans", headers=headers, json=payload, timeout=30)
+    if plan_type == "renewal":
+        payload["billing_period"] = billing_period
+        payload["renewal_price"] = int(price_usd * 100)
 
+    logger.info(
+        f"[WHOP] Creating plan for product {product_id}: "
+        f"${price_usd} {plan_type} currency={currency}"
+    )
+    resp = requests.post(
+        f"{WHOP_BASE_URL}/plans", headers=headers, json=payload, timeout=30
+    )
+    _handle_rate_limit(resp)
     if not resp.ok:
         raise RuntimeError(
             f"Whop plan creation failed [{resp.status_code}]: {resp.text[:400]}"
         )
     data = resp.json()
-    logger.info(f"[WHOP] Plan created: id={data.get('id')}")
+    logger.info(f"[WHOP] Plan created: id={data.get('id')} type={plan_type}")
     return data
 
 
@@ -172,7 +246,7 @@ def update_product(product_id: str, visibility: str) -> dict:
 
     Args:
         product_id  - Whop product ID (prod_xxxx)
-        visibility  - "visible" | "hidden" | "archived"
+        visibility  - "visible" | "hidden" | "archived" | "quick_link"
 
     Returns:
         更新後の商品 dict
@@ -190,6 +264,7 @@ def update_product(product_id: str, visibility: str) -> dict:
         json=payload,
         timeout=15,
     )
+    _handle_rate_limit(resp)
     if not resp.ok:
         raise RuntimeError(
             f"Whop update_product failed [{resp.status_code}]: {resp.text[:400]}"
@@ -209,6 +284,8 @@ def create_and_publish(
     price_usd: float = 29.99,
     visibility: str = "visible",
     currency: str = "usd",
+    plan_type: str = "one_time",
+    headline: str = "",
 ) -> dict:
     """
     新規出版のメインエントリポイント: Whop 商品 + プランをワンコールで作成する。
@@ -226,7 +303,7 @@ def create_and_publish(
     }
     """
     if _is_dry_run():
-        mock_route = title.lower().replace(" ", "-")[:40]
+        mock_route = _truncate_title(title).lower().replace(" ", "-").replace("…", "")
         logger.info(f"[WHOP][DRY_RUN] Skipping real API call for: {title!r}")
         return {
             "status": "dry_run",
@@ -240,11 +317,13 @@ def create_and_publish(
         }
 
     try:
-        product = create_product(title, description, visibility)
-        plan = create_plan(product["id"], price_usd, currency)
+        product = create_product(title, description, headline, visibility)
+        plan = create_plan(product["id"], price_usd, currency, plan_type)
 
         route = product.get("route", "")
-        product_url = f"https://whop.com/{route}" if route else f"https://whop.com/products/{product['id']}"
+        product_url = (
+            f"https://whop.com/{route}" if route else f"https://whop.com/products/{product['id']}"
+        )
         checkout_url = f"{product_url}/checkout"
 
         return {
@@ -253,7 +332,7 @@ def create_and_publish(
             "plan_id": plan["id"],
             "product_url": product_url,
             "checkout_url": checkout_url,
-            "title": title,
+            "title": product.get("title", title),
             "price_usd": price_usd,
             "message": f"Published to Whop: {product_url}",
         }
@@ -274,44 +353,36 @@ def replace_latest_product(
     new_description: str,
     price_usd: float = 29.99,
     currency: str = "usd",
+    plan_type: str = "one_time",
+    headline: str = "",
     hide_old: bool = True,
 ) -> dict:
     """
     現在公開中の最新商品を hidden にして、新商品を公開する（入れ替え）。
 
     手順:
-      1. list_products() で visibility=visible の商品を取得
+      1. list_products(visibilities=["visible"]) で公開中商品を取得
       2. 最新 1 件を hidden に更新
       3. create_and_publish() で新商品を作成
       4. 結果を返す
-
-    Args:
-        new_title        - 新商品のタイトル
-        new_description  - 新商品の説明文
-        price_usd        - 価格 (USD)
-        currency         - 通貨コード
-        hide_old         - True の場合、旧商品を hidden にする（False なら入れ替えのみ）
 
     Returns:
     {
         "status":         "success" | "dry_run" | "error",
         "new_product":    { ...create_and_publish の戻り値 },
-        "hidden_product": { "id": ..., "title": ..., "previous_visibility": "visible" }
-                          | None (旧商品なし or hide_old=False),
+        "hidden_product": { "id": ..., "title": ... } | None,
         "message":        str
     }
     """
     hidden_info = None
 
     try:
-        # Step 1: 公開中商品を取得
+        # Step 1: 公開中商品を取得 → 最新 1 件を非公開化
         if hide_old:
             try:
-                products = list_products(limit=20)
-                visible = [p for p in products if p.get("visibility") == "visible"]
-                if visible:
-                    # 最新 1 件（リスト先頭 = 最新）を非公開に
-                    old = visible[0]
+                products = list_products(limit=5, visibilities=["visible"])
+                if products:
+                    old = products[0]
                     update_product(old["id"], "hidden")
                     hidden_info = {
                         "id": old["id"],
@@ -324,11 +395,12 @@ def replace_latest_product(
                 else:
                     logger.info("[WHOP] No visible products found to replace.")
             except Exception as list_err:
-                # 旧商品の取得失敗は致命的ではない — 新商品は出版する
                 logger.warning(f"[WHOP] Could not hide old product: {list_err}")
 
         # Step 2: 新商品を出版
-        new_result = create_and_publish(new_title, new_description, price_usd, "visible", currency)
+        new_result = create_and_publish(
+            new_title, new_description, price_usd, "visible", currency, plan_type, headline
+        )
 
         if new_result.get("status") in ("success", "dry_run"):
             msg = (
