@@ -396,8 +396,6 @@ class LangGraphOrchestrator:
             
             self._invoke_llm = invoke_with_retry_internal
 
-
-
         # Configure Ollama (Optional)
         try:
             # Use Direct SDK to avoid import hangs
@@ -406,6 +404,26 @@ class LangGraphOrchestrator:
         except Exception as e:
             logger.warning(f"⚠️ Failed to init Ollama: {e}")
             self.ollama_llm = None
+
+        # Unified resilient LLM wrapper — single entry point for all direct LLM calls.
+        # Replaces the scattered groq→gemini→ollama if-chains throughout report_node.
+        try:
+            from backend.modules.llm_resilience import ResilientLLMWrapper as _RLW
+            _pmap = {k: v for k, v in {
+                "groq": getattr(self, 'groq_llm', None),
+                "gemini": getattr(self, 'gemini_llm', None),
+                "ollama": getattr(self, 'ollama_llm', None),
+            }.items() if v is not None}
+            if _pmap:
+                _pref = [p for p in ["groq", "gemini", "ollama"] if p in _pmap]
+                self._llm_wrapper = _RLW(providers=_pmap, preference=_pref)
+                logger.info(f"[LLMWrapper] Initialized. Chain: {' → '.join(_pref)}")
+            else:
+                self._llm_wrapper = None
+                logger.warning("[LLMWrapper] No providers available.")
+        except Exception as _e:
+            logger.warning(f"[LLMWrapper] Init failed: {_e}")
+            self._llm_wrapper = None
         
         # Initialize Tools
         logger.info("--- Initializing Agents ---")
@@ -3021,35 +3039,17 @@ Task: Synthesize a concise answer strictly based on the tool results above.
 - If detailed search results are valid, summarize them clearly.
 """
                 
-                # Reuse LLM logic
+                # Unified LLM call — Groq → Gemini → Ollama via ResilientLLMWrapper
                 synthesis_messages = [HumanMessage(content=synthesis_prompt)]
                 response_content = None
-                
-                # Try Groq
-                if self.groq_llm:
-                    try:
-                        res = self.groq_llm.invoke(synthesis_messages)
-                        response_content = res.content
-                        logger.info(f"✅ Groq Synthesized: {len(response_content)} chars")
-                    except Exception as e:
-                        logger.warning(f"⚠️ Groq Synthesis failed: {e}")
 
-                # Try Gemini Fallback
-                if not response_content and self.gemini_llm:
+                if self._llm_wrapper:
                     try:
-                        res = self.gemini_llm.invoke(synthesis_messages)
-                        response_content = res.content
+                        response_content = self._llm_wrapper.invoke(synthesis_messages)
+                        logger.info(f"✅ Synthesized: {len(response_content)} chars")
                     except Exception as e:
-                        logger.error(f"Gemini Synthesis failed: {e}")
+                        logger.error(f"All LLMs failed for synthesis: {e}")
 
-                # Try Ollama Fallback
-                if not response_content and self.ollama_llm:
-                    try:
-                        res = self.ollama_llm.invoke(synthesis_messages)
-                        response_content = res.content
-                    except Exception as e:
-                         logger.error(f"Ollama Synthesis failed: {e}")
-                
                 if response_content:
                     final_output = response_content.strip()
                 else:
@@ -3132,41 +3132,15 @@ IMPORTANT INSTRUCTIONS:
         ]
         
         response_content = None
-        llm_used = None
-        
-        # Try Groq
-        if self.groq_llm:
+        llm_used = "ResilientLLM"
+
+        # Unified LLM call — Groq → Gemini → Ollama via ResilientLLMWrapper
+        if self._llm_wrapper:
             try:
-                logger.info("🚀 Trying Groq...")
-                start_t = time.time()
-                res = self.groq_llm.invoke(enhanced_messages)
-                response_content = res.content
-                llm_used = f"Groq ({time.time()-start_t:.2f}s)"
-                logger.info(f"✅ Groq OK: {len(response_content)} chars")
+                response_content = self._llm_wrapper.invoke(enhanced_messages)
             except Exception as e:
-                logger.warning(f"⚠️ Groq failed: {e}")
-        
-        # Try Gemini
-        if not response_content and self.gemini_llm:
-            try:
-                logger.info("🔷 Trying Gemini...")
-                res = self.gemini_llm.invoke(enhanced_messages)
-                response_content = res.content
-                llm_used = "Gemini"
-            except Exception as e:
-                logger.error(f"Gemini failed: {e}")
-        
-        # Try Ollama
-        if not response_content and self.ollama_llm:
-            try:
-                logger.info("🦙 Trying Ollama...")
-                res = self.ollama_llm.invoke(enhanced_messages)
-                response_content = res.content
-                llm_used = "Ollama"
-            except Exception as e:
-                logger.error(f"Ollama failed: {e}")
-        
-        # Final fallback
+                logger.error(f"All LLMs failed: {e}")
+
         if not response_content:
             response_content = "申し訳ありません。現在、応答を生成できません。"
         

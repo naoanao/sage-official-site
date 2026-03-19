@@ -206,16 +206,27 @@ class ResilientLLMWrapper:
     def _call_groq(self, messages: List[Dict[str, str]]) -> str:
         api_key = self.api_keys.get("groq")
         if not api_key: raise ValueError("GROQ_API_KEY not found")
-        
+
         url = "https://api.groq.com/openai/v1/chat/completions"
         payload = {
-            "model": "llama-3.3-70b-versatile", 
+            "model": "llama-3.3-70b-versatile",
             "messages": messages,
             "temperature": 0.3
         }
-        resp = requests.post(url, json=payload, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, timeout=15)
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        last_resp = None
+        for attempt in range(3):
+            last_resp = requests.post(url, json=payload, headers=headers, timeout=15)
+            if last_resp.status_code == 429:
+                wait = 2 ** attempt  # attempt=0→1s, 1→2s, 2→4s
+                logger.warning(f"[Groq] 429 RATE_LIMIT — retrying in {wait}s (attempt {attempt + 1}/3)")
+                time.sleep(wait)
+                continue
+            if attempt > 0:
+                logger.info(f"[Groq] Recovered on attempt {attempt + 1}/3 (status={last_resp.status_code})")
+            break
+        last_resp.raise_for_status()
+        return last_resp.json()["choices"][0]["message"]["content"]
 
     def _call_ollama(self, input_messages: Any, model: str = "qwen2.5-coder:1.5b") -> str:
         """

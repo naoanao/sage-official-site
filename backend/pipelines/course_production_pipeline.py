@@ -58,64 +58,23 @@ class CourseProductionPipeline:
         logger.info(f"CourseProductionPipeline initialized with identity: {self.identity.get('role', 'Expert')}")
 
     def _invoke_llm(self, prompt: str) -> str:
-        """Call primary LLM (Groq) with 429 retry, fall back to Gemini, then Ollama (local)."""
-        _rate_limit_keywords = ("429", "rate_limit", "rate limit", "quota", "too many requests")
-
-        # Tier 1: Groq (self.ollama = Groq LangChain client, legacy naming)
-        if self.ollama:
-            for attempt in range(2):
-                try:
-                    response = self.ollama.invoke(prompt)
-                    content = response.content if hasattr(response, 'content') else str(response)
-                    if content and content.strip():
-                        return content
-                    logger.warning(f"Primary LLM returned empty (attempt {attempt + 1})")
-                except Exception as e:
-                    err = str(e).lower()
-                    is_rate_limit = any(k in err for k in _rate_limit_keywords)
-                    if is_rate_limit and attempt == 0:
-                        logger.warning("Groq TPM/quota limit — waiting 28s then retrying once")
-                        time.sleep(28)
-                        continue
-                    logger.warning(f"Primary LLM failed (attempt {attempt + 1}): {e}")
-                    break
-
-        # Tier 2: Gemini
-        if self.gemini_client:
-            try:
-                response = self.gemini_client.invoke(prompt)
-                content = response.content if hasattr(response, 'content') else str(response)
-                if content and content.strip():
-                    logger.info("Gemini fallback LLM succeeded")
-                    return content
-            except Exception as e2:
-                logger.warning(f"Gemini fallback also failed: {e2}")
-
-        # Tier 3: Ollama (local, direct REST — 5s connect, 180s read max)
-        # Truncate long prompts to 3000 chars so CPU inference stays within timeout
+        """Call LLM via ResilientLLMWrapper (Groq → Gemini → Ollama) with 429 backoff."""
+        # Lazy-initialize wrapper using the provider objects already on this instance.
+        # self.ollama is actually the Groq ChatLangChain client (legacy naming).
+        if not getattr(self, '_llm_wrapper', None):
+            from backend.modules.llm_resilience import ResilientLLMWrapper
+            _pmap = {k: v for k, v in {
+                "groq": getattr(self, 'ollama', None),       # legacy: 'ollama' field = Groq
+                "gemini": getattr(self, 'gemini_client', None),
+            }.items() if v is not None}
+            _pref = [p for p in ["groq", "gemini", "ollama"] if p in _pmap]
+            self._llm_wrapper = ResilientLLMWrapper(providers=_pmap, preference=_pref)
+            logger.info(f"[Pipeline LLMWrapper] Initialized. Chain: {' → '.join(_pref)}")
         try:
-            import requests as _req, os as _os
-            _ollama_url = f"{_os.getenv('OLLAMA_HOST', 'http://localhost:11434')}/api/chat"
-            _ollama_prompt = prompt[:3000] if len(prompt) > 3000 else prompt
-            _resp = _req.post(
-                _ollama_url,
-                json={
-                    "model": "llama3",
-                    "messages": [{"role": "user", "content": _ollama_prompt}],
-                    "stream": False,
-                    "options": {"num_ctx": 2048, "temperature": 0.3, "num_predict": 1500},
-                },
-                timeout=(5, 180),
-            )
-            if _resp.status_code == 200:
-                result = _resp.json().get("message", {}).get("content", "")
-                if result and result.strip():
-                    logger.info("Ollama Tier-3 local fallback succeeded")
-                    return result
-        except Exception as e3:
-            logger.warning(f"Ollama Tier-3 fallback also failed: {e3}")
-
-        return ""
+            return self._llm_wrapper.invoke(prompt) or ""
+        except Exception as e:
+            logger.error(f"[Pipeline] All LLMs failed: {e}")
+            return ""
     
     def _load_identity(self) -> Dict:
         """Load character settings from backend/config/identity.json."""
