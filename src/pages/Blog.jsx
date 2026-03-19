@@ -35,17 +35,18 @@ const Blog = () => {
     const posts = loadedPosts;
 
     return (
-        <div className="min-h-screen bg-black text-white">
+        <div className="min-h-screen mesh-bg noise font-sans" style={{ color: 'var(--c-text)' }}>
             {/* Header */}
-            <header className="border-b border-white/10 py-6">
+            <header className="py-6" style={{ borderBottom: '1px solid var(--c-border)' }}>
                 <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
-                    <Link to="/" className="text-2xl font-black bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
+                    <Link to="/" className="text-2xl font-black bg-gradient-to-r from-violet-500 to-pink-500 bg-clip-text text-transparent">
                         Sage AI
                     </Link>
-                    <nav className="flex gap-6">
-                        <Link to="/" className="text-gray-300 hover:text-white transition-colors">Home</Link>
-                        <Link to="/blog" className="text-white font-bold">Blog</Link>
-                        <a href="https://naofumi3.gumroad.com/l/sage-professional" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 transition-colors">
+                    <nav className="flex gap-6 text-sm">
+                        <Link to="/" className="transition-colors hover:text-blue-600" style={{ color: 'var(--c-muted)' }}>Home</Link>
+                        <Link to="/blog" className="font-bold" style={{ color: 'var(--c-blue)' }}>Blog</Link>
+                        <a href="https://naofumi3.gumroad.com/l/sage-professional" target="_blank" rel="noopener noreferrer"
+                            className="transition-colors hover:text-blue-700" style={{ color: 'var(--c-blue)' }}>
                             Get Sage →
                         </a>
                     </nav>
@@ -59,16 +60,21 @@ const Blog = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="text-6xl md:text-7xl font-black mb-6"
+                        style={{
+                            background: 'linear-gradient(135deg, #0284C7 0%, #1A56DB 50%, #1E40AF 100%)',
+                            WebkitBackgroundClip: 'text',
+                            backgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                        }}
                     >
-                        <span className="bg-gradient-to-r from-violet-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-                            AI Automation Blog
-                        </span>
+                        AI Automation Blog
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="text-xl text-gray-300 max-w-3xl mx-auto"
+                        className="text-xl max-w-3xl mx-auto"
+                        style={{ color: 'var(--c-muted)' }}
                     >
                         Learn how to automate your business with AI agents, autonomous systems, and cutting-edge automation strategies.
                     </motion.p>
@@ -89,22 +95,29 @@ const Blog = () => {
                             >
                                 <Link
                                     to={`/blog/${post.slug}`}
-                                    className="block p-8 rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all duration-300"
+                                    className="block p-8 rounded-3xl transition-all duration-300"
+                                    style={{
+                                        background: 'var(--c-surface)',
+                                        border: '1px solid var(--c-border)',
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--c-border-hv)'}
+                                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--c-border)'}
                                 >
                                     {/* Meta */}
-                                    <div className="flex items-center gap-4 mb-4 text-sm text-gray-400">
+                                    <div className="flex items-center gap-4 mb-4 text-sm" style={{ color: 'var(--c-subtle)' }}>
                                         <time>{new Date(post.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</time>
                                         <span>•</span>
                                         <span>{post.readTime}</span>
                                     </div>
 
                                     {/* Title */}
-                                    <h2 className="text-2xl font-bold mb-4 group-hover:text-violet-400 transition-colors leading-tight">
+                                    <h2 className="text-2xl font-bold mb-4 leading-tight transition-colors duration-200 group-hover:text-blue-600"
+                                        style={{ color: 'var(--c-text)' }}>
                                         {post.title}
                                     </h2>
 
                                     {/* Excerpt */}
-                                    <p className="text-gray-300 mb-6 leading-relaxed">
+                                    <p className="mb-6 leading-relaxed" style={{ color: 'var(--c-muted)' }}>
                                         {post.excerpt}
                                     </p>
 
@@ -113,7 +126,12 @@ const Blog = () => {
                                         {post.keywords.slice(0, 3).map((keyword, i) => (
                                             <span
                                                 key={i}
-                                                className="px-3 py-1 text-xs rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20"
+                                                className="px-3 py-1 text-xs rounded-full"
+                                                style={{
+                                                    background: 'rgba(26,86,219,0.08)',
+                                                    color: 'var(--c-blue)',
+                                                    border: '1px solid rgba(26,86,219,0.18)',
+                                                }}
                                             >
                                                 {keyword}
                                             </span>
@@ -121,7 +139,8 @@ const Blog = () => {
                                     </div>
 
                                     {/* Read More */}
-                                    <div className="mt-6 text-violet-400 font-bold group-hover:text-pink-400 transition-colors">
+                                    <div className="mt-6 font-bold transition-colors duration-200 group-hover:text-blue-700"
+                                        style={{ color: 'var(--c-blue)' }}>
                                         Read More →
                                     </div>
                                 </Link>
@@ -133,8 +152,8 @@ const Blog = () => {
                     {posts.length === 0 && (
                         <div className="text-center py-20">
                             <div className="text-6xl mb-4">📝</div>
-                            <h3 className="text-2xl font-bold mb-2">No posts yet</h3>
-                            <p className="text-gray-400">Check back soon for AI automation insights!</p>
+                            <h3 className="text-2xl font-bold mb-2" style={{ color: 'var(--c-text)' }}>No posts yet</h3>
+                            <p style={{ color: 'var(--c-muted)' }}>Check back soon for AI automation insights!</p>
                         </div>
                     )}
                 </div>
@@ -142,18 +161,32 @@ const Blog = () => {
 
             {/* CTA Section */}
             <section className="py-20 px-4">
-                <div className="max-w-4xl mx-auto text-center p-12 rounded-3xl bg-gradient-to-br from-violet-900/30 to-pink-900/30 border border-violet-500/20">
-                    <h2 className="text-4xl font-black mb-4">
+                <div className="max-w-4xl mx-auto text-center p-12 rounded-3xl"
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(26,86,219,0.06) 0%, rgba(2,132,199,0.06) 100%)',
+                        border: '1px solid rgba(26,86,219,0.15)',
+                    }}>
+                    <h2 className="text-4xl font-black mb-4"
+                        style={{
+                            background: 'linear-gradient(135deg, #0284C7 0%, #1A56DB 50%, #1E40AF 100%)',
+                            WebkitBackgroundClip: 'text',
+                            backgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                        }}>
                         Ready to Automate Everything?
                     </h2>
-                    <p className="text-xl text-gray-300 mb-8">
+                    <p className="text-xl mb-8" style={{ color: 'var(--c-muted)' }}>
                         Get Sage Fortress Edition and let AI handle your entire business workflow.
                     </p>
                     <a
                         href={addUTM(STRIPE_LINKS.fortress, 'blog', 'cta_section')}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-block px-12 py-6 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white text-xl font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
+                        className="inline-block px-12 py-6 rounded-full text-white text-xl font-bold transition-all hover:shadow-xl"
+                        style={{
+                            background: 'linear-gradient(135deg, #1A56DB, #0284C7)',
+                            boxShadow: '0 4px 20px rgba(26,86,219,0.25)',
+                        }}
                     >
                         Get Started - $299
                     </a>
@@ -161,8 +194,8 @@ const Blog = () => {
             </section>
 
             {/* Footer */}
-            <footer className="border-t border-white/10 py-12 px-4">
-                <div className="max-w-7xl mx-auto text-center text-gray-500">
+            <footer className="py-12 px-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+                <div className="max-w-7xl mx-auto text-center" style={{ color: 'var(--c-subtle)' }}>
                     <p className="mb-4">© 2026 Sage AI. Fully Autonomous AI Agent.</p>
                     <p className="text-sm">Built for creators who value automation and precision.</p>
                 </div>

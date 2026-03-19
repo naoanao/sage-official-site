@@ -244,6 +244,7 @@ const SageOS = () => {
     const [publishChecklist, setPublishChecklist] = useState({ bluesky: 'idle', instagram: 'idle', copied: false });
 
     // Automations
+    const [automationLoading, setAutomationLoading] = useState(new Set());
     const [automations, setAutomations] = useState([
         { id: 'bluesky', name: 'Bluesky Daily Post', icon: '🦋', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
         { id: 'instagram', name: 'Instagram Daily Post', icon: '📸', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
@@ -283,6 +284,7 @@ const SageOS = () => {
     };
 
     const handleToggle = async (id, currentActive) => {
+        setAutomationLoading(prev => new Set([...prev, id]));
         try {
             await api.post('/api/automations/toggle', { id, active: !currentActive });
             await fetchAutomations();
@@ -290,6 +292,8 @@ const SageOS = () => {
             setAutomations(prev => prev.map(a =>
                 a.id === id ? { ...a, active: !currentActive } : a
             ));
+        } finally {
+            setAutomationLoading(prev => { const n = new Set(prev); n.delete(id); return n; });
         }
     };
 
@@ -902,9 +906,12 @@ const SageOS = () => {
         }
     };
 
-    const convertToProduct = (content) => {
-        setMonetizeTopic(content);
-        goToPhase(2, content);
+    const convertToProduct = (_content) => {
+        // Use the topic already entered in the Topic/Idea field;
+        // fall back to the last user message — never dump the full Sage response as topic
+        const topic = monetizeTopic.trim() || extractTopic(messages);
+        setMonetizeTopic(topic);
+        goToPhase(2, topic);
     };
 
     // ── Render ───────────────────────────────────────────────────────────────
@@ -1034,8 +1041,9 @@ const SageOS = () => {
                                         <div className="text-xs text-[var(--c-subtle)] mb-3">{a.lastRun || 'Never'}</div>
                                         <button
                                             onClick={() => handleToggle(a.id, a.active)}
-                                            className={`w-full text-xs py-1.5 rounded-lg transition-all ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}>
-                                            {a.active ? 'Stop' : 'Start'}
+                                            disabled={automationLoading.has(a.id)}
+                                            className={`w-full text-xs py-1.5 rounded-lg transition-all ${automationLoading.has(a.id) ? 'opacity-50 cursor-not-allowed' : ''} ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}>
+                                            {automationLoading.has(a.id) ? '…' : (a.active ? 'Stop' : 'Start')}
                                         </button>
                                     </div>
                                 ))}
@@ -1096,8 +1104,8 @@ const SageOS = () => {
                                                         <div className="flex gap-2 flex-wrap mt-3 ml-1">
                                                             <button
                                                                 onClick={() => {
-                                                                    const topic = extractTopic(messages);
-                                                                    setMonetizeTopic(topic);
+                                                                    const topic = monetizeTopic.trim() || extractTopic(messages);
+                                                                    if (topic) setMonetizeTopic(topic);
                                                                     goToPhase(2, topic);
                                                                     runMonetizePipeline(topic);
                                                                 }}
@@ -1107,7 +1115,7 @@ const SageOS = () => {
                                                             </button>
                                                             <button
                                                                 onClick={() => {
-                                                                    const topic = extractTopic(messages);
+                                                                    const topic = monetizeTopic.trim() || extractTopic(messages);
                                                                     if (topic) setMonetizeTopic(topic);
                                                                     goToPhase(2, topic);
                                                                     handleNicheValidate(topic);
