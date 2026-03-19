@@ -192,10 +192,12 @@ class ResilientLLMWrapper:
         for attempt in range(3):
             last_resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
             if last_resp.status_code == 429:
-                wait = 2 ** attempt  # 1s, 2s, 4s
+                wait = 2 ** attempt  # attempt=0→1s, 1→2s, 2→4s
                 logger.warning(f"[Gemini] 429 RESOURCE_EXHAUSTED — retrying in {wait}s (attempt {attempt + 1}/3)")
                 time.sleep(wait)
                 continue
+            if attempt > 0:
+                logger.info(f"[Gemini] Recovered on attempt {attempt + 1}/3 (status={last_resp.status_code})")
             break
         last_resp.raise_for_status()
         data = last_resp.json()
