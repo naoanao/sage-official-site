@@ -192,8 +192,11 @@ class ResilientLLMWrapper:
         for attempt in range(3):
             last_resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
             if last_resp.status_code == 429:
-                wait = 2 ** attempt  # attempt=0→1s, 1→2s, 2→4s
-                logger.warning(f"[Gemini] 429 RESOURCE_EXHAUSTED — retrying in {wait}s (attempt {attempt + 1}/3)")
+                # Respect Retry-After header if present; otherwise exponential backoff
+                retry_after = last_resp.headers.get("Retry-After")
+                wait = float(retry_after) if retry_after else 2 ** attempt
+                wait = min(wait, 60)  # cap at 60s
+                logger.warning(f"[Gemini] 429 — waiting {wait}s (attempt {attempt + 1}/3, Retry-After={'yes' if retry_after else 'no'})")
                 time.sleep(wait)
                 continue
             if attempt > 0:
@@ -218,8 +221,11 @@ class ResilientLLMWrapper:
         for attempt in range(3):
             last_resp = requests.post(url, json=payload, headers=headers, timeout=15)
             if last_resp.status_code == 429:
-                wait = 2 ** attempt  # attempt=0→1s, 1→2s, 2→4s
-                logger.warning(f"[Groq] 429 RATE_LIMIT — retrying in {wait}s (attempt {attempt + 1}/3)")
+                # Respect Retry-After header if present; otherwise exponential backoff
+                retry_after = last_resp.headers.get("Retry-After") or last_resp.headers.get("x-ratelimit-reset-requests")
+                wait = float(retry_after) if retry_after else 2 ** attempt
+                wait = min(wait, 60)  # cap at 60s
+                logger.warning(f"[Groq] 429 — waiting {wait}s (attempt {attempt + 1}/3, Retry-After={'yes' if retry_after else 'no'})")
                 time.sleep(wait)
                 continue
             if attempt > 0:

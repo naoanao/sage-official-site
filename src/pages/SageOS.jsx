@@ -2039,7 +2039,22 @@ const SageOS = () => {
             {showSelfTest && (() => {
                 const ST_STATUS_COLOR = { PASS: 'text-emerald-400', FAIL: 'text-red-400', SKIP: 'text-yellow-400' };
                 const ST_STATUS_ICON  = { PASS: '✅', FAIL: '❌', SKIP: '⚠️' };
-                const ST_TIER_LABEL   = { 1: 'Tier 1 — Sanity (local)', 2: 'Tier 2 — Integration (services)' };
+                const ST_TIER_LABEL   = { 1: 'Tier 1 — API Health', 2: 'Tier 2 — Integration (services)' };
+
+                // Compute overall status across all tiers
+                const allTiers = [selfTestResults.tier1, selfTestResults.tier2].filter(Boolean);
+                const hasResults = allTiers.length > 0;
+                const overallStatus = hasResults
+                    ? allTiers.some(t => t.overall_status === 'FAIL') ? 'FAIL'
+                    : allTiers.some(t => t.overall_status === 'DEGRADE') ? 'DEGRADE'
+                    : 'PASS'
+                    : null;
+                const overallBanner = {
+                    PASS:   { bg: 'bg-emerald-900/30 border-emerald-500/30', text: 'text-emerald-400', icon: '✅', label: 'All Systems Go' },
+                    DEGRADE:{ bg: 'bg-yellow-900/30 border-yellow-500/30',   text: 'text-yellow-400', icon: '⚠️', label: 'Degraded — rate-limit SKIPs detected, fallback active' },
+                    FAIL:   { bg: 'bg-red-900/30 border-red-500/30',         text: 'text-red-400',    icon: '❌', label: 'System Failure — action required' },
+                };
+
                 return (
                     <div
                         className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
@@ -2066,6 +2081,21 @@ const SageOS = () => {
 
                             {/* Body */}
                             <div className="overflow-y-auto p-4 space-y-3">
+                                {/* Overall status banner */}
+                                {overallStatus && (() => {
+                                    const b = overallBanner[overallStatus];
+                                    return (
+                                        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${b.bg}`}>
+                                            <span className="text-base">{b.icon}</span>
+                                            <span className={`text-xs font-bold ${b.text}`}>{b.label}</span>
+                                            {allTiers[0]?.ran_at && (
+                                                <span className="ml-auto text-[10px] text-slate-600 font-mono">
+                                                    {new Date(allTiers[0].ran_at).toLocaleTimeString('ja-JP')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                                 {[1, 2].map(tier => {
                                     const tierData = selfTestResults[`tier${tier}`];
                                     const tests    = tierData?.tests || [];

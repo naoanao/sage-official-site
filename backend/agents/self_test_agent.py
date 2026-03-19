@@ -340,15 +340,24 @@ class SelfTestAgent:
 
     def _build_report(self, tier: int, tests: list[dict]) -> dict:
         """テスト結果リストからレポート dict を生成する。"""
-        summary = {
-            "pass": sum(1 for t in tests if t["status"] == "PASS"),
-            "fail": sum(1 for t in tests if t["status"] == "FAIL"),
-            "skip": sum(1 for t in tests if t["status"] == "SKIP"),
-        }
+        n_pass = sum(1 for t in tests if t["status"] == "PASS")
+        n_fail = sum(1 for t in tests if t["status"] == "FAIL")
+        n_skip = sum(1 for t in tests if t["status"] == "SKIP")
+        summary = {"pass": n_pass, "fail": n_fail, "skip": n_skip}
+
+        # overall_status: FAIL > DEGRADE (skip>0 but no fail) > PASS
+        if n_fail > 0:
+            overall_status = "FAIL"
+        elif n_skip > 0:
+            overall_status = "DEGRADE"
+        else:
+            overall_status = "PASS"
+
         return {
             "tier": tier,
             "tests": tests,
             "summary": summary,
+            "overall_status": overall_status,
             "ran_at": datetime.now(timezone.utc).isoformat(),
         }
 
