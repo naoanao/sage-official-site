@@ -390,72 +390,42 @@ def get_system_health():
         "llm_provider": "groq",
     }), 200
 
-@app.route('/api/self-test/run', methods=['POST'])
-def self_test_run():
-    """Sage自己テストを手動トリガー。バックグラウンドスレッドで実行して即座に受付応答を返す。"""
-    import threading as _threading
-    def _run():
-        try:
-            from backend.agents.self_test_agent import SageSelfTester
-            SageSelfTester().run_full_test()
-        except Exception as _e:
-            logger.error(f"[SELF_TEST] manual run failed: {_e}")
-    _threading.Thread(target=_run, daemon=True, name="SageSelfTestManual").start()
-    return jsonify({"status": "started", "message": "Self-test running in background. Check /api/self-test/results."}), 202
-
-
-@app.route('/api/self-test/results', methods=['GET'])
-def self_test_results():
-    """最新の自己テスト結果JSONを返す。?date=YYYY-MM-DD で日付指定も可能。"""
-    import pathlib, json as _json
-    logs_dir = pathlib.Path("logs/self_test")
-    if not logs_dir.exists():
-        return jsonify({"status": "no_results", "message": "No self-test results yet."}), 200
-
-    date_param = request.args.get("date")
-    if date_param:
-        target = logs_dir / f"{date_param}.json"
-        if not target.exists():
-            return jsonify({"status": "not_found", "date": date_param}), 404
-        files = [target]
-    else:
-        files = sorted(logs_dir.glob("*.json"), reverse=True)
-        if not files:
-            return jsonify({"status": "no_results", "message": "No self-test results yet."}), 200
-
-    try:
-        with open(files[0], encoding="utf-8") as f:
-            data = _json.load(f)
-        return jsonify(data), 200
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
-
-
-@app.route('/api/self-test/history', methods=['GET'])
-def self_test_history():
-    """過去の自己テスト実行履歴一覧を返す（最新30件）。
-    Response: [{date, overall, duration_sec, timestamp}, ...]
+@app.route('/api/system/self_test', methods=['GET'])
+def run_self_test_api():
     """
-    import pathlib, json as _json
-    logs_dir = pathlib.Path("logs/self_test")
-    if not logs_dir.exists():
-        return jsonify([]), 200
-    files = sorted(logs_dir.glob("*.json"), reverse=True)[:30]
-    history = []
-    for f in files:
-        try:
-            data = _json.loads(f.read_text(encoding="utf-8"))
-            history.append({
-                "date": data.get("date", f.stem),
-                "overall": data.get("overall", "?"),
-                "duration_sec": data.get("duration_sec", 0),
-                "timestamp": data.get("timestamp", ""),
-                "tier1_pass": all(v.get("pass", False) for v in data.get("tier1", {}).values()),
-                "tier2_skipped": data.get("tier2", {}).get("skipped", False),
-            })
-        except Exception:
-            continue
-    return jsonify(history), 200
+    Sage OODA ループ自己診断。ダッシュボードの Self-Test パネルから呼ばれる。
+
+    Query params:
+      tier=1|2|3|all  (default: all, max_tier=2)
+      check=<name>    特定チェック名のみ返す（tier と組み合わせて使用）
+    """
+    tier = request.args.get('tier', 'all')
+    check_name = request.args.get('check', None)
+    try:
+        from backend.agents.self_test_agent import SelfTestAgent
+        agent = SelfTestAgent()
+
+        if tier == '1':
+            report = agent.run_tier1()
+        elif tier == '2':
+            report = agent.run_tier2()
+        elif tier == '3':
+            report = agent.run_tier3()
+        else:
+            report = agent.run_all(max_tier=2)
+
+        # 特定チェックのみを返す
+        if check_name and tier in ('1', '2', '3'):
+            tests = report.get('tests', [])
+            matched = [t for t in tests if t['name'] == check_name]
+            if matched:
+                return jsonify({'status': 'ok', 'check': matched[0], 'ran_at': report.get('ran_at')}), 200
+            return jsonify({'status': 'error', 'message': f"Check '{check_name}' not found in Tier {tier}"}), 404
+
+        return jsonify({'status': 'ok', 'report': report}), 200
+    except Exception as e:
+        logger.error(f"[SELF_TEST_API] {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @app.route('/api/system/kpi', methods=['GET'])
