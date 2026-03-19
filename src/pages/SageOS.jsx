@@ -190,6 +190,7 @@ const SageOS = () => {
     const [showSelfTest, setShowSelfTest] = useState(false);
     const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
     const [selfTestRunning, setSelfTestRunning] = useState({});
+    const [selfTestError, setSelfTestError] = useState(null);
 
     const [d1Status, setD1Status] = useState('idle');
     const [brakeEnabled, setBrakeEnabled] = useState(false);
@@ -825,6 +826,7 @@ const SageOS = () => {
     // ── Self-Test helpers ────────────────────────────────────────────────────
     const runSelfTestItem = async (tier, checkName = null) => {
         const key = checkName || `t${tier}`;
+        setSelfTestError(null);
         setSelfTestRunning(p => ({ ...p, [key]: true }));
         try {
             const params = checkName
@@ -845,11 +847,13 @@ const SageOS = () => {
             }
         } catch (e) {
             console.error('[SelfTest]', e);
+            setSelfTestError(e?.response?.data?.error || e?.message || 'Backend unreachable');
         } finally {
             setSelfTestRunning(p => { const n = { ...p }; delete n[key]; return n; });
         }
     };
     const runAllSelfTests = async () => {
+        setSelfTestError(null);
         setSelfTestRunning({ all: true });
         try {
             const res = await api.get('/api/system/self_test', { params: { tier: 'all' }, timeout: 60000 });
@@ -857,6 +861,7 @@ const SageOS = () => {
             setSelfTestResults({ tier1: report.tier1, tier2: report.tier2 });
         } catch (e) {
             console.error('[SelfTest]', e);
+            setSelfTestError(e?.response?.data?.error || e?.message || 'Backend unreachable');
         } finally {
             setSelfTestRunning({});
         }
@@ -2094,6 +2099,16 @@ const SageOS = () => {
 
                             {/* Body */}
                             <div className="overflow-y-auto p-4 space-y-3">
+                                {selfTestError && (
+                                    <div className="flex items-start gap-2 px-4 py-3 bg-red-900/30 border border-red-500/30 rounded-xl">
+                                        <span className="text-base shrink-0">❌</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-red-400">Connection Error</p>
+                                            <p className="text-xs text-red-400/75 font-mono mt-0.5 break-all">{selfTestError}</p>
+                                        </div>
+                                        <button onClick={() => setSelfTestError(null)} className="text-red-500 hover:text-red-300 text-xs shrink-0">×</button>
+                                    </div>
+                                )}
                                 {overallStatus && (() => {
                                     const b = overallBanner[overallStatus];
                                     return (
