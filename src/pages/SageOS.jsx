@@ -251,6 +251,7 @@ const SageOS = () => {
     const [showSelfTest, setShowSelfTest] = useState(false);
     const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
     const [selfTestRunning, setSelfTestRunning] = useState({});
+    const [selfTestError, setSelfTestError] = useState(null);
     const [monetizationStats, setMonetizationStats] = useState({ qa_pass: 0, qa_warn: 0, safety: 0 });
 
     // Chat state
@@ -827,6 +828,7 @@ const SageOS = () => {
     const runSelfTestItem = async (tier, checkName = null) => {
         const key = checkName || `t${tier}`;
         setSelfTestRunning(p => ({ ...p, [key]: true }));
+        setSelfTestError(null);
         try {
             const params = checkName
                 ? { tier: String(tier), check: checkName }
@@ -846,18 +848,23 @@ const SageOS = () => {
             }
         } catch (e) {
             console.error('[SelfTest]', e);
+            const msg = e?.response?.data?.error || e?.message || 'Unknown error';
+            setSelfTestError(`Backend unreachable — ${msg}`);
         } finally {
             setSelfTestRunning(p => { const n = { ...p }; delete n[key]; return n; });
         }
     };
     const runAllSelfTests = async () => {
         setSelfTestRunning({ all: true });
+        setSelfTestError(null);
         try {
             const res = await api.get('/api/system/self_test', { params: { tier: 'all' }, timeout: 60000 });
             const report = res.data.report;
             setSelfTestResults({ tier1: report.tier1, tier2: report.tier2 });
         } catch (e) {
             console.error('[SelfTest]', e);
+            const msg = e?.response?.data?.error || e?.message || 'Unknown error';
+            setSelfTestError(`Backend unreachable — ${msg}`);
         } finally {
             setSelfTestRunning({});
         }
@@ -2086,6 +2093,18 @@ const SageOS = () => {
 
                             {/* Body */}
                             <div className="overflow-y-auto p-4 space-y-3">
+                                {/* Error banner */}
+                                {selfTestError && (
+                                    <div className="px-4 py-2.5 rounded-xl border bg-red-900/30 border-red-500/30 flex items-start gap-2">
+                                        <span className="text-base shrink-0">❌</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-red-400">接続エラー</p>
+                                            <p className="text-[10px] text-red-400/70 font-mono break-all mt-0.5">{selfTestError}</p>
+                                            <p className="text-[10px] text-slate-500 mt-1">Flask サーバーが起動しているか、ngrok URL が最新か確認してください。</p>
+                                        </div>
+                                        <button onClick={() => setSelfTestError(null)} className="text-slate-600 hover:text-white text-sm shrink-0">×</button>
+                                    </div>
+                                )}
                                 {/* Overall status banner */}
                                 {overallStatus && (() => {
                                     const b = overallBanner[overallStatus];
