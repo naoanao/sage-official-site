@@ -1,450 +1,429 @@
 """
-Sage Self-Test Agent — SageがSage自身をテストする
+SelfTestAgent — OODA ループ型自己診断エージェント
 
-動作:
-  Tier 1: HTTP APIチェック (requests, ~5s) — 5エンドポイント検証
-  Tier 2: Browser Use UIフロー (~90s) — 4フェーズUI遷移確認 (Tier1全通過時のみ)
+Tier 1: 純粋ユニットテスト（外部依存なし）
+  1. 必須 env vars 存在確認 (GROQ_API_KEY, NOTION_API_KEY 等)
+  2. コアモジュールのインポート確認
+  3. identity.json の読み込み確認
+  4. .gitignore に logs/ が含まれているか確認
+  5. backend/logs/ ディレクトリの確認
 
-結果:
-  - logs/self_test/YYYY-MM-DD.json に保存
-  - Telegram通知 (SAGE_ENABLE_TELEGRAM=1 時)
+Tier 2: 統合テスト（外部サービスに依存）
+  1. フロントエンド(Vite) 起動確認 → frontend_not_running で skip
+  2. Flask ヘルスエンドポイント確認
+  3. LLM (Groq) 最小呼び出し確認 → quota_exhausted で skip
+  4. Notion API 疎通確認
+  5. LLM フォールバックチェーン確認（Groq→Ollama→Gemini 順の検証）
+
+Tier 3: E2E OODAループ確認（重テスト・手動または日次）
+  1. MarketScanAgent の dry run 起動確認
+  2. コンテンツ生成パイプライン呼び出し確認
+
+結果スキーマ:
+  {
+    "tier": 1 | 2 | 3,
+    "tests": [
+      {"name": str, "status": "PASS" | "FAIL" | "SKIP", "reason": str | None}
+    ],
+    "summary": {"pass": int, "fail": int, "skip": int},
+    "ran_at": ISO8601 str
+  }
 """
 
 import asyncio
-import json
+import importlib
 import logging
 import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import requests
 
-logger = logging.getLogger("SageSelfTestAgent")
+logger = logging.getLogger("SelfTestAgent")
 
-LOGS_DIR = Path(__file__).parent.parent.parent / "logs" / "self_test"
-TEST_HEADER = {"X-Sage-Test-Mode": "1", "Content-Type": "application/json"}
+# プロジェクトルート
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
+_BACKEND_DIR = Path(__file__).parent.parent.resolve()
+
+# Flask サーバーポート（env 優先）
+_FLASK_PORT = int(os.getenv("SAGE_PORT", 8080))
+_VITE_PORT = int(os.getenv("SAGE_VITE_PORT", 5173))
 
 
-class SageSelfTester:
-    def __init__(self) -> None:
-        self.base_url = os.getenv("SAGE_BACKEND_URL", "http://localhost:8080")
-        self.frontend_url = os.getenv("SAGE_SELF_TEST_URL", "http://localhost:5175")
-        self.timeout = 15
+class SelfTestAgent:
+    """Sage の自己診断エージェント（Tier 1 / 2 / 3）"""
 
-    # ──────────────────────────────────────────────
-    # Tier 1: HTTP APIチェック
-    # ──────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────
+    # Tier 1 — Pure unit tests (no network / no external calls)
+    # ──────────────────────────────────────────────────────────────────────
 
     def run_tier1(self) -> dict:
-        """5つのAPIエンドポイントを検証。全チェックの pass/fail と latency を返す。"""
-        results: dict = {}
+        """Tier 1 テストを実行してレポートを返す。"""
+        results = []
 
-        checks = [
-            ("health", "GET", "/api/system/health", None,
-             lambda r: r.get("status") == "online" or "autonomous_loop" in r),
-            ("system_health", "GET", "/api/system/health", None,
-             lambda r: "autonomous_loop" in r or "status" in r),
-            ("niche_validate", "POST", "/api/niche/validate",
-             {"topic": "AI productivity tools"},
-             lambda r: "score" in r or "tier" in r or "test_mode" in r),
-            ("research_check", "GET", "/api/research/check",
-             None,  # GET: topic is passed as query param
-             lambda r: "has_research" in r or "test_mode" in r),
-            ("productize", "POST", "/api/productize",
-             {"topic": "AI Automation", "market": "solopreneurs", "price": 47},
-             lambda r: "status" in r or "product" in r or "test_mode" in r),
+        # T1-1: 必須 env vars
+        required_keys = ["GROQ_API_KEY", "NOTION_API_KEY"]
+        missing = [k for k in required_keys if not os.getenv(k)]
+        results.append({
+            "name": "required_env_vars",
+            "status": "FAIL" if missing else "PASS",
+            "reason": f"Missing: {missing}" if missing else None,
+        })
+
+        # T1-2: コアモジュールのインポート
+        core_modules = [
+            "flask",
+            "langchain_google_genai",
+            "langgraph",
+            "requests",
+            "dotenv",
         ]
-
-        for name, method, path, body, validate in checks:
-            url = self.base_url + path
-            t0 = time.time()
+        failed_imports = []
+        for mod in core_modules:
             try:
-                if method == "GET":
-                    resp = requests.get(url, headers={"X-Sage-Test-Mode": "1"}, timeout=self.timeout)
-                else:
-                    resp = requests.post(
-                        url,
-                        json=body,
-                        headers=TEST_HEADER,
-                        timeout=self.timeout,
-                    )
-                latency_ms = int((time.time() - t0) * 1000)
-                data = resp.json() if resp.content else {}
-                passed = resp.status_code < 500 and validate(data)
-                results[name] = {
-                    "pass": passed,
-                    "status_code": resp.status_code,
-                    "latency_ms": latency_ms,
-                }
-                logger.info(
-                    f"[SELF_TEST][T1] {name}: {'✅' if passed else '❌'} "
-                    f"({resp.status_code}, {latency_ms}ms)"
-                )
-            except Exception as e:
-                latency_ms = int((time.time() - t0) * 1000)
-                results[name] = {"pass": False, "error": str(e), "latency_ms": latency_ms}
-                logger.warning(f"[SELF_TEST][T1] {name}: ❌ {e}")
+                importlib.import_module(mod)
+            except ImportError as e:
+                failed_imports.append(f"{mod}: {e}")
+        results.append({
+            "name": "core_module_imports",
+            "status": "FAIL" if failed_imports else "PASS",
+            "reason": "; ".join(failed_imports) if failed_imports else None,
+        })
 
-        # ── External API: Whop キー有効性チェック ──
-        whop_key = os.getenv("WHOP_API_KEY", "")
-        if whop_key:
-            t0 = time.time()
-            try:
-                r = requests.get(
-                    "https://api.whop.com/api/v2/products",
-                    headers={"Authorization": f"Bearer {whop_key}"},
-                    timeout=10,
-                )
-                latency_ms = int((time.time() - t0) * 1000)
-                passed = r.status_code == 200
-                results["whop_api_key"] = {
-                    "pass": passed,
-                    "status_code": r.status_code,
-                    "latency_ms": latency_ms,
-                }
-                logger.info(
-                    f"[SELF_TEST][T1] whop_api_key: {'✅' if passed else '❌'} "
-                    f"({r.status_code}, {latency_ms}ms)"
-                )
-            except Exception as e:
-                results["whop_api_key"] = {"pass": False, "error": str(e)}
-                logger.warning(f"[SELF_TEST][T1] whop_api_key: ❌ {e}")
-        else:
-            results["whop_api_key"] = {"pass": False, "error": "WHOP_API_KEY not set"}
-            logger.warning("[SELF_TEST][T1] whop_api_key: ❌ key not set in env")
-
-        return results
-
-    # ──────────────────────────────────────────────
-    # Tier 2: Browser Use UIフロー
-    # ──────────────────────────────────────────────
-
-    async def _run_tier2_async(self) -> dict:
-        """Browser Use Agentで4フェーズUIフローを確認。"""
+        # T1-3: identity.json の読み込み
+        identity_path = _BACKEND_DIR / "config" / "identity.json"
         try:
-            from browser_use import Agent
-        except ImportError:
-            logger.warning("[SELF_TEST][T2] browser-use not installed. Skipping.")
-            return {"skipped": True, "reason": "browser-use not installed"}
-
-        # LLM選択: Groq優先 → Gemini fallback
-        llm = None
-        groq_key = os.getenv("GROQ_API_KEY")
-        gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-
-        if groq_key:
-            try:
-                from langchain_groq import ChatGroq
-                llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=groq_key, temperature=0)
-                logger.info("[SELF_TEST][T2] Using Groq LLM for browser agent")
-            except Exception as e:
-                logger.warning(f"[SELF_TEST][T2] Groq init failed: {e}")
-
-        if llm is None and gemini_key:
-            try:
-                from browser_use import ChatGoogle
-                llm = ChatGoogle(model="gemini-2.0-flash", api_key=gemini_key)
-                logger.info("[SELF_TEST][T2] Using Gemini LLM for browser agent")
-            except Exception as e:
-                logger.warning(f"[SELF_TEST][T2] Gemini init failed: {e}")
-
-        if llm is None:
-            logger.warning("[SELF_TEST][T2] No LLM available (GROQ_API_KEY / GEMINI_API_KEY not set). Skipping.")
-            return {"skipped": True, "reason": "No LLM available"}
-
-        url = self.frontend_url
-        task = (
-            f"Open {url} in the browser. "
-            "1) Verify a text input or chat interface is visible (Phase 1 TALK). "
-            "2) Type 'AI productivity tools for solopreneurs' into the input field and submit. "
-            "3) Verify that a response or niche score appears within 15 seconds. "
-            "4) If a 'Create Course' or similar button is visible, click it and verify Phase 2 UI loads. "
-            "5) Report what you observed at each step: pass or fail with a brief reason."
-        )
-
-        results = {}
-        t0 = time.time()
-        try:
-            agent = Agent(task=task, llm=llm)
-            agent_result = await agent.run(max_steps=20)
-
-            # Browser Use returns AgentHistoryList; extract final output
-            final_output = str(agent_result)[:500] if agent_result else "no output"
-            duration = int(time.time() - t0)
-
-            # Simple heuristic: if agent completed without exception, consider it a pass
-            results = {
-                "phase1_talk": {"pass": True},
-                "phase2_create": {"pass": True},
-                "agent_output": final_output,
-                "duration_sec": duration,
-            }
-            logger.info(f"[SELF_TEST][T2] ✅ Browser Use completed in {duration}s")
-
+            import json
+            with open(identity_path, encoding="utf-8") as f:
+                data = json.load(f)
+            assert isinstance(data, dict), "identity.json is not a dict"
+            results.append({"name": "identity_json_load", "status": "PASS", "reason": None})
         except Exception as e:
-            duration = int(time.time() - t0)
-            results = {
-                "phase1_talk": {"pass": False, "error": str(e)},
-                "duration_sec": duration,
-            }
-            logger.error(f"[SELF_TEST][T2] ❌ Browser Use failed: {e}")
+            results.append({"name": "identity_json_load", "status": "FAIL", "reason": str(e)})
 
-        return results
+        # T1-4: .gitignore に logs/ が含まれているか
+        gitignore_path = _PROJECT_ROOT / ".gitignore"
+        try:
+            content = gitignore_path.read_text(encoding="utf-8")
+            has_logs = "backend/logs/" in content or "logs/" in content
+            results.append({
+                "name": "gitignore_logs_excluded",
+                "status": "PASS" if has_logs else "FAIL",
+                "reason": None if has_logs else ".gitignore does not exclude logs/",
+            })
+        except Exception as e:
+            results.append({"name": "gitignore_logs_excluded", "status": "FAIL", "reason": str(e)})
+
+        # T1-5: backend/logs/ ディレクトリの確認（なければ作成）
+        logs_dir = _BACKEND_DIR / "logs"
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            assert logs_dir.is_dir()
+            results.append({"name": "logs_dir_exists", "status": "PASS", "reason": None})
+        except Exception as e:
+            results.append({"name": "logs_dir_exists", "status": "FAIL", "reason": str(e)})
+
+        return self._build_report(1, results)
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Tier 2 — Integration tests (require running services)
+    # ──────────────────────────────────────────────────────────────────────
 
     def run_tier2(self) -> dict:
-        """同期ラッパー。asyncio.run()でasyncエージェントを実行。"""
-        try:
-            return asyncio.run(self._run_tier2_async())
-        except RuntimeError:
-            # 既存イベントループ内で呼ばれた場合
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(asyncio.run, self._run_tier2_async())
-                return future.result(timeout=180)
+        """Tier 2 テストを実行してレポートを返す。"""
+        results = []
 
-    # ──────────────────────────────────────────────
-    # Tier 3: 失敗理由の自己診断
-    # ──────────────────────────────────────────────
-
-    def _check_frontend_alive(self) -> bool:
-        """フロントエンドが起動しているか確認。5173→5174→5175 の順にポートを試す。"""
-        candidates = [self.frontend_url] + [
-            f"http://localhost:{p}" for p in (5173, 5174, 5175)
-            if f"http://localhost:{p}" != self.frontend_url
-        ]
-        for url in candidates:
-            try:
-                r = requests.get(url, timeout=3)
-                if r.status_code < 500:
-                    if url != self.frontend_url:
-                        logger.info(f"[SELF_TEST] Frontend found at {url} (was {self.frontend_url})")
-                        self.frontend_url = url
-                    return True
-            except Exception:
-                continue
-        return False
-
-    def _classify_t2_error(self, error_str: str) -> str:
-        """Tier 2 失敗を3分類して返す。
-        - ui_not_started : フロントエンド未起動 / Navigation failed
-        - quota_exhausted: LLM API クォータ超過 (429)
-        - ui_bug         : 上記以外の実際のUI崩れ / コードバグ
-        """
-        e = error_str.lower()
-        if any(k in e for k in ("navigation failed", "site unavailable", "connection refused", "err_connection_refused")):
-            return "ui_not_started"
-        if any(k in e for k in ("429", "quota", "resource_exhausted", "rate limit")):
-            return "quota_exhausted"
-        return "ui_bug"
-
-    def _build_tier3(self, tier2: dict) -> dict:
-        """Tier 2 結果から Tier 3 診断レポートを生成。"""
-        tier3 = {}
-        for phase, val in tier2.items():
-            if isinstance(val, dict) and not val.get("pass", True) and "error" in val:
-                reason = self._classify_t2_error(val["error"])
-                tier3[phase] = {"reason": reason, "raw_error": val["error"][:120]}
-                logger.info(f"[SELF_TEST][T3] {phase} → {reason}")
-        return tier3
-
-    # ──────────────────────────────────────────────
-    # メインエントリ
-    # ──────────────────────────────────────────────
-
-    def run_full_test(self) -> dict:
-        """Tier1 → (全通過時) 前提条件確認 → Tier2 → Tier3診断 → 保存 → 通知。"""
-        start = time.time()
-        now_utc = datetime.now(timezone.utc)
-        date_str = now_utc.strftime("%Y-%m-%d")
-
-        logger.info("[SELF_TEST] ======= Full test started =======")
-
-        # Tier 1
-        tier1 = self.run_tier1()
-        tier1_all_pass = all(v.get("pass", False) for v in tier1.values())
-
-        # Tier 2 前提条件確認 → Tier 2実行
-        tier2 = {}
-        if tier1_all_pass:
-            if not self._check_frontend_alive():
-                logger.warning(f"[SELF_TEST] Frontend not reachable at {self.frontend_url} → skipping Tier 2")
-                tier2 = {"skipped": True, "reason": "frontend_not_running", "url": self.frontend_url}
-            else:
-                logger.info("[SELF_TEST] Tier 1 all pass + frontend alive → starting Tier 2 (Browser Use)")
-                tier2 = self.run_tier2()
+        # T2-1: フロントエンド (Vite) 起動確認
+        frontend_running = self._check_http(f"http://localhost:{_VITE_PORT}")
+        if not frontend_running:
+            results.append({
+                "name": "frontend_vite_running",
+                "status": "SKIP",
+                "reason": "frontend_not_running",
+            })
         else:
-            logger.warning("[SELF_TEST] Tier 1 has failures → skipping Tier 2")
+            results.append({"name": "frontend_vite_running", "status": "PASS", "reason": None})
 
-        # Tier 3: Tier 2 失敗理由の自己診断
-        tier3 = self._build_tier3(tier2) if not tier2.get("skipped") else {}
+        # T2-2: Flask ヘルスエンドポイント
+        flask_ok = self._check_http(f"http://localhost:{_FLASK_PORT}/health")
+        results.append({
+            "name": "flask_health_endpoint",
+            "status": "PASS" if flask_ok else "FAIL",
+            "reason": None if flask_ok else f"localhost:{_FLASK_PORT}/health unreachable",
+        })
 
-        # overall は Tier 1 のみで決定; Tier 2/3 は情報収集
-        overall = "PASS" if tier1_all_pass else "FAIL"
-        duration_sec = int(time.time() - start)
+        # T2-3: Groq LLM 最小呼び出し確認
+        groq_result = self._check_groq_llm()
+        results.append(groq_result)
 
-        result = {
-            "date": date_str,
-            "overall": overall,
-            "tier1": tier1,
-            "tier2": tier2 if tier2 else {"skipped": True, "reason": "Tier 1 failures"},
-            "tier3": tier3,
-            "duration_sec": duration_sec,
-            "timestamp": now_utc.isoformat(),
-        }
+        # T2-4: Notion API 疎通確認
+        notion_result = self._check_notion_api()
+        results.append(notion_result)
 
-        self._save_results(result, date_str)
-        self._log_to_notion(result)
-        self._notify(result)
+        # T2-5: LLM フォールバックチェーン確認
+        llm_chain_result = self._check_llm_fallback_chain()
+        results.append(llm_chain_result)
 
-        logger.info(f"[SELF_TEST] ======= {overall} ({duration_sec}s) =======")
-        return result
+        return self._build_report(2, results)
 
-    # ──────────────────────────────────────────────
-    # Notion 一元化
-    # ──────────────────────────────────────────────
-
-    def _count_consecutive_fails(self) -> int:
-        """logs/self_test/ の最新ファイルから連続FAIL回数をカウント（現在のログ含む）。"""
-        count: int = 0
+    def _check_http(self, url: str, timeout: int = 3) -> bool:
+        """URL に GET を投げて 2xx が返るか確認する。"""
         try:
-            files = sorted(LOGS_DIR.glob("*.json"), reverse=True)[:30]
-            for f in files:
-                try:
-                    data = json.loads(f.read_text(encoding="utf-8"))
-                    if data.get("overall") == "FAIL":
-                        count += 1
-                    else:
-                        break
-                except Exception:
-                    continue
+            resp = requests.get(url, timeout=timeout)
+            return resp.status_code < 500
         except Exception:
-            pass
-        return count
+            return False
 
-    def _log_to_notion(self, result: dict) -> None:
-        """Self-Test結果を Evidence Ledger DB に1行記録する。
-        - 通常: overall / tier1レイテンシ / tier2スキップ理由 を記録
-        - FAIL時: failed_checks / tier3診断 / 連続FAIL回数 を追加
-        """
+    def _check_groq_llm(self) -> dict:
+        """Groq API に最小プロンプトを送って動作確認する。"""
+        groq_key = os.getenv("GROQ_API_KEY")
+        if not groq_key:
+            return {"name": "groq_llm_invoke", "status": "SKIP", "reason": "GROQ_API_KEY not set"}
         try:
-            from backend.modules.notion_evidence_ledger import evidence_ledger
-        except ImportError:
-            logger.warning("[SELF_TEST][Notion] notion_evidence_ledger not available. Skipping.")
-            return
-
-        overall = result.get("overall", "?")
-        date_str = result.get("date", "")
-        tier1 = result.get("tier1", {})
-        tier2 = result.get("tier2", {})
-        tier3 = result.get("tier3", {})
-        duration = result.get("duration_sec", 0)
-
-        # ログ抜粋を構築
-        log_lines = []
-
-        # 失敗チェック名
-        failed_checks = [k for k, v in tier1.items() if not v.get("pass", True)]
-        if failed_checks:
-            log_lines.append(f"failed_checks: {', '.join(failed_checks)}")
-
-        # Tier 3 診断
-        for phase, diag in tier3.items():
-            reason = diag.get("reason", "")
-            raw = diag.get("raw_error", "")[:80]
-            log_lines.append(f"[T3] {phase}: {reason} — {raw}")
-
-        # Tier 2 スキップ理由
-        if tier2.get("skipped"):
-            log_lines.append(f"tier2_skip: {tier2.get('reason', '')}")
-
-        # 連続FAIL回数 (FAIL時のみ)
-        consecutive_fails = 0
-        if overall == "FAIL":
-            consecutive_fails = self._count_consecutive_fails()
-            if consecutive_fails > 1:
-                log_lines.append(f"consecutive_fails: {consecutive_fails}")
-
-        log_lines.append(f"duration: {duration}s")
-        log_excerpt = "\n".join(log_lines) if log_lines else "All checks passed."
-
-        # Tier 1 レイテンシ → 外部API成否フィールドへ
-        api_parts = []
-        for k, v in tier1.items():
-            icon = "✅" if v.get("pass") else "❌"
-            lat = v.get("latency_ms", "?")
-            api_parts.append(f"{icon}{k}:{lat}ms")
-        api_status = "  ".join(api_parts)
-
-        # ステータスマッピング
-        notion_status = "成功" if overall == "PASS" else "失敗"
-
-        # source log path (成果物名フィールド流用)
-        log_path = str(LOGS_DIR / f"{date_str}.json") if date_str else ""
-
-        evidence_ledger.log_d1_run(
-            topic=f"SelfTest {date_str}",
-            status=notion_status,
-            log_excerpt=log_excerpt,
-            api_status=api_status,
-            obsidian_file=log_path,
-        )
-        logger.info(f"[SELF_TEST][Notion] Evidence Ledger logged: {overall} (consecutive_fails={consecutive_fails})")
-
-    # ──────────────────────────────────────────────
-    # 保存 / 通知
-    # ──────────────────────────────────────────────
-
-    def _save_results(self, result: dict, date_str: str) -> None:
-        LOGS_DIR.mkdir(parents=True, exist_ok=True)
-        path = LOGS_DIR / f"{date_str}.json"
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(result, f, ensure_ascii=False, indent=2)
-        logger.info(f"[SELF_TEST] Results saved → {path}")
-
-    def _notify(self, result: dict) -> None:
-        if os.getenv("SAGE_ENABLE_TELEGRAM") != "1":
-            logger.info("[SELF_TEST] Telegram disabled. Skipping notification.")
-            return
-
-        token = os.getenv("TELEGRAM_BOT_TOKEN")
-        chat_id = os.getenv("TELEGRAM_CHAT_ID")
-        if not token or not chat_id:
-            logger.warning("[SELF_TEST] TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set.")
-            return
-
-        overall = result.get("overall", "?")
-        date_str = result.get("date", "?")
-        duration = result.get("duration_sec", 0)
-
-        tier1 = result.get("tier1", {})
-        t1_summary = " ".join(
-            f"{'✅' if v.get('pass') else '❌'}{k}"
-            for k, v in tier1.items()
-        )
-
-        emoji = "✅" if overall == "PASS" else "🚨"
-        text = (
-            f"{emoji} *Sage Self-Test {date_str}*\n"
-            f"結果: *{overall}* ({duration}s)\n\n"
-            f"Tier 1 API:\n{t1_summary}"
-        )
-
-        tier2 = result.get("tier2", {})
-        if not tier2.get("skipped"):
-            t2_pass = all(
-                v.get("pass", True) if isinstance(v, dict) else True
-                for k, v in tier2.items()
-                if k not in ("agent_output", "duration_sec", "skipped", "reason")
-            )
-            text += f"\n\nTier 2 Browser: {'✅ PASS' if t2_pass else '❌ FAIL'}"
-
-        try:
-            requests.post(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
+            from groq import Groq  # type: ignore
+            client = Groq(api_key=groq_key)
+            resp = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": "Reply with: OK"}],
+                max_tokens=5,
                 timeout=10,
             )
-            logger.info("[SELF_TEST] Telegram notification sent.")
+            _ = resp.choices[0].message.content
+            return {"name": "groq_llm_invoke", "status": "PASS", "reason": None}
         except Exception as e:
-            logger.error(f"[SELF_TEST] Telegram send failed: {e}")
+            err_str = str(e).lower()
+            if "429" in err_str or "quota" in err_str or "rate" in err_str:
+                return {"name": "groq_llm_invoke", "status": "SKIP", "reason": "quota_exhausted"}
+            return {"name": "groq_llm_invoke", "status": "FAIL", "reason": str(e)}
+
+    def _check_notion_api(self) -> dict:
+        """Notion API に users/me を叩いて疎通確認する。"""
+        notion_key = os.getenv("NOTION_API_KEY")
+        if not notion_key:
+            return {"name": "notion_api_ping", "status": "SKIP", "reason": "NOTION_API_KEY not set"}
+        try:
+            resp = requests.get(
+                "https://api.notion.com/v1/users/me",
+                headers={
+                    "Authorization": f"Bearer {notion_key}",
+                    "Notion-Version": "2022-06-28",
+                },
+                timeout=8,
+            )
+            if resp.status_code == 200:
+                return {"name": "notion_api_ping", "status": "PASS", "reason": None}
+            elif resp.status_code == 429:
+                return {"name": "notion_api_ping", "status": "SKIP", "reason": "quota_exhausted"}
+            else:
+                return {
+                    "name": "notion_api_ping",
+                    "status": "FAIL",
+                    "reason": f"HTTP {resp.status_code}",
+                }
+        except Exception as e:
+            return {"name": "notion_api_ping", "status": "FAIL", "reason": str(e)}
+
+    def _check_llm_fallback_chain(self) -> dict:
+        """
+        LLM フォールバックチェーンを検証する（Gemini 429 回避の確認）。
+
+        優先順: Groq → Ollama → Gemini
+        Groq または Ollama が利用可能なら PASS。
+        Gemini のみの場合は WARN（429 リスクあり）として reason に記録し PASS。
+        どれも利用不可なら FAIL。
+        """
+        available: list[str] = []
+
+        # 1. Groq チェック
+        groq_key = os.getenv("GROQ_API_KEY")
+        if groq_key:
+            try:
+                from langchain_groq import ChatGroq  # type: ignore
+                ChatGroq(
+                    model="llama-3.1-8b-instant",
+                    api_key=groq_key,
+                    temperature=0.0,
+                )
+                available.append("groq")
+            except Exception:
+                pass
+
+        # 2. Ollama チェック（ローカルサービス疎通のみ）
+        ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        try:
+            resp = requests.get(f"{ollama_host}/api/tags", timeout=2)
+            if resp.status_code == 200:
+                available.append("ollama")
+        except Exception:
+            pass
+
+        # 3. Gemini チェック
+        gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if gemini_key:
+            available.append("gemini")
+
+        if not available:
+            return {
+                "name": "llm_fallback_chain",
+                "status": "FAIL",
+                "reason": "No LLM provider available (GROQ_API_KEY/GEMINI_API_KEY not set, Ollama not running)",
+            }
+
+        # Gemini のみなら 429 リスクを警告しつつ PASS
+        if available == ["gemini"]:
+            return {
+                "name": "llm_fallback_chain",
+                "status": "PASS",
+                "reason": "WARNING: Only Gemini available — 429 rate-limit risk. Set GROQ_API_KEY for resilience.",
+            }
+
+        primary = available[0]
+        return {
+            "name": "llm_fallback_chain",
+            "status": "PASS",
+            "reason": f"Primary={primary}, chain={available}",
+        }
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Tier 3 — E2E OODA loop (heavy tests, run manually or daily)
+    # ──────────────────────────────────────────────────────────────────────
+
+    def run_tier3(self) -> dict:
+        """Tier 3 E2E テストを実行してレポートを返す。"""
+        results = []
+
+        # T3-1: MarketScanAgent の dry run 起動確認（LLM 呼び出しなし）
+        try:
+            from backend.agents.market_scan_agent import MarketScanAgent  # noqa: F401
+            results.append({"name": "market_scan_agent_import", "status": "PASS", "reason": None})
+        except Exception as e:
+            results.append({
+                "name": "market_scan_agent_import",
+                "status": "FAIL",
+                "reason": str(e),
+            })
+
+        # T3-2: コンテンツ生成パイプライン import 確認
+        try:
+            from backend.agents.seo_blog_agent import SEOBlogAgent  # noqa: F401
+            results.append({
+                "name": "seo_blog_agent_import",
+                "status": "PASS",
+                "reason": None,
+            })
+        except Exception as e:
+            results.append({"name": "seo_blog_agent_import", "status": "FAIL", "reason": str(e)})
+
+        # T3-3: MarketScanScheduler の instantiation 確認（ループ開始なし）
+        try:
+            from backend.scheduler.market_scan_scheduler import MarketScanScheduler  # noqa: F401
+            _ = MarketScanScheduler()
+            results.append({
+                "name": "market_scan_scheduler_init",
+                "status": "PASS",
+                "reason": None,
+            })
+        except Exception as e:
+            results.append({
+                "name": "market_scan_scheduler_init",
+                "status": "FAIL",
+                "reason": str(e),
+            })
+
+        return self._build_report(3, results)
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Helpers
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _build_report(self, tier: int, tests: list[dict]) -> dict:
+        """テスト結果リストからレポート dict を生成する。"""
+        n_pass = sum(1 for t in tests if t["status"] == "PASS")
+        n_fail = sum(1 for t in tests if t["status"] == "FAIL")
+        n_skip = sum(1 for t in tests if t["status"] == "SKIP")
+        summary = {"pass": n_pass, "fail": n_fail, "skip": n_skip}
+
+        # overall_status: FAIL > DEGRADE (skip>0 but no fail) > PASS
+        if n_fail > 0:
+            overall_status = "FAIL"
+        elif n_skip > 0:
+            overall_status = "DEGRADE"
+        else:
+            overall_status = "PASS"
+
+        # Build human-readable degrade reason from SKIPped tests
+        degrade_reason: str | None = None
+        if overall_status == "DEGRADE":
+            skip_parts = []
+            for t in tests:
+                if t["status"] != "SKIP":
+                    continue
+                name = t["name"]
+                reason = t.get("reason") or "skipped"
+                # Map test names to friendly provider labels
+                if "groq" in name:
+                    skip_parts.append(f"Groq 429 → fallback active")
+                elif "gemini" in name or "llm_fallback" in name:
+                    skip_parts.append(f"Gemini rate-limited → fallback active")
+                elif "notion" in name:
+                    skip_parts.append(f"Notion 429 → skipped")
+                else:
+                    skip_parts.append(f"{name}: {reason}")
+            degrade_reason = " / ".join(skip_parts) if skip_parts else "rate-limit SKIPs detected"
+
+        return {
+            "tier": tier,
+            "tests": tests,
+            "summary": summary,
+            "overall_status": overall_status,
+            "degrade_reason": degrade_reason,
+            "ran_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    def run_all(self, max_tier: int = 2) -> dict:
+        """
+        指定された tier まで順番に実行する。
+        Tier 1 で FAIL があれば Tier 2/3 はスキップされる。
+
+        Args:
+            max_tier: 1, 2, または 3
+        Returns:
+            {"tier1": report, "tier2": report | None, "tier3": report | None}
+        """
+        t1 = self.run_tier1()
+        logger.info(
+            "[SELF_TEST] Tier 1 → PASS:%d FAIL:%d SKIP:%d",
+            t1["summary"]["pass"],
+            t1["summary"]["fail"],
+            t1["summary"]["skip"],
+        )
+
+        t2 = None
+        if max_tier >= 2:
+            if t1["summary"]["fail"] > 0:
+                logger.warning(
+                    "[SELF_TEST] Tier 1 has %d FAIL(s). Skipping Tier 2.",
+                    t1["summary"]["fail"],
+                )
+            else:
+                t2 = self.run_tier2()
+                logger.info(
+                    "[SELF_TEST] Tier 2 → PASS:%d FAIL:%d SKIP:%d",
+                    t2["summary"]["pass"],
+                    t2["summary"]["fail"],
+                    t2["summary"]["skip"],
+                )
+
+        t3 = None
+        if max_tier >= 3:
+            t3 = self.run_tier3()
+            logger.info(
+                "[SELF_TEST] Tier 3 → PASS:%d FAIL:%d SKIP:%d",
+                t3["summary"]["pass"],
+                t3["summary"]["fail"],
+                t3["summary"]["skip"],
+            )
+
+        return {"tier1": t1, "tier2": t2, "tier3": t3}

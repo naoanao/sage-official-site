@@ -186,10 +186,10 @@ const SageOS = () => {
     const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(false);
+    // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
-    const [selfTestRunning, setSelfTestRunning] = useState(false);
-    const [selfTestResult, setSelfTestResult] = useState(null);
-    const selfTestPollRef = useRef(null);
+    const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
+    const [selfTestRunning, setSelfTestRunning] = useState({});
 
     const [d1Status, setD1Status] = useState('idle');
     const [brakeEnabled, setBrakeEnabled] = useState(false);
@@ -822,6 +822,46 @@ const SageOS = () => {
         }
     };
 
+    // ── Self-Test helpers ────────────────────────────────────────────────────
+    const runSelfTestItem = async (tier, checkName = null) => {
+        const key = checkName || `t${tier}`;
+        setSelfTestRunning(p => ({ ...p, [key]: true }));
+        try {
+            const params = checkName
+                ? { tier: String(tier), check: checkName }
+                : { tier: String(tier) };
+            const res = await api.get('/api/system/self_test', { params, timeout: 30000 });
+            if (checkName) {
+                const check = res.data.check;
+                setSelfTestResults(prev => {
+                    const tierKey = `tier${tier}`;
+                    const tests = (prev[tierKey]?.tests || []).map(t =>
+                        t.name === checkName ? check : t
+                    );
+                    return { ...prev, [tierKey]: { ...(prev[tierKey] || {}), tests } };
+                });
+            } else {
+                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: res.data.report }));
+            }
+        } catch (e) {
+            console.error('[SelfTest]', e);
+        } finally {
+            setSelfTestRunning(p => { const n = { ...p }; delete n[key]; return n; });
+        }
+    };
+    const runAllSelfTests = async () => {
+        setSelfTestRunning({ all: true });
+        try {
+            const res = await api.get('/api/system/self_test', { params: { tier: 'all' }, timeout: 60000 });
+            const report = res.data.report;
+            setSelfTestResults({ tier1: report.tier1, tier2: report.tier2 });
+        } catch (e) {
+            console.error('[SelfTest]', e);
+        } finally {
+            setSelfTestRunning({});
+        }
+    };
+
     // ── Phase helpers ────────────────────────────────────────────────────────
     const goToPhase = (phase, topic) => {
         setCurrentPhase(phase);
@@ -1000,109 +1040,7 @@ const SageOS = () => {
                 )}
 
                 {/* Self-Test Panel */}
-                {showSelfTest && (
-                    <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-8 max-w-4xl mx-auto">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-black" style={{ color: '#1A56DB' }}>Sage Self-Test</h2>
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={async () => {
-                                        setSelfTestRunning(true);
-                                        setSelfTestResult(null);
-                                        try {
-                                            await api.post('/api/self-test/run');
-                                        } catch (_) { /* 202 Accepted is expected */ }
-                                        // Poll every 2s until result appears
-                                        let attempts = 0;
-                                        clearInterval(selfTestPollRef.current);
-                                        selfTestPollRef.current = setInterval(async () => {
-                                            attempts++;
-                                            try {
-                                                const r = await api.get('/api/self-test/results');
-                                                if (r.data && r.data.overall) {
-                                                    setSelfTestResult(r.data);
-                                                    setSelfTestRunning(false);
-                                                    clearInterval(selfTestPollRef.current);
-                                                }
-                                            } catch (_) {}
-                                            if (attempts > 60) { setSelfTestRunning(false); clearInterval(selfTestPollRef.current); }
-                                        }, 2000);
-                                    }}
-                                    disabled={selfTestRunning}
-                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all"
-                                >
-                                    {selfTestRunning ? <><FiRefreshCw className="animate-spin" /> Running...</> : <><FiPlay /> Run Test</>}
-                                </button>
-                                <button onClick={() => { setShowSelfTest(false); clearInterval(selfTestPollRef.current); }} className="text-[var(--c-muted)] hover:text-[var(--c-text)] text-sm px-3 py-1 bg-[var(--c-raised)] rounded-lg">✕ Close</button>
-                            </div>
-                        </div>
-
-                        {selfTestRunning && !selfTestResult && (
-                            <div className="p-8 text-center text-[var(--c-muted)] text-sm animate-pulse">
-                                🔬 Testing all Sage API endpoints... (up to 30s)
-                            </div>
-                        )}
-
-                        {selfTestResult && (() => {
-                            const t1 = selfTestResult.tier1 || {};
-                            const t2 = selfTestResult.tier2 || {};
-                            const overall = selfTestResult.overall;
-                            const CHECK_LABELS = {
-                                health: '/api/health', system_health: '/api/system/health',
-                                niche_validate: '/api/niche/validate', research_check: '/api/research/check',
-                                productize: '/api/productize', whop_api_key: 'Whop API Key',
-                            };
-                            return (
-                                <div className="space-y-4 animate-fadeIn">
-                                    {/* Overall badge */}
-                                    <div className={`flex items-center gap-3 px-5 py-3 rounded-xl border ${overall === 'PASS' ? 'bg-emerald-900/10 border-emerald-500/30 text-emerald-400' : 'bg-red-900/10 border-red-500/30 text-red-400'}`}>
-                                        {overall === 'PASS' ? <FiCheckCircle className="text-xl" /> : <FiAlertTriangle className="text-xl" />}
-                                        <div>
-                                            <div className="font-black text-lg">{overall === 'PASS' ? '✅ All Systems Go' : '🚨 Issues Detected'}</div>
-                                            <div className="text-xs opacity-70">{selfTestResult.timestamp?.slice(0, 19).replace('T', ' ')} UTC · {selfTestResult.duration_sec}s</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Tier 1 grid */}
-                                    <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
-                                        <div className="text-xs font-mono text-[var(--c-muted)] uppercase tracking-widest mb-3">Tier 1 — API Health</div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            {Object.entries(t1).map(([key, val]) => (
-                                                <div key={key} className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${val.pass ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
-                                                    <div>
-                                                        <div className="text-xs font-semibold text-[var(--c-text)]">{CHECK_LABELS[key] || key}</div>
-                                                        {val.latency_ms != null && <div className="text-xs text-[var(--c-subtle)]">{val.latency_ms}ms</div>}
-                                                        {val.error && <div className="text-xs text-red-400 truncate max-w-[160px]">{val.error}</div>}
-                                                    </div>
-                                                    <span className="text-lg">{val.pass ? '✅' : '❌'}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Tier 2 */}
-                                    {!t2.skipped && Object.keys(t2).length > 0 && (
-                                        <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
-                                            <div className="text-xs font-mono text-[var(--c-muted)] uppercase tracking-widest mb-3">Tier 2 — UI Flow (Browser Use)</div>
-                                            {t2.agent_output && <div className="text-xs text-[var(--c-muted)] bg-[var(--c-surface)] rounded-lg p-3 font-mono whitespace-pre-wrap">{t2.agent_output}</div>}
-                                        </div>
-                                    )}
-                                    {t2.skipped && (
-                                        <div className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl text-xs text-[var(--c-muted)]">
-                                            Tier 2 (Browser Use) skipped: {t2.reason}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })()}
-
-                        {!selfTestRunning && !selfTestResult && (
-                            <div className="p-8 text-center text-[var(--c-subtle)] text-sm">
-                                Hit <strong>Run Test</strong> to verify all Sage API endpoints.
-                            </div>
-                        )}
-                    </Motion.div>
-                )}
+                {/* old Self-Test panel removed — new modal rendered at root level below */}
 
                 {/* Phase Pages */}
                 {!showAutomations && !showSelfTest && (
@@ -2097,6 +2035,146 @@ const SageOS = () => {
             {currentPhase >= 2 && !showAutomations && !showSelfTest && (
                 <SageMiniChat phase={currentPhase} topic={activeTopic} />
             )}
+
+            {/* ── Self-Test FAB ──────────────────────────────────────────────── */}
+            <button
+                onClick={() => setShowSelfTest(true)}
+                className="fixed bottom-6 left-6 z-50 flex items-center gap-1.5 px-3 py-2 bg-slate-900/90 border border-white/10 hover:border-emerald-500/40 text-slate-500 hover:text-emerald-400 rounded-xl text-xs font-mono transition-all backdrop-blur-sm"
+                title="System Self-Test"
+            >
+                🔬 <span className="hidden sm:inline">Self-Test</span>
+            </button>
+
+            {/* ── Self-Test Modal ─────────────────────────────────────────────── */}
+            {showSelfTest && (() => {
+                const ST_STATUS_COLOR = { PASS: 'text-emerald-400', FAIL: 'text-red-400', SKIP: 'text-yellow-400' };
+                const ST_STATUS_ICON  = { PASS: '✅', FAIL: '❌', SKIP: '⚠️' };
+                const ST_TIER_LABEL   = { 1: 'Tier 1 — API Health', 2: 'Tier 2 — Integration (services)' };
+
+                const allTiers = [selfTestResults.tier1, selfTestResults.tier2].filter(Boolean);
+                const hasResults = allTiers.length > 0;
+                const overallStatus = hasResults
+                    ? allTiers.some(t => t.overall_status === 'FAIL') ? 'FAIL'
+                    : allTiers.some(t => t.overall_status === 'DEGRADE') ? 'DEGRADE'
+                    : 'PASS'
+                    : null;
+                const degradeReasons = allTiers
+                    .filter(t => t.overall_status === 'DEGRADE' && t.degrade_reason)
+                    .map(t => t.degrade_reason)
+                    .join(' / ') || 'rate-limit SKIPs detected, fallback active';
+                const overallBanner = {
+                    PASS:   { bg: 'bg-emerald-900/30 border-emerald-500/30', text: 'text-emerald-400', icon: '✅', label: 'All Systems Go', sub: null },
+                    DEGRADE:{ bg: 'bg-yellow-900/30 border-yellow-500/30',   text: 'text-yellow-400', icon: '⚠️', label: 'Degraded', sub: degradeReasons },
+                    FAIL:   { bg: 'bg-red-900/30 border-red-500/30',         text: 'text-red-400',    icon: '❌', label: 'System Failure — action required', sub: null },
+                };
+
+                return (
+                    <div
+                        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                        onClick={e => { if (e.target === e.currentTarget) setShowSelfTest(false); }}
+                    >
+                        <div className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-5 py-3 border-b border-white/8 bg-black/40 shrink-0">
+                                <span className="font-bold text-sm text-white">🔬 System Self-Test</span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={runAllSelfTests}
+                                        disabled={!!selfTestRunning.all}
+                                        className="text-xs px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-lg transition-all disabled:opacity-40"
+                                    >
+                                        {selfTestRunning.all ? '⏳ Running…' : '▶ Run All'}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowSelfTest(false)}
+                                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all text-lg leading-none"
+                                    >×</button>
+                                </div>
+                            </div>
+
+                            {/* Body */}
+                            <div className="overflow-y-auto p-4 space-y-3">
+                                {overallStatus && (() => {
+                                    const b = overallBanner[overallStatus];
+                                    return (
+                                        <div className={`px-4 py-2.5 rounded-xl border ${b.bg}`}>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-base">{b.icon}</span>
+                                                <span className={`text-xs font-bold ${b.text}`}>{b.label}</span>
+                                                {allTiers[0]?.ran_at && (
+                                                    <span className="ml-auto text-[10px] text-slate-600 font-mono">
+                                                        {new Date(allTiers[0].ran_at).toLocaleTimeString('ja-JP')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {b.sub && (
+                                                <p className={`mt-1 text-[10px] ${b.text} opacity-75 font-mono leading-tight`}>
+                                                    {b.sub}
+                                                </p>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+                                {[1, 2].map(tier => {
+                                    const tierData = selfTestResults[`tier${tier}`];
+                                    const tests    = tierData?.tests || [];
+                                    const isRunAll = !!selfTestRunning[`t${tier}`];
+                                    return (
+                                        <div key={tier} className="bg-white/3 border border-white/8 rounded-xl overflow-hidden">
+                                            <div className="flex items-center justify-between px-4 py-2.5 bg-black/30 border-b border-white/8">
+                                                <span className="text-xs font-bold text-slate-300">{ST_TIER_LABEL[tier]}</span>
+                                                <div className="flex items-center gap-2">
+                                                    {tierData && (
+                                                        <span className="text-xs text-slate-600 font-mono">
+                                                            P:{tierData.summary.pass} F:{tierData.summary.fail} S:{tierData.summary.skip}
+                                                        </span>
+                                                    )}
+                                                    <button
+                                                        onClick={() => runSelfTestItem(tier)}
+                                                        disabled={isRunAll}
+                                                        className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 rounded-lg transition-all disabled:opacity-40"
+                                                    >
+                                                        {isRunAll ? '⏳' : '▶ Run'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="divide-y divide-white/5">
+                                                {tests.length === 0 ? (
+                                                    <div className="px-4 py-3 text-xs text-slate-600 italic">
+                                                        "▶ Run" でこの Tier を実行
+                                                    </div>
+                                                ) : tests.map(t => (
+                                                    <div key={t.name} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
+                                                        <span className="text-sm shrink-0">{ST_STATUS_ICON[t.status] || '○'}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-mono text-slate-300 truncate">{t.name}</p>
+                                                            {t.reason && <p className="text-xs text-slate-600 truncate">{t.reason}</p>}
+                                                        </div>
+                                                        <span className={`text-xs font-bold shrink-0 ${ST_STATUS_COLOR[t.status] || 'text-slate-500'}`}>
+                                                            {t.status}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => runSelfTestItem(tier, t.name)}
+                                                            disabled={!!selfTestRunning[t.name]}
+                                                            className="w-6 h-6 shrink-0 flex items-center justify-center bg-white/5 hover:bg-white/15 text-slate-500 hover:text-white rounded transition-all disabled:opacity-30 text-xs"
+                                                            title={`Re-run ${t.name}`}
+                                                        >
+                                                            {selfTestRunning[t.name] ? '⏳' : '▶'}
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <p className="text-center text-xs text-slate-700 pb-1">
+                                    毎日 JST 07:00 自動実行 / Tier 1: 30 分ごと
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
