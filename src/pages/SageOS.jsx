@@ -2049,10 +2049,15 @@ const SageOS = () => {
                     : allTiers.some(t => t.overall_status === 'DEGRADE') ? 'DEGRADE'
                     : 'PASS'
                     : null;
+                // Collect degrade reasons from all degraded tiers
+                const degradeReasons = allTiers
+                    .filter(t => t.overall_status === 'DEGRADE' && t.degrade_reason)
+                    .map(t => t.degrade_reason)
+                    .join(' / ') || 'rate-limit SKIPs detected, fallback active';
                 const overallBanner = {
-                    PASS:   { bg: 'bg-emerald-900/30 border-emerald-500/30', text: 'text-emerald-400', icon: '✅', label: 'All Systems Go' },
-                    DEGRADE:{ bg: 'bg-yellow-900/30 border-yellow-500/30',   text: 'text-yellow-400', icon: '⚠️', label: 'Degraded — rate-limit SKIPs detected, fallback active' },
-                    FAIL:   { bg: 'bg-red-900/30 border-red-500/30',         text: 'text-red-400',    icon: '❌', label: 'System Failure — action required' },
+                    PASS:   { bg: 'bg-emerald-900/30 border-emerald-500/30', text: 'text-emerald-400', icon: '✅', label: 'All Systems Go', sub: null },
+                    DEGRADE:{ bg: 'bg-yellow-900/30 border-yellow-500/30',   text: 'text-yellow-400', icon: '⚠️', label: 'Degraded', sub: degradeReasons },
+                    FAIL:   { bg: 'bg-red-900/30 border-red-500/30',         text: 'text-red-400',    icon: '❌', label: 'System Failure — action required', sub: null },
                 };
 
                 return (
@@ -2085,13 +2090,20 @@ const SageOS = () => {
                                 {overallStatus && (() => {
                                     const b = overallBanner[overallStatus];
                                     return (
-                                        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${b.bg}`}>
-                                            <span className="text-base">{b.icon}</span>
-                                            <span className={`text-xs font-bold ${b.text}`}>{b.label}</span>
-                                            {allTiers[0]?.ran_at && (
-                                                <span className="ml-auto text-[10px] text-slate-600 font-mono">
-                                                    {new Date(allTiers[0].ran_at).toLocaleTimeString('ja-JP')}
-                                                </span>
+                                        <div className={`px-4 py-2.5 rounded-xl border ${b.bg}`}>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-base">{b.icon}</span>
+                                                <span className={`text-xs font-bold ${b.text}`}>{b.label}</span>
+                                                {allTiers[0]?.ran_at && (
+                                                    <span className="ml-auto text-[10px] text-slate-600 font-mono">
+                                                        {new Date(allTiers[0].ran_at).toLocaleTimeString('ja-JP')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {b.sub && (
+                                                <p className={`mt-1 text-[10px] ${b.text} opacity-75 font-mono leading-tight`}>
+                                                    {b.sub}
+                                                </p>
                                             )}
                                         </div>
                                     );

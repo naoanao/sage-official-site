@@ -353,11 +353,32 @@ class SelfTestAgent:
         else:
             overall_status = "PASS"
 
+        # Build human-readable degrade reason from SKIPped tests
+        degrade_reason: str | None = None
+        if overall_status == "DEGRADE":
+            skip_parts = []
+            for t in tests:
+                if t["status"] != "SKIP":
+                    continue
+                name = t["name"]
+                reason = t.get("reason") or "skipped"
+                # Map test names to friendly provider labels
+                if "groq" in name:
+                    skip_parts.append(f"Groq 429 → fallback active")
+                elif "gemini" in name or "llm_fallback" in name:
+                    skip_parts.append(f"Gemini rate-limited → fallback active")
+                elif "notion" in name:
+                    skip_parts.append(f"Notion 429 → skipped")
+                else:
+                    skip_parts.append(f"{name}: {reason}")
+            degrade_reason = " / ".join(skip_parts) if skip_parts else "rate-limit SKIPs detected"
+
         return {
             "tier": tier,
             "tests": tests,
             "summary": summary,
             "overall_status": overall_status,
+            "degrade_reason": degrade_reason,
             "ran_at": datetime.now(timezone.utc).isoformat(),
         }
 

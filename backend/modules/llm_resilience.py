@@ -194,9 +194,12 @@ class ResilientLLMWrapper:
             if last_resp.status_code == 429:
                 # Respect Retry-After header if present; otherwise exponential backoff
                 retry_after = last_resp.headers.get("Retry-After")
-                wait = float(retry_after) if retry_after else 2 ** attempt
-                wait = min(wait, 60)  # cap at 60s
-                logger.warning(f"[Gemini] 429 — waiting {wait}s (attempt {attempt + 1}/3, Retry-After={'yes' if retry_after else 'no'})")
+                if retry_after:
+                    wait = min(float(retry_after), 60)
+                    logger.warning(f"[Gemini] 429 — Retry-After={wait}s (attempt {attempt + 1}/3, header-guided)")
+                else:
+                    wait = min(2 ** attempt, 60)
+                    logger.warning(f"[Gemini] 429 — no Retry-After header, using backoff={wait}s (attempt {attempt + 1}/3)")
                 time.sleep(wait)
                 continue
             if attempt > 0:
@@ -223,9 +226,12 @@ class ResilientLLMWrapper:
             if last_resp.status_code == 429:
                 # Respect Retry-After header if present; otherwise exponential backoff
                 retry_after = last_resp.headers.get("Retry-After") or last_resp.headers.get("x-ratelimit-reset-requests")
-                wait = float(retry_after) if retry_after else 2 ** attempt
-                wait = min(wait, 60)  # cap at 60s
-                logger.warning(f"[Groq] 429 — waiting {wait}s (attempt {attempt + 1}/3, Retry-After={'yes' if retry_after else 'no'})")
+                if retry_after:
+                    wait = min(float(retry_after), 60)
+                    logger.warning(f"[Groq] 429 — Retry-After={wait}s (attempt {attempt + 1}/3, header-guided)")
+                else:
+                    wait = min(2 ** attempt, 60)
+                    logger.warning(f"[Groq] 429 — no Retry-After header, using backoff={wait}s (attempt {attempt + 1}/3)")
                 time.sleep(wait)
                 continue
             if attempt > 0:
