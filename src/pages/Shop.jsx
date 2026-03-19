@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { FiShoppingCart, FiArrowRight, FiStar, FiZap } from 'react-icons/fi';
-import SpaceBackground from '../components/SpaceBackground';
 
 const products = [
     {
@@ -11,9 +10,8 @@ const products = [
         price: 'Members Only',
         url: 'https://whop.com/segeai/',
         badge: 'RECOMMENDED',
-        badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+        badgeStyle: { color: '#059669', borderColor: 'rgba(5,150,105,0.25)', background: 'rgba(5,150,105,0.08)' },
         accentColor: 'from-emerald-500 to-teal-600',
-        glowColor: 'rgba(16,185,129,0.3)',
         desc: 'Full access to Sage AI — autonomous content pipeline, dashboard, and all future updates. Join the Whop community and start building your AI income stream.',
         features: [
             'Sage Cockpit dashboard access',
@@ -29,9 +27,8 @@ const products = [
         price: '$29.99',
         url: 'https://naofumi3.gumroad.com/l/yvzrfjd',
         badge: 'BESTSELLER',
-        badgeColor: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10',
-        accentColor: 'from-blue-500 to-purple-600',
-        glowColor: 'rgba(37,99,235,0.3)',
+        badgeStyle: { color: '#D97706', borderColor: 'rgba(217,119,6,0.25)', background: 'rgba(217,119,6,0.08)' },
+        accentColor: 'from-blue-500 to-indigo-600',
         desc: 'The complete playbook for building an AI-powered influencer business in 2026. Autonomous content, 24/7 posting, and a proven monetization blueprint.',
         features: [
             'Full AI Influencer Blueprint (PDF + Video)',
@@ -45,49 +42,66 @@ const products = [
 
 const Shop = () => {
     return (
-        <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
-            <SpaceBackground />
+        <div className="min-h-screen mesh-bg noise font-sans overflow-x-hidden" style={{ color: 'var(--c-text)' }}>
 
             {/* Navbar */}
-            <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-sm border-b border-white/5 bg-black/50">
-                <div className="text-xl font-bold tracking-tighter flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center"
+                style={{
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    background: 'rgba(244, 248, 255, 0.88)',
+                    borderBottom: '1px solid var(--c-border)',
+                }}>
+                <div className="text-xl font-bold tracking-tighter flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                    <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--c-blue)' }}></span>
                     SAGE 3.0
                 </div>
-                <div className="flex gap-4 sm:gap-6 text-sm font-medium text-slate-400 flex-shrink-0 whitespace-nowrap">
-                    <Link to="/" className="hover:text-white transition-colors">Home</Link>
-                    <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
-                    <Link to="/shop" className="text-white transition-colors">Shop</Link>
-                    <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
-                    <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
+                <div className="flex gap-4 sm:gap-6 text-sm font-medium flex-shrink-0 whitespace-nowrap" style={{ color: 'var(--c-muted)' }}>
+                    <Link to="/" className="hover:text-blue-600 transition-colors">Home</Link>
+                    <Link to="/blog" className="hover:text-blue-600 transition-colors">Blog</Link>
+                    <Link to="/shop" className="font-bold transition-colors" style={{ color: 'var(--c-blue)' }}>Shop</Link>
+                    <a href="https://bsky.app/profile/naofumi.bsky.social" target="_blank" rel="noopener noreferrer"
+                        className="hover:text-blue-600 transition-colors">Bluesky</a>
+                    <a href="https://www.instagram.com/sege.ai/" target="_blank" rel="noopener noreferrer"
+                        className="hover:text-blue-600 transition-colors">Instagram</a>
                 </div>
             </nav>
 
             {/* Hero */}
-            <section className="relative pt-40 pb-20 px-4 z-10 text-center">
+            <section className="pt-40 pb-20 px-4 text-center">
                 <Motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7 }}
                 >
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono mb-6"
+                        style={{
+                            background: 'var(--c-raised)',
+                            border: '1px solid var(--c-border)',
+                            color: 'var(--c-subtle)',
+                        }}>
                         <FiShoppingCart size={12} />
                         SAGE STORE
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none mb-4">
-                        Ship Your{' '}
-                        <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                        <span style={{ color: 'var(--c-text)' }}>Ship Your{' '}</span>
+                        <span style={{
+                            background: 'linear-gradient(135deg, #0284C7 0%, #1A56DB 50%, #1E40AF 100%)',
+                            WebkitBackgroundClip: 'text',
+                            backgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                        }}>
                             Empire.
                         </span>
                     </h1>
-                    <p className="text-lg text-slate-400 max-w-xl mx-auto">
+                    <p className="text-lg max-w-xl mx-auto" style={{ color: 'var(--c-muted)' }}>
                         Blueprints, templates, and systems built by Sage. Proven. Autonomous. Ready to deploy.
                     </p>
                 </Motion.div>
             </section>
 
             {/* Product Grid */}
-            <section className="relative z-10 pb-32 px-4">
+            <section className="pb-32 px-4">
                 <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
                     {products.map((product, i) => (
                         <Motion.div
@@ -95,35 +109,42 @@ const Shop = () => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.1 }}
-                            className="relative group p-8 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] transition-all overflow-hidden"
+                            className="relative group p-8 rounded-2xl transition-all overflow-hidden"
+                            style={{
+                                background: 'var(--c-surface)',
+                                border: '1px solid var(--c-border)',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--c-border-hv)'}
+                            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--c-border)'}
                         >
                             {/* Top accent line */}
                             <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${product.accentColor}`}></div>
 
                             {/* Badge */}
-                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-mono mb-5 ${product.badgeColor}`}>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-mono mb-5"
+                                style={product.badgeStyle}>
                                 <FiStar size={10} />
                                 {product.badge}
                             </div>
 
                             {/* Title & Price */}
-                            <h2 className="text-xl font-bold text-white mb-2 leading-snug">
+                            <h2 className="text-xl font-bold mb-2 leading-snug" style={{ color: 'var(--c-blue)' }}>
                                 {product.title}
                             </h2>
-                            <div className="text-3xl font-black text-white mb-4">
+                            <div className="text-3xl font-black mb-4" style={{ color: 'var(--c-text)' }}>
                                 {product.price}
                             </div>
 
                             {/* Description */}
-                            <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                            <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--c-muted)' }}>
                                 {product.desc}
                             </p>
 
                             {/* Features */}
                             <ul className="space-y-2 mb-8">
                                 {product.features.map((f, fi) => (
-                                    <li key={fi} className="flex items-start gap-2 text-sm text-slate-300">
-                                        <span className="text-emerald-400 mt-0.5 flex-shrink-0">✓</span>
+                                    <li key={fi} className="flex items-start gap-2 text-sm" style={{ color: 'var(--c-text)' }}>
+                                        <span className="mt-0.5 flex-shrink-0" style={{ color: '#059669' }}>✓</span>
                                         {f}
                                     </li>
                                 ))}
@@ -136,8 +157,11 @@ const Shop = () => {
                                 rel="noopener noreferrer"
                                 whileHover={{ scale: 1.03 }}
                                 whileTap={{ scale: 0.97 }}
-                                className={`flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all`}
-                                style={{ boxShadow: `0 0 30px ${product.glowColor}` }}
+                                className="flex items-center justify-center gap-2 w-full py-4 rounded-xl text-white font-bold text-sm transition-all"
+                                style={{
+                                    background: 'linear-gradient(135deg, #1A56DB, #0284C7)',
+                                    boxShadow: '0 4px 16px rgba(26,86,219,0.25)',
+                                }}
                             >
                                 <FiZap size={16} />
                                 {product.buttonLabel}
@@ -149,14 +173,17 @@ const Shop = () => {
             </section>
 
             {/* Footer */}
-            <footer className="relative z-10 py-10 px-6 border-t border-white/5 bg-black">
+            <footer className="py-10 px-6" style={{ borderTop: '1px solid var(--c-border)' }}>
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="flex gap-6 text-xs font-mono text-slate-500">
-                        <a href="https://onelovepeople.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy Policy</a>
-                        <a href="https://onelovepeople.com/terms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Terms of Service</a>
-                        <a href="mailto:sage@onelovepeople.com" className="hover:text-white transition-colors">Contact</a>
+                    <div className="flex gap-6 text-xs font-mono" style={{ color: 'var(--c-subtle)' }}>
+                        <a href="https://onelovepeople.com/privacy" target="_blank" rel="noopener noreferrer"
+                            className="hover:text-blue-600 transition-colors">Privacy Policy</a>
+                        <a href="https://onelovepeople.com/terms" target="_blank" rel="noopener noreferrer"
+                            className="hover:text-blue-600 transition-colors">Terms of Service</a>
+                        <a href="mailto:sage@onelovepeople.com"
+                            className="hover:text-blue-600 transition-colors">Contact</a>
                     </div>
-                    <p className="text-slate-600 text-xs font-mono">
+                    <p className="text-xs font-mono" style={{ color: 'var(--c-subtle)' }}>
                         © 2026 SAGE AI | Autonomous Architect Protocol
                     </p>
                 </div>
