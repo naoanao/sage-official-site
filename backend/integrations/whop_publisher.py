@@ -2,64 +2,129 @@
 """
 backend/integrations/whop_publisher.py
 =======================================
-Whop API v5 integration for Sage auto-monetization pipeline.
+Whop API v2 integration for Sage auto-monetization pipeline.
 
 Flow:
-  1. Create product  (POST /api/v5/products)
-  2. Create one-time purchase plan attached to that product (POST /api/v5/plans)
-  3. Return public product URL + plan_id for downstream SNS posting
+  1. create_and_publish()  → Create product + plan → save to registry
+  2. update_product()      → Push edited description back after Finalize
+  3. /api/webhook/whop     → Receive purchase / refund events (flask_server.py)
 
-Environment Variables Required:
-  WHOP_API_KEY      - Bearer token from Whop Developer Dashboard
-  WHOP_COMPANY_ID   - biz_xxxxxxxxxxxx  (your company/store ID)
-
-Optional:
-  WHOP_DRY_RUN=1    - Skip real API calls, return mock data (safe for dev/test)
+Environment Variables:
+  WHOP_API_KEY          Bearer token from Whop Developer Dashboard
+  WHOP_COMPANY_ID       biz_xxxxxxxxxxxx  (your company/store ID)
+  WHOP_WEBHOOK_SECRET   Webhook signing secret from Whop Dashboard → Webhooks
+  WHOP_DRY_RUN=1        Skip real API calls (safe for dev/test)
 """
 
 import os
+import json
+import hmac
+import hashlib
 import logging
 import requests
-from typing import Optional
+from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger("WhopPublisher")
 
 WHOP_BASE_URL = "https://api.whop.com/api/v2"
-WHOP_API_KEY = None   # Loaded lazily to pick up runtime env changes
-WHOP_COMPANY_ID = None
 
+# ── Product Registry ──────────────────────────────────────────────────────────
+# Persists product_id / checkout_url so update_product() can find them
+# without re-creating a product on every Finalize.
+
+def _registry_path() -> Path:
+    p = Path("backend/data/whop_products.json")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _load_registry() -> dict:
+    p = _registry_path()
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_registry(reg: dict) -> None:
+    _registry_path().write_text(json.dumps(reg, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def registry_save_product(topic: str, entry: dict) -> None:
+    """Save a product entry keyed by topic slug."""
+    slug = topic.lower().replace(" ", "-")[:60]
+    reg = _load_registry()
+    reg[slug] = {**entry, "topic": topic, "saved_at": datetime.utcnow().isoformat()}
+    _save_registry(reg)
+    logger.info(f"[WHOP][REG] Saved: {slug} → {entry.get('product_id')}")
+
+
+def registry_find_by_topic(topic: str) -> dict | None:
+    """Return registry entry for topic, or None."""
+    slug = topic.lower().replace(" ", "-")[:60]
+    return _load_registry().get(slug)
+
+
+def registry_find_by_product_id(product_id: str) -> dict | None:
+    """Return registry entry for product_id, or None."""
+    for entry in _load_registry().values():
+        if entry.get("product_id") == product_id:
+            return entry
+    return None
+
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
 
 def _get_headers() -> dict:
-    """Resolve API key at call-time (picks up .env updates without restart)."""
     key = os.getenv("WHOP_API_KEY", "")
     if not key:
         raise ValueError(
-            "WHOP_API_KEY is not set. Add it to .env and restart the server.\n"
+            "WHOP_API_KEY is not set. Add it to .env.\n"
             "Get your key at: https://dash.whop.com/developer"
         )
-    return {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-    }
+    return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
 def _company_id() -> str:
     cid = os.getenv("WHOP_COMPANY_ID", "")
     if not cid:
-        raise ValueError(
-            "WHOP_COMPANY_ID is not set. Add it to .env (format: biz_xxxxxxxxxxxx)."
-        )
+        raise ValueError("WHOP_COMPANY_ID is not set. Add it to .env (format: biz_xxxxxxxxxxxx).")
     return cid
 
 
-def create_product(title: str, description: str, visibility: str = "visible") -> dict:
-    """
-    Step 1: Create a Whop product.
+# ── Webhook signature verification ───────────────────────────────────────────
 
-    Returns the raw Whop API response dict containing at minimum:
-      id, route, title, visibility
+def verify_webhook_signature(payload_bytes: bytes, signature_header: str, secret: str) -> bool:
     """
-    headers = _get_headers()
+    Verify Whop webhook HMAC-SHA256 signature.
+
+    Whop sends: X-Whop-Signature-256: sha256=<hex_digest>
+    We compute: HMAC-SHA256(secret, raw_body) and compare.
+
+    Returns True if valid, False if invalid (or if secret is empty → skip verification).
+    """
+    if not secret:
+        logger.warning("[WHOP][WEBHOOK] WHOP_WEBHOOK_SECRET not set — skipping signature verification.")
+        return True  # Dev mode: skip
+
+    expected = "sha256=" + hmac.new(
+        secret.encode("utf-8"), payload_bytes, hashlib.sha256
+    ).hexdigest()
+
+    received = signature_header or ""
+    valid = hmac.compare_digest(expected, received)
+    if not valid:
+        logger.warning(f"[WHOP][WEBHOOK] Signature mismatch. Got: {received[:40]}")
+    return valid
+
+
+# ── CRUD ──────────────────────────────────────────────────────────────────────
+
+def create_product(title: str, description: str, visibility: str = "visible") -> dict:
+    """POST /api/v2/products — create a new Whop product."""
     payload = {
         "title": title,
         "description": description,
@@ -67,12 +132,9 @@ def create_product(title: str, description: str, visibility: str = "visible") ->
         "company_id": _company_id(),
     }
     logger.info(f"[WHOP] Creating product: {title!r}")
-    resp = requests.post(f"{WHOP_BASE_URL}/products", headers=headers, json=payload, timeout=30)
-
+    resp = requests.post(f"{WHOP_BASE_URL}/products", headers=_get_headers(), json=payload, timeout=30)
     if not resp.ok:
-        raise RuntimeError(
-            f"Whop product creation failed [{resp.status_code}]: {resp.text[:400]}"
-        )
+        raise RuntimeError(f"Whop product creation failed [{resp.status_code}]: {resp.text[:400]}")
     data = resp.json()
     logger.info(f"[WHOP] Product created: id={data.get('id')} route={data.get('route')}")
     return data
@@ -85,37 +147,64 @@ def create_plan(
     billing_period: int = 1,
     billing_period_unit: str = "one_time",
 ) -> dict:
-    """
-    Step 2: Attach a purchase plan to a product.
-
-    Args:
-        product_id        - Whop product ID from create_product()
-        price_usd         - Price in USD (float), converted internally to cents
-        currency          - ISO 4217 currency code (default: "usd")
-        billing_period    - 1 for one-time
-        billing_period_unit - "one_time" | "month" | "year"
-
-    Returns the raw Whop API plan dict.
-    """
-    headers = _get_headers()
+    """POST /api/v2/plans — attach a purchase plan to a product."""
     payload = {
         "product_id": product_id,
-        "initial_price": int(price_usd * 100),  # Convert to cents
+        "initial_price": int(price_usd * 100),  # cents
         "currency": currency,
         "billing_period": billing_period,
         "billing_period_unit": billing_period_unit,
     }
-    logger.info(f"[WHOP] Creating plan for product {product_id}: ${price_usd} {billing_period_unit}")
-    resp = requests.post(f"{WHOP_BASE_URL}/plans", headers=headers, json=payload, timeout=30)
-
+    logger.info(f"[WHOP] Creating plan for {product_id}: ${price_usd}")
+    resp = requests.post(f"{WHOP_BASE_URL}/plans", headers=_get_headers(), json=payload, timeout=30)
     if not resp.ok:
-        raise RuntimeError(
-            f"Whop plan creation failed [{resp.status_code}]: {resp.text[:400]}"
-        )
+        raise RuntimeError(f"Whop plan creation failed [{resp.status_code}]: {resp.text[:400]}")
     data = resp.json()
     logger.info(f"[WHOP] Plan created: id={data.get('id')}")
     return data
 
+
+def get_product(product_id: str) -> dict:
+    """GET /api/v2/products/{id} — fetch product details."""
+    resp = requests.get(f"{WHOP_BASE_URL}/products/{product_id}", headers=_get_headers(), timeout=15)
+    if not resp.ok:
+        raise RuntimeError(f"Whop get_product failed [{resp.status_code}]: {resp.text[:200]}")
+    return resp.json()
+
+
+def update_product(product_id: str, title: str | None = None, description: str | None = None) -> dict:
+    """
+    PATCH /api/v2/products/{id} — update title and/or description.
+
+    Called automatically after /api/productize/finalize so the Whop
+    product page always reflects the user-edited course content.
+    """
+    if os.getenv("WHOP_DRY_RUN", "0") == "1":
+        logger.info(f"[WHOP][DRY_RUN] update_product skipped for {product_id}")
+        return {"status": "dry_run", "product_id": product_id}
+
+    payload = {}
+    if title:
+        payload["title"] = title
+    if description:
+        payload["description"] = description
+    if not payload:
+        return {"status": "noop"}
+
+    resp = requests.patch(
+        f"{WHOP_BASE_URL}/products/{product_id}",
+        headers=_get_headers(),
+        json=payload,
+        timeout=30,
+    )
+    if not resp.ok:
+        raise RuntimeError(f"Whop update_product failed [{resp.status_code}]: {resp.text[:400]}")
+    data = resp.json()
+    logger.info(f"[WHOP] Product updated: {product_id}")
+    return data
+
+
+# ── Main entry point ──────────────────────────────────────────────────────────
 
 def create_and_publish(
     title: str,
@@ -123,9 +212,10 @@ def create_and_publish(
     price_usd: float = 29.99,
     visibility: str = "visible",
     currency: str = "usd",
+    topic: str = "",
 ) -> dict:
     """
-    Main entry point: Create a Whop product + plan in one call.
+    Create a Whop product + plan and persist to the product registry.
 
     Returns:
     {
@@ -134,19 +224,15 @@ def create_and_publish(
         "plan_id":      "plan_xxxx",
         "product_url":  "https://whop.com/<route>",
         "checkout_url": "https://whop.com/<route>/checkout",
-        "title":        "<title>",
-        "price_usd":    29.99,
-        "message":      "human-readable status"
+        "title":        str,
+        "price_usd":    float,
+        "message":      str,
     }
     """
-    # --- DRY RUN MODE ---
-    # Only WHOP_DRY_RUN controls Whop publishing.
-    # SAGE_POST_DRY_RUN is intentionally ignored here to allow Whop to publish
-    # even while other Sage dry-run guards are active.
     if os.getenv("WHOP_DRY_RUN", "0") == "1":
-        mock_route = title.lower().replace(" ", "-")[:40]  # type: ignore
+        mock_route = title.lower().replace(" ", "-")[:40]
         logger.info(f"[WHOP][DRY_RUN] Skipping real API call for: {title!r}")
-        return {
+        result = {
             "status": "dry_run",
             "product_id": "prod_DRY_RUN",
             "plan_id": "plan_DRY_RUN",
@@ -154,10 +240,19 @@ def create_and_publish(
             "checkout_url": f"https://whop.com/{mock_route}/checkout",
             "title": title,
             "price_usd": price_usd,
-            "message": "[DRY RUN] Real API call skipped. Set WHOP_DRY_RUN=0 to publish.",
+            "message": "[DRY RUN] Set WHOP_DRY_RUN=0 to publish for real.",
         }
+        registry_save_product(topic or title, result)
+        return result
 
     try:
+        # Check registry — avoid re-creating if topic already published
+        existing = registry_find_by_topic(topic or title)
+        if existing and existing.get("status") == "success":
+            logger.info(f"[WHOP] Topic already in registry: {existing.get('product_id')} — updating description")
+            update_product(existing["product_id"], description=description)
+            return {**existing, "message": "Updated existing product (registry hit)"}
+
         product = create_product(title, description, visibility)
         plan = create_plan(product["id"], price_usd, currency)
 
@@ -165,7 +260,7 @@ def create_and_publish(
         product_url = f"https://whop.com/{route}" if route else f"https://whop.com/products/{product['id']}"
         checkout_url = f"{product_url}/checkout"
 
-        return {
+        result = {
             "status": "success",
             "product_id": product["id"],
             "plan_id": plan["id"],
@@ -175,6 +270,8 @@ def create_and_publish(
             "price_usd": price_usd,
             "message": f"Published to Whop: {product_url}",
         }
+        registry_save_product(topic or title, result)
+        return result
 
     except ValueError as ve:
         logger.warning(f"[WHOP] Config error: {ve}")
@@ -187,15 +284,11 @@ def create_and_publish(
         return {"status": "error", "message": f"Unexpected error: {e}"}
 
 
-def build_sns_caption(title: str, price_usd: float, product_url: str, checkout_url: str) -> dict:
-    """
-    Generate ready-to-post SNS captions for Bluesky and Instagram
-    from a Whop product listing.
+# ── SNS captions ──────────────────────────────────────────────────────────────
 
-    Returns:
-        {"bluesky": str, "instagram": str}
-    """
-    short_title = title[:60] if len(title) > 60 else title  # type: ignore
+def build_sns_caption(title: str, price_usd: float, product_url: str, checkout_url: str) -> dict:
+    """Generate Bluesky + Instagram captions from a Whop product listing."""
+    short_title = title[:60] if len(title) > 60 else title
     bluesky_text = (
         f"🚀 New digital product just launched!\n\n"
         f"'{short_title}'\n\n"
