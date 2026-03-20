@@ -46,7 +46,7 @@ import requests
 logger = logging.getLogger("WhopPublisher")
 
 WHOP_BASE_URL = "https://api.whop.com/api/v1"
-WHOP_V5_BASE_URL = "https://api.whop.com/v5/app"
+WHOP_V5_BASE_URL = "https://api.whop.com/v5"
 
 # Whop API enforced limits
 _TITLE_MAX_LEN = 40
