@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw } from 'react-icons/fi';
+import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiDatabase, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 import PhaseStepperBar from '../components/PhaseStepperBar';
@@ -186,6 +186,7 @@ const SageOS = () => {
     const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(false);
+    const [showContentManager, setShowContentManager] = useState(false);
     // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
     const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
@@ -998,7 +999,7 @@ const SageOS = () => {
 
                     {/* Automations toggle */}
                     <button
-                        onClick={() => { setShowAutomations(p => !p); setShowSelfTest(false); }}
+                        onClick={() => { setShowAutomations(p => !p); setShowSelfTest(false); setShowContentManager(false); }}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showAutomations ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
                     >
                         <FiActivity /> <span>Automations</span>
@@ -1006,10 +1007,18 @@ const SageOS = () => {
 
                     {/* Self-Test toggle */}
                     <button
-                        onClick={() => { setShowSelfTest(p => !p); setShowAutomations(false); }}
+                        onClick={() => { setShowSelfTest(p => !p); setShowAutomations(false); setShowContentManager(false); }}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showSelfTest ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
                     >
                         <FiCpu /> <span>Self-Test</span>
+                    </button>
+
+                    {/* Content Manager toggle */}
+                    <button
+                        onClick={() => { setShowContentManager(p => !p); setShowAutomations(false); setShowSelfTest(false); }}
+                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showContentManager ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                    >
+                        <FiDatabase /> <span>Content</span>
                     </button>
 
                     {/* Whop member link */}
@@ -1049,9 +1058,6 @@ const SageOS = () => {
                             <button onClick={() => setShowAutomations(false)} className="text-[var(--c-muted)] hover:text-[var(--c-text)] text-sm px-3 py-1 bg-[var(--c-raised)] rounded-lg">✕ Close</button>
                         </div>
                         <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2">⚡ Active Automations</div>
-                            </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {automations.map(a => (
                                     <div key={a.id} className={`p-4 rounded-xl border transition-all ${a.active ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-[var(--c-raised)] border-[var(--c-border)]'}`}>
@@ -1078,8 +1084,13 @@ const SageOS = () => {
                 {/* Self-Test Panel */}
                 {/* old Self-Test panel removed — new modal rendered at root level below */}
 
+                {/* Content Manager Panel */}
+                {showContentManager && (
+                    <ContentManager onClose={() => setShowContentManager(false)} />
+                )}
+
                 {/* Phase Pages */}
-                {!showAutomations && !showSelfTest && (
+                {!showAutomations && !showSelfTest && !showContentManager && (
                     <>
                         {/* PhaseStepperBar (phases 2-4) */}
                         {currentPhase >= 2 && (
@@ -2090,7 +2101,7 @@ const SageOS = () => {
             </div>
 
             {/* ── SageMiniChat FAB (phases 2-4) ─────────────────────────────── */}
-            {currentPhase >= 2 && !showAutomations && !showSelfTest && (
+            {currentPhase >= 2 && !showAutomations && !showSelfTest && !showContentManager && (
                 <SageMiniChat phase={currentPhase} topic={activeTopic} />
             )}
 
@@ -2244,6 +2255,317 @@ const SageOS = () => {
                 );
             })()}
         </div>
+    );
+};
+
+// ── Content Manager ──────────────────────────────────────────────────────────
+const ContentManager = ({ onClose }) => {
+    const [tab, setTab] = React.useState('blog');
+
+    // Blog state
+    const [blogPosts, setBlogPosts] = React.useState([]);
+    const [blogLoading, setBlogLoading] = React.useState(false);
+    const [editingPost, setEditingPost] = React.useState(null);
+    const [editPostData, setEditPostData] = React.useState({});
+    const [postSaving, setPostSaving] = React.useState(false);
+    const [postDeleting, setPostDeleting] = React.useState(null);
+
+    // Shop state
+    const [shopProducts, setShopProducts] = React.useState([]);
+    const [shopLoading, setShopLoading] = React.useState(false);
+    const [editingProduct, setEditingProduct] = React.useState(null);
+    const [editProductData, setEditProductData] = React.useState({});
+    const [addingProduct, setAddingProduct] = React.useState(false);
+    const [newProductData, setNewProductData] = React.useState({ title: '', price: '', url: '', badge: '', desc: '' });
+    const [productSaving, setProductSaving] = React.useState(false);
+    const [productDeleting, setProductDeleting] = React.useState(null);
+
+    // SNS state
+    const [snsHistory, setSnsHistory] = React.useState([]);
+    const [snsLoading, setSnsLoading] = React.useState(false);
+    const [snsDeleting, setSnsDeleting] = React.useState(null);
+
+    const loadBlogPosts = async () => {
+        setBlogLoading(true);
+        try { const res = await api.get('/api/blog/posts'); setBlogPosts(res.data.posts || []); }
+        catch { setBlogPosts([]); }
+        finally { setBlogLoading(false); }
+    };
+    const loadShopProducts = async () => {
+        setShopLoading(true);
+        try { const res = await api.get('/api/shop/products'); setShopProducts(res.data.products || []); }
+        catch { setShopProducts([]); }
+        finally { setShopLoading(false); }
+    };
+    const loadSnsHistory = async () => {
+        setSnsLoading(true);
+        try { const res = await api.get('/api/sns/history'); setSnsHistory(res.data.history || []); }
+        catch { setSnsHistory([]); }
+        finally { setSnsLoading(false); }
+    };
+
+    React.useEffect(() => {
+        if (tab === 'blog') loadBlogPosts();
+        else if (tab === 'shop') loadShopProducts();
+        else if (tab === 'sns') loadSnsHistory();
+    }, [tab]);
+
+    const handleDeletePost = async (slug) => {
+        if (!window.confirm(`Delete post "${slug}"? This cannot be undone.`)) return;
+        setPostDeleting(slug);
+        try { await api.delete(`/api/blog/posts/${slug}`); setBlogPosts(p => p.filter(x => x.slug !== slug)); }
+        catch { alert('Delete failed.'); }
+        finally { setPostDeleting(null); }
+    };
+    const handleSavePost = async (slug) => {
+        setPostSaving(true);
+        try {
+            await api.put(`/api/blog/posts/${slug}`, editPostData);
+            setBlogPosts(p => p.map(x => x.slug === slug ? { ...x, ...editPostData } : x));
+            setEditingPost(null);
+        } catch { alert('Save failed.'); }
+        finally { setPostSaving(false); }
+    };
+    const handleSaveProduct = async () => {
+        setProductSaving(true);
+        try {
+            if (editingProduct === 'new') {
+                const res = await api.post('/api/shop/products', newProductData);
+                setShopProducts(p => [...p, res.data.product]);
+                setAddingProduct(false);
+                setNewProductData({ title: '', price: '', url: '', badge: '', desc: '' });
+            } else {
+                await api.put(`/api/shop/products/${editingProduct}`, editProductData);
+                setShopProducts(p => p.map(x => String(x.id) === String(editingProduct) ? { ...x, ...editProductData } : x));
+                setEditingProduct(null);
+            }
+        } catch { alert('Save failed.'); }
+        finally { setProductSaving(false); }
+    };
+    const handleDeleteProduct = async (id) => {
+        if (!window.confirm('Delete this product from the shop?')) return;
+        setProductDeleting(id);
+        try { await api.delete(`/api/shop/products/${id}`); setShopProducts(p => p.filter(x => String(x.id) !== String(id))); }
+        catch { alert('Delete failed.'); }
+        finally { setProductDeleting(null); }
+    };
+    const handleDeleteSns = async (id) => {
+        setSnsDeleting(id);
+        try { await api.delete(`/api/sns/history/${id}`); setSnsHistory(p => p.filter(x => x.id !== id)); }
+        catch {}
+        finally { setSnsDeleting(null); }
+    };
+
+    const TABS = [
+        { id: 'blog', label: '📝 Blog Posts' },
+        { id: 'shop', label: '🛒 Shop Products' },
+        { id: 'sns', label: '📡 SNS History' },
+    ];
+
+    const inputCls = 'w-full bg-[var(--c-bg)] border border-[var(--c-border)] rounded-lg px-3 py-2 text-sm text-[var(--c-text)] placeholder-slate-500 focus:outline-none focus:border-blue-500/50 transition-colors';
+    const btnSave = 'px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded-lg font-bold disabled:opacity-50 transition-all';
+    const btnCancel = 'px-3 py-1.5 bg-[var(--c-raised)] border border-[var(--c-border)] text-[var(--c-muted)] hover:text-[var(--c-text)] text-xs rounded-lg transition-all';
+    const btnIcon = (hover) => `p-1.5 rounded-lg bg-[var(--c-raised)] border border-[var(--c-border)] text-[var(--c-muted)] transition-all ${hover}`;
+
+    return (
+        <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-8 max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black" style={{ color: '#1A56DB' }}>Content Manager</h2>
+                <button onClick={onClose} className="text-[var(--c-muted)] hover:text-[var(--c-text)] text-sm px-3 py-1 bg-[var(--c-raised)] rounded-lg transition-all">✕ Close</button>
+            </div>
+
+            {/* Tab bar */}
+            <div className="flex gap-2 mb-5">
+                {TABS.map(t => (
+                    <button key={t.id} onClick={() => setTab(t.id)}
+                        className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${tab === t.id ? 'bg-indigo-600 text-white shadow-sm' : 'bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)] border border-[var(--c-border)]'}`}>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* ── Blog Posts ── */}
+            {tab === 'blog' && (
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs text-[var(--c-subtle)]">
+                            Files in <code className="bg-[var(--c-raised)] px-1.5 py-0.5 rounded font-mono">src/blog/posts/</code> — edits take effect after the next build/deploy.
+                        </p>
+                        <button onClick={loadBlogPosts} title="Refresh" className={btnIcon('hover:text-[var(--c-text)]')}>
+                            <FiRefreshCw size={11} />
+                        </button>
+                    </div>
+                    {blogLoading ? (
+                        <div className="text-center py-10 text-[var(--c-subtle)] text-sm">Loading posts…</div>
+                    ) : blogPosts.length === 0 ? (
+                        <div className="text-center py-10 text-[var(--c-subtle)] text-sm">No posts found.</div>
+                    ) : blogPosts.map(post => (
+                        <div key={post.slug} className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl transition-all hover:border-[var(--c-border-hv)]">
+                            {editingPost === post.slug ? (
+                                <div className="space-y-2">
+                                    <input className={inputCls} value={editPostData.title || ''} onChange={e => setEditPostData(p => ({ ...p, title: e.target.value }))} placeholder="Title" />
+                                    <textarea className={`${inputCls} resize-none`} rows={2} value={editPostData.excerpt || ''} onChange={e => setEditPostData(p => ({ ...p, excerpt: e.target.value }))} placeholder="Excerpt" />
+                                    <div className="flex gap-2 pt-1">
+                                        <button onClick={() => handleSavePost(post.slug)} disabled={postSaving} className={btnSave}>{postSaving ? '⏳ Saving…' : '💾 Save'}</button>
+                                        <button onClick={() => setEditingPost(null)} className={btnCancel}>Cancel</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-semibold text-[var(--c-text)] truncate">{post.title}</div>
+                                        <div className="text-xs text-[var(--c-subtle)] mt-0.5 line-clamp-1">{post.excerpt}</div>
+                                        <div className="text-xs text-[var(--c-subtle)] mt-1 font-mono opacity-60">{post.date} · {post.slug}</div>
+                                    </div>
+                                    <div className="flex gap-1.5 shrink-0">
+                                        <button onClick={() => { setEditingPost(post.slug); setEditPostData({ title: post.title, excerpt: post.excerpt }); }}
+                                            className={btnIcon('hover:bg-blue-600/20 hover:text-blue-400')} title="Edit">
+                                            <FiEdit2 size={13} />
+                                        </button>
+                                        <button onClick={() => handleDeletePost(post.slug)} disabled={postDeleting === post.slug}
+                                            className={`${btnIcon('hover:bg-red-600/20 hover:text-red-400')} disabled:opacity-40`} title="Delete">
+                                            <FiTrash2 size={13} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* ── Shop Products ── */}
+            {tab === 'shop' && (
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs text-[var(--c-subtle)]">Products displayed on the public <code className="bg-[var(--c-raised)] px-1.5 py-0.5 rounded font-mono">/shop</code> page.</p>
+                        <div className="flex gap-2">
+                            <button onClick={loadShopProducts} title="Refresh" className={btnIcon('hover:text-[var(--c-text)]')}><FiRefreshCw size={11} /></button>
+                            <button onClick={() => { setAddingProduct(p => !p); setEditingProduct(null); }}
+                                className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold transition-all">
+                                {addingProduct ? '✕ Cancel' : '+ Add Product'}
+                            </button>
+                        </div>
+                    </div>
+                    {addingProduct && (
+                        <div className="p-4 bg-[var(--c-raised)] border border-indigo-500/30 rounded-xl space-y-2 mb-2">
+                            <div className="text-xs font-bold text-[var(--c-text)] mb-2 flex items-center gap-2">🆕 New Product</div>
+                            {[
+                                { key: 'title', placeholder: 'Product title' },
+                                { key: 'price', placeholder: 'Price — e.g. $29.99 or Members Only' },
+                                { key: 'url', placeholder: 'Purchase URL' },
+                                { key: 'badge', placeholder: 'Badge label — e.g. BESTSELLER' },
+                                { key: 'desc', placeholder: 'Short description' },
+                            ].map(({ key, placeholder }) => (
+                                <input key={key} className={inputCls} value={newProductData[key] || ''} onChange={e => setNewProductData(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} />
+                            ))}
+                            <div className="flex gap-2 pt-1">
+                                <button onClick={async () => {
+                                    setProductSaving(true);
+                                    try {
+                                        const res = await api.post('/api/shop/products', newProductData);
+                                        setShopProducts(p => [...p, res.data.product]);
+                                        setAddingProduct(false);
+                                        setNewProductData({ title: '', price: '', url: '', badge: '', desc: '' });
+                                    } catch { alert('Save failed.'); }
+                                    finally { setProductSaving(false); }
+                                }} disabled={productSaving} className={btnSave}>{productSaving ? '⏳ Saving…' : '💾 Save'}</button>
+                                <button onClick={() => setAddingProduct(false)} className={btnCancel}>Cancel</button>
+                            </div>
+                        </div>
+                    )}
+                    {shopLoading ? (
+                        <div className="text-center py-10 text-[var(--c-subtle)] text-sm">Loading products…</div>
+                    ) : shopProducts.length === 0 ? (
+                        <div className="text-center py-10 text-[var(--c-subtle)] text-sm">No products found.</div>
+                    ) : shopProducts.map(product => (
+                        <div key={product.id} className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl transition-all hover:border-[var(--c-border-hv)]">
+                            {editingProduct === String(product.id) ? (
+                                <div className="space-y-2">
+                                    {[
+                                        { key: 'title', placeholder: 'Title' },
+                                        { key: 'price', placeholder: 'Price' },
+                                        { key: 'url', placeholder: 'Purchase URL' },
+                                        { key: 'badge', placeholder: 'Badge label' },
+                                        { key: 'desc', placeholder: 'Description' },
+                                    ].map(({ key, placeholder }) => (
+                                        <input key={key} className={inputCls} value={editProductData[key] || ''} onChange={e => setEditProductData(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} />
+                                    ))}
+                                    <div className="flex gap-2 pt-1">
+                                        <button onClick={handleSaveProduct} disabled={productSaving} className={btnSave}>{productSaving ? '⏳ Saving…' : '💾 Save'}</button>
+                                        <button onClick={() => setEditingProduct(null)} className={btnCancel}>Cancel</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                            <span className="text-sm font-semibold text-[var(--c-text)]">{product.title}</span>
+                                            {product.badge && <span className="text-[10px] font-mono px-1.5 py-0.5 bg-[var(--c-bg)] border border-[var(--c-border)] rounded-full text-[var(--c-subtle)]">{product.badge}</span>}
+                                        </div>
+                                        <div className="text-xs text-[var(--c-subtle)]">{product.price}</div>
+                                        <div className="text-xs text-[var(--c-subtle)] font-mono opacity-60 truncate mt-0.5">{product.url}</div>
+                                    </div>
+                                    <div className="flex gap-1.5 shrink-0">
+                                        <button onClick={() => { setEditingProduct(String(product.id)); setEditProductData({ title: product.title, price: product.price, url: product.url, badge: product.badge || '', desc: product.desc || '' }); }}
+                                            className={btnIcon('hover:bg-blue-600/20 hover:text-blue-400')} title="Edit">
+                                            <FiEdit2 size={13} />
+                                        </button>
+                                        <button onClick={() => handleDeleteProduct(product.id)} disabled={productDeleting === product.id}
+                                            className={`${btnIcon('hover:bg-red-600/20 hover:text-red-400')} disabled:opacity-40`} title="Delete">
+                                            <FiTrash2 size={13} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* ── SNS History ── */}
+            {tab === 'sns' && (
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs text-[var(--c-subtle)]">Posts logged in <code className="bg-[var(--c-raised)] px-1.5 py-0.5 rounded font-mono">backend/logs/sns_evidence.jsonl</code></p>
+                        <button onClick={loadSnsHistory} title="Refresh" className={btnIcon('hover:text-[var(--c-text)]')}><FiRefreshCw size={11} /></button>
+                    </div>
+                    {snsLoading ? (
+                        <div className="text-center py-10 text-[var(--c-subtle)] text-sm">Loading history…</div>
+                    ) : snsHistory.length === 0 ? (
+                        <div className="text-center py-10 text-[var(--c-subtle)] text-sm">No SNS posts recorded yet.</div>
+                    ) : snsHistory.map(entry => (
+                        <div key={entry.id} className="p-3 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl flex items-start justify-between gap-3 transition-all hover:border-[var(--c-border-hv)]">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                                        style={{
+                                            background: entry.platform === 'bluesky' ? 'rgba(26,86,219,0.12)' : 'rgba(217,119,6,0.12)',
+                                            color: entry.platform === 'bluesky' ? '#1A56DB' : '#D97706',
+                                        }}>
+                                        {entry.platform || 'sns'}
+                                    </span>
+                                    <span className="text-xs text-[var(--c-subtle)] font-mono">
+                                        {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ''}
+                                    </span>
+                                </div>
+                                <p className="text-sm text-[var(--c-text)] line-clamp-2 leading-snug">
+                                    {entry.content || entry.caption || entry.text || '—'}
+                                </p>
+                                {entry.uri && (
+                                    <a href={entry.uri} target="_blank" rel="noopener noreferrer"
+                                        className="text-xs text-blue-400 hover:underline mt-0.5 block truncate">{entry.uri}</a>
+                                )}
+                            </div>
+                            <button onClick={() => handleDeleteSns(entry.id)} disabled={snsDeleting === entry.id}
+                                className={`${btnIcon('hover:bg-red-600/20 hover:text-red-400')} shrink-0 disabled:opacity-40`} title="Remove from log">
+                                <FiTrash2 size={13} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </Motion.div>
     );
 };
 

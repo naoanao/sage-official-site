@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { FiShoppingCart, FiArrowRight, FiStar, FiZap } from 'react-icons/fi';
+import { BACKEND_URL } from '../config/backendUrl';
 
-const products = [
+const FALLBACK_PRODUCTS = [
     {
         id: 1,
         title: 'Sage AI — Full Access (Whop)',
@@ -13,12 +14,7 @@ const products = [
         badgeStyle: { color: '#059669', borderColor: 'rgba(5,150,105,0.25)', background: 'rgba(5,150,105,0.08)' },
         accentColor: 'from-emerald-500 to-teal-600',
         desc: 'Full access to Sage AI — autonomous content pipeline, dashboard, and all future updates. Join the Whop community and start building your AI income stream.',
-        features: [
-            'Sage Cockpit dashboard access',
-            'Autonomous SNS + blog pipeline',
-            'Gumroad product auto-generation',
-            'Community + priority support',
-        ],
+        features: ['Sage Cockpit dashboard access', 'Autonomous SNS + blog pipeline', 'Gumroad product auto-generation', 'Community + priority support'],
         buttonLabel: 'Join on Whop',
     },
     {
@@ -30,17 +26,21 @@ const products = [
         badgeStyle: { color: '#D97706', borderColor: 'rgba(217,119,6,0.25)', background: 'rgba(217,119,6,0.08)' },
         accentColor: 'from-blue-500 to-indigo-600',
         desc: 'The complete playbook for building an AI-powered influencer business in 2026. Autonomous content, 24/7 posting, and a proven monetization blueprint.',
-        features: [
-            'Full AI Influencer Blueprint (PDF + Video)',
-            'Autonomous SNS posting templates',
-            'Monetization funnel step-by-step',
-            'Lifetime access + future updates',
-        ],
+        features: ['Full AI Influencer Blueprint (PDF + Video)', 'Autonomous SNS posting templates', 'Monetization funnel step-by-step', 'Lifetime access + future updates'],
         buttonLabel: 'Buy on Gumroad',
     },
 ];
 
 const Shop = () => {
+    const [products, setProducts] = useState(FALLBACK_PRODUCTS);
+
+    useEffect(() => {
+        fetch(`${BACKEND_URL}/api/shop/products`)
+            .then(r => r.json())
+            .then(data => { if (data.products?.length > 0) setProducts(data.products); })
+            .catch(() => { /* keep fallback */ });
+    }, []);
+
     return (
         <div className="min-h-screen mesh-bg noise font-sans overflow-x-hidden" style={{ color: 'var(--c-text)' }}>
 

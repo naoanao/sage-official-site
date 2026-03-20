@@ -3544,6 +3544,236 @@ def serve_react_app(path):
     return send_from_directory(app.static_folder, 'index.html')
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# CONTENT MANAGER ROUTES (Blog / Shop / SNS History)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _parse_mdx_frontmatter(raw: str) -> dict:
+    """Parse YAML-like frontmatter from an MDX file string."""
+    parts = raw.split('---')
+    fm = {}
+    if len(parts) >= 3:
+        for line in parts[1].split('\n'):
+            if ':' in line:
+                key, _, val = line.partition(':')
+                fm[key.strip()] = val.strip().strip('"\'')
+    return fm
+
+
+@app.route('/api/blog/posts', methods=['GET'])
+def api_blog_posts_list():
+    """List all MDX blog posts from src/blog/posts/."""
+    posts_dir = project_root / 'src' / 'blog' / 'posts'
+    if not posts_dir.exists():
+        return jsonify({'posts': []})
+    results = []
+    for f in sorted(posts_dir.glob('*.mdx'), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            raw = f.read_text(encoding='utf-8')
+            fm = _parse_mdx_frontmatter(raw)
+            slug = fm.get('slug') or f.stem
+            results.append({
+                'slug': slug,
+                'filename': f.name,
+                'title': fm.get('title', f.stem),
+                'excerpt': fm.get('excerpt', ''),
+                'date': fm.get('date', ''),
+                'keywords': fm.get('keywords', ''),
+            })
+        except Exception as e:
+            logger.warning(f'[Blog] Failed to parse {f.name}: {e}')
+    return jsonify({'posts': results})
+
+
+@app.route('/api/blog/posts/<path:slug>', methods=['PUT'])
+def api_blog_post_update(slug):
+    """Update title/excerpt in an MDX blog post frontmatter."""
+    posts_dir = project_root / 'src' / 'blog' / 'posts'
+    data = request.get_json(silent=True) or {}
+    # Find file by slug or filename stem
+    target = None
+    for f in posts_dir.glob('*.mdx'):
+        raw = f.read_text(encoding='utf-8')
+        fm = _parse_mdx_frontmatter(raw)
+        if fm.get('slug') == slug or f.stem == slug:
+            target = f
+            break
+    if not target:
+        return jsonify({'status': 'error', 'message': 'Post not found'}), 404
+    try:
+        raw = target.read_text(encoding='utf-8')
+        parts = raw.split('---')
+        if len(parts) >= 3:
+            fm_lines = parts[1].split('\n')
+            new_fm_lines = []
+            for line in fm_lines:
+                if line.startswith('title:') and 'title' in data:
+                    new_fm_lines.append(f'title: "{data["title"]}"')
+                elif line.startswith('excerpt:') and 'excerpt' in data:
+                    new_fm_lines.append(f'excerpt: "{data["excerpt"]}"')
+                else:
+                    new_fm_lines.append(line)
+            parts[1] = '\n'.join(new_fm_lines)
+            target.write_text('---'.join(parts), encoding='utf-8')
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        logger.error(f'[Blog] Update error: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/blog/posts/<path:slug>', methods=['DELETE'])
+def api_blog_post_delete(slug):
+    """Delete an MDX blog post file."""
+    posts_dir = project_root / 'src' / 'blog' / 'posts'
+    target = None
+    for f in posts_dir.glob('*.mdx'):
+        raw = f.read_text(encoding='utf-8')
+        fm = _parse_mdx_frontmatter(raw)
+        if fm.get('slug') == slug or f.stem == slug:
+            target = f
+            break
+    if not target:
+        return jsonify({'status': 'error', 'message': 'Post not found'}), 404
+    try:
+        target.unlink()
+        logger.info(f'[Blog] Deleted post: {target.name}')
+        return jsonify({'status': 'success', 'deleted': target.name})
+    except Exception as e:
+        logger.error(f'[Blog] Delete error: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# ── Shop Products ─────────────────────────────────────────────────────────────
+
+_SHOP_FILE = CURRENT_DIR / 'config' / 'shop_products.json'
+
+
+def _load_shop() -> list:
+    if _SHOP_FILE.exists():
+        try:
+            return json.loads(_SHOP_FILE.read_text(encoding='utf-8')).get('products', [])
+        except Exception:
+            pass
+    return []
+
+
+def _save_shop(products: list):
+    _SHOP_FILE.write_text(json.dumps({'products': products}, ensure_ascii=False, indent=2), encoding='utf-8')
+
+
+@app.route('/api/shop/products', methods=['GET'])
+def api_shop_products_get():
+    return jsonify({'products': _load_shop()})
+
+
+@app.route('/api/shop/products', methods=['POST'])
+def api_shop_products_create():
+    data = request.get_json(silent=True) or {}
+    products = _load_shop()
+    new_id = max((p.get('id', 0) for p in products), default=0) + 1
+    product = {
+        'id': new_id,
+        'title': data.get('title', ''),
+        'price': data.get('price', ''),
+        'url': data.get('url', ''),
+        'badge': data.get('badge', ''),
+        'desc': data.get('desc', ''),
+        'features': data.get('features', []),
+        'buttonLabel': data.get('buttonLabel', 'Buy Now'),
+        'accentColor': data.get('accentColor', 'from-blue-500 to-indigo-600'),
+        'badgeStyle': data.get('badgeStyle', {}),
+    }
+    products.append(product)
+    _save_shop(products)
+    return jsonify({'status': 'success', 'product': product})
+
+
+@app.route('/api/shop/products/<int:product_id>', methods=['PUT'])
+def api_shop_products_update(product_id):
+    data = request.get_json(silent=True) or {}
+    products = _load_shop()
+    updated = False
+    for p in products:
+        if p.get('id') == product_id:
+            for key in ('title', 'price', 'url', 'badge', 'desc', 'buttonLabel', 'features', 'accentColor', 'badgeStyle'):
+                if key in data:
+                    p[key] = data[key]
+            updated = True
+            break
+    if not updated:
+        return jsonify({'status': 'error', 'message': 'Product not found'}), 404
+    _save_shop(products)
+    return jsonify({'status': 'success'})
+
+
+@app.route('/api/shop/products/<int:product_id>', methods=['DELETE'])
+def api_shop_products_delete(product_id):
+    products = _load_shop()
+    new_list = [p for p in products if p.get('id') != product_id]
+    if len(new_list) == len(products):
+        return jsonify({'status': 'error', 'message': 'Product not found'}), 404
+    _save_shop(new_list)
+    return jsonify({'status': 'success'})
+
+
+# ── SNS History ───────────────────────────────────────────────────────────────
+
+@app.route('/api/sns/history', methods=['GET'])
+def api_sns_history_list():
+    """Return SNS post history from sns_evidence.jsonl."""
+    evidence_file = LOG_DIR / 'sns_evidence.jsonl'
+    if not evidence_file.exists():
+        return jsonify({'history': []})
+    entries = []
+    try:
+        lines = evidence_file.read_text(encoding='utf-8').splitlines()
+        for i, line in enumerate(reversed(lines[-200:])):  # latest 200
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                if 'id' not in entry:
+                    entry['id'] = f'entry_{len(lines) - i}'
+                entries.append(entry)
+            except json.JSONDecodeError:
+                pass
+    except Exception as e:
+        logger.error(f'[SNS History] Read error: {e}')
+    return jsonify({'history': entries})
+
+
+@app.route('/api/sns/history/<entry_id>', methods=['DELETE'])
+def api_sns_history_delete(entry_id):
+    """Remove an entry from sns_evidence.jsonl by id."""
+    evidence_file = LOG_DIR / 'sns_evidence.jsonl'
+    if not evidence_file.exists():
+        return jsonify({'status': 'error', 'message': 'No history file'}), 404
+    try:
+        lines = evidence_file.read_text(encoding='utf-8').splitlines()
+        new_lines = []
+        deleted = False
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            if not line_stripped:
+                new_lines.append(line)
+                continue
+            try:
+                entry = json.loads(line_stripped)
+                eid = entry.get('id', f'entry_{i + 1}')
+                if str(eid) == str(entry_id) and not deleted:
+                    deleted = True
+                    continue
+            except json.JSONDecodeError:
+                pass
+            new_lines.append(line)
+        evidence_file.write_text('\n'.join(new_lines) + '\n', encoding='utf-8')
+        return jsonify({'status': 'success', 'deleted': deleted})
+    except Exception as e:
+        logger.error(f'[SNS History] Delete error: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 if __name__ == '__main__':
     import atexit
     

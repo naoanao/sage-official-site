@@ -1,0 +1,46 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "title": "Sage AI — Full Access (Whop)",
+      "price": "Members Only",
+      "url": "https://whop.com/segeai/",
+      "badge": "RECOMMENDED",
+      "accentColor": "from-emerald-500 to-teal-600",
+      "desc": "Full access to Sage AI — autonomous content pipeline, dashboard, and all future updates. Join the Whop community and start building your AI income stream.",
+      "features": [
+        "Sage Cockpit dashboard access",
+        "Autonomous SNS + blog pipeline",
+        "Gumroad product auto-generation",
+        "Community + priority support"
+      ],
+      "buttonLabel": "Join on Whop",
+      "badgeStyle": {
+        "color": "#059669",
+        "borderColor": "rgba(5,150,105,0.25)",
+        "background": "rgba(5,150,105,0.08)"
+      }
+    },
+    {
+      "id": 2,
+      "title": "2026 AI Influencer Monetization Express",
+      "price": "$29.99",
+      "url": "https://naofumi3.gumroad.com/l/yvzrfjd",
+      "badge": "BESTSELLER",
+      "accentColor": "from-blue-500 to-indigo-600",
+      "desc": "The complete playbook for building an AI-powered influencer business in 2026. Autonomous content, 24/7 posting, and a proven monetization blueprint.",
+      "features": [
+        "Full AI Influencer Blueprint (PDF + Video)",
+        "Autonomous SNS posting templates",
+        "Monetization funnel step-by-step",
+        "Lifetime access + future updates"
+      ],
+      "buttonLabel": "Buy on Gumroad",
+      "badgeStyle": {
+        "color": "#D97706",
+        "borderColor": "rgba(217,119,6,0.25)",
+        "background": "rgba(217,119,6,0.08)"
+      }
+    }
+  ]
+}
