@@ -3393,13 +3393,23 @@ def whop_webhook():
     user_email = data.get("user", {}).get("email") or data.get("email", "unknown")
     product_id = data.get("product_id") or data.get("product", {}).get("id", "unknown")
     amount = data.get("plan", {}).get("price_formatted") or data.get("amount", "?")
+    # payment_id: refund.created ペイロードに含まれる（全額自動返金に使用）
+    payment_id = (
+        data.get("payment_id")
+        or data.get("payment", {}).get("id")
+        or data.get("checkout", {}).get("payment_id")
+    )
 
-    logger.info(f"[WEBHOOK/WHOP] Event: {event_type} | product: {product_id} | user: {user_email}")
+    logger.info(f"[WEBHOOK/WHOP] Event: {event_type} | product: {product_id} | user: {user_email} | payment: {payment_id}")
 
     if event_type in ("membership.went_valid", "purchase.completed", "sale"):
         _handle_whop_purchase(event_type, product_id, user_email, amount, data)
-    elif event_type in ("membership.went_invalid", "refund.created", "refund"):
-        _handle_whop_refund(event_type, product_id, user_email, amount, data)
+    elif event_type == "refund.created":
+        # 返金リクエスト発生 → 自動で全額返金を実行
+        _handle_whop_refund(event_type, product_id, user_email, amount, data, payment_id, auto_refund=True)
+    elif event_type in ("membership.went_invalid", "refund"):
+        # メンバーシップ無効化 or 汎用refundイベント → 通知のみ（二重処理防止）
+        _handle_whop_refund(event_type, product_id, user_email, amount, data, payment_id, auto_refund=False)
     else:
         logger.info(f"[WEBHOOK/WHOP] Unhandled event type: {event_type} — ignoring")
 
@@ -3427,22 +3437,76 @@ def _handle_whop_purchase(event_type: str, product_id: str, user_email: str, amo
         logger.warning(f"[WEBHOOK/WHOP] Notion log failed: {e}")
 
 
-def _handle_whop_refund(event_type: str, product_id: str, user_email: str, amount: str, data: dict):
-    """Log refund to Notion and send Telegram alert."""
-    msg = f"🔄 Refund/Cancel\nProduct: {product_id}\nUser: {user_email}\nAmount: {amount}"
-    logger.warning(f"[WHOP REFUND] {msg}")
+def _handle_whop_refund(
+    event_type: str,
+    product_id: str,
+    user_email: str,
+    amount: str,
+    data: dict,
+    payment_id: str = None,
+    auto_refund: bool = False,
+):
+    """
+    Handle refund/cancel events from Whop webhook.
 
+    auto_refund=True  : refund.created → 自動で全額返金APIを呼び出す
+    auto_refund=False : membership.went_invalid 等 → 通知のみ（二重処理防止）
+    """
+    refund_status = "pending"
+    refund_error = None
+
+    if auto_refund and payment_id:
+        try:
+            from backend.integrations.whop_publisher import refund_payment
+            result = refund_payment(payment_id)
+            refund_status = result.get("status", "unknown")
+            logger.info(f"[WHOP REFUND] Auto-refund issued: payment={payment_id} status={refund_status}")
+        except Exception as e:
+            refund_status = "error"
+            refund_error = str(e)
+            logger.error(f"[WHOP REFUND] Auto-refund failed: payment={payment_id} error={e}")
+    elif auto_refund and not payment_id:
+        refund_status = "error"
+        refund_error = "payment_id not found in webhook payload"
+        logger.error(f"[WHOP REFUND] Cannot auto-refund: payment_id missing (event={event_type})")
+
+    # Telegram通知
+    if auto_refund:
+        if refund_status == "success":
+            msg = (
+                f"✅ 自動返金完了\n"
+                f"Payment: {payment_id}\nProduct: {product_id}\n"
+                f"User: {user_email}\nAmount: {amount}"
+            )
+        else:
+            msg = (
+                f"⚠️ 自動返金{'失敗' if refund_status == 'error' else '処理中'}\n"
+                f"Payment: {payment_id}\nProduct: {product_id}\n"
+                f"User: {user_email}\nAmount: {amount}\n"
+                f"Status: {refund_status}"
+                + (f"\nError: {refund_error}" if refund_error else "")
+            )
+    else:
+        msg = f"🔄 Refund/Cancel通知\nEvent: {event_type}\nProduct: {product_id}\nUser: {user_email}\nAmount: {amount}"
+
+    logger.warning(f"[WHOP REFUND] {msg}")
     try:
         from backend.integrations.telegram_bot import TelegramBot
         TelegramBot().send_message(msg)
     except Exception as e:
         logger.warning(f"[WEBHOOK/WHOP] Telegram refund alert failed: {e}")
 
+    # Notionログ
     try:
         from backend.integrations.notion_logger import NotionLogger
         NotionLogger().log_event("whop_refund", {
-            "product_id": product_id, "user_email": user_email,
-            "amount": amount, "event_type": event_type,
+            "product_id": product_id,
+            "user_email": user_email,
+            "amount": amount,
+            "event_type": event_type,
+            "payment_id": payment_id or "unknown",
+            "refund_status": refund_status,
+            **({"refund_error": refund_error} if refund_error else {}),
         })
     except Exception as e:
         logger.warning(f"[WEBHOOK/WHOP] Notion refund log failed: {e}")

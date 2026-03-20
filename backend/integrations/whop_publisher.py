@@ -46,6 +46,7 @@ import requests
 logger = logging.getLogger("WhopPublisher")
 
 WHOP_BASE_URL = "https://api.whop.com/api/v1"
+WHOP_V5_BASE_URL = "https://api.whop.com/v5/app"
 
 # Whop API enforced limits
 _TITLE_MAX_LEN = 40
@@ -411,6 +412,57 @@ def create_and_publish(
     except Exception as e:
         logger.error(f"[WHOP] Unexpected error: {e}")
         return {"status": "error", "message": f"Unexpected error: {e}"}
+
+
+def refund_payment(payment_id: str, amount_cents: int = None) -> dict:
+    """
+    Issue a full (or partial) refund for a Whop payment via API v5.
+
+    Args:
+        payment_id   - Whop payment ID (e.g. "pay_xxxxxxxxxxxx")
+        amount_cents - Amount to refund in cents. Omit (None) for full refund.
+
+    Returns dict with keys: status, payment_id, refunded_amount, message
+    """
+    if _is_dry_run():
+        logger.info(f"[WHOP][DRY_RUN] Skipping real refund for payment: {payment_id}")
+        return {
+            "status": "dry_run",
+            "payment_id": payment_id,
+            "refunded_amount": amount_cents,
+            "message": "[DRY RUN] Real refund skipped. Set WHOP_DRY_RUN=0 to execute.",
+        }
+
+    headers = _get_headers()
+    payload = {}
+    if amount_cents is not None:
+        payload["amount"] = amount_cents
+
+    logger.info(f"[WHOP] Issuing refund for payment {payment_id} "
+                f"({'full' if amount_cents is None else f'{amount_cents} cents'})")
+
+    resp = requests.post(
+        f"{WHOP_V5_BASE_URL}/payments/{payment_id}/refund",
+        headers=headers,
+        json=payload,
+        timeout=30,
+    )
+    _handle_rate_limit(resp)
+
+    if not resp.ok:
+        raise RuntimeError(
+            f"Whop refund_payment failed [{resp.status_code}]: {resp.text[:400]}"
+        )
+
+    data = resp.json()
+    logger.info(f"[WHOP] Refund issued: payment={payment_id} response={data}")
+    return {
+        "status": "success",
+        "payment_id": payment_id,
+        "refunded_amount": amount_cents,
+        "message": f"Refund issued for payment {payment_id}",
+        "response": data,
+    }
 
 
 def build_sns_caption(title: str, price_usd: float, product_url: str, checkout_url: str) -> dict:
