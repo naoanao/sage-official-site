@@ -635,6 +635,29 @@ const SageOS = () => {
             if (res.data?.status === 'success') {
                 setMonetizeResult(res.data.saved_path);
                 setMonetizeStatus('finalized');
+
+                // ── Whop sync (fire-and-forget) ──────────────────────────
+                // Push edited content back to Whop product page.
+                // Non-fatal: finalize already succeeded regardless of Whop result.
+                const whopData = generateData?.whop;
+                const productId = whopData?.product_id;
+                if (productId && productId !== 'prod_DRY_RUN') {
+                    const updatedDesc = editedSalesPage ||
+                        editedSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n').slice(0, 800);
+                    api.post('/api/productize/update-whop', {
+                        product_id: productId,
+                        topic: monetizeTopic,
+                        description: updatedDesc,
+                    }).catch(() => {}); // swallow — background update
+                } else if (monetizeTopic) {
+                    // No product_id in memory — let backend look up registry by topic
+                    const updatedDesc = editedSalesPage ||
+                        editedSections.map(s => `## ${s.title}\n${s.content}`).join('\n\n').slice(0, 800);
+                    api.post('/api/productize/update-whop', {
+                        topic: monetizeTopic,
+                        description: updatedDesc,
+                    }).catch(() => {});
+                }
             } else {
                 throw new Error(res.data?.error || 'Finalize failed');
             }
@@ -2023,9 +2046,31 @@ const SageOS = () => {
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className="p-5 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl space-y-2">
+                                            <div className="p-5 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl space-y-3">
                                                 <div className="text-emerald-400 font-bold text-lg flex items-center gap-2"><FiCheck /> Final version saved!</div>
-                                                <div className="text-[var(--c-text)] font-mono text-xs break-all">{monetizeResult}</div>
+                                                <div className="text-[var(--c-muted)] font-mono text-xs break-all">{monetizeResult}</div>
+                                                {/* Whop sales URL — shown when pipeline actually published */}
+                                                {generateData?.whop?.checkout_url && generateData.whop.status !== 'error' && (
+                                                    <div className="pt-2 border-t border-emerald-500/20 space-y-2">
+                                                        <div className="text-xs text-[var(--c-muted)] font-semibold uppercase tracking-wide">
+                                                            {generateData.whop.status === 'dry_run' ? '🧪 Dry-run URL (WHOP_DRY_RUN=1)' : '🛒 Live Sales Page'}
+                                                        </div>
+                                                        <a
+                                                            href={generateData.whop.checkout_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 rounded-xl text-indigo-300 font-bold text-sm transition-all truncate"
+                                                        >
+                                                            🚀 {generateData.whop.checkout_url}
+                                                        </a>
+                                                        <button
+                                                            onClick={() => navigator.clipboard?.writeText(generateData.whop.checkout_url).catch(() => {})}
+                                                            className="text-xs text-[var(--c-muted)] hover:text-[var(--c-text)] transition-colors"
+                                                        >
+                                                            📋 Copy URL
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 

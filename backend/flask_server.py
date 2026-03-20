@@ -3273,6 +3273,169 @@ def productize_finalize():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/webhook/whop', methods=['POST'])
+def whop_webhook():
+    """
+    Receive Whop purchase / refund webhook events.
+
+    Register in Whop Dashboard → Settings → Webhooks:
+      URL: https://<your-domain>/api/webhook/whop
+      Events: membership.went_valid, membership.went_invalid
+
+    Env: WHOP_WEBHOOK_SECRET  (signing secret shown in Whop webhook settings)
+    """
+    from backend.integrations.whop_publisher import verify_webhook_signature, registry_find_by_product_id
+
+    raw_body = request.get_data()
+    sig_header = request.headers.get("X-Whop-Signature-256", "")
+    secret = os.getenv("WHOP_WEBHOOK_SECRET", "")
+
+    if not verify_webhook_signature(raw_body, sig_header, secret):
+        logger.warning("[WHOP][WEBHOOK] Invalid signature — rejected")
+        return jsonify({"error": "invalid signature"}), 401
+
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        return jsonify({"error": "bad json"}), 400
+
+    event = payload.get("event", "")
+    data = payload.get("data", {})
+    membership_id = data.get("id", "unknown")
+    product_id = data.get("product_id", "")
+    user_email = data.get("user", {}).get("email", "")
+    checkout_url = data.get("checkout_url", "")
+
+    logger.info(f"[WHOP][WEBHOOK] event={event} membership={membership_id} product={product_id}")
+
+    reg_entry = registry_find_by_product_id(product_id) if product_id else None
+    topic = reg_entry.get("topic", product_id) if reg_entry else product_id
+
+    if event == "membership.went_valid":
+        # ── Purchase confirmed ──────────────────────────────────────────────
+        logger.info(f"[WHOP][WEBHOOK] PURCHASE: topic={topic!r} buyer={user_email}")
+
+        # 1. Notion Evidence Ledger
+        try:
+            from backend.modules.notion_evidence_ledger import evidence_ledger
+            evidence_ledger.log_d1_run(
+                topic=f"[PURCHASE] {topic}",
+                status="SUCCESS",
+                log_excerpt=f"buyer={user_email} membership={membership_id} product={product_id}",
+                artifact_name=checkout_url,
+                external_api_ok=True,
+            )
+        except Exception as ev_err:
+            logger.warning(f"[WHOP][WEBHOOK] Evidence log failed: {ev_err}")
+
+        # 2. Optional Telegram notification
+        try:
+            tg_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+            tg_chat = os.getenv("TELEGRAM_CHAT_ID", "")
+            if tg_token and tg_chat:
+                import requests as _r
+                msg = (
+                    f"💰 *New Whop Purchase!*\n\n"
+                    f"Topic: `{topic}`\n"
+                    f"Buyer: `{user_email}`\n"
+                    f"Product ID: `{product_id}`"
+                )
+                _r.post(
+                    f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                    json={"chat_id": tg_chat, "text": msg, "parse_mode": "Markdown"},
+                    timeout=10,
+                )
+        except Exception as tg_err:
+            logger.warning(f"[WHOP][WEBHOOK] Telegram notify failed: {tg_err}")
+
+        return jsonify({"status": "ok", "action": "purchase_logged"}), 200
+
+    elif event == "membership.went_invalid":
+        # ── Refund / cancellation ───────────────────────────────────────────
+        reason = data.get("cancel_reason", "unknown")
+        logger.warning(f"[WHOP][WEBHOOK] REFUND/CANCEL: topic={topic!r} reason={reason} buyer={user_email}")
+
+        try:
+            from backend.modules.notion_evidence_ledger import evidence_ledger
+            evidence_ledger.log_d1_run(
+                topic=f"[REFUND] {topic}",
+                status="FAILED",
+                log_excerpt=f"reason={reason} buyer={user_email} membership={membership_id}",
+                artifact_name=checkout_url,
+                external_api_ok=False,
+            )
+        except Exception as ev_err:
+            logger.warning(f"[WHOP][WEBHOOK] Evidence log (refund) failed: {ev_err}")
+
+        # Optional Telegram alert
+        try:
+            tg_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+            tg_chat = os.getenv("TELEGRAM_CHAT_ID", "")
+            if tg_token and tg_chat:
+                import requests as _r
+                msg = (
+                    f"⚠️ *Whop Refund/Cancel*\n\n"
+                    f"Topic: `{topic}`\n"
+                    f"Reason: `{reason}`\n"
+                    f"Buyer: `{user_email}`"
+                )
+                _r.post(
+                    f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                    json={"chat_id": tg_chat, "text": msg, "parse_mode": "Markdown"},
+                    timeout=10,
+                )
+        except Exception as tg_err:
+            logger.warning(f"[WHOP][WEBHOOK] Telegram (refund) failed: {tg_err}")
+
+        return jsonify({"status": "ok", "action": "refund_logged"}), 200
+
+    else:
+        logger.info(f"[WHOP][WEBHOOK] Unhandled event: {event} — ignored")
+        return jsonify({"status": "ok", "action": "ignored"}), 200
+
+
+@app.route('/api/productize/update-whop', methods=['POST'])
+def productize_update_whop():
+    """
+    Push user-edited course content back to the Whop product page.
+    Called automatically after /api/productize/finalize succeeds.
+
+    Body: { product_id?, topic?, title?, description? }
+    - product_id: direct Whop product ID (preferred)
+    - topic: fallback — look up product_id from registry
+    """
+    data = request.get_json(silent=True) or {}
+    product_id = data.get("product_id", "").strip()
+    topic = data.get("topic", "").strip()
+    title = data.get("title", "").strip() or None
+    description = data.get("description", "").strip() or None
+
+    if not product_id and not topic:
+        return jsonify({"error": "product_id or topic required"}), 400
+
+    # Resolve product_id from registry if not provided directly
+    if not product_id and topic:
+        from backend.integrations.whop_publisher import registry_find_by_topic
+        entry = registry_find_by_topic(topic)
+        if entry:
+            product_id = entry.get("product_id", "")
+
+    if not product_id:
+        logger.info(f"[UPDATE-WHOP] No product_id found for topic={topic!r} — skipping")
+        return jsonify({"status": "skipped", "reason": "product not in registry"}), 200
+
+    # DRY_RUN guard is inside update_product()
+    try:
+        from backend.integrations.whop_publisher import update_product
+        result = update_product(product_id, title=title, description=description)
+        logger.info(f"[UPDATE-WHOP] Updated {product_id}: {result}")
+        return jsonify({"status": "ok", "product_id": product_id, "whop_result": result}), 200
+    except Exception as e:
+        logger.warning(f"[UPDATE-WHOP] Failed: {e}")
+        # Non-fatal — finalize already succeeded; don't surface this as an error
+        return jsonify({"status": "skipped", "reason": str(e)}), 200
+
+
 @app.route('/api/monetization/approve', methods=['POST'])
 def approve_warn_product():
     """Manual approval of QA WARN."""
