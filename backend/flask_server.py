@@ -3359,6 +3359,153 @@ def paypal_checkout():
         }), 200
 
 
+# ── Whop Webhook ─────────────────────────────────────────────────────────────
+@app.route('/api/webhook/whop', methods=['POST'])
+def whop_webhook():
+    """
+    Receive Whop purchase / refund / membership events.
+
+    Setup in Whop Dashboard → Settings → Webhooks:
+      URL: https://<your-domain>/api/webhook/whop
+      Events: membership.went_valid (purchase), membership.went_invalid (refund/cancel)
+
+    Required .env: WHOP_WEBHOOK_SECRET (from Whop Dashboard)
+    """
+    payload_bytes = request.get_data()
+    sig_header = request.headers.get("X-Whop-Signature", "")
+
+    try:
+        from backend.integrations.whop_publisher import verify_webhook_signature
+        if not verify_webhook_signature(payload_bytes, sig_header):
+            logger.warning("[WEBHOOK/WHOP] Invalid signature — rejecting request")
+            return jsonify({"error": "Invalid signature"}), 401
+    except Exception as sig_err:
+        logger.error(f"[WEBHOOK/WHOP] Signature check error: {sig_err}")
+        return jsonify({"error": "Signature check failed"}), 500
+
+    try:
+        event = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    event_type = event.get("event", event.get("action", "unknown"))
+    data = event.get("data", event)
+    user_email = data.get("user", {}).get("email") or data.get("email", "unknown")
+    product_id = data.get("product_id") or data.get("product", {}).get("id", "unknown")
+    amount = data.get("plan", {}).get("price_formatted") or data.get("amount", "?")
+
+    logger.info(f"[WEBHOOK/WHOP] Event: {event_type} | product: {product_id} | user: {user_email}")
+
+    if event_type in ("membership.went_valid", "purchase.completed", "sale"):
+        _handle_whop_purchase(event_type, product_id, user_email, amount, data)
+    elif event_type in ("membership.went_invalid", "refund.created", "refund"):
+        _handle_whop_refund(event_type, product_id, user_email, amount, data)
+    else:
+        logger.info(f"[WEBHOOK/WHOP] Unhandled event type: {event_type} — ignoring")
+
+    return jsonify({"status": "ok"}), 200
+
+
+def _handle_whop_purchase(event_type: str, product_id: str, user_email: str, amount: str, data: dict):
+    """Log purchase to Notion and send Telegram alert."""
+    msg = f"💰 New Purchase!\nProduct: {product_id}\nBuyer: {user_email}\nAmount: {amount}"
+    logger.info(f"[WHOP PURCHASE] {msg}")
+
+    try:
+        from backend.integrations.telegram_bot import TelegramBot
+        TelegramBot().send_message(msg)
+    except Exception as e:
+        logger.warning(f"[WEBHOOK/WHOP] Telegram alert failed: {e}")
+
+    try:
+        from backend.integrations.notion_logger import NotionLogger
+        NotionLogger().log_event("whop_purchase", {
+            "product_id": product_id, "user_email": user_email,
+            "amount": amount, "event_type": event_type,
+        })
+    except Exception as e:
+        logger.warning(f"[WEBHOOK/WHOP] Notion log failed: {e}")
+
+
+def _handle_whop_refund(event_type: str, product_id: str, user_email: str, amount: str, data: dict):
+    """Log refund to Notion and send Telegram alert."""
+    msg = f"🔄 Refund/Cancel\nProduct: {product_id}\nUser: {user_email}\nAmount: {amount}"
+    logger.warning(f"[WHOP REFUND] {msg}")
+
+    try:
+        from backend.integrations.telegram_bot import TelegramBot
+        TelegramBot().send_message(msg)
+    except Exception as e:
+        logger.warning(f"[WEBHOOK/WHOP] Telegram refund alert failed: {e}")
+
+    try:
+        from backend.integrations.notion_logger import NotionLogger
+        NotionLogger().log_event("whop_refund", {
+            "product_id": product_id, "user_email": user_email,
+            "amount": amount, "event_type": event_type,
+        })
+    except Exception as e:
+        logger.warning(f"[WEBHOOK/WHOP] Notion refund log failed: {e}")
+
+
+# ── Whop Product Update (post-regeneration sync) ──────────────────────────────
+@app.route('/api/productize/update-whop', methods=['POST'])
+def productize_update_whop():
+    """
+    Update an existing Whop product after course regeneration.
+
+    Accepts:
+      { product_id, title, description }
+      OR { title } — auto-looks up product_id from local registry
+
+    Returns: { status, product_id, message }
+    """
+    data = request.get_json(silent=True) or {}
+    product_id = data.get("product_id", "").strip()
+    title = data.get("title", "").strip()
+    description = data.get("description", "").strip()
+
+    if not product_id and title:
+        try:
+            from backend.integrations.whop_publisher import _load_registry
+            registry = _load_registry()
+            slug = title.lower().replace(" ", "_")[:60]
+            entry = registry.get(slug) or {}
+            product_id = entry.get("product_id", "")
+        except Exception:
+            pass
+
+    if not product_id:
+        return jsonify({
+            "status": "error",
+            "message": "product_id required (or set title to auto-lookup from registry)"
+        }), 400
+
+    if os.getenv("WHOP_DRY_RUN", "0") == "1":
+        return jsonify({
+            "status": "dry_run",
+            "product_id": product_id,
+            "message": "[DRY RUN] update_product skipped. Set WHOP_DRY_RUN=0 to enable."
+        }), 200
+
+    try:
+        from backend.integrations.whop_publisher import update_product
+        updated = update_product(product_id, title=title or None, description=description or None)
+        logger.info(f"[UPDATE-WHOP] Product {product_id} updated")
+        return jsonify({
+            "status": "success",
+            "product_id": product_id,
+            "message": f"Whop product {product_id} updated",
+            "whop_data": updated,
+        }), 200
+    except RuntimeError as e:
+        logger.error(f"[UPDATE-WHOP] {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    except Exception as e:
+        logger.error(f"[UPDATE-WHOP] Unexpected: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react_app(path):

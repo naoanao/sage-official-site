@@ -2,31 +2,58 @@
 """
 backend/integrations/whop_publisher.py
 =======================================
-Whop API v5 integration for Sage auto-monetization pipeline.
+Whop API v2 integration for Sage auto-monetization pipeline.
 
 Flow:
-  1. Create product  (POST /api/v5/products)
-  2. Create one-time purchase plan attached to that product (POST /api/v5/plans)
+  1. Create product  (POST /api/v2/products)
+  2. Create one-time purchase plan attached to that product (POST /api/v2/plans)
   3. Return public product URL + plan_id for downstream SNS posting
 
 Environment Variables Required:
-  WHOP_API_KEY      - Bearer token from Whop Developer Dashboard
-  WHOP_COMPANY_ID   - biz_xxxxxxxxxxxx  (your company/store ID)
+  WHOP_API_KEY        - Bearer token from Whop Developer Dashboard
+  WHOP_COMPANY_ID     - biz_xxxxxxxxxxxx  (your company/store ID)
 
 Optional:
-  WHOP_DRY_RUN=1    - Skip real API calls, return mock data (safe for dev/test)
+  WHOP_DRY_RUN=1      - Skip real API calls, return mock data (safe for dev/test)
+  WHOP_WEBHOOK_SECRET - Webhook secret for verifying purchase/refund events
+                        (set in Whop Dashboard → Settings → Webhooks)
 """
 
-import os
+import hashlib
+import hmac
+import json
 import logging
-import requests
+import os
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
+
+import requests
 
 logger = logging.getLogger("WhopPublisher")
 
 WHOP_BASE_URL = "https://api.whop.com/api/v2"
-WHOP_API_KEY = None   # Loaded lazily to pick up runtime env changes
-WHOP_COMPANY_ID = None
+
+# Local registry: maps topic slug → {product_id, plan_id, product_url, checkout_url, created_at}
+# Persisted to backend/data/whop_products.json so updates survive restarts.
+_REGISTRY_PATH = Path(__file__).resolve().parents[1] / "data" / "whop_products.json"
+
+
+def _load_registry() -> dict:
+    try:
+        if _REGISTRY_PATH.exists():
+            return json.loads(_REGISTRY_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
+
+def _save_registry(registry: dict) -> None:
+    try:
+        _REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _REGISTRY_PATH.write_text(json.dumps(registry, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"[WHOP] Registry save failed: {e}")
 
 
 def _get_headers() -> dict:
@@ -50,6 +77,65 @@ def _company_id() -> str:
             "WHOP_COMPANY_ID is not set. Add it to .env (format: biz_xxxxxxxxxxxx)."
         )
     return cid
+
+
+def verify_webhook_signature(payload_bytes: bytes, signature_header: str) -> bool:
+    """
+    Verify Whop webhook HMAC-SHA256 signature.
+    Whop sends: X-Whop-Signature: sha256=<hex_digest>
+    Set WHOP_WEBHOOK_SECRET in .env (from Whop Dashboard → Webhooks).
+    Returns True if valid, False otherwise.
+    """
+    secret = os.getenv("WHOP_WEBHOOK_SECRET", "")
+    if not secret:
+        logger.warning("[WHOP] WHOP_WEBHOOK_SECRET not set — skipping signature check (unsafe!)")
+        return True  # Allow through but log warning
+
+    try:
+        expected = "sha256=" + hmac.new(
+            secret.encode("utf-8"), payload_bytes, hashlib.sha256
+        ).hexdigest()
+        return hmac.compare_digest(expected, signature_header)
+    except Exception as e:
+        logger.error(f"[WHOP] Signature verification error: {e}")
+        return False
+
+
+def get_product(product_id: str) -> dict:
+    """Fetch a Whop product by ID. Returns the API response dict."""
+    headers = _get_headers()
+    resp = requests.get(f"{WHOP_BASE_URL}/products/{product_id}", headers=headers, timeout=15)
+    if not resp.ok:
+        raise RuntimeError(f"Whop get_product failed [{resp.status_code}]: {resp.text[:400]}")
+    return resp.json()
+
+
+def update_product(product_id: str, title: str = None, description: str = None) -> dict:
+    """
+    Update an existing Whop product's title and/or description.
+    Used after course regeneration to keep the Whop listing in sync.
+
+    Returns the updated product dict on success.
+    """
+    headers = _get_headers()
+    payload = {}
+    if title:
+        payload["title"] = title
+    if description:
+        payload["description"] = description
+
+    if not payload:
+        return {"status": "skipped", "message": "Nothing to update"}
+
+    logger.info(f"[WHOP] Updating product {product_id}: {list(payload.keys())}")
+    resp = requests.patch(f"{WHOP_BASE_URL}/products/{product_id}", headers=headers, json=payload, timeout=30)
+
+    if not resp.ok:
+        raise RuntimeError(f"Whop update_product failed [{resp.status_code}]: {resp.text[:400]}")
+
+    data = resp.json()
+    logger.info(f"[WHOP] Product updated: {product_id}")
+    return data
 
 
 def create_product(title: str, description: str, visibility: str = "visible") -> dict:
@@ -165,7 +251,7 @@ def create_and_publish(
         product_url = f"https://whop.com/{route}" if route else f"https://whop.com/products/{product['id']}"
         checkout_url = f"{product_url}/checkout"
 
-        return {
+        result = {
             "status": "success",
             "product_id": product["id"],
             "plan_id": plan["id"],
@@ -175,6 +261,22 @@ def create_and_publish(
             "price_usd": price_usd,
             "message": f"Published to Whop: {product_url}",
         }
+
+        # Persist to local registry for future updates
+        registry = _load_registry()
+        slug = title.lower().replace(" ", "_")[:60]
+        registry[slug] = {
+            "product_id": product["id"],
+            "plan_id": plan["id"],
+            "product_url": product_url,
+            "checkout_url": checkout_url,
+            "title": title,
+            "price_usd": price_usd,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _save_registry(registry)
+
+        return result
 
     except ValueError as ve:
         logger.warning(f"[WHOP] Config error: {ve}")

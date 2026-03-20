@@ -631,6 +631,17 @@ const SageOS = () => {
             if (res.data?.status === 'success') {
                 setMonetizeResult(res.data.saved_path);
                 setMonetizeStatus('finalized');
+
+                // Sync updated content to Whop product (fire-and-forget, non-blocking)
+                const whopProductId = generateData?.whop?.product_id;
+                if (whopProductId && whopProductId !== 'prod_DRY_RUN') {
+                    const salesDesc = editedSalesPage?.slice(0, 800) || `Updated course on ${monetizeTopic}`;
+                    api.post('/api/productize/update-whop', {
+                        product_id: whopProductId,
+                        title: monetizeTopic,
+                        description: salesDesc,
+                    }).catch(() => {}); // silent — update is best-effort
+                }
             } else {
                 throw new Error(res.data?.error || 'Finalize failed');
             }
