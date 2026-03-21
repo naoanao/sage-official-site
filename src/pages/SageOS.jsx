@@ -218,10 +218,10 @@ const SageOS = () => {
     const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
     // Review & Edit state
-    const [generateData, setGenerateData] = useState(null);
-    const [editedSections, setEditedSections] = useState([]);
-    const [editedSalesPage, setEditedSalesPage] = useState('');
-    const [editedCaptions, setEditedCaptions] = useState([]);
+    const [generateData, setGenerateData] = useState(() => _ls.get('sage_generateData', null));
+    const [editedSections, setEditedSections] = useState(() => _ls.get('sage_editedSections', []));
+    const [editedSalesPage, setEditedSalesPage] = useState(() => _ls.get('sage_editedSalesPage', ''));
+    const [editedCaptions, setEditedCaptions] = useState(() => _ls.get('sage_editedCaptions', []));
     const [globalInstruction, setGlobalInstruction] = useState('');
     const [sectionInstructions, setSectionInstructions] = useState({});
     const [rewritingIdx, setRewritingIdx] = useState(null);
@@ -396,6 +396,12 @@ Hit "Generate Content" below to get started!`
     useEffect(() => { _ls.set('sage_phase', currentPhase); }, [currentPhase]);
     useEffect(() => { _ls.set('sage_topic', monetizeTopic); }, [monetizeTopic]);
     useEffect(() => { _ls.set('sage_activeTopic', activeTopic); }, [activeTopic]);
+
+    // Persist generated content & edits so page reload doesn't lose work
+    useEffect(() => { if (generateData) _ls.set('sage_generateData', generateData); }, [generateData]);
+    useEffect(() => { if (editedSections.length > 0) _ls.set('sage_editedSections', editedSections); }, [editedSections]);
+    useEffect(() => { if (editedSalesPage) _ls.set('sage_editedSalesPage', editedSalesPage); }, [editedSalesPage]);
+    useEffect(() => { if (editedCaptions.length > 0) _ls.set('sage_editedCaptions', editedCaptions); }, [editedCaptions]);
 
     const handleD1Run = async () => {
         setD1Status('running');
@@ -784,11 +790,17 @@ Hit "Generate Content" below to get started!`
         setGenerateData(null);
         setMonetizeResult(null);
         setContentTab('blog');
+        setEditedSections([]);
+        setEditedSalesPage('');
         setEditedCaptions([]);
         setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
         _ls.del('sage_phase');
         _ls.del('sage_topic');
         _ls.del('sage_activeTopic');
+        _ls.del('sage_generateData');
+        _ls.del('sage_editedSections');
+        _ls.del('sage_editedSalesPage');
+        _ls.del('sage_editedCaptions');
     };
 
     const analyzeContentQuality = (content) => {
