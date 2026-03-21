@@ -3,8 +3,15 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+const root = ReactDOM.createRoot(document.getElementById('root'))
+root.render(<App />)
 
-    <App />
-
-)
+// Hide native splash screen once React has rendered
+if (typeof window.__hideSplash === 'function') {
+    window.__hideSplash()
+} else {
+    // Fallback: hide after first paint
+    requestAnimationFrame(() => {
+        if (typeof window.__hideSplash === 'function') window.__hideSplash()
+    })
+}

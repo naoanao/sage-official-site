@@ -5,6 +5,16 @@ export default defineConfig({
     plugins: [react()],
     build: {
         outDir: 'dist',
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+                    'vendor-motion': ['framer-motion'],
+                    'vendor-axios': ['axios'],
+                    'vendor-icons': ['react-icons/fi'],
+                },
+            },
+        },
     },
     define: {
         'process.env': {}

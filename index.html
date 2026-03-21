@@ -13,16 +13,55 @@
         rel="stylesheet">
     <style>
         body {
-            background-color: #F4F8FF;
+            background-color: #0A0F1E;
             color: #0D1B35;
             margin: 0;
             font-family: 'Outfit', sans-serif;
         }
+        #splash {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #0A0F1E;
+            z-index: 9999;
+            gap: 16px;
+            transition: opacity 0.3s ease;
+        }
+        #splash.hidden { opacity: 0; pointer-events: none; }
+        #splash-spinner {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 3px solid #1A56DB;
+            border-top-color: transparent;
+            animation: splash-spin 0.8s linear infinite;
+        }
+        #splash-text {
+            color: #64748b;
+            font-size: 14px;
+            font-family: monospace;
+            letter-spacing: 0.05em;
+        }
+        @keyframes splash-spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 
 <body class="bg-black">
+    <div id="splash">
+        <div id="splash-spinner"></div>
+        <span id="splash-text">Loading Sage...</span>
+    </div>
     <div id="root"></div>
+    <script>
+        // Hide splash once React mounts
+        window.__hideSplash = function() {
+            var s = document.getElementById('splash');
+            if (s) { s.classList.add('hidden'); setTimeout(function(){ s.remove(); }, 350); }
+        };
+    </script>
     <script type="module" src="/src/main.jsx"></script>
 </body>
 
