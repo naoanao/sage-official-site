@@ -238,6 +238,7 @@ const SageOS = () => {
     const [copyStatus, setCopyStatus] = useState('idle'); // 'idle'|'success'|'error'
     const [copyToast, setCopyToast] = useState(null); // null | 'success' | 'error'
     const [chatInputShake, setChatInputShake] = useState(false);
+    const [topicInputShake, setTopicInputShake] = useState(false);
 
     // Content tabs & publish
     const [contentTab, setContentTab] = useState('blog');
@@ -416,6 +417,11 @@ Hit "Generate Content" below to get started!`
     };
 
     const handleD1ForTopic = async () => {
+        if (!monetizeTopic.trim()) {
+            setTopicInputShake(true);
+            setTimeout(() => setTopicInputShake(false), 600);
+            return;
+        }
         setMonetizeStatus('running_d1');
         try {
             await api.post('/api/d1/generate', { topic: monetizeTopic });
@@ -872,7 +878,11 @@ Hit "Generate Content" below to get started!`
 
     const handleNicheValidate = async (topicOverride) => {
         const topicToUse = topicOverride || monetizeTopic;
-        if (!topicToUse.trim()) return;
+        if (!topicToUse.trim()) {
+            setTopicInputShake(true);
+            setTimeout(() => setTopicInputShake(false), 600);
+            return;
+        }
         setNicheValidation({ status: 'running', data: null });
         // Use shorter timeout for niche check to fail fast and show demo
         const apiNiche = axios.create({ baseURL: BACKEND_URL, timeout: 20000 });
@@ -1338,7 +1348,7 @@ Hit "Generate Content" below to get started!`
                                                 <label className="text-sm font-bold text-[var(--c-text)]">Topic / Idea</label>
                                                 <button
                                                     onClick={handleNicheValidate}
-                                                    disabled={!monetizeTopic.trim() || nicheValidation.status === 'running'}
+                                                    disabled={nicheValidation.status === 'running'}
                                                     className={`text-xs px-3 py-1 disabled:opacity-40 rounded-lg flex items-center gap-1.5 transition-all border ${
                                                         nicheValidation.status === 'error'
                                                             ? 'bg-red-900/30 text-red-300 border-red-500/30 hover:bg-red-800/40'
@@ -1371,7 +1381,7 @@ Hit "Generate Content" below to get started!`
                                             value={monetizeTopic}
                                             onChange={(e) => { setMonetizeTopic(e.target.value); setMonetizeStatus('idle'); setNicheValidation({ status: 'idle', data: null }); }}
                                             placeholder={CREATE_PLACEHOLDERS[placeholderIdx]}
-                                            className={`w-full bg-[var(--c-surface)] border rounded-xl px-4 py-3 text-[var(--c-text)] focus:outline-none transition-colors ${researchCheck.status === 'missing' ? 'border-amber-500/50 focus:border-amber-400' : 'border-[var(--c-border)] focus:border-purple-500'}`}
+                                            className={`w-full bg-[var(--c-surface)] border rounded-xl px-4 py-3 text-[var(--c-text)] focus:outline-none transition-colors ${topicInputShake ? 'shake border-red-500' : researchCheck.status === 'missing' ? 'border-amber-500/50 focus:border-amber-400' : 'border-[var(--c-border)] focus:border-purple-500'}`}
                                         />
                                         {nicheValidation.status === 'rate_limited' && (
                                             <div className="mt-3 p-4 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-xl flex items-center justify-between gap-4">
@@ -2364,6 +2374,7 @@ const IdentityPanel = () => {
     const [saving, setSaving] = React.useState(false);
     const [saved, setSaved] = React.useState(false);
     const [saveError, setSaveError] = React.useState(false);
+    const [saveToast, setSaveToast] = React.useState(false);
     const [resetting, setResetting] = React.useState(false);
 
     React.useEffect(() => {
@@ -2391,7 +2402,8 @@ const IdentityPanel = () => {
         try {
             await api.post('/api/identity', identity);
             setSaved(true);
-            setTimeout(() => setSaved(false), 3000);
+            setSaveToast(true);
+            setTimeout(() => { setSaved(false); setSaveToast(false); }, 3000);
         } catch (err) {
             console.error('[Identity] Save failed:', err);
             // Save to localStorage as fallback so identity isn't lost
@@ -2426,6 +2438,11 @@ const IdentityPanel = () => {
                     </div>
                 ))}
             </div>
+            {saveToast && (
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-900/40 border border-emerald-500/40 rounded-xl text-emerald-300 text-sm font-medium animate-pulse">
+                    ✅ Identity saved successfully!
+                </div>
+            )}
             <div className="flex gap-2">
                 <button onClick={handleReset} disabled={resetting}
                     className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] border border-[var(--c-border)] disabled:opacity-50">
@@ -2435,10 +2452,10 @@ const IdentityPanel = () => {
                     className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${saved ? 'bg-emerald-600 text-white' : saveError ? 'bg-red-700 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50'}`}>
                     {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : saveError ? '⚠️ Saved Locally' : '💾 Save Identity'}
                 </button>
-                {saveError && (
-                    <div className="text-xs text-amber-400 mt-1 px-1">Server save failed — saved locally. Changes apply this session.</div>
-                )}
             </div>
+            {saveError && (
+                <div className="text-xs text-amber-400 px-1">Server save failed — saved locally. Changes apply this session.</div>
+            )}
         </div>
     );
 };
