@@ -652,7 +652,7 @@ Hit "Generate Content" below to get started!`
         } catch (e) {
             const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
             const msg = isTimeout
-                ? 'タイムアウト: LLMの応答が遅れています（30秒）。もう一度お試しください。'
+                ? 'Timeout: LLM response took too long (30s). Please try again.'
                 : (e?.response?.data?.error || e?.message || 'Rewrite failed') + ' — Please try again.';
             setRewriteError(msg);
             console.error('Global rewrite failed', e);
@@ -1588,7 +1588,7 @@ Hit "Generate Content" below to get started!`
                                                         {recStyle.text}
                                                         {v.demo_mode && <span className="text-xs font-normal px-2 py-0.5 bg-amber-900/40 border border-amber-500/30 text-amber-300 rounded-full">Demo</span>}
                                                     </div>
-                                                    <div className="text-[var(--c-muted)] text-sm mt-0.5">総合スコア: <span className={`${recStyle.score} font-bold text-xl`}>{v.overall_score}</span>/100</div>
+                                                    <div className="text-[var(--c-muted)] text-sm mt-0.5">Overall Score: <span className={`${recStyle.score} font-bold text-xl`}>{v.overall_score}</span>/100</div>
                                                 </div>
                                                 <button onClick={() => { setNicheValidation({ status: 'idle', data: null }); if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0; }} className="text-xs text-[var(--c-subtle)] hover:text-[var(--c-text)] px-2 py-1 rounded-lg hover:bg-[var(--c-raised)]">✕</button>
                                             </div>
@@ -1747,7 +1747,7 @@ Hit "Generate Content" below to get started!`
                                                                     value={section.title}
                                                                     onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, title: e.target.value } : s))}
                                                                     className="w-full mt-3 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-lg px-3 py-2 text-[var(--c-text)] font-semibold text-sm focus:outline-none focus:border-blue-400"
-                                                                    placeholder="セクションタイトル"
+                                                                    placeholder="Section title"
                                                                 />
                                                                 <textarea
                                                                     value={section.content}
@@ -1898,7 +1898,7 @@ Hit "Generate Content" below to get started!`
                                             {/* Product Value Stack */}
                                             {generateData && (generateData.bonus_stack || generateData.product_hook || generateData.launch_checklist) && (
                                                 <div className="p-4 bg-emerald-900/10 border border-emerald-500/20 rounded-2xl space-y-3">
-                                                    <div className="text-xs font-bold text-emerald-300 uppercase tracking-widest">🎁 商品一式 Product Stack</div>
+                                                    <div className="text-xs font-bold text-emerald-300 uppercase tracking-widest">🎁 Product Stack</div>
 
                                                     {/* Product Hook */}
                                                     {generateData.product_hook && (
@@ -2306,7 +2306,7 @@ Hit "Generate Content" below to get started!`
                                             <div className="divide-y divide-white/5">
                                                 {tests.length === 0 ? (
                                                     <div className="px-4 py-3 text-xs text-slate-600 italic">
-                                                        "▶ Run" でこの Tier を実行
+                                                        Click "▶ Run" to execute this Tier
                                                     </div>
                                                 ) : tests.map(t => (
                                                     <div key={t.name} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
@@ -2333,7 +2333,7 @@ Hit "Generate Content" below to get started!`
                                     );
                                 })}
                                 <p className="text-center text-xs text-slate-700 pb-1">
-                                    毎日 JST 07:00 自動実行 / Tier 1: 30 分ごと
+                                    Auto-runs daily at 07:00 JST / Tier 1: every 30 min
                                 </p>
                             </div>
                         </div>
