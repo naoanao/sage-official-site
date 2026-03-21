@@ -239,6 +239,7 @@ const SageOS = () => {
     const [copyToast, setCopyToast] = useState(null); // null | 'success' | 'error'
     const [chatInputShake, setChatInputShake] = useState(false);
     const [topicInputShake, setTopicInputShake] = useState(false);
+    const [topicHint, setTopicHint] = useState(false); // persistent 3s hint when clicking with empty topic
 
     // Content tabs & publish
     const [contentTab, setContentTab] = useState('blog');
@@ -419,7 +420,9 @@ Hit "Generate Content" below to get started!`
     const handleD1ForTopic = async () => {
         if (!monetizeTopic.trim()) {
             setTopicInputShake(true);
+            setTopicHint(true);
             setTimeout(() => setTopicInputShake(false), 600);
+            setTimeout(() => setTopicHint(false), 3000);
             return;
         }
         setMonetizeStatus('running_d1');
@@ -880,7 +883,9 @@ Hit "Generate Content" below to get started!`
         const topicToUse = topicOverride || monetizeTopic;
         if (!topicToUse.trim()) {
             setTopicInputShake(true);
+            setTopicHint(true);
             setTimeout(() => setTopicInputShake(false), 600);
+            setTimeout(() => setTopicHint(false), 3000);
             return;
         }
         setNicheValidation({ status: 'running', data: null });
@@ -1379,10 +1384,13 @@ Hit "Generate Content" below to get started!`
                                         <input
                                             type="text"
                                             value={monetizeTopic}
-                                            onChange={(e) => { setMonetizeTopic(e.target.value); setMonetizeStatus('idle'); setNicheValidation({ status: 'idle', data: null }); }}
+                                            onChange={(e) => { setMonetizeTopic(e.target.value); setMonetizeStatus('idle'); setNicheValidation({ status: 'idle', data: null }); setTopicHint(false); }}
                                             placeholder={CREATE_PLACEHOLDERS[placeholderIdx]}
                                             className={`w-full bg-[var(--c-surface)] border rounded-xl px-4 py-3 text-[var(--c-text)] focus:outline-none transition-colors ${topicInputShake ? 'shake border-red-500' : researchCheck.status === 'missing' ? 'border-amber-500/50 focus:border-amber-400' : 'border-[var(--c-border)] focus:border-purple-500'}`}
                                         />
+                                        {topicHint && (
+                                            <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1">⚠ Please enter a topic before checking market demand.</p>
+                                        )}
                                         {nicheValidation.status === 'rate_limited' && (
                                             <div className="mt-3 p-4 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-xl flex items-center justify-between gap-4">
                                                 <div>
@@ -2439,7 +2447,7 @@ const IdentityPanel = () => {
                 ))}
             </div>
             {saveToast && (
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-900/40 border border-emerald-500/40 rounded-xl text-emerald-300 text-sm font-medium animate-pulse">
+                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border text-sm font-bold bg-emerald-600 border-emerald-400/60 text-white shadow-emerald-900/50 pointer-events-none">
                     ✅ Identity saved successfully!
                 </div>
             )}
