@@ -2,10 +2,10 @@ import React from 'react';
 import { FiCheck } from 'react-icons/fi';
 
 const PHASES = [
-    { id: 1, label: 'TALK', icon: '💬', desc: 'アイデアを話す' },
-    { id: 2, label: 'CREATE', icon: '⚡', desc: 'コンテンツ生成' },
-    { id: 3, label: 'REFINE', icon: '✏️', desc: '磨く・調整' },
-    { id: 4, label: 'PUBLISH', icon: '🚀', desc: '投稿・公開' },
+    { id: 1, label: 'TALK', icon: '💬', desc: 'Share your idea' },
+    { id: 2, label: 'CREATE', icon: '⚡', desc: 'Generate content' },
+    { id: 3, label: 'REFINE', icon: '✏️', desc: 'Polish & adjust' },
+    { id: 4, label: 'PUBLISH', icon: '🚀', desc: 'Post & launch' },
 ];
 
 const PhaseStepperBar = ({ currentPhase, topic, onPhaseClick }) => {

@@ -6,9 +6,9 @@ import { BACKEND_URL } from '../config/backendUrl';
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 60000 });
 
 const PLACEHOLDERS = {
-    2: '生成について質問する...',
-    3: '書き直しの指示を出す...',
-    4: '投稿前に確認したいことは...',
+    2: 'Ask about content generation...',
+    3: 'Give a rewrite instruction...',
+    4: 'Anything to check before posting...',
 };
 
 const SageMiniChat = ({ phase, topic }) => {
@@ -69,9 +69,9 @@ const SageMiniChat = ({ phase, topic }) => {
                     <div className="flex-1 overflow-y-auto p-3 space-y-2 no-scrollbar">
                         {messages.length === 0 && (
                             <div className="text-center text-[var(--c-subtle)] text-xs mt-8">
-                                {phase === 2 && '生成に関する質問をどうぞ'}
-                                {phase === 3 && 'コンテンツの書き直し指示をどうぞ'}
-                                {phase === 4 && '投稿前の確認は何でもどうぞ'}
+                                {phase === 2 && 'Ask anything about your content generation'}
+                                {phase === 3 && 'Give instructions to rewrite your content'}
+                                {phase === 4 && 'Ask anything before you publish'}
                             </div>
                         )}
                         {messages.map((msg, i) => (
@@ -105,7 +105,7 @@ const SageMiniChat = ({ phase, topic }) => {
                                 type="text"
                                 value={input}
                                 onChange={e => setInput(e.target.value)}
-                                placeholder={PLACEHOLDERS[phase] || 'Sageに質問する...'}
+                                placeholder={PLACEHOLDERS[phase] || 'Ask Sage anything...'}
                                 className="flex-1 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-lg px-3 py-2 text-xs text-[var(--c-text)] focus:outline-none focus:border-blue-500 transition-colors placeholder:text-[var(--c-subtle)]"
                             />
                             <button

@@ -200,7 +200,7 @@ const SageOS = () => {
     const [monetizeTopic, setMonetizeTopic] = useState(() => _ls.get('sage_topic', ''));
     const [market, setMarket] = useState('US');
     const [price, setPrice] = useState('$29.99');
-    const [lang, setLang] = useState('auto');
+    const [lang, setLang] = useState('en');
     const [monetizeStatus, setMonetizeStatus] = useState('idle');
     const [monetizeResult, setMonetizeResult] = useState(null);
     const [generateProgress, setGenerateProgress] = useState('');
@@ -260,36 +260,39 @@ const SageOS = () => {
         { id: 1, role: 'system', content: 'Hi. What would you like to create today?' },
         {
             id: 2, role: 'user',
-            content: 'ChatGPTで副業を始めたいんですが、何から始めればいいですか？'
+            content: "I want to start making money online with AI. Where do I begin?"
         },
         {
             id: 3, role: 'sage',
-            content: `ChatGPT副業を始めるなら、まず「自分が詳しいこと」を1つ選ぶことです。プログラミング・英語・料理・節約術など、どんなジャンルでもOK。
+            content: `Great starting point! The fastest path is to pick **one thing you already know** — fitness, finance, cooking, coding, productivity — and turn it into a digital product with AI.
 
-**最速で収益化できる3つのパターン：**
+**3 proven income streams to start this week:**
 
-1. **電子書籍・テンプレート販売**（Gumroad） — 週末1つ作って$10〜$50で販売
-2. **ブログ + AdSense** — ChatGPTで週3記事、3ヶ月で月1〜3万円のベース収入
-3. **SNS代行** — 地元の飲食店や個人事業主のSNS投稿をChatGPTで作成・代行
+1. **Digital product on Gumroad** — Use AI to write an ebook or template pack, price it $9–$49, takes one weekend
+2. **AI-powered blog** — Publish 3 posts/week with AI, monetize with ads + affiliates within 90 days
+3. **Content-as-a-service** — Offer AI-written social posts or email newsletters to local businesses ($300–$1,500/mo)
 
-あなたが今得意なこと・好きなことを教えてください。最適なルートを一緒に設計します。`
+What's one topic you're already good at or passionate about? Tell me and I'll map out the exact product to build.`
         },
-        { id: 4, role: 'user', content: 'プログラミングが少し得意です。Pythonが書けます。' },
+        {
+            id: 4, role: 'user',
+            content: "I'm decent at Python and I love productivity systems."
+        },
         {
             id: 5, role: 'sage',
-            content: `Python×ChatGPTは最強の組み合わせです！今すぐ始められる具体的なプランを提案します：
+            content: `Python + productivity = a goldmine combination. Here's your fastest path:
 
-**🚀 おすすめ：「Pythonスクリプト販売」**
-- ChatGPTで業務自動化スクリプト（CSV処理・PDF変換・スクレイピングなど）を作成
-- Gumroad / Boothで1,000〜5,000円で販売
-- 初月: 3本作成 → 月1〜3万円の副収入が現実的
+**🚀 Recommended: "Python Automation Scripts for Productivity"**
+- Build 3–5 scripts (auto-email sorter, meeting summarizer, habit tracker) with AI assistance
+- Sell as a bundle on Gumroad for $19–$39
+- Month 1 target: first $200 from 5–10 sales
 
-**次のステップ：**
-1. 「最も需要のあるPythonスクリプト」5種類をCREATEフェーズで商品化
-2. D1リサーチでPython副業市場を分析
-3. 販売ページをSageが自動生成
+**Your 3 next steps:**
+1. Click **⚡ Generate Content with This Topic** to create your product outline
+2. Run **D1 Research** to validate demand and find the best angles
+3. Sage generates your sales page, blog post, and social captions — ready to publish
 
-「⚡ Generate Content with This Topic」を押して商品作成を始めましょう！`
+Hit "Generate Content" below to get started!`
         },
     ]);
     const [inputValue, setInputValue] = useState('');
@@ -418,7 +421,7 @@ const SageOS = () => {
             await runMonetizePipeline();
         } catch (e) {
             setMonetizeStatus('error');
-            setMonetizeResult('D1リサーチに失敗しました: ' + (e.message || ''));
+            setMonetizeResult('D1 Research failed: ' + (e.message || ''));
             // エラーは自動リセットしない
         }
     };
@@ -429,7 +432,7 @@ const SageOS = () => {
             chatInputRef.current?.focus();
             setChatInputShake(true);
             setTimeout(() => setChatInputShake(false), 600);
-            setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: '🔍 トピックを入力してから「Run Research」を押してください。' }]);
+            setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: '🔍 Please type a topic first, then click "Run Research".' }]);
             return;
         }
         setMonetizeStatus('running_d1');
@@ -438,7 +441,7 @@ const SageOS = () => {
             setMessages(prev => [...prev, {
                 id: Date.now(),
                 role: 'sage',
-                content: res.data.summary ?? 'リサーチ完了！結果を output/ に保存しました。'
+                content: res.data.summary ?? 'Research complete! Report saved to the output/ folder.'
             }]);
             const check = await api.get(`/api/research/check?topic=${encodeURIComponent(topic)}`);
             setResearchCheck({
@@ -451,7 +454,7 @@ const SageOS = () => {
             setMessages(prev => [...prev, {
                 id: Date.now(),
                 role: 'sage',
-                content: `リサーチエラー: ${e?.response?.data?.error || e.message}`
+                content: `Research error: ${e?.response?.data?.error || e.message}`
             }]);
         }
     };
@@ -834,7 +837,8 @@ const SageOS = () => {
             },
             competition: {
                 level: isJa ? '中程度' : 'Medium',
-                avg_price_jpy: 2980,
+                avg_price_jpy: isJa ? 2980 : null,
+                avg_price_usd: isJa ? null : 27,
                 gaps: [isJa ? '日本語コンテンツが不足' : 'Underserved beginner audience'],
             },
             audience: {
@@ -845,9 +849,9 @@ const SageOS = () => {
                     pain_point: isJa ? '収益化の方法がわからない' : 'Unsure how to monetize their skills',
                 },
             },
-            pricing: {
-                japan: { basic: 980, standard: 2980, premium: 9800 },
-            },
+            pricing: isJa
+                ? { japan: { basic: 980, standard: 2980, premium: 9800 } }
+                : { us: { basic: 9, standard: 29, premium: 97 } },
             improvements: isJa
                 ? ['ロングテールキーワードを狙ったコンテンツが効果的', 'SNS連携でリーチを拡大できます']
                 : ['Target long-tail keywords for easier ranking', 'Cross-promote on social media to expand reach'],
@@ -1233,7 +1237,7 @@ const SageOS = () => {
                                                                 }}
                                                                 className="text-sm px-4 py-2 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] rounded-xl flex items-center gap-2 transition-all"
                                                             >
-                                                                💬 もう少し話す
+                                                                💬 Keep chatting
                                                             </button>
                                                         </div>
                                                     )}
@@ -1259,7 +1263,7 @@ const SageOS = () => {
                                                 type="text"
                                                 value={inputValue}
                                                 onChange={e => setInputValue(e.target.value)}
-                                                placeholder="あなたのビジネスやコンテンツのアイデアを話してください..."
+                                                placeholder="Tell me your idea, niche, or business goal..."
                                                 className={`w-full bg-[var(--c-surface)] border rounded-xl pl-4 pr-14 py-4 focus:outline-none transition-colors ${chatInputShake ? 'shake border-red-500' : 'border-[var(--c-border)] focus:border-blue-500'}`}
                                             />
                                             <button type="submit" className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
@@ -1416,7 +1420,7 @@ const SageOS = () => {
                                     <div>
                                         <label className="block text-sm font-bold text-[var(--c-text)] mb-2">Output Language</label>
                                         <div className="flex gap-2">
-                                            {[['auto', '🌐 Auto'], ['ja', '🇯🇵 Japanese'], ['en', '🇺🇸 English']].map(([val, label]) => (
+                                            {[['en', '🇺🇸 English'], ['auto', '🌐 Auto'], ['ja', '🇯🇵 Japanese']].map(([val, label]) => (
                                                 <button key={val} onClick={() => setLang(val)}
                                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${lang === val ? 'bg-purple-600 text-white' : 'bg-[var(--c-raised)] text-[var(--c-muted)] hover:bg-[var(--c-raised)] hover:text-[var(--c-text)]'}`}>
                                                     {label}
@@ -1598,7 +1602,11 @@ const SageOS = () => {
                                                 <div className="bg-[var(--c-raised)] rounded-xl p-3">
                                                     <div className="text-[var(--c-muted)] mb-1 uppercase tracking-widest font-bold">Competition</div>
                                                     <div className="text-[var(--c-text)] font-bold text-base">{v.competition?.level}</div>
-                                                    <div className="text-[var(--c-subtle)]">Avg ¥{(v.competition?.avg_price_jpy || 0).toLocaleString()}</div>
+                                                    {v.competition?.avg_price_usd
+                                                        ? <div className="text-[var(--c-subtle)]">Avg ${v.competition.avg_price_usd}</div>
+                                                        : v.competition?.avg_price_jpy
+                                                            ? <div className="text-[var(--c-subtle)]">Avg ¥{(v.competition.avg_price_jpy).toLocaleString()}</div>
+                                                            : null}
                                                     {(v.competition?.gaps || []).length > 0 && (
                                                         <div className="mt-1 text-indigo-300">Gap: {v.competition.gaps[0]}</div>
                                                     )}
@@ -1610,22 +1618,29 @@ const SageOS = () => {
                                                     <div className="text-[var(--c-muted)] mt-1 leading-relaxed">{v.audience?.persona?.pain_point}</div>
                                                 </div>
                                             </div>
-                                            {v.pricing && (
-                                                <div className="flex gap-3 text-xs">
-                                                    <div className="bg-[var(--c-raised)] rounded-xl px-4 py-2 flex-1 text-center">
-                                                        <div className="text-[var(--c-muted)]">Basic</div>
-                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.basic || 0).toLocaleString()}</div>
+                                            {v.pricing && (() => {
+                                                const p = v.pricing.us || v.pricing.japan;
+                                                const sym = v.pricing.us ? '$' : '¥';
+                                                const fmt = v.pricing.us
+                                                    ? (n) => `${sym}${n}`
+                                                    : (n) => `${sym}${(n || 0).toLocaleString()}`;
+                                                return p ? (
+                                                    <div className="flex gap-3 text-xs">
+                                                        <div className="bg-[var(--c-raised)] rounded-xl px-4 py-2 flex-1 text-center">
+                                                            <div className="text-[var(--c-muted)]">Basic</div>
+                                                            <div className="text-[var(--c-text)] font-bold">{fmt(p.basic)}</div>
+                                                        </div>
+                                                        <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl px-4 py-2 flex-1 text-center">
+                                                            <div className="text-purple-300">Standard ★</div>
+                                                            <div className="text-[var(--c-text)] font-bold">{fmt(p.standard)}</div>
+                                                        </div>
+                                                        <div className="bg-[var(--c-raised)] rounded-xl px-4 py-2 flex-1 text-center">
+                                                            <div className="text-[var(--c-muted)]">Premium</div>
+                                                            <div className="text-[var(--c-text)] font-bold">{fmt(p.premium)}</div>
+                                                        </div>
                                                     </div>
-                                                    <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl px-4 py-2 flex-1 text-center">
-                                                        <div className="text-purple-300">Standard ★</div>
-                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.standard || 0).toLocaleString()}</div>
-                                                    </div>
-                                                    <div className="bg-[var(--c-raised)] rounded-xl px-4 py-2 flex-1 text-center">
-                                                        <div className="text-[var(--c-muted)]">Premium</div>
-                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.premium || 0).toLocaleString()}</div>
-                                                    </div>
-                                                </div>
-                                            )}
+                                                ) : null;
+                                            })()}
                                             {(v.improvements || []).length > 0 && (
                                                 <div className="bg-[var(--c-raised)] rounded-xl p-3 text-xs space-y-1">
                                                     <div className="text-[var(--c-muted)] uppercase tracking-widest font-bold mb-2">Suggestions</div>
@@ -2332,7 +2347,7 @@ const SageOS = () => {
 // ── Identity Panel ──────────────────────────────────────────────────────────
 const IdentityPanel = () => {
     const [identity, setIdentity] = React.useState({
-        role: '', niche: '', tone: '', visual_style: '', language: 'ja'
+        role: '', niche: '', tone: '', visual_style: '', language: 'en'
     });
     const [saving, setSaving] = React.useState(false);
     const [saved, setSaved] = React.useState(false);
@@ -2377,10 +2392,10 @@ const IdentityPanel = () => {
     };
 
     const fields = [
-        { key: 'role', label: 'Role / Persona', placeholder: 'e.g. オカルト研究家、猫好き投資家' },
-        { key: 'niche', label: 'Niche / Topic', placeholder: 'e.g. 霊的覚醒・神秘体験、猫と資産形成' },
-        { key: 'tone', label: 'Tone / Voice', placeholder: 'e.g. mysterious and profound, friendly and warm' },
-        { key: 'visual_style', label: 'Visual Style', placeholder: 'e.g. dark mystical aesthetic, cute pastel colors' },
+        { key: 'role', label: 'Role / Persona', placeholder: 'e.g. Productivity coach, AI solopreneur' },
+        { key: 'niche', label: 'Niche / Topic', placeholder: 'e.g. passive income with AI, freelance writing' },
+        { key: 'tone', label: 'Tone / Voice', placeholder: 'e.g. conversational and direct, expert and inspiring' },
+        { key: 'visual_style', label: 'Visual Style', placeholder: 'e.g. clean minimal dark theme, bold and colorful' },
     ];
 
     return (
@@ -2409,7 +2424,7 @@ const IdentityPanel = () => {
                     {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : saveError ? '⚠️ Saved Locally' : '💾 Save Identity'}
                 </button>
                 {saveError && (
-                    <div className="text-xs text-amber-400 mt-1 px-1">サーバーへの保存に失敗しました。ローカルに保存しました。</div>
+                    <div className="text-xs text-amber-400 mt-1 px-1">Server save failed — saved locally. Changes apply this session.</div>
                 )}
             </div>
         </div>
