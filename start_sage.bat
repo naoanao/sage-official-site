@@ -75,8 +75,8 @@ echo  このウィンドウを閉じると Sage が停止します。
 echo.
 echo  ────────────────────────────────────────────────────────────
 
-:: 3秒後にブラウザを開く（Flask が起動するのを待つ）
-start "" /b cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:8080"
+:: 5秒後にブラウザを開く（Flask が起動するのを待つ / 初回は特に時間がかかる）
+start "" /b cmd /c "timeout /t 5 /nobreak >nul && start http://localhost:8080"
 
 :: Flask をこのウィンドウで実行（ログが見える）
 !PY! -m backend.flask_server
