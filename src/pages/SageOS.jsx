@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw } from 'react-icons/fi';
+import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 import PhaseStepperBar from '../components/PhaseStepperBar';
@@ -186,6 +186,7 @@ const SageOS = () => {
     const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(false);
+    const [showContentManager, setShowContentManager] = useState(false);
     // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
     const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
@@ -209,6 +210,7 @@ const SageOS = () => {
     const chatInputRef = useRef(null);
     const nicheResultRef = useRef(null);
     const mainScrollRef = useRef(null);
+    const chatBottomRef = useRef(null);
 
     const CREATE_PLACEHOLDERS = [
         "e.g. Beginner's guide to passive income with AI",
@@ -354,6 +356,13 @@ const SageOS = () => {
         const t = setTimeout(() => setQuickPreview(buildQuickPreview(monetizeTopic)), 600);
         return () => clearTimeout(t);
     }, [monetizeTopic, price]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Auto-scroll chat to bottom when new messages are added
+    useEffect(() => {
+        if (chatBottomRef.current) {
+            chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages]);
 
     // Persist phase + topic to localStorage so refresh restores state
     useEffect(() => { _ls.set('sage_phase', currentPhase); }, [currentPhase]);
@@ -1006,10 +1015,18 @@ const SageOS = () => {
 
                     {/* Self-Test toggle */}
                     <button
-                        onClick={() => { setShowSelfTest(p => !p); setShowAutomations(false); }}
+                        onClick={() => { setShowSelfTest(p => !p); setShowAutomations(false); setShowContentManager(false); }}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showSelfTest ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
                     >
                         <FiCpu /> <span>Self-Test</span>
+                    </button>
+
+                    {/* Content Manager toggle */}
+                    <button
+                        onClick={() => { setShowContentManager(p => !p); setShowAutomations(false); setShowSelfTest(false); }}
+                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showContentManager ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                    >
+                        <FiFolder /> <span>Content</span>
                     </button>
 
                     {/* Whop member link */}
@@ -1078,8 +1095,11 @@ const SageOS = () => {
                 {/* Self-Test Panel */}
                 {/* old Self-Test panel removed — new modal rendered at root level below */}
 
+                {/* Content Manager Panel */}
+                {showContentManager && <ContentManager />}
+
                 {/* Phase Pages */}
-                {!showAutomations && !showSelfTest && (
+                {!showAutomations && !showSelfTest && !showContentManager && (
                     <>
                         {/* PhaseStepperBar (phases 2-4) */}
                         {currentPhase >= 2 && (
@@ -1172,6 +1192,7 @@ const SageOS = () => {
                                                 </div>
                                             )
                                         )}
+                                        <div ref={chatBottomRef} />
                                     </div>
                                     <form onSubmit={sendMessage} className="p-4 bg-[var(--c-surface)] border-t border-[var(--c-border)]">
                                         <div className="flex relative">
@@ -2321,6 +2342,99 @@ const IdentityPanel = () => {
                     {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save Identity'}
                 </button>
             </div>
+        </div>
+    );
+};
+
+// ── ContentManager ───────────────────────────────────────────────────────────
+const ContentManager = () => {
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [filter, setFilter] = useState('all');
+
+    useEffect(() => {
+        setLoading(true);
+        setError(null);
+        const params = filter !== 'all' ? `?type=${filter}` : '';
+        api.get(`/api/content/list${params}`)
+            .then(res => setItems(res.data.items || []))
+            .catch(e => setError(e?.response?.data?.error || e?.response?.data?.message || 'Content Manager offline'))
+            .finally(() => setLoading(false));
+    }, [filter]);
+
+    const FILTERS = [
+        { value: 'all', label: 'All' },
+        { value: 'blog', label: 'Blog' },
+        { value: 'general', label: 'General' },
+    ];
+
+    return (
+        <div className="max-w-4xl mx-auto py-8 px-4">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <FiFolder className="text-blue-500 text-xl" />
+                    <h2 className="text-xl font-bold text-[var(--c-text)]">Content Library</h2>
+                </div>
+                <div className="flex gap-2">
+                    {FILTERS.map(f => (
+                        <button key={f.value} onClick={() => setFilter(f.value)}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${filter === f.value ? 'bg-blue-600 text-white' : 'bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)] border border-[var(--c-border)]'}`}>
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {loading && (
+                <div className="flex justify-center py-16">
+                    <div className="flex gap-1">
+                        {[0, 150, 300].map(d => (
+                            <div key={d} className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {error && (
+                <div className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl p-6 text-center text-[var(--c-muted)] text-sm">
+                    <FiAlertTriangle className="mx-auto mb-2 text-amber-500 text-2xl" />
+                    {error}
+                </div>
+            )}
+
+            {!loading && !error && items.length === 0 && (
+                <div className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl p-10 text-center text-[var(--c-muted)] text-sm">
+                    <FiFolder className="mx-auto mb-3 text-3xl opacity-30" />
+                    <p>No content yet. Run the pipeline to generate content.</p>
+                </div>
+            )}
+
+            {!loading && !error && items.length > 0 && (
+                <div className="space-y-3">
+                    {items.map((item, i) => (
+                        <div key={i} className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl p-4 hover:border-blue-500/40 transition-all">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-[var(--c-text)] text-sm truncate">{item.title || 'Untitled'}</p>
+                                    {item.topic && <p className="text-xs text-[var(--c-muted)] mt-0.5">{item.topic}</p>}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {item.type && (
+                                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-600/20 text-blue-400 font-mono">{item.type}</span>
+                                    )}
+                                    {item.created_at && (
+                                        <span className="text-xs text-[var(--c-subtle)]">{new Date(item.created_at).toLocaleDateString()}</span>
+                                    )}
+                                </div>
+                            </div>
+                            {item.path && (
+                                <p className="text-xs text-[var(--c-subtle)] font-mono mt-2 truncate">{item.path}</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
