@@ -11,6 +11,7 @@ const Shop = lazy(() => import('./pages/Shop'))
 const SalesPage = lazy(() => import('./pages/SalesPage'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Terms = lazy(() => import('./pages/Terms'))
+const NotFound = lazy(() => import('./pages/Landing'))  // reuse Landing as 404 fallback
 
 function LoadingFallback() {
   return (
@@ -55,8 +56,10 @@ function App() {
           <Route path="/thank-you" element={<ThankYou />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/sales" element={<SalesPage />} />
+          <Route path="/offer" element={<SalesPage />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </Router>

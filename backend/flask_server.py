@@ -3522,6 +3522,25 @@ def paypal_checkout():
         }), 200
 
 
+# ── PayPal Capture ────────────────────────────────────────────────────────────
+@app.route('/api/paypal/capture', methods=['POST'])
+def paypal_capture():
+    """
+    Captures a PayPal order after the buyer approves it.
+    Called from /thank-you when PayPal redirects back with ?token=ORDER_ID
+    """
+    try:
+        from backend.integrations.paypal_integration import paypal_integration
+        data = request.get_json(silent=True) or {}
+        order_id = data.get('order_id', '').strip()
+        if not order_id:
+            return jsonify({'status': 'error', 'message': 'order_id required'}), 400
+        result = paypal_integration.capture_order(order_id)
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react_app(path):

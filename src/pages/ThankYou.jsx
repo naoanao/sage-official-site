@@ -1,8 +1,31 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { BACKEND_URL } from '../config/backendUrl';
 
 const ThankYou = () => {
+    const [searchParams] = useSearchParams();
+    const [captureStatus, setCaptureStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
+
+    // PayPal redirects to /thank-you?token=ORDER_ID after buyer approves.
+    // Capture the payment automatically on mount.
+    useEffect(() => {
+        const token = searchParams.get('token'); // PayPal order ID
+        if (!token) return;
+
+        setCaptureStatus('loading');
+        fetch(`${BACKEND_URL}/api/paypal/capture`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: token }),
+        })
+            .then(r => r.json())
+            .then(data => {
+                setCaptureStatus(data.status === 'success' ? 'ok' : 'error');
+            })
+            .catch(() => setCaptureStatus('error'));
+    }, [searchParams]);
+
     return (
         <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
             <div className="max-w-3xl text-center">
@@ -27,6 +50,17 @@ const ThankYou = () => {
                         </span>
                     </h1>
 
+                    {/* PayPal capture feedback */}
+                    {captureStatus === 'loading' && (
+                        <p className="text-sm text-slate-500 font-mono mb-4 animate-pulse">Confirming payment…</p>
+                    )}
+                    {captureStatus === 'error' && (
+                        <p className="text-sm text-amber-500 mb-4">
+                            Payment confirmation pending. If you were charged, your order is safe —{' '}
+                            <a href="mailto:sage@onelovepeople.com" className="underline">contact us</a> and we'll sort it out.
+                        </p>
+                    )}
+
                     {/* Message */}
                     <p className="text-2xl md:text-3xl text-gray-200 mb-4 font-bold">
                         Your order is confirmed 🎉
@@ -45,19 +79,19 @@ const ThankYou = () => {
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">📧</span>
                                 <div>
-                                    <strong className="text-white">Check your email</strong> - Download link sent within 5 minutes
+                                    <strong className="text-white">Check your email</strong> — Download link sent within 5 minutes
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">📦</span>
                                 <div>
-                                    <strong className="text-white">Extract the ZIP file</strong> - Follow the included README.md
+                                    <strong className="text-white">Extract the ZIP file</strong> — Follow the included README.md
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">🚀</span>
                                 <div>
-                                    <strong className="text-white">Run setup</strong> - Takes 5 minutes, fully guided
+                                    <strong className="text-white">Run setup</strong> — Takes 5 minutes, fully guided
                                 </div>
                             </div>
                         </div>
@@ -81,7 +115,10 @@ const ThankYou = () => {
 
                     {/* Support */}
                     <p className="mt-12 text-gray-500">
-                        Need help? Email us at <a href="mailto:support@sage-ai.com" className="text-violet-400 hover:underline">support@sage-ai.com</a>
+                        Need help? Email us at{' '}
+                        <a href="mailto:sage@onelovepeople.com" className="text-violet-400 hover:underline">
+                            sage@onelovepeople.com
+                        </a>
                     </p>
                 </motion.div>
             </div>
