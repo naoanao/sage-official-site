@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 # Get project root (one level up from backend/)
 project_root = Path(__file__).parent.parent
 env_path = project_root / '.env'
-load_dotenv(dotenv_path=env_path)  # Explicitly load .env from project root
+load_dotenv(dotenv_path=env_path, override=True)  # Explicitly load .env from project root
 
 # --- SAGE CONFIG & STARTUP GUARD (TRUTH IN AI) ---
 sys.path.append(os.path.dirname(os.path.abspath(__file__))) # Ensure modules are importable
@@ -3477,20 +3477,37 @@ def stripe_checkout():
     Falls back to Gumroad if key not set.
     """
     try:
-        from backend.integrations.stripe_integration import stripe_integration
+        import stripe as _stripe
+        from dotenv import load_dotenv as _load_dotenv
+        # Re-load .env using absolute path to ensure key is always fresh
+        _load_dotenv(dotenv_path=Path(__file__).parent.parent / '.env', override=True)
+        stripe_key = os.getenv('STRIPE_SECRET_KEY')
+        print(f"[Stripe] key={'set('+stripe_key[:12]+')' if stripe_key else 'NOT SET'}")
+
         data = request.get_json(silent=True) or {}
         product_name = data.get('product_name', '2026 AI Influencer Monetization Express')
         price = float(data.get('price', 29.99))
 
-        result = stripe_integration.create_payment_link(product_name, price)
-        if result.get('status') == 'success':
-            return jsonify(result), 200
-        # no_key or error → Gumroad fallback
-        return jsonify({
-            'status': 'fallback',
-            'url': 'https://naofumi3.gumroad.com/l/yvzrfjd',
-            'message': result.get('message', 'Stripe not configured — using Gumroad'),
-        }), 200
+        if not stripe_key:
+            return jsonify({
+                'status': 'fallback',
+                'url': 'https://naofumi3.gumroad.com/l/yvzrfjd',
+                'message': 'STRIPE_SECRET_KEY not configured',
+            }), 200
+
+        _stripe.api_key = stripe_key
+        product = _stripe.Product.create(name=product_name)
+        price_obj = _stripe.Price.create(
+            unit_amount=int(price * 100),
+            currency='usd',
+            product=product.id,
+        )
+        payment_link = _stripe.PaymentLink.create(
+            line_items=[{'price': price_obj.id, 'quantity': 1}]
+        )
+        print(f"[Stripe] Payment Link created: {payment_link.url}")
+        return jsonify({'status': 'success', 'url': payment_link.url, 'message': 'Payment Link Created'}), 200
+
     except Exception as e:
         print(f"[Stripe endpoint] Error: {e}")
         return jsonify({
@@ -3520,6 +3537,129 @@ def paypal_checkout():
             'url': 'https://paypal.me/japanletgo/29.99',
             'message': str(e),
         }), 200
+
+
+# ── Store Manager API ─────────────────────────────────────────────────────────
+
+@app.route('/api/store/revenue', methods=['GET'])
+def store_revenue():
+    """Stripe revenue summary: last 30 days total, order count, avg order value."""
+    try:
+        import stripe as _stripe
+        stripe_key = os.getenv('STRIPE_SECRET_KEY')
+        if not stripe_key:
+            return jsonify({'status': 'no_key'}), 200
+        _stripe.api_key = stripe_key
+        import time
+        since = int(time.time()) - 86400 * 30
+        charges = _stripe.Charge.list(created={'gte': since}, limit=100)
+        succeeded = [c for c in charges.auto_paging_iter() if c.status == 'succeeded']
+        total = sum(c.amount for c in succeeded) / 100.0
+        count = len(succeeded)
+        avg = round(total / count, 2) if count else 0
+        return jsonify({'status': 'ok', 'total': total, 'count': count, 'avg': avg, 'currency': 'usd'}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 200
+
+
+@app.route('/api/store/orders', methods=['GET'])
+def store_orders():
+    """Stripe recent orders (last 20 payment intents)."""
+    try:
+        import stripe as _stripe
+        stripe_key = os.getenv('STRIPE_SECRET_KEY')
+        if not stripe_key:
+            return jsonify({'status': 'no_key', 'orders': []}), 200
+        _stripe.api_key = stripe_key
+        pis = _stripe.PaymentIntent.list(limit=20)
+        orders = []
+        for pi in pis.data:
+            orders.append({
+                'id': pi.id,
+                'amount': pi.amount / 100.0,
+                'currency': pi.currency,
+                'status': pi.status,
+                'created': pi.created,
+                'email': (pi.receipt_email or
+                          (pi.charges.data[0].billing_details.email if pi.charges and pi.charges.data else None)),
+                'description': pi.description or '',
+            })
+        return jsonify({'status': 'ok', 'orders': orders}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'orders': [], 'message': str(e)}), 200
+
+
+@app.route('/api/store/products', methods=['GET'])
+def store_products():
+    """List Stripe active products with prices."""
+    try:
+        import stripe as _stripe
+        stripe_key = os.getenv('STRIPE_SECRET_KEY')
+        if not stripe_key:
+            return jsonify({'status': 'no_key', 'products': []}), 200
+        _stripe.api_key = stripe_key
+        products = _stripe.Product.list(active=True, limit=50)
+        result = []
+        for p in products.data:
+            prices = _stripe.Price.list(product=p.id, active=True, limit=5)
+            result.append({
+                'id': p.id,
+                'name': p.name,
+                'description': p.description or '',
+                'images': p.images[:1],
+                'prices': [{'id': pr.id, 'amount': pr.unit_amount / 100.0,
+                             'currency': pr.currency} for pr in prices.data],
+            })
+        return jsonify({'status': 'ok', 'products': result}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'products': [], 'message': str(e)}), 200
+
+
+@app.route('/api/store/products/<product_id>/update', methods=['POST'])
+def store_product_update(product_id):
+    """Update Stripe product name / description."""
+    try:
+        import stripe as _stripe
+        stripe_key = os.getenv('STRIPE_SECRET_KEY')
+        if not stripe_key:
+            return jsonify({'status': 'no_key'}), 200
+        _stripe.api_key = stripe_key
+        data = request.get_json(silent=True) or {}
+        params = {}
+        if 'name' in data:
+            params['name'] = data['name']
+        if 'description' in data:
+            params['description'] = data['description']
+        updated = _stripe.Product.modify(product_id, **params)
+        return jsonify({'status': 'ok', 'product': {'id': updated.id, 'name': updated.name}}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 200
+
+
+@app.route('/api/store/products/<product_id>/archive', methods=['POST'])
+def store_product_archive(product_id):
+    """Archive (deactivate) a Stripe product."""
+    try:
+        import stripe as _stripe
+        stripe_key = os.getenv('STRIPE_SECRET_KEY')
+        if not stripe_key:
+            return jsonify({'status': 'no_key'}), 200
+        _stripe.api_key = stripe_key
+        _stripe.Product.modify(product_id, active=False)
+        return jsonify({'status': 'ok'}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 200
+
+
+@app.route('/api/store/whop-products', methods=['GET'])
+def store_whop_products():
+    """List Whop products from local registry."""
+    try:
+        from backend.integrations.whop_publisher import _load_registry
+        reg = _load_registry()
+        return jsonify({'status': 'ok', 'products': reg}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'products': [], 'message': str(e)}), 200
 
 
 @app.route('/', defaults={'path': ''})
