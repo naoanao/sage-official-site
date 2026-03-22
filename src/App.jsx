@@ -9,6 +9,7 @@ import Shop from './pages/Shop'
 import SalesPage from './pages/SalesPage'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
+import StoreManager from './pages/StoreManager'
 import './App.css'
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/manager" element={<StoreManager />} />
       </Routes>
     </Router>
   )

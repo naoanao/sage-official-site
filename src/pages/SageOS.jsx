@@ -1029,6 +1029,14 @@ const SageOS = () => {
                         <FiFolder /> <span>Content</span>
                     </button>
 
+                    {/* Store Manager link */}
+                    <Link
+                        to="/manager"
+                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
+                    >
+                        <FiDollarSign /> <span>Store Manager</span>
+                    </Link>
+
                     {/* Whop member link */}
                     <a
                         href="https://whop.com/joined/segeai/"
