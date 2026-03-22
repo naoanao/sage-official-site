@@ -429,11 +429,14 @@ const SageOS = () => {
             setMonetizeStatus('idle');
         } catch (e) {
             setMonetizeStatus('idle');
-            setMessages(prev => [...prev, {
-                id: Date.now(),
-                role: 'sage',
-                content: `リサーチエラー: ${e?.response?.data?.error || e.message}`
-            }]);
+            const isOffline = !e.response;
+            const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout');
+            const errMsg = isOffline
+                ? 'Flask が起動していません。run_sage.ps1 を実行してください。'
+                : isTimeout
+                    ? 'リサーチはバックグラウンドで実行中の可能性があります。1〜2分待ってから Generate を試してください。'
+                    : `リサーチエラー: ${e?.response?.data?.error || e.message}`;
+            setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: errMsg }]);
         }
     };
 
@@ -553,9 +556,12 @@ const SageOS = () => {
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
             setProgressPercent(0);
-            setMonetizeResult(e.message || 'Pipeline failed');
+            const isOffline = !e.response;
+            const errMsg = isOffline
+                ? 'Flask が起動していません。run_sage.ps1 を実行して再試行してください。'
+                : e.message || 'Pipeline failed';
+            setMonetizeResult(errMsg);
             setMonetizeStatus('error');
-            // エラーは自動リセットしない — ユーザーが明示的にRetryするまで表示
         }
     };
 
