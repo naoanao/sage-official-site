@@ -314,6 +314,47 @@ const BuilderCard = () => (
     </div>
 );
 
+const FAQ_ITEMS = [
+    { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. No code, no dashboards, no configuration." },
+    { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
+    { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
+    { q: "What if it doesn't work for me?", a: "Gumroad's 30-day money-back guarantee. One-click full refund, no questions asked." },
+    { q: "Do I need to install anything?", a: "The Blueprint ($29.99) is a download-and-run ZIP. No installation needed. Windows only for now." },
+];
+
+const FaqAccordion = () => {
+    const [open, setOpen] = useState(null);
+    return (
+        <div className="space-y-2">
+            {FAQ_ITEMS.map((item, i) => (
+                <Motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 8 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.05 }}
+                    className="bento-card overflow-hidden"
+                >
+                    <button
+                        onClick={() => setOpen(open === i ? null : i)}
+                        className="w-full flex items-center justify-between px-5 py-4 text-left"
+                    >
+                        <span className="font-bold pr-4" style={{ fontSize: '0.9rem', color: 'var(--c-text)' }}>{item.q}</span>
+                        <span className="shrink-0 text-lg font-light" style={{ color: 'var(--c-muted)', lineHeight: 1 }}>
+                            {open === i ? '×' : '+'}
+                        </span>
+                    </button>
+                    {open === i && (
+                        <div className="px-5 pb-4">
+                            <p className="text-sm leading-relaxed" style={{ color: 'var(--c-muted)' }}>{item.a}</p>
+                        </div>
+                    )}
+                </Motion.div>
+            ))}
+        </div>
+    );
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 const Landing = () => {
     const [demoVisible, setDemoVisible] = useState(false);
@@ -616,27 +657,7 @@ const Landing = () => {
                             Common questions
                         </h2>
                     </Motion.div>
-                    <div className="space-y-2">
-                        {[
-                            { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. No code, no dashboards, no configuration." },
-                            { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
-                            { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
-                            { q: "What if it doesn't work for me?", a: "Gumroad's 30-day money-back guarantee. One-click full refund, no questions asked." },
-                            { q: "Do I need to install anything?", a: "The Blueprint ($29.99) is a download-and-run ZIP. No installation needed. Windows only for now." },
-                        ].map((item, i) => (
-                            <Motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 8 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.05 }}
-                                className="bento-card p-5"
-                            >
-                                <h3 className="font-bold mb-2" style={{ fontSize: '0.9rem', color: 'var(--c-text)' }}>{item.q}</h3>
-                                <p className="text-sm leading-relaxed" style={{ color: 'var(--c-muted)' }}>{item.a}</p>
-                            </Motion.div>
-                        ))}
-                    </div>
+                    <FaqAccordion />
                 </div>
             </section>
 
