@@ -318,6 +318,7 @@ const BuilderCard = () => (
 const Landing = () => {
     const [demoVisible, setDemoVisible] = useState(false);
     const [inputIndex, setInputIndex] = useState(0);
+    const [openFaq, setOpenFaq] = useState(null);
 
     useEffect(() => {
         const t = setInterval(() => setInputIndex(i => (i + 1) % DEMO_INPUTS.length), 3200);
@@ -630,10 +631,26 @@ const Landing = () => {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: i * 0.05 }}
-                                className="bento-card p-5"
+                                className="bento-card overflow-hidden"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => setOpenFaq(openFaq === i ? null : i)}
                             >
-                                <h3 className="font-bold mb-2" style={{ fontSize: '0.9rem', color: 'var(--c-text)' }}>{item.q}</h3>
-                                <p className="text-sm leading-relaxed" style={{ color: 'var(--c-muted)' }}>{item.a}</p>
+                                <div className="p-5 flex items-center justify-between gap-3">
+                                    <h3 className="font-bold" style={{ fontSize: '0.9rem', color: 'var(--c-text)' }}>{item.q}</h3>
+                                    <span style={{
+                                        color: 'var(--c-muted)',
+                                        fontSize: '1.1rem',
+                                        lineHeight: 1,
+                                        transform: openFaq === i ? 'rotate(45deg)' : 'rotate(0deg)',
+                                        transition: 'transform 0.2s ease',
+                                        flexShrink: 0,
+                                    }}>+</span>
+                                </div>
+                                {openFaq === i && (
+                                    <div className="px-5 pb-5">
+                                        <p className="text-sm leading-relaxed" style={{ color: 'var(--c-muted)', borderTop: '1px solid var(--c-border)', paddingTop: '0.75rem' }}>{item.a}</p>
+                                    </div>
+                                )}
                             </Motion.div>
                         ))}
                     </div>

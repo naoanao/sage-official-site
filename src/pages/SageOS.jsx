@@ -474,11 +474,15 @@ Hit "Generate Content" below to get started!`
             setMonetizeStatus('idle');
         } catch (e) {
             setMonetizeStatus('idle');
-            setMessages(prev => [...prev, {
-                id: Date.now(),
-                role: 'sage',
-                content: `Research error: ${e?.response?.data?.error || e.message}`
-            }]);
+            const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
+            const isNetwork = e?.message === 'Network Error';
+            const detail = e?.response?.data?.error || e?.message || 'Unknown error';
+            const msg = isTimeout
+                ? 'Research timed out — the report may still be generating in the background. Check the output/ folder in a moment.'
+                : isNetwork
+                    ? 'Research started but the connection dropped — the report is likely still generating. Check the output/ folder.'
+                    : `Research error: ${detail}`;
+            setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: msg }]);
         }
     };
 
@@ -598,7 +602,14 @@ Hit "Generate Content" below to get started!`
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
             setProgressPercent(0);
-            setMonetizeResult(e.message || 'Pipeline failed');
+            const isNetwork = e?.message === 'Network Error';
+            const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
+            const errMsg = isNetwork
+                ? 'Backend unreachable — make sure Flask is running on port 8080 (run run_sage.ps1).'
+                : isTimeout
+                    ? 'Pipeline timed out — LLM is taking too long. Please retry.'
+                    : e.message || 'Pipeline failed';
+            setMonetizeResult(errMsg);
             setMonetizeStatus('error');
             // エラーは自動リセットしない — ユーザーが明示的にRetryするまで表示
         }
