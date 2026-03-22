@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowLeft, FiEdit2, FiCheck, FiX, FiArchive, FiRefreshCw, FiDollarSign, FiShoppingBag, FiTrendingUp } from 'react-icons/fi';
+import toast from '../utils/toast';
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 
@@ -39,12 +40,16 @@ function ProductRow({ product, onArchive }) {
     async function save() {
         setSaving(true);
         try {
-            await fetch(`${API_BASE}/api/store/products/${product.id}/update`, {
+            const res = await fetch(`${API_BASE}/api/store/products/${product.id}/update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, description: desc }),
             });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             setEditing(false);
+            toast.success('Product updated');
+        } catch (e) {
+            toast.error(`Save failed: ${e.message}`);
         } finally {
             setSaving(false);
         }
@@ -144,8 +149,14 @@ export default function StoreManager() {
 
     async function handleArchive(id, name) {
         if (!confirm(`Archive "${name}"? It will be hidden from Stripe.`)) return;
-        await fetch(`${API_BASE}/api/store/products/${id}/archive`, { method: 'POST' });
-        setProducts(prev => prev.filter(p => p.id !== id));
+        try {
+            const res = await fetch(`${API_BASE}/api/store/products/${id}/archive`, { method: 'POST' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            setProducts(prev => prev.filter(p => p.id !== id));
+            toast.warn(`"${name}" archived`);
+        } catch (e) {
+            toast.error(`Archive failed: ${e.message}`);
+        }
     }
 
     const tabs = [
