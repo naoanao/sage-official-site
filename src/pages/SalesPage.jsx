@@ -76,7 +76,7 @@ const TESTIMONIALS = [
 ];
 
 const SalesPage = () => {
-    const [loading, setLoading] = useState(null); // 'stripe' | null
+    const [loading, setLoading] = useState(null); // 'stripe' | 'paypal' | null
 
     // ── Dynamic checkout handlers ───────────────────────────────────────────
     async function handleStripe() {
@@ -99,9 +99,27 @@ const SalesPage = () => {
         }
     }
 
-    function handlePayPal() {
-        // PayPal.me direct link — no API key required
-        window.open(STATIC_LINKS.paypal, '_blank');
+    async function handlePayPal() {
+        setLoading('paypal');
+        try {
+            const res = await fetch(`${API_BASE}/api/paypal/checkout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: 29.99 }),
+            });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                // No URL returned — fall back to PayPal.me
+                window.open(STATIC_LINKS.paypal, '_blank');
+            }
+        } catch {
+            // Backend unreachable — fallback to PayPal.me
+            window.open(STATIC_LINKS.paypal, '_blank');
+        } finally {
+            setLoading(null);
+        }
     }
 
     return (
@@ -218,7 +236,7 @@ const SalesPage = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {PAYMENT_OPTIONS.map((opt, i) => {
-                            const isDynamic = opt.id === 'stripe' || opt.id === 'paypal'; // stripe=API, paypal=direct window.open
+                            const isDynamic = opt.id === 'stripe' || opt.id === 'paypal';
                             const isLoading = loading === opt.id;
                             const href = STATIC_LINKS[opt.id];
 
@@ -258,7 +276,7 @@ const SalesPage = () => {
                                     {isDynamic ? (
                                         <button
                                             onClick={opt.id === 'stripe' ? handleStripe : handlePayPal}
-                                            disabled={opt.id === 'stripe' && !!loading}
+                                            disabled={!!loading}
                                             className={`w-full text-left ${cardClass}`}
                                         >
                                             {inner}
