@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
+import { toast } from '../utils/toast';
 
 // ── Admin token (stored in localStorage once, persists) ───────────────────────
 const getAdminToken = () => localStorage.getItem('sage_admin_token') || '';
@@ -97,10 +98,16 @@ const StripeProductCard = ({ product, onRefresh, delay }) => {
                 description: form.description,
                 price: form.price ? parseFloat(form.price) : undefined,
             });
-            if (res.data.status === 'success') { setEditing(false); onRefresh(); }
-            else setErr(res.data.message || 'Save failed');
+            if (res.data.status === 'success') {
+                toast.success(`"${form.name}" updated`);
+                setEditing(false); onRefresh();
+            } else {
+                const msg = res.data.message || 'Save failed';
+                setErr(msg); toast.error(msg);
+            }
         } catch (e) {
-            setErr(e.response?.data?.message || 'Save failed');
+            const msg = e.response?.data?.message || (!e.response ? 'Backend unreachable' : 'Save failed');
+            setErr(msg); toast.error(msg);
         } finally { setSaving(false); }
     };
 
@@ -109,9 +116,11 @@ const StripeProductCard = ({ product, onRefresh, delay }) => {
         try {
             const api = makeApi();
             await api.post(`/api/store/products/${product.id}/archive`);
+            toast.warn(`"${product.name}" archived`);
             onRefresh();
         } catch (e) {
-            setErr(e.response?.data?.message || 'Archive failed');
+            const msg = e.response?.data?.message || (!e.response ? 'Backend unreachable' : 'Archive failed');
+            setErr(msg); toast.error(msg);
         } finally { setSaving(false); setConfirming(false); }
     };
 
@@ -224,7 +233,10 @@ const WhopProductCard = ({ product, onRefresh, delay }) => {
         try {
             const api = makeApi();
             await api.delete(`/api/whop/products/${product.slug}`);
+            toast.success(`"${product.title || product.slug}" removed from Whop registry`);
             onRefresh();
+        } catch (e) {
+            toast.error(e.response?.data?.error || (!e.response ? 'Backend unreachable' : 'Delete failed'));
         } finally { setDeleting(false); setConfirming(false); }
     };
 

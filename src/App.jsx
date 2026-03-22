@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import './App.css'
+import ToastContainer from './components/ToastContainer'
 
 const Landing = lazy(() => import('./pages/Landing'))
 const SageOS = lazy(() => import('./pages/SageOS'))
@@ -47,6 +48,7 @@ function App() {
 
   return (
     <Router>
+      <ToastContainer />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/" element={<Landing />} />

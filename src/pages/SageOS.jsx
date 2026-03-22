@@ -4,6 +4,7 @@ import { motion as Motion } from 'framer-motion';
 import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
+import { toast } from '../utils/toast';
 import PhaseStepperBar from '../components/PhaseStepperBar';
 import SageMiniChat from '../components/SageMiniChat';
 
@@ -327,10 +328,17 @@ Hit "Generate Content" below to get started!`
         try {
             await api.post('/api/automations/toggle', { id, active: !currentActive });
             await fetchAutomations();
+            toast.success(`Automation ${!currentActive ? 'started' : 'stopped'}`);
         } catch (err) {
+            // Revert optimistic UI back to the ORIGINAL state
             setAutomations(prev => prev.map(a =>
-                a.id === id ? { ...a, active: !currentActive } : a
+                a.id === id ? { ...a, active: currentActive } : a
             ));
+            const isOffline = !err.response;
+            toast.error(isOffline
+                ? 'Backend unreachable — is Flask running on port 8080?'
+                : `Automation toggle failed: ${err.response?.data?.error || err.message}`
+            );
         } finally {
             setAutomationLoading(prev => { const n = new Set(prev); n.delete(id); return n; });
         }
@@ -2403,8 +2411,10 @@ const IdentityPanel = () => {
         try {
             const res = await api.post('/api/identity/reset');
             setIdentity(res.data.identity);
+            toast.info('Identity reset to defaults');
         } catch (err) {
             console.error('[Identity] Reset failed:', err);
+            toast.error('Reset failed — backend unreachable');
         } finally {
             setResetting(false);
         }
@@ -2418,12 +2428,18 @@ const IdentityPanel = () => {
             await api.post('/api/identity', identity);
             setSaved(true);
             setSaveToast(true);
+            toast.success('Identity saved successfully!');
             setTimeout(() => { setSaved(false); setSaveToast(false); }, 3000);
         } catch (err) {
             console.error('[Identity] Save failed:', err);
             // Save to localStorage as fallback so identity isn't lost
             try { localStorage.setItem('sage_identity_local', JSON.stringify(identity)); } catch {}
             setSaveError(true);
+            const isOffline = !err.response;
+            toast.error(isOffline
+                ? 'Server unreachable — identity saved locally (this session only)'
+                : `Identity save failed: ${err.response?.data?.error || err.message}`
+            );
             setTimeout(() => setSaveError(false), 4000);
         } finally {
             setSaving(false);
