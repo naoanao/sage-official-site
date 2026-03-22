@@ -76,7 +76,7 @@ const TESTIMONIALS = [
 ];
 
 const SalesPage = () => {
-    const [loading, setLoading] = useState(null); // 'stripe' | null
+    const [loading, setLoading] = useState(null); // 'stripe' | 'paypal' | null
 
     // ── Dynamic checkout handlers ───────────────────────────────────────────
     async function handleStripe() {
@@ -99,9 +99,24 @@ const SalesPage = () => {
         }
     }
 
-    function handlePayPal() {
-        // PayPal.me direct link — no API key required
-        window.open(STATIC_LINKS.paypal, '_blank');
+    async function handlePayPal() {
+        setLoading('paypal');
+        try {
+            const res = await fetch(`${API_BASE}/api/paypal/checkout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: '29.99', currency: 'USD', description: PRODUCT_NAME }),
+            });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            }
+        } catch {
+            // Backend unreachable — fallback to PayPal.me
+            window.open(STATIC_LINKS.paypal, '_blank');
+        } finally {
+            setLoading(null);
+        }
     }
 
     return (
@@ -258,7 +273,7 @@ const SalesPage = () => {
                                     {isDynamic ? (
                                         <button
                                             onClick={opt.id === 'stripe' ? handleStripe : handlePayPal}
-                                            disabled={opt.id === 'stripe' && !!loading}
+                                            disabled={!!loading && loading === opt.id}
                                             className={`w-full text-left ${cardClass}`}
                                         >
                                             {inner}
