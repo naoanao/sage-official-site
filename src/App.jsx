@@ -10,11 +10,13 @@ import SalesPage from './pages/SalesPage'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import StoreManager from './pages/StoreManager'
+import ToastContainer from './components/ToastContainer'
 import './App.css'
 
 function App() {
   return (
     <Router>
+      <ToastContainer />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<SageOS />} />

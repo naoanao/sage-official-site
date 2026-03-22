@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { FiArrowRight, FiShoppingCart, FiCheck, FiShield, FiZap } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
+import { BACKEND_URL } from '../config/backendUrl';
 
-// ── Backend API base URL ──────────────────────────────────────────────────────
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+const API_BASE = BACKEND_URL;
 
 // ── Static direct payment links ───────────────────────────────────────────────
 const STATIC_LINKS = {

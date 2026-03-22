@@ -4,6 +4,7 @@ import { motion as Motion } from 'framer-motion';
 import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
+import toast from '../utils/toast';
 import PhaseStepperBar from '../components/PhaseStepperBar';
 import SageMiniChat from '../components/SageMiniChat';
 
@@ -290,10 +291,17 @@ const SageOS = () => {
         try {
             await api.post('/api/automations/toggle', { id, active: !currentActive });
             await fetchAutomations();
+            toast.success(`Automation ${!currentActive ? 'started' : 'stopped'}`);
         } catch (err) {
+            // Revert to original state (not the toggled state)
             setAutomations(prev => prev.map(a =>
-                a.id === id ? { ...a, active: !currentActive } : a
+                a.id === id ? { ...a, active: currentActive } : a
             ));
+            const isOffline = !err.response;
+            toast.error(isOffline
+                ? 'Backend unreachable — is Flask running on port 8080?'
+                : `Toggle failed: ${err.message}`
+            );
         } finally {
             setAutomationLoading(prev => { const n = new Set(prev); n.delete(id); return n; });
         }
@@ -2296,8 +2304,9 @@ const IdentityPanel = () => {
         try {
             const res = await api.post('/api/identity/reset');
             setIdentity(res.data.identity);
+            toast.info('Identity reset to default');
         } catch (err) {
-            console.error('[Identity] Reset failed:', err);
+            toast.error('Reset failed — is Flask running?');
         } finally {
             setResetting(false);
         }
@@ -2310,8 +2319,10 @@ const IdentityPanel = () => {
             await api.post('/api/identity', identity);
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
+            toast.success('Identity saved');
         } catch (err) {
-            console.error('[Identity] Save failed:', err);
+            const msg = err.response?.data?.message || err.message || 'unknown error';
+            toast.error(`Save failed: ${msg}`);
         } finally {
             setSaving(false);
         }
