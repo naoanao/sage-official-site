@@ -3523,52 +3523,83 @@ def paypal_checkout():
 
 
 # ── Store Management ─────────────────────────────────────────────────────────
+def _store_admin_check() -> bool:
+    """Returns True if request carries a valid SAGE_ADMIN_TOKEN."""
+    token = os.getenv("SAGE_ADMIN_TOKEN")
+    if not token:
+        return False  # token not configured → deny
+    return request.headers.get("X-SAGE-ADMIN-TOKEN") == token
+
+
 @app.route('/api/store/products', methods=['GET'])
 def store_list_products():
+    if not _store_admin_check():
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     from backend.integrations.stripe_integration import stripe_integration
     from backend.integrations.whop_publisher import _load_registry
-    stripe_products = stripe_integration.list_products()
+    stripe_result = stripe_integration.list_products()
     whop_reg = _load_registry()
     whop_products = [{"slug": k, **v} for k, v in whop_reg.items()]
-    return jsonify({"stripe": stripe_products, "whop": whop_products}), 200
+    return jsonify({
+        "status": "success",
+        "stripe": stripe_result if isinstance(stripe_result, list) else [],
+        "whop": whop_products,
+    }), 200
 
 
 @app.route('/api/store/products/<product_id>/update', methods=['POST'])
 def store_update_product(product_id):
+    if not _store_admin_check():
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     from backend.integrations.stripe_integration import stripe_integration
     data = request.get_json(silent=True) or {}
+    price_usd = data.get("price")
+    new_price_cents = int(float(price_usd) * 100) if price_usd else None
     result = stripe_integration.update_product(
         product_id,
         name=data.get("name"),
         description=data.get("description"),
+        new_price_cents=new_price_cents,
     )
-    return jsonify(result), 200
+    return jsonify(result), 200 if result.get("status") == "success" else 400
 
 
 @app.route('/api/store/products/<product_id>/archive', methods=['POST'])
 def store_archive_product(product_id):
+    if not _store_admin_check():
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     from backend.integrations.stripe_integration import stripe_integration
     result = stripe_integration.archive_product(product_id)
-    return jsonify(result), 200
+    return jsonify(result), 200 if result.get("status") == "success" else 400
 
 
 @app.route('/api/store/revenue', methods=['GET'])
 def store_revenue():
+    if not _store_admin_check():
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     from backend.integrations.stripe_integration import stripe_integration
     summary = stripe_integration.get_revenue_summary()
-    payments = stripe_integration.list_payments(limit=20)
-    return jsonify({"summary": summary, "payments": payments}), 200
+    payments = stripe_integration.list_payments(limit=30)
+    return jsonify({
+        "status": "success",
+        "summary": summary,
+        "payments": payments if isinstance(payments, list) else [],
+    }), 200
 
 
 @app.route('/api/whop/products', methods=['GET'])
 def whop_list_products():
+    if not _store_admin_check():
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     from backend.integrations.whop_publisher import _load_registry
     reg = _load_registry()
-    return jsonify([{"slug": k, **v} for k, v in reg.items()]), 200
+    return jsonify({"status": "success", "products": [{"slug": k, **v} for k, v in reg.items()]}), 200
 
 
 @app.route('/api/whop/products/<slug>/update', methods=['POST'])
 def whop_update_product(slug):
+    if not _store_admin_check():
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     from backend.integrations.whop_publisher import _load_registry, _save_registry
     data = request.get_json(silent=True) or {}
     reg = _load_registry()
@@ -3576,18 +3607,20 @@ def whop_update_product(slug):
         return jsonify({"status": "error", "message": "Not found"}), 404
     reg[slug].update({k: v for k, v in data.items() if k in ("topic", "title", "description")})
     _save_registry(reg)
-    return jsonify({"status": "success"}), 200
+    return jsonify({"status": "success", "slug": slug}), 200
 
 
 @app.route('/api/whop/products/<slug>', methods=['DELETE'])
 def whop_delete_product(slug):
+    if not _store_admin_check():
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     from backend.integrations.whop_publisher import _load_registry, _save_registry
     reg = _load_registry()
     if slug not in reg:
         return jsonify({"status": "error", "message": "Not found"}), 404
     del reg[slug]
     _save_registry(reg)
-    return jsonify({"status": "success"}), 200
+    return jsonify({"status": "success", "deleted": slug}), 200
 
 
 # ── PayPal Capture ────────────────────────────────────────────────────────────

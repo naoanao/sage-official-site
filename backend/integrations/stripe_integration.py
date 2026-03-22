@@ -149,7 +149,8 @@ class StripeIntegration:
             print(f"[Stripe] list_products error: {e}")
             return []
 
-    def update_product(self, product_id: str, name: str = None, description: str = None) -> dict:
+    def update_product(self, product_id: str, name: str = None,
+                       description: str = None, new_price_cents: int = None) -> dict:
         if not self.api_key:
             return {"status": "error", "message": "No API key"}
         try:
@@ -158,8 +159,19 @@ class StripeIntegration:
                 kwargs["name"] = name
             if description is not None:
                 kwargs["description"] = description
-            p = stripe.Product.modify(product_id, **kwargs)
-            return {"status": "success", "product": {"id": p.id, "name": p.name}}
+            if kwargs:
+                stripe.Product.modify(product_id, **kwargs)
+            new_price_id = None
+            if new_price_cents:
+                # Stripe prices are immutable — create a new price and set as default
+                new_price = stripe.Price.create(
+                    unit_amount=new_price_cents,
+                    currency="usd",
+                    product=product_id,
+                )
+                stripe.Product.modify(product_id, default_price=new_price.id)
+                new_price_id = new_price.id
+            return {"status": "success", "product_id": product_id, "new_price_id": new_price_id}
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
