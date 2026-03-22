@@ -121,6 +121,90 @@ class StripeIntegration:
             print(f"[Stripe] Error canceling subscription: {e}")
             return False
 
+    # ── Store Management ─────────────────────────────────────────────────────
+
+    def list_products(self, limit: int = 20) -> list:
+        if not self.api_key:
+            return []
+        try:
+            products = stripe.Product.list(active=True, limit=limit, expand=["data.default_price"])
+            result = []
+            for p in products.auto_paging_iter():
+                price_val = None
+                price_id = None
+                dp = p.get("default_price")
+                if dp and isinstance(dp, dict):
+                    raw = dp.get("unit_amount")
+                    if raw:
+                        price_val = raw / 100
+                    price_id = dp.get("id")
+                result.append({
+                    "id": p.id, "name": p.name, "active": p.active,
+                    "description": p.description or "",
+                    "price": price_val, "price_id": price_id,
+                    "created": p.created,
+                })
+            return result
+        except Exception as e:
+            print(f"[Stripe] list_products error: {e}")
+            return []
+
+    def update_product(self, product_id: str, name: str = None, description: str = None) -> dict:
+        if not self.api_key:
+            return {"status": "error", "message": "No API key"}
+        try:
+            kwargs = {}
+            if name:
+                kwargs["name"] = name
+            if description is not None:
+                kwargs["description"] = description
+            p = stripe.Product.modify(product_id, **kwargs)
+            return {"status": "success", "product": {"id": p.id, "name": p.name}}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def archive_product(self, product_id: str) -> dict:
+        if not self.api_key:
+            return {"status": "error", "message": "No API key"}
+        try:
+            stripe.Product.modify(product_id, active=False)
+            return {"status": "success"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def list_payments(self, limit: int = 20) -> list:
+        if not self.api_key:
+            return []
+        try:
+            intents = stripe.PaymentIntent.list(limit=limit)
+            return [{
+                "id": pi.id, "amount": pi.amount / 100,
+                "currency": pi.currency.upper(), "status": pi.status,
+                "created": pi.created, "description": pi.description or "",
+                "email": pi.receipt_email or "",
+            } for pi in intents.data]
+        except Exception as e:
+            print(f"[Stripe] list_payments error: {e}")
+            return []
+
+    def get_revenue_summary(self) -> dict:
+        if not self.api_key:
+            return {"total": 0, "orders": 0, "avg": 0, "currency": "USD"}
+        try:
+            import time as _time
+            since = int(_time.time()) - 30 * 86400
+            intents = stripe.PaymentIntent.list(limit=100, created={"gte": since})
+            succeeded = [pi for pi in intents.data if pi.status == "succeeded"]
+            total = sum(pi.amount for pi in succeeded) / 100
+            count = len(succeeded)
+            return {
+                "total": round(total, 2), "orders": count,
+                "avg": round(total / count, 2) if count else 0, "currency": "USD",
+            }
+        except Exception as e:
+            print(f"[Stripe] get_revenue_summary error: {e}")
+            return {"total": 0, "orders": 0, "avg": 0, "currency": "USD"}
+
 
 # Singleton instance
 stripe_integration = StripeIntegration()

@@ -1076,6 +1076,13 @@ Hit "Generate Content" below to get started!`
                     >
                         <FiHome /> <span>Landing Page</span>
                     </Link>
+                    <Link
+                        to="/manager"
+                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all font-semibold"
+                        style={{ color: 'var(--c-emerald)', background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.15)' }}
+                    >
+                        <FiShoppingCart size={15} /> <span>Store Manager</span>
+                    </Link>
 
                     {/* Phase navigation (visible in phases 2-4) */}
                     {currentPhase >= 2 && (

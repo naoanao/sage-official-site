@@ -3522,6 +3522,74 @@ def paypal_checkout():
         }), 200
 
 
+# ── Store Management ─────────────────────────────────────────────────────────
+@app.route('/api/store/products', methods=['GET'])
+def store_list_products():
+    from backend.integrations.stripe_integration import stripe_integration
+    from backend.integrations.whop_publisher import _load_registry
+    stripe_products = stripe_integration.list_products()
+    whop_reg = _load_registry()
+    whop_products = [{"slug": k, **v} for k, v in whop_reg.items()]
+    return jsonify({"stripe": stripe_products, "whop": whop_products}), 200
+
+
+@app.route('/api/store/products/<product_id>/update', methods=['POST'])
+def store_update_product(product_id):
+    from backend.integrations.stripe_integration import stripe_integration
+    data = request.get_json(silent=True) or {}
+    result = stripe_integration.update_product(
+        product_id,
+        name=data.get("name"),
+        description=data.get("description"),
+    )
+    return jsonify(result), 200
+
+
+@app.route('/api/store/products/<product_id>/archive', methods=['POST'])
+def store_archive_product(product_id):
+    from backend.integrations.stripe_integration import stripe_integration
+    result = stripe_integration.archive_product(product_id)
+    return jsonify(result), 200
+
+
+@app.route('/api/store/revenue', methods=['GET'])
+def store_revenue():
+    from backend.integrations.stripe_integration import stripe_integration
+    summary = stripe_integration.get_revenue_summary()
+    payments = stripe_integration.list_payments(limit=20)
+    return jsonify({"summary": summary, "payments": payments}), 200
+
+
+@app.route('/api/whop/products', methods=['GET'])
+def whop_list_products():
+    from backend.integrations.whop_publisher import _load_registry
+    reg = _load_registry()
+    return jsonify([{"slug": k, **v} for k, v in reg.items()]), 200
+
+
+@app.route('/api/whop/products/<slug>/update', methods=['POST'])
+def whop_update_product(slug):
+    from backend.integrations.whop_publisher import _load_registry, _save_registry
+    data = request.get_json(silent=True) or {}
+    reg = _load_registry()
+    if slug not in reg:
+        return jsonify({"status": "error", "message": "Not found"}), 404
+    reg[slug].update({k: v for k, v in data.items() if k in ("topic", "title", "description")})
+    _save_registry(reg)
+    return jsonify({"status": "success"}), 200
+
+
+@app.route('/api/whop/products/<slug>', methods=['DELETE'])
+def whop_delete_product(slug):
+    from backend.integrations.whop_publisher import _load_registry, _save_registry
+    reg = _load_registry()
+    if slug not in reg:
+        return jsonify({"status": "error", "message": "Not found"}), 404
+    del reg[slug]
+    _save_registry(reg)
+    return jsonify({"status": "success"}), 200
+
+
 # ── PayPal Capture ────────────────────────────────────────────────────────────
 @app.route('/api/paypal/capture', methods=['POST'])
 def paypal_capture():
