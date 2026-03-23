@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowLeft, FiEdit2, FiCheck, FiX, FiArchive, FiRefreshCw, FiDollarSign, FiShoppingBag, FiTrendingUp } from 'react-icons/fi';
 import toast from '../utils/toast';
+import { BACKEND_URL } from '../config/backendUrl';
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+const API_BASE = BACKEND_URL;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
