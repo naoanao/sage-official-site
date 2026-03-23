@@ -552,6 +552,7 @@ const SageOS = () => {
             setGenerateProgress('');
             setProgressPercent(100);
             setMonetizeStatus('review');
+            toast.success('Generation complete! → REFINE タブで内容を確認してください');
         } catch (e) {
             _progressTimers.forEach(clearTimeout);
             setGenerateProgress('');
@@ -562,6 +563,7 @@ const SageOS = () => {
                 : e.message || 'Pipeline failed';
             setMonetizeResult(errMsg);
             setMonetizeStatus('error');
+            toast.error(isOffline ? 'バックエンド未起動 — run_sage.ps1 を実行してください' : `Pipeline エラー: ${errMsg}`);
         }
     };
 
@@ -885,6 +887,7 @@ const SageOS = () => {
             const res = await api.get('/api/system/self_test', { params, timeout: 30000 });
             if (checkName) {
                 const check = res.data.check;
+                const passed = check?.status === 'PASS';
                 setSelfTestResults(prev => {
                     const tierKey = `tier${tier}`;
                     const tests = (prev[tierKey]?.tests || []).map(t =>
@@ -892,12 +895,21 @@ const SageOS = () => {
                     );
                     return { ...prev, [tierKey]: { ...(prev[tierKey] || {}), tests } };
                 });
+                if (passed) toast.success(`✅ ${checkName}: PASS`);
+                else toast.warn(`⚠️ ${checkName}: ${check?.status || 'FAIL'}`);
             } else {
-                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: res.data.report }));
+                const report = res.data.report;
+                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: report }));
+                const overall = report?.overall_status;
+                if (overall === 'PASS') toast.success(`Tier ${tier} — All systems go`);
+                else if (overall === 'DEGRADE') toast.warn(`Tier ${tier} — Degraded (一部SKIPあり)`);
+                else toast.error(`Tier ${tier} — FAIL: 要確認`);
             }
         } catch (e) {
             console.error('[SelfTest]', e);
-            setSelfTestError(e?.response?.data?.error || e?.message || 'Backend unreachable');
+            const errMsg = e?.response?.data?.error || e?.message || 'Backend unreachable';
+            setSelfTestError(errMsg);
+            toast.error(`Self-Test 接続エラー: ${errMsg}`);
         } finally {
             setSelfTestRunning(p => { const n = { ...p }; delete n[key]; return n; });
         }
@@ -909,9 +921,18 @@ const SageOS = () => {
             const res = await api.get('/api/system/self_test', { params: { tier: 'all' }, timeout: 60000 });
             const report = res.data.report;
             setSelfTestResults({ tier1: report.tier1, tier2: report.tier2 });
+            const t1 = report.tier1?.overall_status;
+            const t2 = report.tier2?.overall_status;
+            const hasFail   = t1 === 'FAIL'   || t2 === 'FAIL';
+            const hasDegrade = t1 === 'DEGRADE' || t2 === 'DEGRADE';
+            if (hasFail)        toast.error('System Self-Test — FAIL: 詳細を確認してください');
+            else if (hasDegrade) toast.warn('System Self-Test — Degraded (一部サービス制限中)');
+            else                toast.success('System Self-Test — All Systems Go ✅');
         } catch (e) {
             console.error('[SelfTest]', e);
-            setSelfTestError(e?.response?.data?.error || e?.message || 'Backend unreachable');
+            const errMsg = e?.response?.data?.error || e?.message || 'Backend unreachable';
+            setSelfTestError(errMsg);
+            toast.error(`Self-Test 接続エラー: ${errMsg}`);
         } finally {
             setSelfTestRunning({});
         }
