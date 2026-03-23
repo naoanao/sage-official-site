@@ -1187,7 +1187,10 @@ Content:""")
         """生成物の出力ディレクトリ（ZIP用の一時フォルダ）を管理"""
         import os as _os
         import re
-        safe_name = re.sub(r'[^\w\s-]', '', topic.lower()).replace(' ', '_')
+        # Normalize whitespace (strip newlines/tabs), remove invalid chars, truncate
+        normalized = ' '.join(topic.split())  # collapse all whitespace incl. \n
+        safe_name = re.sub(r'[^\w\s-]', '', normalized.lower()).replace(' ', '_')
+        safe_name = safe_name[:80] or 'course'  # Windows MAX_PATH guard
         output_dir = _os.path.join("output", safe_name)
         if not _os.path.exists(output_dir):
             _os.makedirs(output_dir, exist_ok=True)
