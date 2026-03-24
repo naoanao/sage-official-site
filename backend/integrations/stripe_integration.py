@@ -1,18 +1,28 @@
 import os
 import stripe
 from typing import Dict, Any, Optional
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env from project root (two levels up from this file)
+_env_path = Path(__file__).parent.parent.parent / '.env'
+load_dotenv(dotenv_path=_env_path, override=True)
 
 class StripeIntegration:
     def __init__(self):
         self.name = "Stripe Integration"
-        self.api_key = os.getenv("STRIPE_SECRET_KEY")
-        self.webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-        self.publishable_key = os.getenv("STRIPE_PUBLISHABLE_KEY")
 
-        if self.api_key:
-            stripe.api_key = self.api_key
-        else:
-            print("[Stripe] Warning: STRIPE_SECRET_KEY not set.")
+    @property
+    def api_key(self):
+        return os.getenv("STRIPE_SECRET_KEY")
+
+    @property
+    def webhook_secret(self):
+        return os.getenv("STRIPE_WEBHOOK_SECRET")
+
+    @property
+    def publishable_key(self):
+        return os.getenv("STRIPE_PUBLISHABLE_KEY")
 
     # ── Payment Link (one-time product) ─────────────────────────────────────
 
@@ -23,14 +33,16 @@ class StripeIntegration:
         Returns {"status": "no_key"} when STRIPE_SECRET_KEY is not configured.
         Returns {"status": "error", "message": "..."} on API failure.
         """
-        print(f"[Stripe] Creating Payment Link: {product_name} (${price})")
+        key = self.api_key
+        print(f"[Stripe] Creating Payment Link: {product_name} (${price}) key={'set' if key else 'NOT SET'}")
 
-        if not self.api_key:
+        if not key:
             return {
                 "status": "no_key",
                 "message": "STRIPE_SECRET_KEY not set",
             }
 
+        stripe.api_key = key
         try:
             product = stripe.Product.create(name=product_name)
             price_obj = stripe.Price.create(

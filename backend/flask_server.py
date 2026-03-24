@@ -17,7 +17,7 @@ import threading
 import time
 import pathlib
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Tuple, Optional, List, Dict
 from flask import Flask, request, jsonify, render_template, send_from_directory, g
 from flask_cors import CORS
@@ -1116,11 +1116,41 @@ def init_brain():
                             def run_blog_scheduler():
                                 try:
                                     blog_sched = BlogScheduler()
+                                    last_run_date = None
+
+                                    # ── Catch-up on startup ──────────────────────────────────
+                                    # Run immediately if no post exists yet for today (UTC)
+                                    today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                                    posts_dir = "src/blog/posts"
+                                    already_posted = (
+                                        os.path.isdir(posts_dir) and
+                                        any(f.startswith(today_str) for f in os.listdir(posts_dir) if f.endswith('.mdx'))
+                                    )
+                                    if already_posted:
+                                        logger.info(f"[BLOG] Catch-up skipped: post already exists for {today_str}.")
+                                    else:
+                                        logger.info(f"[BLOG] Catch-up: no post for {today_str}, running now.")
+                                        try:
+                                            blog_sched.run_once()
+                                            _record_run("blog")
+                                        except Exception as ce:
+                                            logger.error(f"[BLOG] Catch-up error: {ce}")
+                                    last_run_date = today_str
+
+                                    # ── Daily loop: fire at UTC 00:00 (JST 09:00) ────────────
                                     while True:
                                         if not _automation_stop_events.get('blog', threading.Event()).is_set():
-                                            blog_sched.run()
-                                            _record_run("blog")
-                                        time.sleep(3600)
+                                            now_utc = datetime.now(timezone.utc)
+                                            today_str = now_utc.strftime('%Y-%m-%d')
+                                            if now_utc.hour == 0 and now_utc.minute < 5 and last_run_date != today_str:
+                                                logger.info(f"[BLOG] Scheduled run for {today_str}.")
+                                                try:
+                                                    blog_sched.run_once()
+                                                    _record_run("blog")
+                                                except Exception as se:
+                                                    logger.error(f"[BLOG] Scheduled run error: {se}")
+                                                last_run_date = today_str
+                                        time.sleep(60)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Blog Scheduler Thread Error: {e}")
 
@@ -1128,11 +1158,36 @@ def init_brain():
                             def run_gumroad_scheduler():
                                 try:
                                     gumroad_sched = GumroadScheduler()
+                                    last_run_date = None
+
+                                    # ── Catch-up on startup ──────────────────────────────────
+                                    today_str = datetime.now().strftime('%Y-%m-%d')
+                                    last_stored = _get_last_run_time("gumroad")
+                                    if last_stored == "Never" or not last_stored.startswith(today_str):
+                                        logger.info(f"[GUMROAD] Catch-up: last_run='{last_stored}', running now.")
+                                        try:
+                                            gumroad_sched.run_once()
+                                            _record_run("gumroad")
+                                        except Exception as ce:
+                                            logger.error(f"[GUMROAD] Catch-up error: {ce}")
+                                    else:
+                                        logger.info(f"[GUMROAD] Catch-up skipped: already ran today ({last_stored}).")
+                                    last_run_date = today_str
+
+                                    # ── Daily loop: fire at UTC 01:00 (JST 10:00) ────────────
                                     while True:
                                         if not _automation_stop_events.get('gumroad', threading.Event()).is_set():
-                                            gumroad_sched.run()
-                                            _record_run("gumroad")
-                                        time.sleep(3600)
+                                            now_utc = datetime.now(timezone.utc)
+                                            today_str = datetime.now().strftime('%Y-%m-%d')
+                                            if now_utc.hour == 1 and now_utc.minute < 5 and last_run_date != today_str:
+                                                logger.info(f"[GUMROAD] Scheduled run for {today_str}.")
+                                                try:
+                                                    gumroad_sched.run_once()
+                                                    _record_run("gumroad")
+                                                except Exception as se:
+                                                    logger.error(f"[GUMROAD] Scheduled run error: {se}")
+                                                last_run_date = today_str
+                                        time.sleep(60)
                                 except Exception as e:
                                     logger.error(f"[ERROR] Gumroad Scheduler Thread Error: {e}")
 
@@ -1306,7 +1361,12 @@ def api_content_list():
     limit = int(request.args.get('limit', 20))
     
     try:
-        items = content_mgr.list_content(ctype, limit)
+        raw = content_mgr.list_content(ctype, limit)
+        # Flatten metadata dict to top-level so frontend can access item.title etc.
+        items = []
+        for item in raw:
+            meta = item.pop("metadata", {}) or {}
+            items.append({**item, **meta})
         return jsonify({"status": "success", "items": items})
     except Exception as e:
         logger.error(f"Content list error: {e}")
@@ -2867,6 +2927,40 @@ def api_d1_generate():
         logger.error(f"D1 trigger error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/blog/run-now', methods=['POST'])
+def api_blog_run_now():
+    """手動でブログ記事を今すぐ1件生成・公開する（時刻チェックをバイパス）"""
+    try:
+        logger.info("🚀 [BLOG] Manual trigger via /api/blog/run-now")
+        if _automation_stop_events.get('blog', threading.Event()).is_set():
+            return jsonify({"status": "error", "message": "Blog automation is disabled. Enable it first."}), 403
+        from backend.scheduler.blog_scheduler import BlogScheduler
+        blog_sched = BlogScheduler()
+        blog_sched.run_once()
+        _record_run("blog")
+        return jsonify({"status": "success", "message": "Blog post generated and published. Check git log."})
+    except Exception as e:
+        logger.error(f"[BLOG] Manual trigger error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/gumroad/run-now', methods=['POST'])
+def api_gumroad_run_now():
+    """手動でGumroadスケジューラーを今すぐ実行する（時刻チェックをバイパス）"""
+    try:
+        logger.info("🚀 [GUMROAD] Manual trigger via /api/gumroad/run-now")
+        if _automation_stop_events.get('gumroad', threading.Event()).is_set():
+            return jsonify({"status": "error", "message": "Gumroad automation is disabled. Enable it first."}), 403
+        from backend.scheduler.gumroad_scheduler import GumroadScheduler
+        gumroad_sched = GumroadScheduler()
+        gumroad_sched.run_once()
+        _record_run("gumroad")
+        return jsonify({"status": "success", "message": "Gumroad scheduler executed. Check logs."})
+    except Exception as e:
+        logger.error(f"[GUMROAD] Manual trigger error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/api/research/run', methods=['POST'])
 def api_research_run():
     """Run D1 research for a topic and return a human-readable summary.
@@ -3267,6 +3361,20 @@ def productize_finalize():
 
         save_path.write_text(final_md, encoding='utf-8')
         logger.info(f"[FINALIZE] Saved edited course: {save_path}")
+
+        # Register in Content Library
+        if content_mgr:
+            try:
+                content_mgr.save_content(
+                    content_type='course',
+                    title=topic,
+                    body=final_md,
+                    metadata={"topic": topic, "sections": len(sections), "obsidian_path": str(save_path)}
+                )
+                logger.info(f"[FINALIZE] Registered in Content Library: {topic}")
+            except Exception as ce:
+                logger.warning(f"[FINALIZE] Content Library registration failed (non-fatal): {ce}")
+
         return jsonify({"status": "success", "saved_path": str(save_path)}), 200
     except Exception as e:
         logger.error(f"[FINALIZE] Save error: {e}")

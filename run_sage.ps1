@@ -150,18 +150,21 @@ try {
 
 Add-Content $LogFile "[$ts] === Sage 3.0 startup complete. Tunnel: $TunnelUrl ==="
 
-# ── Flask Watchdog (auto-restart on crash) ────────────────────────────────
+# ── Flask + ngrok Watchdog (auto-restart on crash) ────────────────────────
 $flaskPid = $proc.Id
-Add-Content $LogFile "[$ts] Watchdog monitoring Flask PID $flaskPid"
+$ngrokProc = Get-Process -Name "ngrok" -ErrorAction SilentlyContinue | Select-Object -First 1
+$ngrokPid  = if ($ngrokProc) { $ngrokProc.Id } else { $null }
+Add-Content $LogFile "[$ts] Watchdog monitoring Flask PID $flaskPid, ngrok PID $ngrokPid"
 
 while ($true) {
     Start-Sleep -Seconds 30
+    $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    # ── Flask check ───────────────────────────────────────────────────────
     $alive = Get-Process -Id $flaskPid -ErrorAction SilentlyContinue
     if (-not $alive) {
-        $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         Add-Content $LogFile "[$ts] [WATCHDOG] Flask process ($flaskPid) died. Restarting..."
 
-        # Port 8080 cleanup before restart
         $existing8080 = netstat -ano | Select-String ":8080 " | Select-String "LISTENING"
         foreach ($line in $existing8080) {
             $pid8080 = ($line -split '\s+')[-1]
@@ -181,6 +184,20 @@ while ($true) {
             -PassThru
         $flaskPid = $proc.Id
         Add-Content $LogFile "[$ts] [WATCHDOG] Flask restarted. New PID: $flaskPid"
+    }
+
+    # ── ngrok check ───────────────────────────────────────────────────────
+    $ngrokAlive = if ($ngrokPid) { Get-Process -Id $ngrokPid -ErrorAction SilentlyContinue } else { $null }
+    if (-not $ngrokAlive) {
+        Add-Content $LogFile "[$ts] [WATCHDOG] ngrok process died. Restarting tunnel..."
+        if (Test-Path $NgrokLog) { Remove-Item $NgrokLog -Force -ErrorAction SilentlyContinue }
+
+        $ngrokNew = Start-Process -FilePath $NgrokExe `
+            -ArgumentList "http", "8080", "--domain=$StaticDomain", "--log=$NgrokLog" `
+            -WindowStyle Hidden `
+            -PassThru
+        $ngrokPid = $ngrokNew.Id
+        Add-Content $LogFile "[$ts] [WATCHDOG] ngrok restarted. New PID: $ngrokPid (domain: $StaticDomain)"
     }
 }
 

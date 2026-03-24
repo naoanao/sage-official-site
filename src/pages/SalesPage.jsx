@@ -9,13 +9,59 @@ const API_BASE = BACKEND_URL;
 
 // ── Static direct payment links ───────────────────────────────────────────────
 const STATIC_LINKS = {
-    whop:    'https://whop.com/segeai/',
-    gumroad: 'https://naofumi3.gumroad.com/l/yvzrfjd',
-    paypal:  'https://paypal.me/japanletgo/29.99',   // PayPal.me — works immediately
+    whop:       'https://whop.com/segeai/',
+    gumroad:    'https://naofumi3.gumroad.com/l/yvzrfjd',
+    paypal:     'https://paypal.me/japanletgo/29.99',
+    proMonthly: 'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03',
+    enterprise: 'https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04',
 };
 
 const PRODUCT_PRICE = '$29.99';
 const PRODUCT_NAME  = '2026 AI Influencer Monetization Express';
+
+// ── Subscription plans ─────────────────────────────────────────────────────
+const PLANS = [
+    {
+        id: 'free',
+        name: 'Free',
+        price: '$0',
+        period: '/ month',
+        badge: null,
+        description: 'Try core features, no credit card needed.',
+        features: ['Sage Chat (5 messages/day)', 'Bluesky auto-post (1/day)', 'Basic content generation', 'Public dashboard access'],
+        cta: 'Start Free',
+        link: '/dashboard',
+        style: 'border-white/10 bg-white/[0.02]',
+        ctaStyle: 'bg-white/10 hover:bg-white/20 text-white',
+    },
+    {
+        id: 'pro',
+        name: 'Pro',
+        price: '$20',
+        period: '/ month',
+        badge: '🔥 Most Popular',
+        description: 'Full autonomous AI solopreneur stack.',
+        features: ['Unlimited Sage Chat', 'SNS auto-posting (Bluesky + X + Instagram)', 'Course & product generation pipeline', 'Notion sync + Git daily log', 'Self-healing AI agent', 'All future updates'],
+        cta: 'Start Pro — $20/mo',
+        link: STATIC_LINKS.proMonthly,
+        style: 'border-blue-500/50 bg-blue-500/[0.05] shadow-[0_0_40px_rgba(59,130,246,0.15)]',
+        ctaStyle: 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)]',
+        highlight: true,
+    },
+    {
+        id: 'enterprise',
+        name: 'Enterprise',
+        price: '$99',
+        period: '/ month',
+        badge: null,
+        description: 'Full system + priority support + API access.',
+        features: ['Everything in Pro', 'Direct API access', 'Priority email support', 'White-label option', 'Custom identity setup', 'Onboarding call (1×30min)'],
+        cta: 'Go Enterprise — $99/mo',
+        link: STATIC_LINKS.enterprise,
+        style: 'border-purple-500/30 bg-purple-500/[0.03]',
+        ctaStyle: 'bg-purple-700 hover:bg-purple-600 text-white',
+    },
+];
 
 const FEATURES = [
     'Full AI Influencer Blueprint (step-by-step PDF)',
@@ -152,7 +198,7 @@ const SalesPage = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono text-emerald-300 mb-8">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        ONE-TIME PURCHASE · LIFETIME ACCESS · INSTANT DOWNLOAD
+                        FREE PLAN · PRO $20/MO · ENTERPRISE $99/MO
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none mb-6">
@@ -173,19 +219,82 @@ const SalesPage = () => {
                         <span className="flex items-center gap-1.5"><FiCheck className="text-emerald-400" size={14} /> Windows-ready</span>
                     </div>
 
-                    <a
-                        href="#buy"
-                        className="inline-flex items-center gap-3 px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_60px_rgba(37,99,235,0.4)] transition-all"
-                    >
-                        <FiShoppingCart size={20} />
-                        Get Instant Access — {PRODUCT_PRICE}
-                    </a>
-                    <p className="text-xs text-slate-600 mt-3">30-day money-back guarantee · No subscription</p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <a
+                            href={STATIC_LINKS.proMonthly}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-3 px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_60px_rgba(37,99,235,0.4)] transition-all"
+                        >
+                            <FiZap size={20} />
+                            Start Pro — $20/month
+                        </a>
+                        <a
+                            href="#buy"
+                            className="inline-flex items-center gap-3 px-8 py-5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-lg font-bold transition-all border border-white/10"
+                        >
+                            <FiShoppingCart size={20} />
+                            One-time — {PRODUCT_PRICE}
+                        </a>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-3">Cancel anytime · 30-day money-back guarantee</p>
                 </Motion.div>
             </section>
 
-            {/* ② What You Get ─────────────────────────────────────────────── */}
-            <section className="relative z-10 py-20 px-4 border-t border-white/5">
+            {/* ② Pricing Plans ────────────────────────────────────────────── */}
+            <section id="pricing" className="relative z-10 py-20 px-4 border-t border-white/5">
+                <div className="max-w-5xl mx-auto">
+                    <div className="text-center mb-12">
+                        <div className="text-xs font-mono text-blue-400 mb-2">CHOOSE YOUR PLAN</div>
+                        <h2 className="text-3xl md:text-4xl font-black tracking-tighter">Simple, Transparent Pricing</h2>
+                        <p className="text-slate-400 mt-3 text-sm">Cancel anytime. Upgrade or downgrade at any time.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {PLANS.map((plan) => (
+                            <Motion.div
+                                key={plan.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className={`relative p-6 rounded-2xl border ${plan.style} flex flex-col`}
+                            >
+                                {plan.badge && (
+                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-600 rounded-full text-xs font-bold text-white whitespace-nowrap">
+                                        {plan.badge}
+                                    </div>
+                                )}
+                                <div className="mb-4">
+                                    <div className="text-xs font-mono text-slate-400 mb-1">{plan.name.toUpperCase()}</div>
+                                    <div className="flex items-end gap-1">
+                                        <span className="text-4xl font-black">{plan.price}</span>
+                                        <span className="text-slate-400 text-sm mb-1">{plan.period}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">{plan.description}</p>
+                                </div>
+                                <ul className="space-y-2 mb-6 flex-1">
+                                    {plan.features.map((f, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                                            <FiCheck size={13} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                                            {f}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <a
+                                    href={plan.link}
+                                    target={plan.link.startsWith('http') ? '_blank' : undefined}
+                                    rel="noreferrer"
+                                    className={`w-full py-3 rounded-xl text-sm font-bold text-center transition-all ${plan.ctaStyle}`}
+                                >
+                                    {plan.cta}
+                                </a>
+                            </Motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ③ What You Get ─────────────────────────────────────────────── */}
+            <section id="buy" className="relative z-10 py-20 px-4 border-t border-white/5">
                 <div className="max-w-3xl mx-auto">
                     <Motion.div
                         initial={{ opacity: 0, y: 20 }}

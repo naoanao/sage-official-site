@@ -2,6 +2,11 @@ import os
 import base64
 import requests
 from typing import Optional, Dict, Any
+from pathlib import Path
+from dotenv import load_dotenv
+
+_env_path = Path(__file__).parent.parent.parent / '.env'
+load_dotenv(dotenv_path=_env_path, override=True)
 
 class PayPalIntegration:
     """

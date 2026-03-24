@@ -2441,8 +2441,8 @@ const ContentManager = () => {
                         <div key={i} className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl p-4 hover:border-blue-500/40 transition-all">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-[var(--c-text)] text-sm truncate">{item.title || 'Untitled'}</p>
-                                    {item.topic && <p className="text-xs text-[var(--c-muted)] mt-0.5">{item.topic}</p>}
+                                    <p className="font-semibold text-[var(--c-text)] text-sm truncate">{item.title || item.metadata?.title || 'Untitled'}</p>
+                                    {(item.topic || item.metadata?.topic) && <p className="text-xs text-[var(--c-muted)] mt-0.5">{item.topic || item.metadata?.topic}</p>}
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     {item.type && (

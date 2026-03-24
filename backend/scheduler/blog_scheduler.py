@@ -53,18 +53,8 @@ class BlogScheduler:
         query_body = {
             "filter": {
                 "and": [
-                    {
-                        "or": [
-                            {"property": "Status", "select": {"equals": "予約済み"}},
-                            {"property": "Status", "select": {"equals": "Ready"}},
-                        ]
-                    },
-                    {
-                        "or": [
-                            {"property": "Category", "select": {"equals": "blog"}},
-                            {"property": "Category", "select": {"equals": "Blog"}},
-                        ]
-                    },
+                    {"property": "Status", "select": {"equals": "予約済み"}},
+                    {"property": "Category", "select": {"equals": "blog"}},
                 ]
             },
             "page_size": limit,
