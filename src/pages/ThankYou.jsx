@@ -72,7 +72,7 @@ const ThankYou = () => {
                     {/* CTAs */}
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link
-                            to="/"
+                            to="/dashboard"
                             className="px-10 py-5 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white text-xl font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
                         >
                             Sage AI を開く
@@ -85,10 +85,24 @@ const ThankYou = () => {
                         </Link>
                     </div>
 
-                    {/* Support */}
-                    <p className="mt-12 text-gray-500">
-                        お困りの場合は <a href="mailto:kanagawatable@gmail.com" className="text-violet-400 hover:underline">kanagawatable@gmail.com</a> までご連絡ください
-                    </p>
+                    {/* Billing portal + Support */}
+                    <div className="mt-12 flex flex-col items-center gap-3">
+                        <a
+                            href="https://billing.stripe.com/p/login/00g14n0Yl6cDgAg000"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-gray-500 hover:text-violet-400 transition-colors"
+                        >
+                            🔧 サブスクリプションの管理・キャンセルはこちら
+                        </a>
+                        <p className="text-sm text-gray-600">
+                            お困りの場合は{' '}
+                            <a href="mailto:kanagawatable@gmail.com" className="text-violet-400 hover:underline">
+                                kanagawatable@gmail.com
+                            </a>{' '}
+                            までご連絡ください
+                        </p>
+                    </div>
                 </motion.div>
             </div>
         </div>
