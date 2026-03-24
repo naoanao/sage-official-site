@@ -3894,6 +3894,23 @@ def stripe_webhook():
         except Exception as ce:
             logger.warning(f"[STRIPE][WEBHOOK] D1 cancel failed: {ce}")
 
+    def _notify_make(stripe_event_type: str, session_obj: dict):
+        """Forward checkout event to Make.com welcome-email scenario.
+        Blueprint uses {{1.type}}, {{1.customer_details.email}}, {{1.amount_total}}
+        so we spread the session object and add 'type' at root level.
+        """
+        make_url = os.getenv("MAKE_WEBHOOK_URL", "")
+        if not make_url:
+            logger.warning("[STRIPE][WEBHOOK] MAKE_WEBHOOK_URL not set — skipping Make.com")
+            return
+        try:
+            import requests as _req
+            payload = {"type": stripe_event_type, **session_obj}
+            resp = _req.post(make_url, json=payload, timeout=10)
+            logger.info(f"[STRIPE][WEBHOOK] Make.com forwarded: HTTP {resp.status_code}")
+        except Exception as me:
+            logger.warning(f"[STRIPE][WEBHOOK] Make.com forward failed: {me}")
+
     # ── Event routing ──────────────────────────────────────────────────────
     if event_type == "checkout.session.completed":
         email           = data_obj.get("customer_details", {}).get("email", "unknown")
@@ -3912,6 +3929,8 @@ def stripe_webhook():
         )
         _log_notion(f"[STRIPE] New {plan} subscriber", "SUCCESS",
                     f"email={email} customer={customer_id} amount=${amount}")
+        # ── Make.com welcome email ─────────────────────────────────────
+        _notify_make(event_type, data_obj)
 
     elif event_type == "customer.subscription.created":
         customer_id     = data_obj.get("customer", "")

@@ -245,9 +245,9 @@ class ImageGenerationEnhanced:
                 return public_url
             logger.warning("imgbb upload failed after Gemini generation.")
 
-        # Tier 3: LoremFlickr (always works, Instagram-compatible public URL)
-        logger.warning(f"HF+Gemini failed, falling back to LoremFlickr for: {text[:40]}")
-        return self._loremflickr_url(text, width, height, topic_keywords=topic_keywords, section_index=section_index)
+        # Tier 3: Pollinations.ai (free AI image gen — no API key, content-aware)
+        logger.warning(f"HF+Gemini failed, falling back to Pollinations.ai for: {text[:40]}")
+        return self._pollinations_url(text, width=width, height=height)
 
     def _loremflickr_url_fallback(self, text: str, width: int = 1200, height: int = 675, topic_keywords: str = None, section_index: int = 0) -> str:
         """Emergency Tier 4 fallback kept for reference (not called in normal flow)."""

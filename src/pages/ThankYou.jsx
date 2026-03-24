@@ -29,35 +29,41 @@ const ThankYou = () => {
 
                     {/* Message */}
                     <p className="text-2xl md:text-3xl text-gray-200 mb-4 font-bold">
-                        Your order is confirmed 🎉
+                        サブスクリプション開始！ 🎉
                     </p>
                     <p className="text-xl text-gray-400 mb-12 leading-relaxed">
-                        Check your email for:<br />
-                        <span className="text-white font-semibold">Download instructions</span> •
-                        <span className="text-white font-semibold"> Setup guide</span> •
-                        <span className="text-white font-semibold"> Order receipt</span>
+                        ウェルカムメールを送信しました<br />
+                        <span className="text-white font-semibold">アクセス方法</span> •
+                        <span className="text-white font-semibold"> セットアップガイド</span> •
+                        <span className="text-white font-semibold"> 領収書</span>
                     </p>
 
                     {/* Info Box */}
                     <div className="mb-12 p-8 rounded-3xl bg-gradient-to-br from-violet-900/30 to-pink-900/30 border border-violet-500/20">
-                        <h3 className="text-2xl font-bold mb-4">What's Next?</h3>
+                        <h3 className="text-2xl font-bold mb-4">次のステップ</h3>
                         <div className="text-left space-y-3 text-gray-300">
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">📧</span>
                                 <div>
-                                    <strong className="text-white">Check your email</strong> - Download link sent within 5 minutes
+                                    <strong className="text-white">メールを確認</strong> — ウェルカムメールとアクセス情報を5分以内にお届けします
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
-                                <span className="text-2xl">📦</span>
+                                <span className="text-2xl">🤖</span>
                                 <div>
-                                    <strong className="text-white">Extract the ZIP file</strong> - Follow the included README.md
+                                    <strong className="text-white">Sage AIが稼働中</strong> — 自律型SNS投稿・コンテンツ生成がすでに動いています
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
-                                <span className="text-2xl">🚀</span>
+                                <span className="text-2xl">📊</span>
                                 <div>
-                                    <strong className="text-white">Run setup</strong> - Takes 5 minutes, fully guided
+                                    <strong className="text-white">ダッシュボードを確認</strong> — Notionと連携して収益・投稿状況をリアルタイムで追跡
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <span className="text-2xl">💳</span>
+                                <div>
+                                    <strong className="text-white">毎月自動更新</strong> — キャンセルはStripeダッシュボードからいつでも可能
                                 </div>
                             </div>
                         </div>
@@ -69,19 +75,19 @@ const ThankYou = () => {
                             to="/"
                             className="px-10 py-5 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white text-xl font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
                         >
-                            Back to Home
+                            Sage AI を開く
                         </Link>
                         <Link
                             to="/blog"
                             className="px-10 py-5 bg-white/5 border-2 border-white/20 rounded-full text-white text-xl font-bold hover:bg-white/10 hover:border-white/40 transition-all"
                         >
-                            Read Blog
+                            ブログを読む
                         </Link>
                     </div>
 
                     {/* Support */}
                     <p className="mt-12 text-gray-500">
-                        Need help? Email us at <a href="mailto:support@sage-ai.com" className="text-violet-400 hover:underline">support@sage-ai.com</a>
+                        お困りの場合は <a href="mailto:kanagawatable@gmail.com" className="text-violet-400 hover:underline">kanagawatable@gmail.com</a> までご連絡ください
                     </p>
                 </motion.div>
             </div>
