@@ -3792,6 +3792,151 @@ def serve_react_app(path):
     return send_from_directory(app.static_folder, 'index.html')
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# STRIPE WEBHOOK — /api/webhook/stripe
+# ─────────────────────────────────────────────────────────────────────────────
+@app.route('/api/webhook/stripe', methods=['POST'])
+def stripe_webhook():
+    """
+    Receive Stripe subscription / payment webhook events.
+
+    Register in Stripe Dashboard → Developers → Webhooks → Add endpoint:
+      URL: https://<ngrok-domain>/api/webhook/stripe
+      Events:
+        - checkout.session.completed
+        - customer.subscription.created
+        - customer.subscription.deleted
+        - invoice.payment_failed
+
+    Env: STRIPE_WEBHOOK_SECRET  (signing secret from Stripe webhook page)
+    """
+    import stripe as _stripe
+    from datetime import datetime, timezone
+
+    raw_body = request.get_data()
+    sig_header = request.headers.get("Stripe-Signature", "")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    D1_DB_ID = "1a8246e0-97d7-4857-b4f0-241b5ea42d43"
+    CF_ACCT  = "9a00225a365387adfb3b047cbadd38de"
+
+    # ── Signature verification ─────────────────────────────────────────────
+    if webhook_secret:
+        try:
+            _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+            event = _stripe.Webhook.construct_event(raw_body, sig_header, webhook_secret)
+        except _stripe.error.SignatureVerificationError:
+            logger.warning("[STRIPE][WEBHOOK] Invalid signature — rejected")
+            return jsonify({"error": "invalid signature"}), 401
+        except Exception as e:
+            logger.error(f"[STRIPE][WEBHOOK] Error: {e}")
+            return jsonify({"error": str(e)}), 400
+    else:
+        event = request.get_json(force=True, silent=True) or {}
+        logger.warning("[STRIPE][WEBHOOK] No STRIPE_WEBHOOK_SECRET — skipping signature check (dev mode)")
+
+    event_type = event.get("type", "")
+    data_obj   = event.get("data", {}).get("object", {})
+    logger.info(f"[STRIPE][WEBHOOK] event={event_type}")
+
+    # ── Helpers ────────────────────────────────────────────────────────────
+    def _notify_telegram(msg: str):
+        try:
+            from backend.integrations.telegram_bot import TelegramBot
+            TelegramBot().send_message(msg)
+        except Exception as te:
+            logger.warning(f"[STRIPE][WEBHOOK] Telegram failed: {te}")
+
+    def _log_notion(topic: str, status: str, detail: str):
+        try:
+            from backend.modules.notion_evidence_ledger import evidence_ledger
+            evidence_ledger.log_d1_run(topic=topic, status=status,
+                log_excerpt=detail, artifact_name="stripe_webhook",
+                external_api_ok=(status == "SUCCESS"))
+        except Exception as ne:
+            logger.warning(f"[STRIPE][WEBHOOK] Notion log failed: {ne}")
+
+    def _d1_upsert(customer_id, subscription_id, email, plan, status_val, amount):
+        cf_token = os.getenv("CLOUDFLARE_API_TOKEN", "")
+        if not cf_token:
+            logger.warning("[STRIPE][WEBHOOK] No CLOUDFLARE_API_TOKEN — skipping D1")
+            return
+        try:
+            import requests as _req
+            sql = (
+                "INSERT INTO subscribers "
+                "(stripe_customer_id,stripe_subscription_id,email,plan,status,amount_usd,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(stripe_customer_id) DO UPDATE SET "
+                "stripe_subscription_id=excluded.stripe_subscription_id,"
+                "plan=excluded.plan,status=excluded.status,"
+                "amount_usd=excluded.amount_usd,updated_at=excluded.updated_at"
+            )
+            _req.post(
+                f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCT}/d1/database/{D1_DB_ID}/query",
+                headers={"Authorization": f"Bearer {cf_token}", "Content-Type": "application/json"},
+                json={"sql": sql, "params": [customer_id, subscription_id, email, plan, status_val, amount, now_iso, now_iso]},
+                timeout=10)
+        except Exception as de:
+            logger.warning(f"[STRIPE][WEBHOOK] D1 upsert failed: {de}")
+
+    def _d1_cancel(customer_id):
+        cf_token = os.getenv("CLOUDFLARE_API_TOKEN", "")
+        if not cf_token:
+            return
+        try:
+            import requests as _req
+            _req.post(
+                f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCT}/d1/database/{D1_DB_ID}/query",
+                headers={"Authorization": f"Bearer {cf_token}", "Content-Type": "application/json"},
+                json={"sql": "UPDATE subscribers SET status='cancelled',updated_at=? WHERE stripe_customer_id=?",
+                      "params": [now_iso, customer_id]}, timeout=10)
+        except Exception as ce:
+            logger.warning(f"[STRIPE][WEBHOOK] D1 cancel failed: {ce}")
+
+    # ── Event routing ──────────────────────────────────────────────────────
+    if event_type == "checkout.session.completed":
+        email           = data_obj.get("customer_details", {}).get("email", "unknown")
+        customer_id     = data_obj.get("customer", "")
+        subscription_id = data_obj.get("subscription", "")
+        amount          = (data_obj.get("amount_total") or 0) // 100
+        plan            = "pro" if amount <= 25 else "enterprise"
+
+        logger.info(f"[STRIPE][WEBHOOK] NEW SUBSCRIBER: email={email} plan={plan} ${amount}/mo")
+        _d1_upsert(customer_id, subscription_id, email, plan, "active", amount)
+        _notify_telegram(
+            f"💰 新規サブスク購入！\n"
+            f"プラン: {plan.upper()} (${amount}/月)\n"
+            f"メール: {email}\n"
+            f"時刻: {now_iso[:16]} UTC"
+        )
+        _log_notion(f"[STRIPE] New {plan} subscriber", "SUCCESS",
+                    f"email={email} customer={customer_id} amount=${amount}")
+
+    elif event_type == "customer.subscription.created":
+        customer_id     = data_obj.get("customer", "")
+        subscription_id = data_obj.get("id", "")
+        status_val      = data_obj.get("status", "active")
+        amount          = (data_obj.get("plan", {}).get("amount") or 0) // 100
+        plan            = "pro" if amount <= 25 else "enterprise"
+        _d1_upsert(customer_id, subscription_id, "", plan, status_val, amount)
+
+    elif event_type == "customer.subscription.deleted":
+        customer_id = data_obj.get("customer", "")
+        _d1_cancel(customer_id)
+        _notify_telegram(f"⚠️ サブスク解約\ncustomer={customer_id}\n{now_iso[:16]} UTC")
+        _log_notion("[STRIPE] Subscription cancelled", "INFO", f"customer={customer_id}")
+
+    elif event_type == "invoice.payment_failed":
+        email       = data_obj.get("customer_email", "unknown")
+        customer_id = data_obj.get("customer", "")
+        amount      = (data_obj.get("amount_due") or 0) // 100
+        _notify_telegram(f"❌ 支払い失敗\nEmail: {email} / ${amount}")
+        _log_notion("[STRIPE] Payment failed", "ERROR", f"email={email} customer={customer_id}")
+
+    return jsonify({"received": True, "event": event_type}), 200
+
+
 if __name__ == '__main__':
     import atexit
     
