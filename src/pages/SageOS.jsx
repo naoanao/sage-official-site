@@ -1024,12 +1024,15 @@ const SageOS = () => {
                                 <button
                                     key={p.id}
                                     onClick={() => goToPhase(p.id)}
-                                    disabled={currentPhase < p.id}
+                                    disabled={currentPhase === 1 && p.id > 1}
+                                    title={currentPhase === 1 && p.id > 1 ? 'Start a topic in TALK phase first' : undefined}
                                     className={`w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all text-sm ${currentPhase === p.id
                                         ? 'bg-purple-600 text-white'
                                         : currentPhase > p.id
                                             ? 'text-emerald-400 hover:bg-[var(--c-raised)]'
-                                            : 'text-[var(--c-subtle)] cursor-not-allowed'
+                                            : currentPhase === 1 && p.id > 1
+                                                ? 'text-[var(--c-subtle)] cursor-not-allowed'
+                                                : 'text-[var(--c-muted)] hover:bg-[var(--c-raised)]'
                                         }`}
                                 >
                                     <span>{p.icon}</span>
@@ -1634,7 +1637,9 @@ const SageOS = () => {
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto py-8 px-8">
                                 {!generateData ? (
                                     <div className="text-center py-20">
-                                        <div className="text-[var(--c-muted)] mb-4">Content not yet generated.</div>
+                                        <div className="text-4xl mb-4 opacity-40">📄</div>
+                                        <div className="text-[var(--c-text)] font-semibold mb-2">No content to review</div>
+                                        <div className="text-[var(--c-muted)] text-sm mb-6">Content is not persisted across sessions.<br />Please regenerate your content.</div>
                                         <button onClick={() => goToPhase(2)} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
                                             ← Generate in Phase 2
                                         </button>
@@ -1992,7 +1997,9 @@ const SageOS = () => {
 
                                 {!generateData ? (
                                     <div className="text-center py-16">
-                                        <div className="text-[var(--c-muted)] mb-4">No content to publish yet.</div>
+                                        <div className="text-4xl mb-4 opacity-40">🚀</div>
+                                        <div className="text-[var(--c-text)] font-semibold mb-2">No content to publish</div>
+                                        <div className="text-[var(--c-muted)] text-sm mb-6">Content is not persisted across sessions.<br />Please regenerate your content to publish.</div>
                                         <button onClick={() => goToPhase(2)} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
                                             ← Generate in Phase 2
                                         </button>
@@ -2452,7 +2459,10 @@ const ContentManager = () => {
             {!loading && !error && items.length === 0 && (
                 <div className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl p-10 text-center text-[var(--c-muted)] text-sm">
                     <FiFolder className="mx-auto mb-3 text-3xl opacity-30" />
-                    <p>No content yet. Run the pipeline to generate content.</p>
+                    {filter === 'all'
+                        ? <p>No content yet. Run the pipeline to generate content.</p>
+                        : <p>No <span className="font-semibold text-[var(--c-text)]">{filter}</span> content yet. Generate content or switch to a different filter.</p>
+                    }
                 </div>
             )}
 

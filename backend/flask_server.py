@@ -3267,6 +3267,20 @@ def productize_finalize():
 
         save_path.write_text(final_md, encoding='utf-8')
         logger.info(f"[FINALIZE] Saved edited course: {save_path}")
+
+        # Also register in Content Library so it appears in the Content Manager UI
+        if content_mgr:
+            try:
+                content_mgr.save_content('general', topic, final_md, {
+                    'title': topic,
+                    'type': 'general',
+                    'status': 'finalized',
+                    'obsidian_path': str(save_path),
+                })
+                logger.info(f"[FINALIZE] Registered in Content Library: {topic}")
+            except Exception as cm_err:
+                logger.warning(f"[FINALIZE] Content Library write failed (non-fatal): {cm_err}")
+
         return jsonify({"status": "success", "saved_path": str(save_path)}), 200
     except Exception as e:
         logger.error(f"[FINALIZE] Save error: {e}")
