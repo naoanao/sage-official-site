@@ -25,13 +25,11 @@ class NotionContentPool:
             return []
 
         try:
-            # Querying for Status='予約済み' (SNS Content Pool uses English field names)
+            # Querying for Status='予約済み'
             query_body = {
                 "filter": {
-                    "or": [
-                        {"property": "Status", "select": {"equals": "予約済み"}},
-                        {"property": "Status", "select": {"equals": "Ready"}},
-                    ]
+                    "property": "Status",
+                    "select": {"equals": "予約済み"}
                 },
                 "page_size": limit,
             }

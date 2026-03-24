@@ -6,10 +6,10 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation"
-# Hugging Face SDXL — standard inference API (free tier, no credits needed)
+GEMINI_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation"
+# Hugging Face SDXL — router API (api-inference.huggingface.co is deprecated as of 2026)
 HF_SDXL_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
-HF_INFERENCE_URL = f"https://api-inference.huggingface.co/models/{HF_SDXL_MODEL}"
+HF_INFERENCE_URL = f"https://router.huggingface.co/hf-inference/models/{HF_SDXL_MODEL}"
 IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload"
 
 PLATFORM_SIZES = {
