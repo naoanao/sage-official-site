@@ -1307,7 +1307,18 @@ def api_content_list():
     
     try:
         items = content_mgr.list_content(ctype, limit)
-        return jsonify({"status": "success", "items": items})
+        # Flatten metadata into top-level fields for frontend compatibility
+        flat_items = []
+        for item in items:
+            meta = item.get('metadata', {}) or {}
+            flat_items.append({
+                **item,
+                'title': meta.get('title') or item.get('filename', 'Untitled'),
+                'type': meta.get('type', ''),
+                'topic': meta.get('topic', ''),
+                'status': meta.get('status', 'draft'),
+            })
+        return jsonify({"status": "success", "items": flat_items})
     except Exception as e:
         logger.error(f"Content list error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
