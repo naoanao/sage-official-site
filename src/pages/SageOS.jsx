@@ -410,7 +410,7 @@ const SageOS = () => {
         const topic = monetizeTopic || inputValue;
         if (!topic.trim()) {
             chatInputRef.current?.focus();
-            setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: '🔍 リサーチするトピックを入力してください。' }]);
+            setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: '🔍 Please enter a topic to research.' }]);
             return;
         }
         setMonetizeStatus('running_d1');
@@ -419,7 +419,7 @@ const SageOS = () => {
             setMessages(prev => [...prev, {
                 id: Date.now(),
                 role: 'sage',
-                content: res.data.summary ?? 'リサーチ完了！結果を output/ に保存しました。'
+                content: res.data.summary ?? 'Research complete! Results saved to output/.'
             }]);
             const check = await api.get(`/api/research/check?topic=${encodeURIComponent(topic)}`);
             setResearchCheck({
@@ -670,7 +670,7 @@ const SageOS = () => {
         } catch (e) {
             const isTimeout = e?.code === 'ECONNABORTED' || e?.message?.includes('timeout');
             const msg = isTimeout
-                ? 'タイムアウト: LLMの応答が遅れています（30秒）。もう一度お試しください。'
+                ? 'Timeout: LLM is taking too long (30s). Please try again.'
                 : (e?.response?.data?.error || e?.message || 'Rewrite failed') + ' — Please try again.';
             setRewriteError(msg);
             console.error('Global rewrite failed', e);
@@ -1250,7 +1250,7 @@ const SageOS = () => {
                                                                 }}
                                                                 className="text-sm px-4 py-2 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] rounded-xl flex items-center gap-2 transition-all"
                                                             >
-                                                                💬 もう少し話す
+                                                                💬 Keep talking
                                                             </button>
                                                         </div>
                                                     )}
@@ -1277,7 +1277,7 @@ const SageOS = () => {
                                                 type="text"
                                                 value={inputValue}
                                                 onChange={e => setInputValue(e.target.value)}
-                                                placeholder="あなたのビジネスやコンテンツのアイデアを話してください..."
+                                                placeholder="Tell Sage your business idea or content topic..."
                                                 className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl pl-4 pr-14 py-4 focus:outline-none focus:border-blue-500 transition-colors"
                                             />
                                             <button type="submit" className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
@@ -1747,7 +1747,7 @@ const SageOS = () => {
                                                                     value={section.title}
                                                                     onChange={e => setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, title: e.target.value } : s))}
                                                                     className="w-full mt-3 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-lg px-3 py-2 text-[var(--c-text)] font-semibold text-sm focus:outline-none focus:border-blue-400"
-                                                                    placeholder="セクションタイトル"
+                                                                    placeholder="Section title"
                                                                 />
                                                                 <textarea
                                                                     value={section.content}
