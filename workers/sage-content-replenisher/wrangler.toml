@@ -1,0 +1,18 @@
+name               = "sage-content-replenisher"
+main               = "index.js"
+compatibility_date = "2024-01-01"
+account_id         = "9a00225a365387adfb3b047cbadd38de"
+
+# Cron: Every Sunday 20:00 JST (= 11:00 UTC)
+[triggers]
+crons = ["0 11 * * SUN"]
+
+# Plain vars (non-secret):
+[vars]
+NOTION_CONTENT_POOL_DB_ID = "b4f36b500abc45a28c08f5d59463d8cc"
+TELEGRAM_CHAT_ID          = "778654915"
+
+# Secrets (set via wrangler secret put or deploy.ps1):
+#   NOTION_API_KEY
+#   GROQ_API_KEY
+#   TELEGRAM_BOT_TOKEN
