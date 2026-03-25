@@ -59,25 +59,26 @@ async function countPendingItems(env) {
 // ── Groq: generate a batch of unique SNS topics ───────────────────────────
 async function generateTopics(env, count) {
   const categories = [
-    'AI副業・収益化', '業務自動化', 'SNS戦略', 'Notion活用',
-    'ChatGPT実践', 'フリーランス', 'デジタルマーケティング',
-    'AIツール紹介', 'コンテンツ作成', 'ブログ・SEO',
+    'AI Income & Monetization', 'Business Automation', 'Social Media Strategy', 'Notion Productivity',
+    'ChatGPT & Prompting', 'Freelance & Remote Work', 'Digital Marketing',
+    'AI Tools & Reviews', 'Content Creation', 'Blogging & SEO',
   ];
 
-  const prompt = `あなたはAI副収入・自動化に特化したSNSコンテンツ戦略家です。
-以下のカテゴリからバランスよく選び、日本語で${count}個のSNS投稿トピックを生成してください。
+  const prompt = `You are an expert social media content strategist specializing in AI automation and solopreneur growth for an English-speaking global audience.
 
-カテゴリ例: ${categories.join(' / ')}
+Generate exactly ${count} unique and specific English SNS post topics. Balance across the categories below.
 
-要件:
-- 各トピックは具体的で行動可能（「AIで月5万円稼ぐ方法」など）
-- 多様なカテゴリに分散させる
-- 日本のソロプレナー・副業層に刺さる内容
-- 重複なし
-- JSON配列で出力。各要素は {"title": "...", "category": "..."}
-- 説明不要、JSON配列のみ出力
+Categories: ${categories.join(' / ')}
 
-${count}個のトピック:`;
+Requirements:
+- Each topic is specific and actionable (e.g. "3 AI tools that replace a $2,000/month VA")
+- Diverse categories — don't repeat the same type
+- Target audience: solopreneurs, indie hackers, creators, freelancers wanting to earn with AI
+- No duplicates
+- Output a JSON array only. Each element: {"title": "...", "category": "..."}
+- No explanation, just the JSON array
+
+${count} topics:`;
 
   const res = await fetch(GROQ_API, {
     method: 'POST',
@@ -110,20 +111,20 @@ ${count}個のトピック:`;
 // Fallback topics if Groq fails
 function generateFallbackTopics(count) {
   const pool = [
-    { title: 'ChatGPTで副業を始める3ステップ', category: 'ChatGPT実践' },
-    { title: 'Notionで副業収益を自動トラッキング', category: 'Notion活用' },
-    { title: 'AIで毎日SNS投稿を自動化する方法', category: '業務自動化' },
-    { title: 'Groq APIで激速コンテンツ生成', category: 'AIツール紹介' },
-    { title: 'ブルースカイで副業アカウントを育てる', category: 'SNS戦略' },
-    { title: 'AI×ブログで月3万円の不労所得', category: 'ブログ・SEO' },
-    { title: 'フリーランスがAIで作業時間を半減', category: 'フリーランス' },
-    { title: 'Instagramリール自動投稿の始め方', category: 'SNS戦略' },
-    { title: 'AIプロンプト販売で月1万円稼ぐ', category: 'AI副業・収益化' },
-    { title: 'Cloudflare Workersで24時間自動化', category: '業務自動化' },
-    { title: 'Make.comで収益通知を全自動化', category: '業務自動化' },
-    { title: 'ChatGPT APIで独自AIツールを構築', category: 'ChatGPT実践' },
-    { title: 'StripeとAIで定期収益を自動管理', category: 'AI副業・収益化' },
-    { title: 'SNSハッシュタグ戦略をAIで最適化', category: 'デジタルマーケティング' },
+    { title: '3 steps to start earning with ChatGPT as a solopreneur', category: 'ChatGPT & Prompting' },
+    { title: 'How to auto-track your side income with Notion AI', category: 'Notion Productivity' },
+    { title: 'How I automated daily social media posting with AI', category: 'Business Automation' },
+    { title: 'Why Groq API is the fastest free AI for content generation', category: 'AI Tools & Reviews' },
+    { title: 'How to grow a Bluesky account from 0 to 1,000 followers with AI', category: 'Social Media Strategy' },
+    { title: 'Build a $500/month passive income blog with AI in 30 days', category: 'Blogging & SEO' },
+    { title: 'How freelancers cut 10 hours/week using AI workflows', category: 'Freelance & Remote Work' },
+    { title: 'Automate Instagram posts for free using Cloudflare Workers', category: 'Social Media Strategy' },
+    { title: 'Sell AI prompt packs on Gumroad — a beginner\'s guide', category: 'AI Income & Monetization' },
+    { title: 'Run a 24/7 business on Cloudflare\'s free tier', category: 'Business Automation' },
+    { title: 'Automate revenue notifications with Make.com + Stripe', category: 'Business Automation' },
+    { title: 'Build your own AI tool with the ChatGPT API in a weekend', category: 'ChatGPT & Prompting' },
+    { title: 'How to manage recurring subscriptions automatically with Stripe', category: 'AI Income & Monetization' },
+    { title: 'Use AI to find the perfect hashtag strategy for your niche', category: 'Digital Marketing' },
   ];
   return pool.slice(0, count);
 }

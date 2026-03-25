@@ -47,7 +47,7 @@ async function notionQuery(env) {
 
 function extractPageTitle(page) {
   const titleProp = page.properties?.Name?.title || page.properties?.title?.title || [];
-  return titleProp.map(t => t.plain_text).join('') || '今日のAI活用ヒント';
+  return titleProp.map(t => t.plain_text).join('') || 'AI automation tips for solopreneurs';
 }
 
 function extractPageCategory(page) {
@@ -70,20 +70,24 @@ async function notionMarkDone(env, pageId) {
 
 // ── Groq content generation ───────────────────────────────────────────────────
 async function generateSNSContent(env, topic, category) {
-  const prompt = `あなたはAI副収入・自動化に特化したSNSコンテンツの専門家です。
-以下のトピックについて、日本語でSNS投稿文を1つ作成してください。
+  const prompt = `You are an expert social media content writer specializing in AI automation and solopreneur growth.
 
-トピック: ${topic}
-カテゴリ: ${category}
+Write ONE engaging English social media post about the following topic.
 
-要件:
-- 140〜200文字の日本語テキスト
-- 冒頭に🤖や💡などの絵文字を1つ
-- 具体的な数字や事実を含む
-- 最後に関連ハッシュタグを3〜5個（#AIソロプレナー #自動化 など）
-- Bluesky/Instagram両方で使えるトーン
+Topic: ${topic}
+Category: ${category}
 
-投稿文のみ出力（説明不要）:`;
+Requirements:
+- 200–280 characters of English text
+- Start with a relevant emoji (🤖, 💡, 🚀, ⚡, etc.)
+- Include a specific number, stat, or concrete fact
+- Speak directly to solopreneurs, creators, and indie hackers
+- End with 3–5 relevant hashtags (e.g. #AIAutomation #Solopreneur #PassiveIncome)
+- Tone: confident, practical, inspiring — not salesy
+- Works great on both Bluesky and Instagram
+
+Output the post text only (no explanation):`;
+
 
   const res = await fetch(GROQ_API, {
     method: 'POST',
@@ -99,7 +103,7 @@ async function generateSNSContent(env, topic, category) {
     }),
   });
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || `📱 ${topic}\n\n#AI #自動化 #副収入`;
+  return data.choices?.[0]?.message?.content?.trim() || `🤖 ${topic}\n\nAI automation is changing how solopreneurs work. Are you keeping up?\n\n#AIAutomation #Solopreneur #PassiveIncome`;
 }
 
 // ── Pollinations image URL (no API key needed) ────────────────────────────────
