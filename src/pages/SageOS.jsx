@@ -248,11 +248,22 @@ const SageOS = () => {
 
     // Automations
     const [automationLoading, setAutomationLoading] = useState(new Set());
-    const [automations, setAutomations] = useState([
+    const AUTO_DEFAULTS = [
         { id: 'bluesky', name: 'Bluesky Daily Post', icon: '🦋', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
         { id: 'instagram', name: 'Instagram Daily Post', icon: '📸', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
         { id: 'blog', name: 'Blog Weekly Post', icon: '📝', active: false, schedule: 'Weekly · Mon 09:00', lastRun: 'Not connected' },
-    ]);
+    ];
+    const loadAutomations = () => {
+        try {
+            const saved = localStorage.getItem('sage_automations');
+            if (saved) {
+                const savedMap = JSON.parse(saved);
+                return AUTO_DEFAULTS.map(a => ({ ...a, active: savedMap[a.id] ?? a.active }));
+            }
+        } catch { /* ignore */ }
+        return AUTO_DEFAULTS;
+    };
+    const [automations, setAutomations] = useState(loadAutomations);
 
     const [brainStats, setBrainStats] = useState({ learned_patterns: 0, accuracy: 0 });
     const [monetizationStats, setMonetizationStats] = useState({ qa_pass: 0, qa_warn: 0, safety: 0 });
@@ -286,22 +297,37 @@ const SageOS = () => {
         } catch { /* use defaults */ }
     };
 
+    const saveAutomationState = (updatedList) => {
+        try {
+            const map = Object.fromEntries(updatedList.map(a => [a.id, a.active]));
+            localStorage.setItem('sage_automations', JSON.stringify(map));
+        } catch { /* ignore */ }
+    };
+
     const handleToggle = async (id, currentActive) => {
         setAutomationLoading(prev => new Set([...prev, id]));
+        // Optimistic update + persist immediately
+        const newActive = !currentActive;
+        setAutomations(prev => {
+            const updated = prev.map(a => a.id === id ? { ...a, active: newActive } : a);
+            saveAutomationState(updated);
+            return updated;
+        });
         try {
-            await api.post('/api/automations/toggle', { id, active: !currentActive });
-            await fetchAutomations();
-            toast.success(`Automation ${!currentActive ? 'started' : 'stopped'}`);
+            await api.post('/api/automations/toggle', { id, active: newActive });
+            toast.success(`Automation ${newActive ? 'started' : 'stopped'}`);
         } catch (err) {
-            // Revert to original state (not the toggled state)
-            setAutomations(prev => prev.map(a =>
-                a.id === id ? { ...a, active: currentActive } : a
-            ));
             const isOffline = !err.response;
-            toast.error(isOffline
-                ? 'Backend unreachable — is Flask running on port 8080?'
-                : `Toggle failed: ${err.message}`
-            );
+            if (!isOffline) {
+                // Server error: revert
+                setAutomations(prev => {
+                    const reverted = prev.map(a => a.id === id ? { ...a, active: currentActive } : a);
+                    saveAutomationState(reverted);
+                    return reverted;
+                });
+                toast.error(`Toggle failed: ${err.message}`);
+            }
+            // Offline: keep optimistic state (CF Worker handles actual scheduling)
         } finally {
             setAutomationLoading(prev => { const n = new Set(prev); n.delete(id); return n; });
         }

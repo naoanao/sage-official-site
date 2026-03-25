@@ -69,7 +69,7 @@ const UpgradeModal = ({ email, onDismiss }) => (
         >
           <div className="text-xs text-violet-400 font-mono uppercase tracking-widest mb-2">Most Popular</div>
           <div className="text-3xl font-black text-white mb-0.5">$20</div>
-          <div className="text-gray-400 text-sm mb-4">/month</div>
+          <div className="text-gray-400 text-sm mb-4">/月</div>
           <ul className="space-y-1.5 text-left mb-5">
             {['Sage AI Dashboard', 'Daily auto-posting to SNS', 'AI content generation', 'Full feature access'].map(f => (
               <li key={f} className="text-xs text-gray-300 flex items-center gap-1.5">
@@ -91,9 +91,9 @@ const UpgradeModal = ({ email, onDismiss }) => (
         >
           <div className="text-xs text-amber-400 font-mono uppercase tracking-widest mb-2">Enterprise</div>
           <div className="text-3xl font-black text-white mb-0.5">$99</div>
-          <div className="text-gray-400 text-sm mb-4">/month</div>
+          <div className="text-gray-400 text-sm mb-4">/月</div>
           <ul className="space-y-1.5 text-left mb-5">
-            {['Everything in Pro', 'Direct API access', 'White-label option', 'Onboarding call'].map(f => (
+            {['Pro の全機能', 'API直接アクセス', 'ホワイトラベル', 'オンボーディング通話'].map(f => (
               <li key={f} className="text-xs text-gray-300 flex items-center gap-1.5">
                 <span className="text-emerald-400">✓</span> {f}
               </li>
