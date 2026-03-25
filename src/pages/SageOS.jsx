@@ -961,8 +961,9 @@ const SageOS = () => {
         setSelfTestRunning({ all: true });
         try {
             const res = await api.get('/api/system/self_test', { params: { tier: 'all' }, timeout: 60000 });
-            const report = res.data.report;
-            setSelfTestResults({ tier1: report.tier1, tier2: report.tier2 });
+            const report = res.data?.report;
+            if (!report) throw new Error('Invalid response from self-test API');
+            setSelfTestResults({ tier1: report.tier1 ?? null, tier2: report.tier2 ?? null });
         } catch (e) {
             console.error('[SelfTest]', e);
             setSelfTestError(e?.response?.data?.error || e?.message || 'Backend unreachable');

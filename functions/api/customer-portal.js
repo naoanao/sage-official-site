@@ -19,7 +19,7 @@
  */
 
 const STRIPE_API = 'https://api.stripe.com/v1';
-const RETURN_URL = 'https://sage-ai.pages.dev/thank-you';
+const RETURN_URL = 'https://sage-official-site.pages.dev/thank-you';
 
 async function stripePost(path, params, secret) {
   const body = new URLSearchParams(params);

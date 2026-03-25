@@ -412,7 +412,7 @@ const Landing = () => {
                     {/* Status badge */}
                     <div className="inline-flex items-center gap-2 mb-8 sage-badge">
                         <span className="live-dot" />
-                        BETA LAUNCH · BLUESKY AUTO-PUBLISH · 🌐 GLOBAL
+                        BETA LAUNCH · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
                     </div>
 
                     {/* Headline */}
