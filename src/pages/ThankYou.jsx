@@ -88,9 +88,7 @@ const ThankYou = () => {
                     {/* Billing portal + Support */}
                     <div className="mt-12 flex flex-col items-center gap-3">
                         <a
-                            href="https://billing.stripe.com/p/login/00g14n0Yl6cDgAg000"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href="/api/customer-portal"
                             className="text-sm text-gray-500 hover:text-violet-400 transition-colors"
                         >
                             🔧 サブスクリプションの管理・キャンセルはこちら

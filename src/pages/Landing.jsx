@@ -687,40 +687,83 @@ const Landing = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.5, delay: 0.1 }}
-                        className="bento-card bento-card-accent card-accent-top p-8 max-w-md"
+                        className="flex flex-col sm:flex-row gap-5 max-w-2xl"
                     >
-                        <div className="sage-badge mb-5" style={{ color: 'var(--c-blue)', borderColor: 'rgba(26,86,219,0.2)' }}>
-                            Featured Product
+                        {/* Pro Plan Card */}
+                        <div className="bento-card bento-card-accent card-accent-top p-7 flex-1">
+                            <div className="sage-badge mb-4" style={{ color: 'var(--c-blue)', borderColor: 'rgba(26,86,219,0.2)' }}>
+                                Most Popular
+                            </div>
+                            <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--c-text)', letterSpacing: '-0.01em' }}>
+                                Pro
+                            </h3>
+                            <div className="font-black text-3xl my-3" style={{ color: 'var(--c-text)', letterSpacing: '-0.03em' }}>
+                                $20<span className="text-base font-normal" style={{ color: 'var(--c-muted)' }}>/mo</span>
+                            </div>
+                            <ul className="space-y-2 mb-6">
+                                {[
+                                    'Unlimited Sage AI dashboard',
+                                    'Daily SNS auto-posting',
+                                    'Blog + Gumroad pipeline',
+                                    'All future updates',
+                                ].map((f) => (
+                                    <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-muted)' }}>
+                                        <FiCheckCircle size={13} style={{ color: 'var(--c-emerald)', flexShrink: 0 }} />
+                                        {f}
+                                    </li>
+                                ))}
+                            </ul>
+                            <a
+                                href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-200"
+                                style={{
+                                    background: 'linear-gradient(135deg, #1A56DB, #7C3AED)',
+                                    boxShadow: '0 4px 16px rgba(26,86,219,0.3)',
+                                }}
+                            >
+                                <FiZap size={14} /> Start Pro — $20/mo
+                            </a>
                         </div>
-                        <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--c-text)', letterSpacing: '-0.01em' }}>
-                            2026 AI Influencer Monetization Express
-                        </h3>
-                        <div className="font-black text-3xl my-4" style={{ color: 'var(--c-text)', letterSpacing: '-0.03em' }}>
-                            $29.99
+
+                        {/* Enterprise Plan Card */}
+                        <div className="bento-card p-7 flex-1">
+                            <div className="sage-badge mb-4" style={{ color: 'var(--c-amber)', borderColor: 'rgba(217,119,6,0.2)' }}>
+                                Enterprise
+                            </div>
+                            <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--c-text)', letterSpacing: '-0.01em' }}>
+                                Enterprise
+                            </h3>
+                            <div className="font-black text-3xl my-3" style={{ color: 'var(--c-text)', letterSpacing: '-0.03em' }}>
+                                $99<span className="text-base font-normal" style={{ color: 'var(--c-muted)' }}>/mo</span>
+                            </div>
+                            <ul className="space-y-2 mb-6">
+                                {[
+                                    'Everything in Pro',
+                                    'Direct API access',
+                                    'White-label option',
+                                    'Onboarding call (30min)',
+                                ].map((f) => (
+                                    <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-muted)' }}>
+                                        <FiCheckCircle size={13} style={{ color: 'var(--c-emerald)', flexShrink: 0 }} />
+                                        {f}
+                                    </li>
+                                ))}
+                            </ul>
+                            <a
+                                href="https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-200"
+                                style={{
+                                    background: 'linear-gradient(135deg, #D97706, #C0392B)',
+                                    boxShadow: '0 4px 16px rgba(217,119,6,0.2)',
+                                }}
+                            >
+                                <FiShoppingCart size={14} /> Go Enterprise — $99/mo
+                            </a>
                         </div>
-                        <ul className="space-y-2 mb-7">
-                            {[
-                                'Full AI Influencer Blueprint',
-                                'Autonomous SNS posting templates',
-                                'Monetization funnel step-by-step',
-                                'Lifetime access + updates',
-                            ].map((f) => (
-                                <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-muted)' }}>
-                                    <FiCheckCircle size={13} style={{ color: 'var(--c-emerald)', flexShrink: 0 }} />
-                                    {f}
-                                </li>
-                            ))}
-                        </ul>
-                        <Link
-                            to="/sales"
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-200"
-                            style={{
-                                background: 'linear-gradient(135deg, #1A56DB, #C0392B)',
-                                boxShadow: '0 4px 16px rgba(26,86,219,0.2)',
-                            }}
-                        >
-                            <FiShoppingCart size={15} /> Get Access — $29.99
-                        </Link>
                     </Motion.div>
                 </div>
             </section>

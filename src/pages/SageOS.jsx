@@ -33,17 +33,17 @@ const DEMO_RESULT = {
     images: {
         'Why AI is the #1 Passive Income Tool': {
             type: 'generated',
-            url: 'https://loremflickr.com/400/225/technology,laptop?lock=101',
+            url: 'https://image.pollinations.ai/prompt/modern%20AI%20workspace%20laptop%20dashboard%20futuristic%20glowing%20purple%20blue?seed=101&width=400&height=225&nologo=true',
             prompt: 'Modern workspace with laptop showing AI dashboard'
         },
         '5 Proven AI Income Streams': {
             type: 'generated',
-            url: 'https://loremflickr.com/400/225/business,money?lock=202',
+            url: 'https://image.pollinations.ai/prompt/multiple%20income%20streams%20visualization%20digital%20money%20flow%20vibrant%20neon?seed=202&width=400&height=225&nologo=true',
             prompt: 'Multiple income streams visualization'
         },
         'The 90-Day Blueprint': {
             type: 'generated',
-            url: 'https://loremflickr.com/400/225/success,growth?lock=303',
+            url: 'https://image.pollinations.ai/prompt/growth%20chart%20milestones%20success%20journey%20upward%20trend%20futuristic%20AI?seed=303&width=400&height=225&nologo=true',
             prompt: 'Growth chart with milestones'
         }
     }

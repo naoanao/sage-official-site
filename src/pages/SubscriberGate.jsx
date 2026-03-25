@@ -275,9 +275,7 @@ const SubscriberGate = () => {
         <div className="flex items-center gap-3">
           <PlanBadge plan={plan} />
           <a
-            href="https://billing.stripe.com/p/login/00g14n0Yl6cDgAg000"
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`/api/customer-portal?email=${encodeURIComponent(email)}`}
             className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
             title="サブスクリプション管理"
           >
