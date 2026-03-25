@@ -494,12 +494,20 @@ const SageOS = () => {
 
         if (!IS_OWNER) {
             // ── Cloud path: try CF Function /api/generate (Groq, no Flask) ──
+            const subscriberEmail = localStorage.getItem('sage_subscriber_email') || '';
             try {
                 const cloudRes = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topic: topicToUse, market, price, language: lang })
+                    body: JSON.stringify({ topic: topicToUse, market, price, language: lang, email: subscriberEmail })
                 });
+                // Rate limit reached
+                if (cloudRes.status === 429) {
+                    const errData = await cloudRes.json().catch(() => ({}));
+                    setGenerateProgress('');
+                    alert(errData.message || "You've reached your daily generation limit. Resets at midnight UTC.");
+                    return;
+                }
                 if (cloudRes.ok) {
                     const courseData = await cloudRes.json();
                     if (courseData && courseData.sections && courseData.sections.length > 0) {
@@ -904,12 +912,20 @@ const SageOS = () => {
 
         // Cloud path: try CF Function /api/chat (Groq, no Flask needed)
         if (!IS_OWNER) {
+            const subscriberEmail = localStorage.getItem('sage_subscriber_email') || '';
             try {
                 const cloudRes = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: newMsg.content })
+                    body: JSON.stringify({ message: newMsg.content, email: subscriberEmail })
                 });
+                // Rate limit reached
+                if (cloudRes.status === 429) {
+                    const errData = await cloudRes.json().catch(() => ({}));
+                    const limitMsg = errData.message || "You've reached your daily chat limit. Resets at midnight UTC.";
+                    setMessages(prev => [...prev, { id: Date.now() + 1, role: 'sage', content: `⚠️ ${limitMsg}` }]);
+                    return;
+                }
                 if (cloudRes.ok) {
                     const data = await cloudRes.json();
                     if (data?.response) {
