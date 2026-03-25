@@ -501,7 +501,6 @@ const SageOS = () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ topic: topicToUse, market, price, language: lang, email: subscriberEmail })
                 });
-                // Rate limit reached
                 if (cloudRes.status === 429) {
                     const errData = await cloudRes.json().catch(() => ({}));
                     setGenerateProgress('');
@@ -919,7 +918,6 @@ const SageOS = () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: newMsg.content, email: subscriberEmail })
                 });
-                // Rate limit reached
                 if (cloudRes.status === 429) {
                     const errData = await cloudRes.json().catch(() => ({}));
                     const limitMsg = errData.message || "You've reached your daily chat limit. Resets at midnight UTC.";
@@ -2549,4 +2547,26 @@ const ContentManager = () => {
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-[var(--c-text)] text-sm truncate">{item.title || item.metadata?.title || 'Untitled'}</p>
-                                    {
+                                    {(item.topic || item.metadata?.topic) && <p className="text-xs text-[var(--c-muted)] mt-0.5">{item.topic || item.metadata?.topic}</p>}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {item.type && (
+                                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-600/20 text-blue-400 font-mono">{item.type}</span>
+                                    )}
+                                    {item.created_at && (
+                                        <span className="text-xs text-[var(--c-subtle)]">{new Date(item.created_at).toLocaleDateString()}</span>
+                                    )}
+                                </div>
+                            </div>
+                            {item.path && (
+                                <p className="text-xs text-[var(--c-subtle)] font-mono mt-2 truncate">{item.path}</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default SageOS;
