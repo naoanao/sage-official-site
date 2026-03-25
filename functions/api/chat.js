@@ -30,12 +30,31 @@ const cors = {
   'Content-Type': 'application/json',
 };
 
-// ── System prompt ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Sage AI — an autonomous AI assistant specialized in helping solopreneurs build income streams, automate their business, and grow on social media.
+// ── System prompt builder ──────────────────────────────────────────────────────
+function buildSystemPrompt(identity) {
+  const base = `You are Sage AI — an autonomous AI assistant specialized in helping solopreneurs build income streams, automate their business, and grow on social media.
 
 You are direct, practical, and results-focused. You give specific, actionable advice with real numbers and examples. You understand tools like Notion, Cloudflare Workers, Groq, Bluesky, Instagram, Stripe, Gumroad, and Make.com.
 
 When the user asks about their current phase or topic, tailor your advice accordingly. Keep responses concise (under 300 words) unless a detailed breakdown is needed.`;
+
+  if (!identity || (!identity.role && !identity.niche && !identity.tone)) {
+    return base;
+  }
+
+  const personalLines = [];
+  if (identity.role)         personalLines.push(`- The user's role / persona: ${identity.role}`);
+  if (identity.niche)        personalLines.push(`- Their niche / topic: ${identity.niche}`);
+  if (identity.tone)         personalLines.push(`- Preferred tone / voice: ${identity.tone}`);
+  if (identity.visual_style) personalLines.push(`- Visual style: ${identity.visual_style}`);
+
+  return `${base}
+
+IMPORTANT — This user has a specific identity profile. Tailor ALL advice, examples, and content suggestions to fit their profile:
+${personalLines.join('\n')}
+
+Always frame examples, income ideas, content topics, and strategies around their niche. Do not use generic examples when their profile gives you specific context.`;
+}
 
 // ── Groq call with retry (handles 429 rate-limit + 5xx errors) ────────────────
 async function callGroqWithRetry(apiKey, messages, maxTokens = 600, maxRetries = 3) {
@@ -137,6 +156,7 @@ export async function onRequestPost(context) {
     const body = await request.json();
     const userMessage = (body.message || body.content || '').trim();
     const email = (body.email || '').trim().toLowerCase();
+    const identity = body.identity || {};
 
     if (!userMessage) {
       return new Response(JSON.stringify({ error: 'No message provided' }), {
@@ -178,8 +198,9 @@ export async function onRequestPost(context) {
     }
 
     // ── Call Groq with retry ──────────────────────────────────────────────────
+    const systemPrompt = buildSystemPrompt(identity);
     const groqRes = await callGroqWithRetry(groqKey, [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
     ], 600);
 

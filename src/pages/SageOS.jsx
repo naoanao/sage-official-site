@@ -495,11 +495,13 @@ const SageOS = () => {
         if (!IS_OWNER) {
             // ── Cloud path: try CF Function /api/generate (Groq, no Flask) ──
             const subscriberEmail = localStorage.getItem('sage_subscriber_email') || '';
+            let userIdentity = {};
+            try { userIdentity = JSON.parse(localStorage.getItem('sage_user_identity') || '{}'); } catch (_) { }
             try {
                 const cloudRes = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topic: topicToUse, market, price, language: lang, email: subscriberEmail })
+                    body: JSON.stringify({ topic: topicToUse, market, price, language: lang, email: subscriberEmail, identity: userIdentity })
                 });
                 if (cloudRes.status === 429) {
                     const errData = await cloudRes.json().catch(() => ({}));
@@ -912,11 +914,13 @@ const SageOS = () => {
         // Cloud path: try CF Function /api/chat (Groq, no Flask needed)
         if (!IS_OWNER) {
             const subscriberEmail = localStorage.getItem('sage_subscriber_email') || '';
+            let userIdentity = {};
+            try { userIdentity = JSON.parse(localStorage.getItem('sage_user_identity') || '{}'); } catch (_) { }
             try {
                 const cloudRes = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: newMsg.content, email: subscriberEmail })
+                    body: JSON.stringify({ message: newMsg.content, email: subscriberEmail, identity: userIdentity })
                 });
                 if (cloudRes.status === 429) {
                     const errData = await cloudRes.json().catch(() => ({}));
@@ -2432,28 +2436,51 @@ const SageOS = () => {
 };
 
 // ── Identity Panel ──────────────────────────────────────────────────────────
+const IDENTITY_LS_KEY = 'sage_user_identity';
+const DEFAULT_IDENTITY = { role: '', niche: '', tone: '', visual_style: '', language: 'en' };
+
 const IdentityPanel = () => {
-    const [identity, setIdentity] = React.useState({
-        role: '', niche: '', tone: '', visual_style: '', language: 'ja'
-    });
+    const IS_OWNER_IP = typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    const [identity, setIdentity] = React.useState(DEFAULT_IDENTITY);
     const [saving, setSaving] = React.useState(false);
     const [saved, setSaved] = React.useState(false);
     const [resetting, setResetting] = React.useState(false);
 
     React.useEffect(() => {
-        api.get('/api/identity')
-            .then(res => setIdentity(res.data))
-            .catch(() => { });
+        if (IS_OWNER_IP) {
+            api.get('/api/identity')
+                .then(res => setIdentity(res.data))
+                .catch(() => {
+                    // Flask offline: fall back to localStorage
+                    const stored = localStorage.getItem(IDENTITY_LS_KEY);
+                    if (stored) setIdentity(JSON.parse(stored));
+                });
+        } else {
+            // Cloud subscribers: always use localStorage
+            const stored = localStorage.getItem(IDENTITY_LS_KEY);
+            if (stored) {
+                try { setIdentity(JSON.parse(stored)); } catch (_) { }
+            }
+        }
     }, []);
 
     const handleReset = async () => {
         setResetting(true);
         try {
-            const res = await api.post('/api/identity/reset');
-            setIdentity(res.data.identity);
+            if (IS_OWNER_IP) {
+                const res = await api.post('/api/identity/reset');
+                setIdentity(res.data.identity);
+            } else {
+                localStorage.removeItem(IDENTITY_LS_KEY);
+                setIdentity(DEFAULT_IDENTITY);
+            }
             toast.info('Identity reset to default');
         } catch (err) {
-            toast.error('Reset failed — is Flask running?');
+            localStorage.removeItem(IDENTITY_LS_KEY);
+            setIdentity(DEFAULT_IDENTITY);
+            toast.info('Identity reset to default');
         } finally {
             setResetting(false);
         }
@@ -2463,13 +2490,19 @@ const IdentityPanel = () => {
         setSaving(true);
         setSaved(false);
         try {
-            await api.post('/api/identity', identity);
+            // Always save to localStorage so chat/generate can read it
+            localStorage.setItem(IDENTITY_LS_KEY, JSON.stringify(identity));
+            if (IS_OWNER_IP) {
+                await api.post('/api/identity', identity);
+            }
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
-            toast.success('Identity saved');
+            toast.success('Identity saved — all future content will reflect your profile!');
         } catch (err) {
-            const msg = err.response?.data?.message || err.message || 'unknown error';
-            toast.error(`Save failed: ${msg}`);
+            // If Flask fails, localStorage save already succeeded for cloud
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+            toast.success('Identity saved locally');
         } finally {
             setSaving(false);
         }
@@ -2484,7 +2517,10 @@ const IdentityPanel = () => {
 
     return (
         <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl space-y-4">
-            <div className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2">🎭 Your AI Clone Identity</div>
+            <div>
+                <div className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2 mb-1">🎭 Your AI Clone Identity</div>
+                <p className="text-xs text-slate-500">Fill this in so Sage generates blog posts, SNS captions, and shop copy that actually fit <em>your</em> niche — not a generic template.</p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
                 {fields.map(({ key, label, placeholder }) => (
                     <div key={key} className="space-y-1">

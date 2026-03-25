@@ -131,9 +131,25 @@ export async function onRequestPost(context) {
 
   try {
     const body = await request.json();
-    const topic  = body.topic  || 'AI automation for solopreneurs';
-    const market = body.market || 'English-speaking solopreneurs';
-    const email  = (body.email || '').trim().toLowerCase();
+    const topic    = body.topic  || 'AI automation for solopreneurs';
+    const email    = (body.email || '').trim().toLowerCase();
+    const identity = body.identity || {};
+
+    // Build personalized market description from identity, falling back to body.market
+    const identityMarket = identity.niche
+      ? `${identity.niche}${identity.role ? ` (${identity.role})` : ''} audience`
+      : (body.market || 'English-speaking solopreneurs');
+    const market = identityMarket;
+
+    // Build identity context string for prompts
+    const identityContext = (identity.role || identity.niche || identity.tone)
+      ? [
+          identity.role         ? `Creator persona: ${identity.role}` : '',
+          identity.niche        ? `Niche / topic: ${identity.niche}` : '',
+          identity.tone         ? `Tone & voice: ${identity.tone}` : '',
+          identity.visual_style ? `Visual style: ${identity.visual_style}` : '',
+        ].filter(Boolean).join('\n')
+      : '';
 
     const groqKey = env.GROQ_API_KEY;
     if (!groqKey) {
@@ -168,13 +184,17 @@ export async function onRequestPost(context) {
     }
 
     // ── Generate blog sections + SNS captions in parallel ────────────────────
+    const identityBlock = identityContext
+      ? `\n\nCREATOR PROFILE — tailor all content to fit this person:\n${identityContext}`
+      : '';
+
     const [sectionsRaw, captionsRaw] = await Promise.all([
       callGroqWithRetry(
         groqKey,
-        `You are an expert content writer for solopreneurs. Write clear, practical, well-structured blog content in English.`,
+        `You are an expert content writer. Write clear, practical, well-structured blog content in English.${identityBlock}`,
         `Write a 3-section blog post about: "${topic}"
 Target audience: ${market}
-
+${identityContext ? `\nWrite as if published by someone with this profile:\n${identityContext}\n` : ''}
 Format as JSON array:
 [
   {"title": "...", "content": "... (200-300 words, practical, specific numbers)"},
@@ -187,9 +207,9 @@ Output JSON only, no explanation.`,
       ),
       callGroqWithRetry(
         groqKey,
-        `You are an expert social media writer for solopreneurs.`,
+        `You are an expert social media writer.${identityBlock}`,
         `Write 3 social media captions about: "${topic}"
-Each caption: 200-280 chars, start with emoji, end with 3 hashtags, practical and engaging.
+${identityContext ? `Written from the perspective of:\n${identityContext}\n` : ''}Each caption: 200-280 chars, start with emoji, end with 3 hashtags, practical and engaging.
 
 Format as JSON array of strings.
 Output JSON only.`,
