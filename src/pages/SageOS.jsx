@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder } from 'react-icons/fi';
+import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder, FiBookOpen } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 import toast from '../utils/toast';
@@ -1123,6 +1123,16 @@ const SageOS = () => {
                     >
                         <FiFolder /> <span>Content</span>
                     </button>
+
+                    {/* Getting Started Guide */}
+                    <a
+                        href="/welcome-guide.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
+                    >
+                        <FiBookOpen /> <span>Guide</span>
+                    </a>
 
                     {/* Store Manager link */}
                     <Link
@@ -2523,26 +2533,4 @@ const ContentManager = () => {
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-[var(--c-text)] text-sm truncate">{item.title || item.metadata?.title || 'Untitled'}</p>
-                                    {(item.topic || item.metadata?.topic) && <p className="text-xs text-[var(--c-muted)] mt-0.5">{item.topic || item.metadata?.topic}</p>}
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    {item.type && (
-                                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-600/20 text-blue-400 font-mono">{item.type}</span>
-                                    )}
-                                    {item.created_at && (
-                                        <span className="text-xs text-[var(--c-subtle)]">{new Date(item.created_at).toLocaleDateString()}</span>
-                                    )}
-                                </div>
-                            </div>
-                            {item.path && (
-                                <p className="text-xs text-[var(--c-subtle)] font-mono mt-2 truncate">{item.path}</p>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
-export default SageOS;
+                                    {

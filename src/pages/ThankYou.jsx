@@ -57,7 +57,7 @@ const ThankYou = () => {
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">📊</span>
                                 <div>
-                                    <strong className="text-white">Open your dashboard</strong> — Track revenue and post performance in real time via Notion
+                                    <strong className="text-white">Open your dashboard</strong> — Chat with Sage AI, generate content, and monitor your automations in real time
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
@@ -70,13 +70,21 @@ const ThankYou = () => {
                     </div>
 
                     {/* CTAs */}
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
                         <Link
                             to="/dashboard"
                             className="px-10 py-5 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white text-xl font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
                         >
                             Open Sage AI →
                         </Link>
+                        <a
+                            href="/welcome-guide.html"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-10 py-5 bg-white/5 border-2 border-emerald-500/40 rounded-full text-emerald-300 text-xl font-bold hover:bg-emerald-500/10 hover:border-emerald-400/60 transition-all"
+                        >
+                            📖 Getting Started Guide
+                        </a>
                         <Link
                             to="/blog"
                             className="px-10 py-5 bg-white/5 border-2 border-white/20 rounded-full text-white text-xl font-bold hover:bg-white/10 hover:border-white/40 transition-all"

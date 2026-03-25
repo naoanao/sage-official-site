@@ -412,7 +412,7 @@ const Landing = () => {
                     {/* Status badge */}
                     <div className="inline-flex items-center gap-2 mb-8 sage-badge">
                         <span className="live-dot" />
-                        BETA LAUNCH · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
+                        BETA LAUNCH · BLUESKY AUTO-PUBLISH · 🌐 GLOBAL
                     </div>
 
                     {/* Headline */}
@@ -773,6 +773,7 @@ const Landing = () => {
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex flex-wrap gap-5">
                         {[
+                            { label: 'Getting Started', to: '/welcome-guide.html', internal: false },
                             { label: 'Privacy Policy', to: '/privacy', internal: true },
                             { label: 'Terms of Service', to: '/terms', internal: true },
                             { label: 'Contact', to: 'mailto:sage@onelovepeople.com', internal: false },
