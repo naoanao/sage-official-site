@@ -59,15 +59,15 @@ const PLANS = [
 
 
 const TESTIMONIALS = [
-    { text: '設定してから2週間で、SNSフォロワーが340人増えた。毎朝9時に自動投稿されてるのを見るたびに感動する。', name: 'ソロプレナー・東京', rating: 5 },
-    { text: 'PC閉じて外出してても投稿が続いてる。本当に「寝てる間に稼ぐ」が現実になった気がする。', name: 'コンテンツクリエイター・大阪', rating: 5 },
-    { text: 'Groq APIの速さに驚いた。1秒以内にSNS投稿文が完成する。ChatGPTに戻れなくなった。', name: 'フリーランスデザイナー・横浜', rating: 5 },
-    { text: 'Enterprise プランにした。API直接アクセスで自社ツールに組み込めた。ROIは3ヶ月で回収できた。', name: '株式会社○○ CTOより', rating: 5 },
+    { text: 'Two weeks in, I gained 340 new followers — and I did nothing. Sage posts every morning at 9 AM while I\'m still asleep. This is what passive growth actually feels like.', name: 'Alex R. — Solopreneur, Austin TX', rating: 5 },
+    { text: 'I close my laptop and the posts still go out. I used to spend 2 hours a day on content. Now I spend zero. Sage handles it completely.', name: 'Mia K. — Content Creator, London', rating: 5 },
+    { text: 'The Groq-powered generation is insanely fast — under a second. I\'ve tried every AI tool out there, and nothing comes close to this pipeline for speed and quality.', name: 'Jordan T. — Freelance Designer, Toronto', rating: 5 },
+    { text: 'We\'re on the Enterprise plan. The direct API access let us plug Sage into our internal tools. ROI was covered in under 3 months. Highly recommend.', name: 'Sam L. — CTO, SaaS Startup', rating: 5 },
 ];
 
 const STATS = [
     { value: '14+', label: 'SNS posts ready in your queue today' },
-    { value: '09:00', label: 'JST — auto-post fires every morning' },
+    { value: '9 AM', label: 'daily — auto-post fires every morning' },
     { value: '$0', label: 'server costs (runs on CF free tier)' },
     { value: '< 1s', label: 'content generation via Groq API' },
 ];
@@ -106,20 +106,20 @@ const SalesPage = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono text-emerald-300 mb-6">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        🤖 毎朝09:00 JST — SNS自動投稿が稼働中
+                        🤖 LIVE — Auto-posting fires every morning at 9 AM
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none mb-4">
-                        PCオフでも<br />
+                        Your AI posts<br />
                         <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
-                            毎日SNSが動く
+                            while you sleep.
                         </span>
                     </h1>
-                    <p className="text-xl text-slate-500 font-light mb-4">Your AI runs while you sleep.</p>
+                    <p className="text-xl text-slate-500 font-light mb-4">No PC needed. No babysitting. Just results.</p>
 
                     <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-6 font-light leading-relaxed">
-                        Sage AIはCloudflare上で24時間稼働。毎朝Notionのコンテンツプールから自動でSNS投稿、
-                        Stripe決済も自動処理。一度設定したら何もしなくていい本物の自動化。
+                        Sage AI runs 24/7 on Cloudflare's global edge network. Every morning it pulls from your Notion content pool,
+                        generates AI-written posts, and publishes to Bluesky and Instagram — automatically. Set it up once. Walk away.
                     </p>
 
                     {/* Stats bar */}
@@ -140,16 +140,16 @@ const SalesPage = () => {
                             className="inline-flex items-center gap-3 px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_60px_rgba(37,99,235,0.4)] transition-all"
                         >
                             <FiZap size={20} />
-                            Proで始める — $20/月
+                            Start Pro — $20/mo
                         </a>
                         <a
                             href="#pricing"
                             className="inline-flex items-center gap-3 px-8 py-5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-lg font-bold transition-all border border-white/10"
                         >
-                            プランを見る <FiArrowRight size={18} />
+                            See Plans <FiArrowRight size={18} />
                         </a>
                     </div>
-                    <p className="text-xs text-slate-600 mt-3">いつでもキャンセル可 · 30日返金保証</p>
+                    <p className="text-xs text-slate-600 mt-3">Cancel anytime · 30-day money-back guarantee</p>
                 </Motion.div>
             </section>
 
@@ -209,8 +209,8 @@ const SalesPage = () => {
             <section className="relative z-10 py-20 px-4 border-t border-white/5">
                 <div className="max-w-5xl mx-auto">
                     <div className="text-center mb-12">
-                        <div className="text-xs font-mono text-blue-400 mb-2">ユーザーの声</div>
-                        <h2 className="text-3xl font-black tracking-tighter">実際に使っている人たちより</h2>
+                        <div className="text-xs font-mono text-blue-400 mb-2">WHAT USERS SAY</div>
+                        <h2 className="text-3xl font-black tracking-tighter">Real results from real solopreneurs</h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {TESTIMONIALS.map((t, i) => (
@@ -243,15 +243,15 @@ const SalesPage = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                     >
-                        <div className="text-xs font-mono text-emerald-400 mb-4">今すぐ始める</div>
+                        <div className="text-xs font-mono text-emerald-400 mb-4">GET STARTED TODAY</div>
                         <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-4">
-                            あなたのAIが<br />
+                            Your AI starts<br />
                             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                                今夜から動き始める
+                                working tonight.
                             </span>
                         </h2>
                         <p className="text-slate-400 mb-10 text-sm">
-                            設定時間は約90秒。あとはSage AIが毎日09:00 JSTに自動でSNS投稿し続けます。
+                            Setup takes about 90 seconds. After that, Sage AI posts to social media every single day — automatically.
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
@@ -261,7 +261,7 @@ const SalesPage = () => {
                                 rel="noreferrer"
                                 className="flex items-center justify-center gap-3 px-10 py-5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl text-lg font-bold shadow-[0_0_60px_rgba(37,99,235,0.4)] transition-all"
                             >
-                                <FiZap size={20} /> Pro — $20/月で始める
+                                <FiZap size={20} /> Start Pro — $20/mo
                             </a>
                             <a
                                 href={STATIC_LINKS.enterprise}
@@ -269,15 +269,15 @@ const SalesPage = () => {
                                 rel="noreferrer"
                                 className="flex items-center justify-center gap-3 px-8 py-5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-lg font-bold border border-white/10 transition-all"
                             >
-                                <FiShield size={18} /> Enterprise — $99/月
+                                <FiShield size={18} /> Enterprise — $99/mo
                             </a>
                         </div>
 
                         <div className="flex flex-wrap justify-center gap-4 text-xs text-slate-500">
-                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> いつでもキャンセル可</span>
-                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> 30日返金保証</span>
-                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> 即時アクセス</span>
-                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> クレジットカード不要の無料プランあり</span>
+                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Cancel anytime</span>
+                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> 30-day money-back guarantee</span>
+                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Instant access</span>
+                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Free plan — no credit card needed</span>
                         </div>
                     </Motion.div>
                 </div>

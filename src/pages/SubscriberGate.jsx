@@ -49,12 +49,12 @@ const UpgradeModal = ({ email, onDismiss }) => (
       <div className="px-8 pt-8 pb-6 text-center">
         <div className="text-4xl mb-3">🤖</div>
         <h2 className="text-2xl font-black text-white mb-2">
-          Sage AI は有料プランのみ
+          Sage AI is for subscribers only
         </h2>
         <p className="text-gray-400 text-sm">
           {email
-            ? `${email} はアクティブなサブスクリプションが見つかりませんでした。`
-            : 'ダッシュボードへのアクセスにはサブスクリプションが必要です。'}
+            ? `No active subscription found for ${email}.`
+            : 'A subscription is required to access the dashboard.'}
         </p>
       </div>
 
@@ -71,14 +71,14 @@ const UpgradeModal = ({ email, onDismiss }) => (
           <div className="text-3xl font-black text-white mb-0.5">$20</div>
           <div className="text-gray-400 text-sm mb-4">/月</div>
           <ul className="space-y-1.5 text-left mb-5">
-            {['Sage AIダッシュボード', '毎日SNS自動投稿', 'コンテンツ自動生成', '全機能アクセス'].map(f => (
+            {['Sage AI Dashboard', 'Daily auto-posting to SNS', 'AI content generation', 'Full feature access'].map(f => (
               <li key={f} className="text-xs text-gray-300 flex items-center gap-1.5">
                 <span className="text-emerald-400">✓</span> {f}
               </li>
             ))}
           </ul>
           <div className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-pink-600 text-white text-sm font-bold group-hover:shadow-lg group-hover:shadow-violet-500/30 transition-all">
-            Pro に登録 →
+            Subscribe to Pro →
           </div>
         </a>
 
@@ -100,7 +100,7 @@ const UpgradeModal = ({ email, onDismiss }) => (
             ))}
           </ul>
           <div className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white text-sm font-bold group-hover:shadow-lg group-hover:shadow-amber-500/30 transition-all">
-            Enterprise に登録 →
+            Subscribe to Enterprise →
           </div>
         </a>
       </div>
@@ -108,16 +108,16 @@ const UpgradeModal = ({ email, onDismiss }) => (
       {/* Footer actions */}
       <div className="px-8 pb-8 flex flex-col items-center gap-3">
         <p className="text-xs text-gray-500">
-          すでに購入済みですか？{' '}
+          Already subscribed?{' '}
           <button
             onClick={onDismiss}
             className="text-violet-400 hover:underline"
           >
-            別のメールで試す
+            Try a different email
           </button>
         </p>
         <a href="/" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-          ← トップページに戻る
+          ← Back to home
         </a>
       </div>
     </div>
@@ -137,9 +137,9 @@ const EmailModal = ({ onVerify, loading }) => {
     <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm bg-gray-950 border border-white/10 rounded-3xl p-8 shadow-2xl text-center">
         <div className="text-4xl mb-4">🔐</div>
-        <h2 className="text-xl font-black text-white mb-2">メールアドレスを確認</h2>
+        <h2 className="text-xl font-black text-white mb-2">Verify your email</h2>
         <p className="text-gray-400 text-sm mb-6">
-          購入時に使用したメールアドレスを入力してください
+          Enter the email address you used when subscribing
         </p>
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
@@ -155,23 +155,23 @@ const EmailModal = ({ onVerify, loading }) => {
             disabled={loading || !email.trim()}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-pink-600 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-opacity"
           >
-            {loading ? <><Spinner /> 確認中...</> : '→ ダッシュボードに入る'}
+            {loading ? <><Spinner /> Verifying...</> : '→ Enter Dashboard'}
           </button>
         </form>
         <div className="mt-6 space-y-2">
           <p className="text-xs text-gray-500">
-            まだ登録していませんか？{' '}
+            Not subscribed yet?{' '}
             <a
               href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03"
               target="_blank"
               rel="noopener noreferrer"
               className="text-violet-400 hover:underline"
             >
-              Pro $20/月で始める
+              Start Pro at $20/mo
             </a>
           </p>
           <p className="text-xs text-gray-600">
-            <a href="/" className="hover:text-gray-400 transition-colors">← トップページ</a>
+            <a href="/" className="hover:text-gray-400 transition-colors">← Back to home</a>
           </p>
         </div>
       </div>
@@ -277,14 +277,14 @@ const SubscriberGate = () => {
           <a
             href={`/api/customer-portal?email=${encodeURIComponent(email)}`}
             className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
-            title="サブスクリプション管理"
+            title="Manage subscription"
           >
             🔧
           </a>
           <button
             onClick={handleDismiss}
             className="text-gray-600 hover:text-gray-400 transition-colors"
-            title="アカウントを切り替え"
+            title="Switch account"
           >
             ⇄
           </button>

@@ -29,41 +29,41 @@ const ThankYou = () => {
 
                     {/* Message */}
                     <p className="text-2xl md:text-3xl text-gray-200 mb-4 font-bold">
-                        サブスクリプション開始！ 🎉
+                        Your subscription is live! 🎉
                     </p>
                     <p className="text-xl text-gray-400 mb-12 leading-relaxed">
-                        ウェルカムメールを送信しました<br />
-                        <span className="text-white font-semibold">アクセス方法</span> •
-                        <span className="text-white font-semibold"> セットアップガイド</span> •
-                        <span className="text-white font-semibold"> 領収書</span>
+                        A welcome email is on its way with your{' '}
+                        <span className="text-white font-semibold">access details</span> •
+                        <span className="text-white font-semibold"> setup guide</span> •
+                        <span className="text-white font-semibold"> receipt</span>
                     </p>
 
                     {/* Info Box */}
                     <div className="mb-12 p-8 rounded-3xl bg-gradient-to-br from-violet-900/30 to-pink-900/30 border border-violet-500/20">
-                        <h3 className="text-2xl font-bold mb-4">次のステップ</h3>
+                        <h3 className="text-2xl font-bold mb-4">What happens next</h3>
                         <div className="text-left space-y-3 text-gray-300">
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">📧</span>
                                 <div>
-                                    <strong className="text-white">メールを確認</strong> — ウェルカムメールとアクセス情報を5分以内にお届けします
+                                    <strong className="text-white">Check your email</strong> — Welcome email with access info arrives within 5 minutes
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">🤖</span>
                                 <div>
-                                    <strong className="text-white">Sage AIが稼働中</strong> — 自律型SNS投稿・コンテンツ生成がすでに動いています
+                                    <strong className="text-white">Sage AI is running</strong> — Autonomous social posting and content generation are already live
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">📊</span>
                                 <div>
-                                    <strong className="text-white">ダッシュボードを確認</strong> — Notionと連携して収益・投稿状況をリアルタイムで追跡
+                                    <strong className="text-white">Open your dashboard</strong> — Track revenue and post performance in real time via Notion
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl">💳</span>
                                 <div>
-                                    <strong className="text-white">毎月自動更新</strong> — キャンセルはStripeダッシュボードからいつでも可能
+                                    <strong className="text-white">Auto-renews monthly</strong> — Cancel anytime from your Stripe billing portal
                                 </div>
                             </div>
                         </div>
@@ -75,13 +75,13 @@ const ThankYou = () => {
                             to="/dashboard"
                             className="px-10 py-5 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white text-xl font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
                         >
-                            Sage AI を開く
+                            Open Sage AI →
                         </Link>
                         <Link
                             to="/blog"
                             className="px-10 py-5 bg-white/5 border-2 border-white/20 rounded-full text-white text-xl font-bold hover:bg-white/10 hover:border-white/40 transition-all"
                         >
-                            ブログを読む
+                            Read the Blog
                         </Link>
                     </div>
 
@@ -91,14 +91,13 @@ const ThankYou = () => {
                             href="/api/customer-portal"
                             className="text-sm text-gray-500 hover:text-violet-400 transition-colors"
                         >
-                            🔧 サブスクリプションの管理・キャンセルはこちら
+                            🔧 Manage or cancel your subscription
                         </a>
                         <p className="text-sm text-gray-600">
-                            お困りの場合は{' '}
+                            Need help?{' '}
                             <a href="mailto:kanagawatable@gmail.com" className="text-violet-400 hover:underline">
                                 kanagawatable@gmail.com
-                            </a>{' '}
-                            までご連絡ください
+                            </a>
                         </p>
                     </div>
                 </motion.div>
