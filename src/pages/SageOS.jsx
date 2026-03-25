@@ -968,7 +968,41 @@ const SageOS = () => {
     };
 
     // ── Self-Test helpers ────────────────────────────────────────────────────
+    // Cloud self-test: uses CF /api/system/health (no Flask needed)
+    const runCloudHealthCheck = async () => {
+        setSelfTestError(null);
+        setSelfTestRunning({ all: true });
+        try {
+            const res = await fetch('/api/system/health');
+            if (!res.ok) throw new Error(`Health check returned ${res.status}`);
+            const data = await res.json();
+            const tests = Object.entries(data.checks || {}).map(([name, ok]) => ({
+                name,
+                status: ok ? 'PASS' : 'FAIL',
+                reason: ok ? null : `${name} not configured in CF Pages env vars`,
+            }));
+            const pass = tests.filter(t => t.status === 'PASS').length;
+            const fail = tests.filter(t => t.status === 'FAIL').length;
+            setSelfTestResults({
+                tier1: {
+                    overall_status: fail > 0 ? 'FAIL' : 'PASS',
+                    ran_at: data.timestamp || new Date().toISOString(),
+                    summary: { pass, fail, skip: 0 },
+                    tests,
+                },
+                tier2: null,
+            });
+        } catch (e) {
+            console.error('[SelfTest/cloud]', e);
+            setSelfTestError(e?.message || 'Health check failed');
+        } finally {
+            setSelfTestRunning({});
+        }
+    };
+
     const runSelfTestItem = async (tier, checkName = null) => {
+        // Cloud mode: always use health check
+        if (!IS_OWNER) { runCloudHealthCheck(); return; }
         const key = checkName || `t${tier}`;
         setSelfTestError(null);
         setSelfTestRunning(p => ({ ...p, [key]: true }));
@@ -987,7 +1021,8 @@ const SageOS = () => {
                     return { ...prev, [tierKey]: { ...(prev[tierKey] || {}), tests } };
                 });
             } else {
-                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: res.data.report }));
+                const report = res.data?.report ?? res.data ?? null;
+                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: report }));
             }
         } catch (e) {
             console.error('[SelfTest]', e);
@@ -997,12 +1032,13 @@ const SageOS = () => {
         }
     };
     const runAllSelfTests = async () => {
+        // Cloud mode: use CF health check
+        if (!IS_OWNER) { runCloudHealthCheck(); return; }
         setSelfTestError(null);
         setSelfTestRunning({ all: true });
         try {
             const res = await api.get('/api/system/self_test', { params: { tier: 'all' }, timeout: 60000 });
-            const report = res.data?.report;
-            if (!report) throw new Error('Invalid response from self-test API');
+            const report = res.data?.report ?? res.data ?? {};
             setSelfTestResults({ tier1: report.tier1 ?? null, tier2: report.tier2 ?? null });
         } catch (e) {
             console.error('[SelfTest]', e);
@@ -2342,7 +2378,7 @@ const SageOS = () => {
                                                 <div className="flex items-center gap-2">
                                                     {tierData && (
                                                         <span className="text-xs text-slate-600 font-mono">
-                                                            P:{tierData.summary.pass} F:{tierData.summary.fail} S:{tierData.summary.skip}
+                                                            P:{tierData?.summary?.pass ?? '?'} F:{tierData?.summary?.fail ?? '?'} S:{tierData?.summary?.skip ?? '?'}
                                                         </span>
                                                     )}
                                                     <button
@@ -2357,7 +2393,7 @@ const SageOS = () => {
                                             <div className="divide-y divide-white/5">
                                                 {tests.length === 0 ? (
                                                     <div className="px-4 py-3 text-xs text-slate-600 italic">
-                                                        "▶ Run" でこの Tier を実行
+                                                        Click "▶ Run" to execute this tier
                                                     </div>
                                                 ) : tests.map(t => (
                                                     <div key={t.name} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
@@ -2384,7 +2420,7 @@ const SageOS = () => {
                                     );
                                 })}
                                 <p className="text-center text-xs text-slate-700 pb-1">
-                                    毎日 JST 07:00 自動実行 / Tier 1: 30 分ごと
+                                                    Auto-runs daily at 09:00 JST · Cloud health check always available
                                 </p>
                             </div>
                         </div>

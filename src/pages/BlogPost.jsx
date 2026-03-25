@@ -137,7 +137,7 @@ const BlogPost = () => {
                         Get Sage Fortress Edition and start automating everything—no coding required.
                     </p>
                     <a
-                        href="https://naofumi3.gumroad.com/l/sage-professional"
+                        href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-block px-8 py-4 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
@@ -152,9 +152,9 @@ const BlogPost = () => {
                 <h3 className="text-2xl font-bold mb-6">Related Products</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
-                        { name: 'Bluesky Marketer', price: '$29/mo', url: 'https://naofumi3.gumroad.com/l/bluesky-marketer' },
-                        { name: 'Instagram Marketer', price: '$39/mo', url: 'https://naofumi3.gumroad.com/l/instagram-marketer' },
-                        { name: 'Fortress Edition', price: '$299', url: 'https://naofumi3.gumroad.com/l/sage-professional' },
+                        { name: 'Sage AI — Pro', price: '$20/mo', url: 'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03', badge: 'Most Popular' },
+                        { name: 'Sage AI — Enterprise', price: '$99/mo', url: 'https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04', badge: 'Full Power' },
+                        { name: 'Getting Started Guide', price: 'Free', url: '/welcome-guide.html', badge: 'New' },
                     ].map((product, i) => (
                         <a
                             key={i}
@@ -163,6 +163,7 @@ const BlogPost = () => {
                             rel="noopener noreferrer"
                             className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all"
                         >
+                            <div className="text-xs text-violet-400 font-mono uppercase tracking-widest mb-1">{product.badge}</div>
                             <div className="text-lg font-bold mb-2">{product.name}</div>
                             <div className="text-violet-400 font-bold">{product.price}</div>
                         </a>

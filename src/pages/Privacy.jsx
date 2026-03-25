@@ -24,7 +24,7 @@ export default function Privacy() {
 
                     <section>
                         <h2 className="text-lg font-bold text-white mb-4">Third-party services</h2>
-                        <p className="text-sm">Purchases are processed by Gumroad. Please review <a href="https://gumroad.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">Gumroad's Privacy Policy</a> for details on how your payment data is handled.</p>
+                        <p className="text-sm">Purchases and subscriptions are processed by Stripe, Inc. Please review <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">Stripe's Privacy Policy</a> for details on how your payment data is handled. AI features are powered by Groq, Inc.</p>
                     </section>
 
                     <section>
