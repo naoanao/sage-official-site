@@ -5,7 +5,7 @@ account_id         = "9a00225a365387adfb3b047cbadd38de"
 
 # Cron: Every Sunday 20:00 JST (= 11:00 UTC)
 [triggers]
-crons = ["0 11 * * 0"]
+crons = ["0 11 * * SUN"]
 
 # Plain vars (non-secret):
 [vars]

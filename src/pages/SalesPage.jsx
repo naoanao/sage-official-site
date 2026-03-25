@@ -16,19 +16,6 @@ const STATIC_LINKS = {
 // ── Subscription plans ─────────────────────────────────────────────────────
 const PLANS = [
     {
-        id: 'free',
-        name: 'Free',
-        price: '$0',
-        period: '/ month',
-        badge: null,
-        description: 'Try core features, no credit card needed.',
-        features: ['Sage Chat (5 messages/day)', 'Bluesky auto-post (1/day)', 'Basic content generation', 'Public dashboard access'],
-        cta: 'Start Free',
-        link: '/dashboard',
-        style: 'border-white/10 bg-white/[0.02]',
-        ctaStyle: 'bg-white/10 hover:bg-white/20 text-white',
-    },
-    {
         id: 'pro',
         name: 'Pro',
         price: '$20',
@@ -161,7 +148,7 @@ const SalesPage = () => {
                         <h2 className="text-3xl md:text-4xl font-black tracking-tighter">Simple, Transparent Pricing</h2>
                         <p className="text-slate-400 mt-3 text-sm">Cancel anytime. Upgrade or downgrade at any time.</p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
                         {PLANS.map((plan) => (
                             <Motion.div
                                 key={plan.id}
