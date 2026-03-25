@@ -6,9 +6,9 @@ import { BACKEND_URL } from '../config/backendUrl';
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 60000 });
 
 const PLACEHOLDERS = {
-    2: '生成について質問する...',
-    3: '書き直しの指示を出す...',
-    4: '投稿前に確認したいことは...',
+    2: 'Ask Sage about content generation...',
+    3: 'Give rewrite instructions...',
+    4: 'Anything to check before publishing?',
 };
 
 const SageMiniChat = ({ phase, topic }) => {
@@ -39,8 +39,8 @@ const SageMiniChat = ({ phase, topic }) => {
             const res = await api.post('/api/chat', { message: `${systemContext} ${userMsg}` });
             setMessages(prev => [...prev, { role: 'sage', content: res.data.response || 'No response.' }]);
         } catch (e) {
-            const err = e?.response?.data?.error || e?.message || 'Backend unreachable';
-            setMessages(prev => [...prev, { role: 'sage', content: `${err} — Make sure Flask is running.` }]);
+            const err = e?.response?.data?.error || e?.message || 'Unavailable';
+            setMessages(prev => [...prev, { role: 'sage', content: `Sorry, Sage Chat is temporarily unavailable. (${err})` }]);
         } finally {
             setLoading(false);
         }
