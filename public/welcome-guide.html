@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started — Sage AI Revenue Operator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a; --raised: #111827; --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9; --muted: #94a3b8; --subtle: #475569;
+      --blue: #3b82f6; --indigo: #6366f1; --violet: #8b5cf6;
+      --emerald: #10b981; --amber: #f59e0b;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; min-height: 100vh; }
+    .container { max-width: 760px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+    .header { text-align: center; padding: 3rem 0 2rem; border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; border: 1px solid rgba(99,102,241,0.35); background: rgba(99,102,241,0.08); font-size: 0.7rem; font-family: 'Fira Code', monospace; color: var(--indigo); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.5rem; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--emerald); animation: pulse 2s infinite; display: inline-block; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+    h1 { font-size: clamp(1.8rem, 5vw, 3rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; color: var(--text); }
+    h1 span { background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: var(--muted); font-size: 1rem; margin-top: 0.8rem; max-width: 520px; margin-left: auto; margin-right: auto; }
+    .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; background: var(--raised); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 3rem; }
+    @media (max-width: 600px) { .pipeline { grid-template-columns: 1fr; gap: 0.75rem; } .arrow { display: none; } }
+    .pipeline-step { text-align: center; padding: 0 1rem; }
+    .step-num { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--indigo), var(--violet)); color: white; font-size: 0.85rem; font-weight: 900; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; }
+    .step-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+    .step-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+    .arrow { color: var(--subtle); font-size: 1.2rem; }
+    .section { margin-bottom: 2.5rem; }
+    .section-label { font-size: 0.65rem; font-family: 'Fira Code', monospace; letter-spacing: 0.15em; text-transform: uppercase; color: var(--subtle); margin-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1.25rem; }
+    .card { background: var(--raised); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 0.75rem; }
+    .card-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.3rem; }
+    .card p { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+    .tag { display: inline-block; font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-bottom: 0.5rem; }
+    .tag-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .tag-violet { background: rgba(139,92,246,0.15); color: #a78bfa; }
+    .tag-emerald { background: rgba(16,185,129,0.15); color: #34d399; }
+    .tag-amber { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    ol.steps { list-style: none; counter-reset: step; }
+    ol.steps li { counter-increment: step; display: flex; gap: 1rem; align-items: flex-start; padding: 0.9rem 0; border-bottom: 1px solid var(--border); }
+    ol.steps li:last-child { border-bottom: none; }
+    ol.steps li::before { content: counter(step); min-width: 28px; height: 28px; border-radius: 50%; background: rgba(99,102,241,0.15); color: var(--indigo); font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 1px; flex-shrink: 0; }
+    .item-title { font-weight: 700; font-size: 0.9rem; }
+    .item-desc { font-size: 0.82rem; color: var(--muted); margin-top: 0.2rem; line-height: 1.5; }
+    .code { font-family: 'Fira Code', monospace; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-size: 0.8rem; }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+    .feature-card { background: var(--raised); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    .feature-icon { font-size: 1.2rem; margin-bottom: 0.4rem; }
+    .feature-title { font-size: 0.82rem; font-weight: 700; }
+    .feature-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+    .cta { text-align: center; padding: 2.5rem 2rem; background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.08)); border: 1px solid rgba(99,102,241,0.2); border-radius: 20px; margin-top: 3rem; }
+    .cta h2 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+    .cta p { color: var(--muted); margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 0.85rem 2rem; border-radius: 12px; font-weight: 700; font-size: 0.95rem; text-decoration: none; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.88; }
+    .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+    .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); margin-left: 0.75rem; font-size: 0.85rem; }
+    a { color: var(--indigo); }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <div class="badge"><span class="dot"></span> Getting Started Guide</div>
+      <h1>Your <span>Revenue Pipeline</span><br />starts here.</h1>
+      <p class="subtitle">Sage turns one idea into a full content pipeline — blog post, social captions, and sales copy — personalized to your niche, published automatically.</p>
+    </div>
+
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="step-num">1</div>
+        <div class="step-title">Set Your Identity</div>
+        <div class="step-desc">Your niche, tone &amp; persona</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="pipeline-step">
+        <div class="step-num">2</div>
+        <div class="step-title">Generate Content</div>
+        <div class="step-desc">Blog + 5 posts + copy in 90s</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="pipeline-step">
+        <div class="step-num">3</div>
+        <div class="step-title">Auto-Publish</div>
+        <div class="step-desc">Bluesky posts daily, hands-free</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <p class="section-label">Before you start</p>
+      <h2>What you need</h2>
+      <div class="card">
+        <div class="tag tag-blue">Required</div>
+        <div class="card-title">Your subscriber email</div>
+        <p>Use the email address you used when subscribing on Stripe. You'll be asked to verify it when you first open the dashboard.</p>
+      </div>
+      <div class="card">
+        <div class="tag tag-emerald">Free · No install</div>
+        <div class="card-title">Any modern browser</div>
+        <p>Sage is 100% cloud-based. Nothing to download or install. Works on desktop, tablet, and mobile.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <p class="section-label">Setup walkthrough</p>
+      <h2>Your first revenue pipeline</h2>
+      <ol class="steps">
+        <li>
+          <div>
+            <div class="item-title">Open the Sage dashboard</div>
+            <div class="item-desc">Go to <a href="https://sage-official-site.pages.dev/dashboard">sage-official-site.pages.dev/dashboard</a>. Enter the email you subscribed with and you'll land directly in the dashboard.</div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <div class="item-title">Set your Identity — the most important step</div>
+            <div class="item-desc">In the sidebar, open <span class="code">🎭 Identity</span>. Fill in your <strong style="color:#f1f5f9;">Role</strong> (e.g. "wellness coach"), <strong style="color:#f1f5f9;">Niche</strong> (e.g. "burnout recovery for remote workers"), and <strong style="color:#f1f5f9;">Tone</strong> (e.g. "warm and practical"). Hit <strong style="color:#f1f5f9;">Save Identity</strong>. From this point on, every piece of content Sage generates is written for your specific audience — not a generic template.</div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <div class="item-title">Generate your first content</div>
+            <div class="item-desc">Type a topic idea into the <span class="code">Create</span> input. Keep it simple: "5 morning habits for burnout recovery" or "Why remote workers lose focus by 2pm". Hit <strong style="color:#f1f5f9;">Generate</strong>. In about 90 seconds you'll get a full blog post + 5 social captions + sales copy — all written in your voice.</div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <div class="item-title">Review and publish</div>
+            <div class="item-desc">Read the output. If the blog post looks good, copy it to your publishing platform (WordPress, Substack, Notion, etc.). The Bluesky caption can be auto-posted — check the <span class="code">⚡ Automations</span> panel to enable daily auto-posting.</div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <div class="item-title">Let Sage run daily</div>
+            <div class="item-desc">Once automations are on, Sage generates and posts content every day without you doing anything. Check in once a week to review output and adjust your Identity if your niche or tone shifts.</div>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <p class="section-label">Pro tip</p>
+      <h2>How to write a great Identity</h2>
+      <div class="card">
+        <div class="tag tag-violet">Example: Fitness coach</div>
+        <p style="margin-top:0.4rem;"><strong style="color:#f1f5f9;">Role:</strong> "Online fitness coach for busy parents"<br /><strong style="color:#f1f5f9;">Niche:</strong> "Quick home workouts and healthy habits for parents with young kids"<br /><strong style="color:#f1f5f9;">Tone:</strong> "Friendly, encouraging, realistic — no fluff, no perfect-body pressure"</p>
+      </div>
+      <div class="card">
+        <div class="tag tag-amber">Example: AI tools creator</div>
+        <p style="margin-top:0.4rem;"><strong style="color:#f1f5f9;">Role:</strong> "AI tools reviewer and solopreneur educator"<br /><strong style="color:#f1f5f9;">Niche:</strong> "Helping freelancers earn more with AI automation tools under $50/month"<br /><strong style="color:#f1f5f9;">Tone:</strong> "Direct, skeptical, practical — test everything before recommending"</p>
+      </div>
+      <p style="font-size:0.85rem; color:var(--muted); margin-top:0.75rem;">The more specific you are, the better the output. Generic inputs like "entrepreneur" produce generic content. Specific inputs produce content your audience actually recognizes.</p>
+    </div>
+
+    <div class="section">
+      <p class="section-label">What's included</p>
+      <h2>Everything in your plan</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <div class="feature-title">AI Chat Advisor</div>
+          <div class="feature-desc">Ask Sage anything about strategy, income ideas, or your niche. 100 messages/day (Pro).</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✍️</div>
+          <div class="feature-title">Content Generator</div>
+          <div class="feature-desc">Blog post + 5 social captions + sales copy from any topic. 20 generations/day (Pro).</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📡</div>
+          <div class="feature-title">Bluesky Auto-Post</div>
+          <div class="feature-desc">Posts to your Bluesky account daily. Set it once, runs hands-free.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎭</div>
+          <div class="feature-title">Identity System</div>
+          <div class="feature-desc">Set your niche + tone once. All future content is personalized to your audience.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📁</div>
+          <div class="feature-title">Content Library</div>
+          <div class="feature-desc">Every generated piece is saved. Search, filter, and reuse your archive anytime.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔬</div>
+          <div class="feature-title">Self-Test Monitor</div>
+          <div class="feature-desc">Sage checks its own health automatically. Always know your pipeline is running.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💳</div>
+          <div class="feature-title">Customer Portal</div>
+          <div class="feature-desc">Manage billing or cancel in one click — no need to contact anyone.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <div class="feature-title">Weekly Refresh</div>
+          <div class="feature-desc">Content trends and topic ideas refresh weekly so you never run out of ideas.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <h2>Ready to run your pipeline?</h2>
+      <p>Open the dashboard, set your Identity, and generate your first piece of content. Takes under 5 minutes.</p>
+      <a href="https://sage-official-site.pages.dev/dashboard" class="btn btn-primary">→ Open Sage Dashboard</a>
+      <a href="https://sage-official-site.pages.dev/" class="btn btn-secondary">← Back to home</a>
+    </div>
+
+  </div>
+</body>
+</html>

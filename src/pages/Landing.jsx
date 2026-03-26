@@ -315,11 +315,12 @@ const BuilderCard = () => (
 );
 
 const FAQ_ITEMS = [
-    { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. No code, no dashboards, no configuration." },
-    { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
-    { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
-    { q: "What if it doesn't work for me?", a: "Gumroad's 30-day money-back guarantee. One-click full refund, no questions asked." },
-    { q: "Do I need to install anything?", a: "The Blueprint ($29.99) is a download-and-run ZIP. No installation needed. Windows only for now." },
+    { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage handles the content, the formatting, and the publishing. No code, no complex setup, no configuration required." },
+    { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions, sales copy), Bluesky auto-posting, Instagram posting, and product copy — all tailored to your specific niche and tone. Set your identity profile once, and every output is personalized from that point on." },
+    { q: "How is this different from ChatGPT or other AI tools?", a: "ChatGPT gives you text you still have to format, schedule, and publish yourself. Sage connects the full pipeline: idea → blog post → 5 social captions → sales copy → auto-published to Bluesky. One workflow, one tool, done." },
+    { q: "What if I want to cancel?", a: "Cancel anytime in one click from your Stripe customer portal. No contracts, no questions asked. Your subscription stops at the end of the current billing period." },
+    { q: "Do I need to install anything?", a: "Nothing. Sage is 100% cloud-based and works in any browser on any device — desktop, tablet, or mobile. No downloads, no local setup, no Windows requirement." },
+    { q: "How does the personalization work?", a: "Set your Identity profile once (your niche, tone, and persona). From that point, every blog post, social caption, and sales copy Sage generates is written for your specific audience — not a generic template." },
 ];
 
 const FaqAccordion = () => {
@@ -412,13 +413,13 @@ const Landing = () => {
                     {/* Status badge */}
                     <div className="inline-flex items-center gap-2 mb-8 sage-badge">
                         <span className="live-dot" />
-                        BETA LAUNCH · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
+                        LIVE · YOUR AI REVENUE OPERATOR · 🌐 GLOBAL
                     </div>
 
                     {/* Headline */}
                     <h1 className="mb-6 font-black"
                         style={{
-                            fontSize: 'clamp(3rem, 9vw, 6.5rem)',
+                            fontSize: 'clamp(2.8rem, 8.5vw, 6rem)',
                             letterSpacing: '-0.045em',
                             lineHeight: '0.92',
                             background: 'linear-gradient(135deg, #0284C7 0%, #1A56DB 50%, #1E40AF 100%)',
@@ -426,16 +427,18 @@ const Landing = () => {
                             backgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                         }}>
-                        One Chat.<br />
-                        Full Business.
+                        One Idea.<br />
+                        Full Revenue Pipeline.
                     </h1>
 
                     {/* Sub */}
                     <p className="mb-10 font-light"
-                        style={{ fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: 'var(--c-muted)', maxWidth: 560, margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
-                        Type one idea. Get a <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>blog post</span>,{' '}
-                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>5 captions</span>, and a{' '}
-                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>product ready to sell</span>. In 90 seconds.
+                        style={{ fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: 'var(--c-muted)', maxWidth: 580, margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
+                        Type your idea. Sage builds a{' '}
+                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>blog post</span>,{' '}
+                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>5 social captions</span>, and{' '}
+                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>sales copy</span> — tailored to your niche, in 90 seconds.
+                        Then publishes automatically.
                     </p>
 
                     {/* CTAs */}
@@ -481,10 +484,10 @@ const Landing = () => {
             <div className="relative z-10 section-divider py-8 px-4">
                 <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-center gap-8 text-center">
                     {[
-                        { value: 'BETA', label: 'Early Access' },
-                        { value: 'Feb 2026', label: 'First Release' },
-                        { value: '90s', label: 'Idea to Income' },
-                        { value: '🇯🇵', label: 'Yokohama, Japan' },
+                        { value: 'LIVE', label: 'Now Available' },
+                        { value: '$20/mo', label: 'Pro Plan · Cancel Anytime' },
+                        { value: '90s', label: 'Idea to Revenue' },
+                        { value: '🌐', label: 'Global · Works Everywhere' },
                     ].map((stat, i, arr) => (
                         <React.Fragment key={stat.label}>
                             <div>
@@ -672,13 +675,13 @@ const Landing = () => {
                         className="mb-10"
                     >
                         <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
-                            Get started today
+                            Start today
                         </p>
                         <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: '#1A56DB' }}>
-                            Your first AI income stream
+                            Stop creating manually.<br />Start running a pipeline.
                         </h2>
                         <p className="mt-2 text-sm" style={{ color: 'var(--c-muted)' }}>
-                            The exact system Sage 3.0 uses to automate your content pipeline.
+                            Your niche. Your tone. Automated every day. Cancel anytime.
                         </p>
                     </Motion.div>
 
@@ -702,10 +705,10 @@ const Landing = () => {
                             </div>
                             <ul className="space-y-2 mb-6">
                                 {[
-                                    'Unlimited Sage AI dashboard',
-                                    'Daily SNS auto-posting',
-                                    'Blog + Gumroad pipeline',
-                                    'All future updates',
+                                    '1 idea → blog + 5 posts + sales copy in 90s',
+                                    'Content personalized to your niche & tone',
+                                    'Daily Bluesky & Instagram auto-posting',
+                                    'AI chat advisor + all future features',
                                 ].map((f) => (
                                     <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-muted)' }}>
                                         <FiCheckCircle size={13} style={{ color: 'var(--c-emerald)', flexShrink: 0 }} />
@@ -740,10 +743,10 @@ const Landing = () => {
                             </div>
                             <ul className="space-y-2 mb-6">
                                 {[
-                                    'Everything in Pro',
-                                    'Direct API access',
-                                    'White-label option',
-                                    'Onboarding call (30min)',
+                                    'Everything in Pro (5× higher limits)',
+                                    'Direct API access for custom workflows',
+                                    'White-label — ship under your own brand',
+                                    'Personal onboarding call (30 min)',
                                 ].map((f) => (
                                     <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-muted)' }}>
                                         <FiCheckCircle size={13} style={{ color: 'var(--c-emerald)', flexShrink: 0 }} />
@@ -773,6 +776,7 @@ const Landing = () => {
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex flex-wrap gap-5">
                         {[
+                            { label: 'Getting Started', to: '/welcome-guide.html', internal: false },
                             { label: 'Privacy Policy', to: '/privacy', internal: true },
                             { label: 'Terms of Service', to: '/terms', internal: true },
                             { label: 'Contact', to: 'mailto:sage@onelovepeople.com', internal: false },
