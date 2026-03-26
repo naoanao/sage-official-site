@@ -188,9 +188,11 @@ const SageOS = () => {
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(false);
     const [showContentManager, setShowContentManager] = useState(false);
-    const [showQuickStart, setShowQuickStart] = useState(() =>
-        !localStorage.getItem('sage_quickstart_dismissed') && !IS_OWNER
-    );
+    const [showQuickStart, setShowQuickStart] = useState(() => {
+        const _isOwner = typeof window !== 'undefined' &&
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        return !localStorage.getItem('sage_quickstart_dismissed') && !_isOwner;
+    });
     // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
     const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
