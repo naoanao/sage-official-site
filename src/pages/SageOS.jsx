@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
-import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder } from 'react-icons/fi';
+import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder, FiBookOpen, FiTrendingUp } from 'react-icons/fi';
 import axios from 'axios';
 import { BACKEND_URL } from '../config/backendUrl';
 import toast from '../utils/toast';
@@ -182,12 +182,33 @@ const _ls = {
     del: (k) => { try { localStorage.removeItem(k); } catch {} },
 };
 
+// ── Funnel tracking ──────────────────────────────────────────────────────────
+function trackEvent(event, extra = {}) {
+    const isOwner = typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (isOwner) return;
+    const email = localStorage.getItem('sage_subscriber_email') || null;
+    let sid = localStorage.getItem('sage_session_id');
+    if (!sid) { sid = Math.random().toString(36).slice(2); localStorage.setItem('sage_session_id', sid); }
+    fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event, email, session_id: sid, metadata: extra }),
+    }).catch(() => {});
+}
+
 const SageOS = () => {
     // ── Phase navigation state ───────────────────────────────────────────────
     const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(false);
     const [showContentManager, setShowContentManager] = useState(false);
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [showQuickStart, setShowQuickStart] = useState(() => {
+        const _isOwner = typeof window !== 'undefined' &&
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        return !localStorage.getItem('sage_quickstart_dismissed') && !_isOwner;
+    });
     // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
     const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
@@ -471,6 +492,16 @@ const SageOS = () => {
     const IS_OWNER = typeof window !== 'undefined' &&
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
+    // ── Track dashboard_visit on mount (once per session) ────────────────────
+    useEffect(() => {
+        const key = 'sage_last_visit_tracked';
+        const today = new Date().toISOString().slice(0, 10);
+        if (localStorage.getItem(key) !== today) {
+            trackEvent('dashboard_visit');
+            localStorage.setItem(key, today);
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const runMonetizePipeline = async (topicOverride) => {
         const topicToUse = topicOverride || monetizeTopic;
         setMonetizeStatus('running');
@@ -494,12 +525,21 @@ const SageOS = () => {
 
         if (!IS_OWNER) {
             // ── Cloud path: try CF Function /api/generate (Groq, no Flask) ──
+            const subscriberEmail = localStorage.getItem('sage_subscriber_email') || '';
+            let userIdentity = {};
+            try { userIdentity = JSON.parse(localStorage.getItem('sage_user_identity') || '{}'); } catch (_) { }
             try {
                 const cloudRes = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topic: topicToUse, market, price, language: lang })
+                    body: JSON.stringify({ topic: topicToUse, market, price, language: lang, email: subscriberEmail, identity: userIdentity })
                 });
+                if (cloudRes.status === 429) {
+                    const errData = await cloudRes.json().catch(() => ({}));
+                    setGenerateProgress('');
+                    alert(errData.message || "You've reached your daily generation limit. Resets at midnight UTC.");
+                    return;
+                }
                 if (cloudRes.ok) {
                     const courseData = await cloudRes.json();
                     if (courseData && courseData.sections && courseData.sections.length > 0) {
@@ -511,6 +551,7 @@ const SageOS = () => {
                             courseData.captions
                             || (courseData.sections || []).slice(0, 3).map(s => s.content?.slice(0, 280) || '')
                         );
+                        trackEvent('generate_done', { topic: topicToUse, source: 'cloud' });
                         setSectionInstructions({});
                         setExpandedSection(0);
                         setContentTab('blog');
@@ -779,6 +820,7 @@ const SageOS = () => {
             const caption = editedCaptions[0] || (editedSections[0]?.content?.slice(0, 280) ?? '');
             await api.post('/api/bluesky/post', { content: caption });
             setPublishChecklist(p => ({ ...p, bluesky: 'done' }));
+            trackEvent('publish_done', { platform: 'bluesky' });
         } catch { setPublishChecklist(p => ({ ...p, bluesky: 'error' })); }
     };
 
@@ -904,12 +946,21 @@ const SageOS = () => {
 
         // Cloud path: try CF Function /api/chat (Groq, no Flask needed)
         if (!IS_OWNER) {
+            const subscriberEmail = localStorage.getItem('sage_subscriber_email') || '';
+            let userIdentity = {};
+            try { userIdentity = JSON.parse(localStorage.getItem('sage_user_identity') || '{}'); } catch (_) { }
             try {
                 const cloudRes = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: newMsg.content })
+                    body: JSON.stringify({ message: newMsg.content, email: subscriberEmail, identity: userIdentity })
                 });
+                if (cloudRes.status === 429) {
+                    const errData = await cloudRes.json().catch(() => ({}));
+                    const limitMsg = errData.message || "You've reached your daily chat limit. Resets at midnight UTC.";
+                    setMessages(prev => [...prev, { id: Date.now() + 1, role: 'sage', content: `⚠️ ${limitMsg}` }]);
+                    return;
+                }
                 if (cloudRes.ok) {
                     const data = await cloudRes.json();
                     if (data?.response) {
@@ -954,7 +1005,41 @@ const SageOS = () => {
     };
 
     // ── Self-Test helpers ────────────────────────────────────────────────────
+    // Cloud self-test: uses CF /api/system/health (no Flask needed)
+    const runCloudHealthCheck = async () => {
+        setSelfTestError(null);
+        setSelfTestRunning({ all: true });
+        try {
+            const res = await fetch('/api/system/health');
+            if (!res.ok) throw new Error(`Health check returned ${res.status}`);
+            const data = await res.json();
+            const tests = Object.entries(data.checks || {}).map(([name, ok]) => ({
+                name,
+                status: ok ? 'PASS' : 'FAIL',
+                reason: ok ? null : `${name} not configured in CF Pages env vars`,
+            }));
+            const pass = tests.filter(t => t.status === 'PASS').length;
+            const fail = tests.filter(t => t.status === 'FAIL').length;
+            setSelfTestResults({
+                tier1: {
+                    overall_status: fail > 0 ? 'FAIL' : 'PASS',
+                    ran_at: data.timestamp || new Date().toISOString(),
+                    summary: { pass, fail, skip: 0 },
+                    tests,
+                },
+                tier2: null,
+            });
+        } catch (e) {
+            console.error('[SelfTest/cloud]', e);
+            setSelfTestError(e?.message || 'Health check failed');
+        } finally {
+            setSelfTestRunning({});
+        }
+    };
+
     const runSelfTestItem = async (tier, checkName = null) => {
+        // Cloud mode: always use health check
+        if (!IS_OWNER) { runCloudHealthCheck(); return; }
         const key = checkName || `t${tier}`;
         setSelfTestError(null);
         setSelfTestRunning(p => ({ ...p, [key]: true }));
@@ -973,7 +1058,8 @@ const SageOS = () => {
                     return { ...prev, [tierKey]: { ...(prev[tierKey] || {}), tests } };
                 });
             } else {
-                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: res.data.report }));
+                const report = res.data?.report ?? res.data ?? null;
+                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: report }));
             }
         } catch (e) {
             console.error('[SelfTest]', e);
@@ -983,12 +1069,13 @@ const SageOS = () => {
         }
     };
     const runAllSelfTests = async () => {
+        // Cloud mode: use CF health check
+        if (!IS_OWNER) { runCloudHealthCheck(); return; }
         setSelfTestError(null);
         setSelfTestRunning({ all: true });
         try {
             const res = await api.get('/api/system/self_test', { params: { tier: 'all' }, timeout: 60000 });
-            const report = res.data?.report;
-            if (!report) throw new Error('Invalid response from self-test API');
+            const report = res.data?.report ?? res.data ?? {};
             setSelfTestResults({ tier1: report.tier1 ?? null, tier2: report.tier2 ?? null });
         } catch (e) {
             console.error('[SelfTest]', e);
@@ -1124,6 +1211,26 @@ const SageOS = () => {
                         <FiFolder /> <span>Content</span>
                     </button>
 
+                    {/* Getting Started Guide */}
+                    <a
+                        href="/welcome-guide.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
+                    >
+                        <FiBookOpen /> <span>Guide</span>
+                    </a>
+
+                    {/* Analytics (owner only) */}
+                    {IS_OWNER && (
+                        <button
+                            onClick={() => { setShowAnalytics(p => !p); setShowAutomations(false); setShowSelfTest(false); setShowContentManager(false); }}
+                            className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showAnalytics ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                        >
+                            <FiTrendingUp /> <span>Analytics</span>
+                        </button>
+                    )}
+
                     {/* Store Manager link */}
                     <Link
                         to="/manager"
@@ -1160,6 +1267,37 @@ const SageOS = () => {
 
             {/* ── Main Content ─────────────────────────────────────────────── */}
             <div ref={mainScrollRef} className="flex-1 bg-[var(--c-bg)] overflow-y-auto" translate="no">
+
+                {/* ── Quick Start Banner (shown once to new subscribers) ──── */}
+                {showQuickStart && (
+                    <div className="mx-4 mt-4 p-4 rounded-2xl border border-indigo-500/30 bg-indigo-900/10 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-mono text-indigo-400 uppercase tracking-widest mb-1">⚡ 3 steps to your first revenue pipeline</p>
+                            <div className="flex flex-wrap gap-3 text-sm text-slate-300">
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
+                                    Set your <strong className="text-white">Identity</strong> (niche + tone)
+                                </span>
+                                <span className="text-slate-600 hidden sm:block">→</span>
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                                    <strong className="text-white">Generate</strong> content from any idea
+                                </span>
+                                <span className="text-slate-600 hidden sm:block">→</span>
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">3</span>
+                                    <strong className="text-white">Auto-post</strong> to Bluesky daily
+                                </span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => { localStorage.setItem('sage_quickstart_dismissed', '1'); setShowQuickStart(false); }}
+                            className="shrink-0 px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                        >
+                            Got it ✕
+                        </button>
+                    </div>
+                )}
 
                 {/* Automations Panel */}
                 {showAutomations && (
@@ -1201,8 +1339,11 @@ const SageOS = () => {
                 {/* Content Manager Panel */}
                 {showContentManager && <ContentManager />}
 
+                {/* Analytics Panel (owner only) */}
+                {showAnalytics && IS_OWNER && <AnalyticsPanel />}
+
                 {/* Phase Pages */}
-                {!showAutomations && !showSelfTest && !showContentManager && (
+                {!showAutomations && !showSelfTest && !showContentManager && !showAnalytics && (
                     <>
                         {/* PhaseStepperBar (phases 2-4) */}
                         {currentPhase >= 2 && (
@@ -2214,7 +2355,7 @@ const SageOS = () => {
             </div>
 
             {/* ── SageMiniChat FAB (phases 2-4) ─────────────────────────────── */}
-            {currentPhase >= 2 && !showAutomations && !showSelfTest && (
+            {currentPhase >= 2 && !showAutomations && !showSelfTest && !showAnalytics && (
                 <SageMiniChat phase={currentPhase} topic={activeTopic} />
             )}
 
@@ -2318,7 +2459,7 @@ const SageOS = () => {
                                                 <div className="flex items-center gap-2">
                                                     {tierData && (
                                                         <span className="text-xs text-slate-600 font-mono">
-                                                            P:{tierData.summary.pass} F:{tierData.summary.fail} S:{tierData.summary.skip}
+                                                            P:{tierData?.summary?.pass ?? '?'} F:{tierData?.summary?.fail ?? '?'} S:{tierData?.summary?.skip ?? '?'}
                                                         </span>
                                                     )}
                                                     <button
@@ -2333,7 +2474,7 @@ const SageOS = () => {
                                             <div className="divide-y divide-white/5">
                                                 {tests.length === 0 ? (
                                                     <div className="px-4 py-3 text-xs text-slate-600 italic">
-                                                        "▶ Run" でこの Tier を実行
+                                                        Click "▶ Run" to execute this tier
                                                     </div>
                                                 ) : tests.map(t => (
                                                     <div key={t.name} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
@@ -2360,7 +2501,7 @@ const SageOS = () => {
                                     );
                                 })}
                                 <p className="text-center text-xs text-slate-700 pb-1">
-                                    毎日 JST 07:00 自動実行 / Tier 1: 30 分ごと
+                                                    Auto-runs daily at 09:00 JST · Cloud health check always available
                                 </p>
                             </div>
                         </div>
@@ -2372,28 +2513,51 @@ const SageOS = () => {
 };
 
 // ── Identity Panel ──────────────────────────────────────────────────────────
+const IDENTITY_LS_KEY = 'sage_user_identity';
+const DEFAULT_IDENTITY = { role: '', niche: '', tone: '', visual_style: '', language: 'en' };
+
 const IdentityPanel = () => {
-    const [identity, setIdentity] = React.useState({
-        role: '', niche: '', tone: '', visual_style: '', language: 'ja'
-    });
+    const IS_OWNER_IP = typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    const [identity, setIdentity] = React.useState(DEFAULT_IDENTITY);
     const [saving, setSaving] = React.useState(false);
     const [saved, setSaved] = React.useState(false);
     const [resetting, setResetting] = React.useState(false);
 
     React.useEffect(() => {
-        api.get('/api/identity')
-            .then(res => setIdentity(res.data))
-            .catch(() => { });
+        if (IS_OWNER_IP) {
+            api.get('/api/identity')
+                .then(res => setIdentity(res.data))
+                .catch(() => {
+                    // Flask offline: fall back to localStorage
+                    const stored = localStorage.getItem(IDENTITY_LS_KEY);
+                    if (stored) setIdentity(JSON.parse(stored));
+                });
+        } else {
+            // Cloud subscribers: always use localStorage
+            const stored = localStorage.getItem(IDENTITY_LS_KEY);
+            if (stored) {
+                try { setIdentity(JSON.parse(stored)); } catch (_) { }
+            }
+        }
     }, []);
 
     const handleReset = async () => {
         setResetting(true);
         try {
-            const res = await api.post('/api/identity/reset');
-            setIdentity(res.data.identity);
+            if (IS_OWNER_IP) {
+                const res = await api.post('/api/identity/reset');
+                setIdentity(res.data.identity);
+            } else {
+                localStorage.removeItem(IDENTITY_LS_KEY);
+                setIdentity(DEFAULT_IDENTITY);
+            }
             toast.info('Identity reset to default');
         } catch (err) {
-            toast.error('Reset failed — is Flask running?');
+            localStorage.removeItem(IDENTITY_LS_KEY);
+            setIdentity(DEFAULT_IDENTITY);
+            toast.info('Identity reset to default');
         } finally {
             setResetting(false);
         }
@@ -2403,13 +2567,19 @@ const IdentityPanel = () => {
         setSaving(true);
         setSaved(false);
         try {
-            await api.post('/api/identity', identity);
+            // Always save to localStorage so chat/generate can read it
+            localStorage.setItem(IDENTITY_LS_KEY, JSON.stringify(identity));
+            if (IS_OWNER_IP) {
+                await api.post('/api/identity', identity);
+            }
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
-            toast.success('Identity saved');
+            toast.success('Identity saved — all future content will reflect your profile!');
         } catch (err) {
-            const msg = err.response?.data?.message || err.message || 'unknown error';
-            toast.error(`Save failed: ${msg}`);
+            // If Flask fails, localStorage save already succeeded for cloud
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+            toast.success('Identity saved locally');
         } finally {
             setSaving(false);
         }
@@ -2424,7 +2594,10 @@ const IdentityPanel = () => {
 
     return (
         <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl space-y-4">
-            <div className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2">🎭 Your AI Clone Identity</div>
+            <div>
+                <div className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2 mb-1">🎭 Your AI Clone Identity</div>
+                <p className="text-xs text-slate-500">Fill this in so Sage generates blog posts, SNS captions, and shop copy that actually fit <em>your</em> niche — not a generic template.</p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
                 {fields.map(({ key, label, placeholder }) => (
                     <div key={key} className="space-y-1">
@@ -2448,6 +2621,171 @@ const IdentityPanel = () => {
                     {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save Identity'}
                 </button>
             </div>
+        </div>
+    );
+};
+
+// ── AnalyticsPanel (owner-only funnel dashboard) ─────────────────────────────
+const ADMIN_KEY = 'sage-admin-2026';
+
+const MetricCard = ({ label, value, rate, color = '#6366f1', sub }) => (
+    <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl flex flex-col gap-1">
+        <p className="text-xs font-mono text-slate-500 uppercase tracking-widest">{label}</p>
+        <p className="text-3xl font-black" style={{ color }}>{value ?? '—'}</p>
+        {rate != null && (
+            <p className="text-sm font-semibold" style={{ color: rate >= 50 ? '#10b981' : rate >= 20 ? '#f59e0b' : '#ef4444' }}>
+                {rate}%
+            </p>
+        )}
+        {sub && <p className="text-xs text-slate-600 mt-0.5">{sub}</p>}
+    </div>
+);
+
+const MiniBar = ({ value, max, color = '#6366f1' }) => {
+    const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+    return (
+        <div className="flex items-center gap-2">
+            <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+            </div>
+            <span className="text-xs font-mono text-slate-500 w-6 text-right">{value}</span>
+        </div>
+    );
+};
+
+const AnalyticsPanel = () => {
+    const [data, setData] = React.useState(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState(null);
+
+    React.useEffect(() => {
+        fetch(`/api/analytics?secret=${ADMIN_KEY}`)
+            .then(r => r.json())
+            .then(d => { setData(d); setLoading(false); })
+            .catch(e => { setError(e.message); setLoading(false); });
+    }, []);
+
+    const f = data?.funnel || {};
+    const trend = data?.trend || [];
+    const events = data?.recent_events || [];
+    const maxGen = trend.length ? Math.max(...trend.map(t => t.generates || 0), 1) : 1;
+
+    const EVENT_LABELS = {
+        modal_view: '👁 Modal view',
+        payment_click: '💳 Payment click',
+        dashboard_visit: '🏠 Dashboard visit',
+        generate_done: '✍️ Generate done',
+        publish_done: '📡 Publish done',
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto py-8 px-4">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <FiTrendingUp className="text-indigo-400 text-xl" />
+                    <h2 className="text-xl font-black" style={{ color: '#1A56DB' }}>Funnel Analytics</h2>
+                </div>
+                <p className="text-xs text-slate-600 font-mono">
+                    {data?.generated_at ? new Date(data.generated_at).toLocaleString() : ''}
+                </p>
+            </div>
+
+            {loading && (
+                <div className="flex justify-center py-16">
+                    <div className="flex gap-1">{[0,150,300].map(d => (
+                        <div key={d} className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                    ))}</div>
+                </div>
+            )}
+
+            {error && (
+                <div className="p-6 bg-[var(--c-raised)] border border-red-500/20 rounded-2xl text-red-400 text-sm text-center">
+                    {error}
+                </div>
+            )}
+
+            {data && !loading && (
+                <div className="space-y-6">
+                    {/* ── 5 Funnel Metrics ── */}
+                    <div>
+                        <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-3">The 5 numbers that matter</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <MetricCard
+                                label="LP → Modal"
+                                value={f.modal_view_count}
+                                sub="Unique modal views"
+                                color="#6366f1"
+                            />
+                            <MetricCard
+                                label="Modal → Payment click"
+                                value={f.payment_click_count}
+                                rate={f.modal_to_payment_rate}
+                                sub={`of ${f.modal_view_count} modal views`}
+                                color="#8b5cf6"
+                            />
+                            <MetricCard
+                                label="Total subscribers"
+                                value={f.total_subscribers}
+                                sub="Active paying users"
+                                color="#3b82f6"
+                            />
+                            <MetricCard
+                                label="Activated in 24h"
+                                value={f.activated_24h_count}
+                                rate={f.activated_24h_rate}
+                                sub="Generated within 24h of signup"
+                                color="#10b981"
+                            />
+                            <MetricCard
+                                label="Generate → Publish"
+                                value={f.publish_done_count}
+                                rate={f.publish_rate}
+                                sub={`of ${f.generate_unique_users} who generated`}
+                                color="#f59e0b"
+                            />
+                            <MetricCard
+                                label="7-day return"
+                                value={f.return_day7_count}
+                                rate={f.return_day7_rate}
+                                sub="Visited again after 7 days"
+                                color="#ec4899"
+                            />
+                        </div>
+                    </div>
+
+                    {/* ── 14-day generate trend ── */}
+                    {trend.length > 0 && (
+                        <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
+                            <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-4">Daily generates — last 14 days</p>
+                            <div className="space-y-2">
+                                {trend.map(t => (
+                                    <div key={t.date} className="flex items-center gap-3">
+                                        <span className="text-xs font-mono text-slate-600 w-20 shrink-0">{t.date}</span>
+                                        <div className="flex-1"><MiniBar value={t.generates || 0} max={maxGen} color="#6366f1" /></div>
+                                        <span className="text-xs text-slate-500 w-16 shrink-0 text-right">{t.users || 0} users</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Recent events ── */}
+                    {events.length > 0 && (
+                        <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
+                            <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-4">Recent events (last 50)</p>
+                            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                                {events.map((e, i) => (
+                                    <div key={i} className="flex items-center gap-3 text-xs py-1.5 border-b border-white/3">
+                                        <span className="text-slate-400 w-32 shrink-0">{EVENT_LABELS[e.event] || e.event}</span>
+                                        <span className="text-slate-600 flex-1 truncate">{e.email || e.session_id || '—'}</span>
+                                        <span className="text-slate-700 shrink-0 font-mono">{e.created_at?.slice(0, 16)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
