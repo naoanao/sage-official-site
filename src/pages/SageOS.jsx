@@ -1144,13 +1144,13 @@ const SageOS = () => {
                 </div>
 
                 {/* Brake Widget */}
-                <div className="mt-auto p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl">
+                <div className="mt-auto p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl cursor-pointer" onClick={toggleBrake}>
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-mono text-[var(--c-muted)] flex items-center gap-2"><FiShield /> <span>SAGE BRAKE</span></span>
                         <div className={`w-2 h-2 rounded-full ${brakeEnabled ? 'bg-red-500 animate-pulse' : 'bg-slate-600'}`}></div>
                     </div>
                     <button
-                        onClick={toggleBrake}
+                        onClick={e => { e.stopPropagation(); toggleBrake(); }}
                         className={`w-full py-2 rounded-lg text-xs font-bold uppercase transition-all flex justify-center items-center gap-2 ${brakeEnabled ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-[var(--c-raised)] hover:bg-[var(--c-border)] text-[var(--c-text)] border border-[var(--c-border)]'}`}
                     >
                         {brakeEnabled ? <><FiXCircle /> <span>BRAKE ACTIVE</span></> : <><FiCheckCircle /> <span>● Online</span></>}
@@ -1473,14 +1473,20 @@ const SageOS = () => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-bold text-[var(--c-text)] mb-2">Target Market</label>
-                                            <select value={market} onChange={(e) => setMarket(e.target.value)}
+                                            <select value={['US','JP','CN','IN','GLOBAL'].includes(market) ? market : 'CUSTOM'} onChange={(e) => { if (e.target.value !== 'CUSTOM') setMarket(e.target.value); else setMarket(''); }}
                                                 className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 text-[var(--c-text)] focus:outline-none focus:border-purple-500 appearance-none">
                                                 <option value="US">🇺🇸 US Market</option>
                                                 <option value="JP">🇯🇵 Japan Market</option>
                                                 <option value="CN">🇨🇳 China Market</option>
                                                 <option value="IN">🇮🇳 India Market</option>
                                                 <option value="GLOBAL">🌐 Global Market</option>
+                                                <option value="CUSTOM">✏️ Custom...</option>
                                             </select>
+                                            {!['US','JP','CN','IN','GLOBAL'].includes(market) && (
+                                                <input type="text" value={market} onChange={(e) => setMarket(e.target.value)}
+                                                    placeholder="e.g. Europe, Southeast Asia..."
+                                                    className="w-full mt-2 bg-[var(--c-surface)] border border-purple-500/50 rounded-xl px-4 py-2 text-[var(--c-text)] text-sm focus:outline-none focus:border-purple-500" />
+                                            )}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-[var(--c-text)] mb-2">Suggested Price</label>
@@ -2458,6 +2464,7 @@ const ContentManager = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [filter, setFilter] = useState('all');
+    const [expandedIdx, setExpandedIdx] = useState(null);
 
     useEffect(() => {
         setLoading(true);
@@ -2472,7 +2479,6 @@ const ContentManager = () => {
     const FILTERS = [
         { value: 'all', label: 'All' },
         { value: 'blog', label: 'Blog' },
-        { value: 'general', label: 'General' },
     ];
 
     return (
@@ -2519,7 +2525,10 @@ const ContentManager = () => {
             {!loading && !error && items.length > 0 && (
                 <div className="space-y-3">
                     {items.map((item, i) => (
-                        <div key={i} className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl p-4 hover:border-blue-500/40 transition-all">
+                        <div key={i}
+                            className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl p-4 hover:border-blue-500/40 transition-all cursor-pointer"
+                            onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
+                        >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-[var(--c-text)] text-sm truncate">{item.title || item.metadata?.title || 'Untitled'}</p>
@@ -2532,10 +2541,22 @@ const ContentManager = () => {
                                     {item.created_at && (
                                         <span className="text-xs text-[var(--c-subtle)]">{new Date(item.created_at).toLocaleDateString()}</span>
                                     )}
+                                    <span className="text-xs text-[var(--c-subtle)]">{expandedIdx === i ? '▲' : '▼'}</span>
                                 </div>
                             </div>
                             {item.path && (
                                 <p className="text-xs text-[var(--c-subtle)] font-mono mt-2 truncate">{item.path}</p>
+                            )}
+                            {expandedIdx === i && (
+                                <div className="mt-3 pt-3 border-t border-[var(--c-border)]">
+                                    {item.content && (
+                                        <pre className="text-xs text-[var(--c-muted)] whitespace-pre-wrap break-words max-h-64 overflow-y-auto font-sans leading-relaxed">
+                                            {typeof item.content === 'string' ? item.content.slice(0, 2000) : JSON.stringify(item.content, null, 2).slice(0, 2000)}
+                                            {(typeof item.content === 'string' ? item.content : JSON.stringify(item.content)).length > 2000 && '…'}
+                                        </pre>
+                                    )}
+                                    {!item.content && <p className="text-xs text-[var(--c-subtle)] italic">No content preview available</p>}
+                                </div>
                             )}
                         </div>
                     ))}

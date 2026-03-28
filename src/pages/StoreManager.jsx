@@ -121,7 +121,7 @@ export default function StoreManager() {
     const [revenue, setRevenue]   = useState(null);
     const [products, setProducts] = useState([]);
     const [orders, setOrders]     = useState([]);
-    const [whop, setWhop]         = useState([]);
+    const [whop, setWhop]         = useState({});
     const [loading, setLoading]   = useState(true);
     const [tab, setTab]           = useState('overview');
 
@@ -164,7 +164,7 @@ export default function StoreManager() {
         { id: 'overview', label: 'Overview' },
         { id: 'products', label: `Products (${products.length})` },
         { id: 'orders',   label: `Orders (${orders.length})` },
-        { id: 'whop',     label: `Whop (${whop.length})` },
+        { id: 'whop',     label: `Whop (${Object.keys(whop).length})` },
     ];
 
     return (

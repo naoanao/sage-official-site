@@ -247,7 +247,19 @@ class ImageGenerationEnhanced:
 
         # Tier 3: Pollinations.ai (free AI image gen — no API key, content-aware)
         logger.warning(f"HF+Gemini failed, falling back to Pollinations.ai for: {text[:40]}")
-        return self._pollinations_url(text, width=width, height=height)
+        pollinations_url = self._pollinations_url(text, width=width, height=height)
+        # Instagram API requires a stable public URL — download and upload to imgbb
+        if self.imgbb_api_key:
+            try:
+                resp = requests.get(pollinations_url, timeout=30)
+                if resp.status_code == 200 and resp.headers.get("content-type", "").startswith("image"):
+                    stable_url = self._upload_to_imgbb(resp.content)
+                    if stable_url:
+                        logger.info(f"Pollinations→imgbb upload OK: {stable_url}")
+                        return stable_url
+            except Exception as e:
+                logger.warning(f"Pollinations download/imgbb upload failed: {e}")
+        return pollinations_url
 
     def _loremflickr_url_fallback(self, text: str, width: int = 1200, height: int = 675, topic_keywords: str = None, section_index: int = 0) -> str:
         """Emergency Tier 4 fallback kept for reference (not called in normal flow)."""
