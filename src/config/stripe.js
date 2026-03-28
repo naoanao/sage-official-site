@@ -1,15 +1,16 @@
 // Stripe Payment Links Configuration
-// Replace these with your actual Stripe Payment Links after creating them
+// src/config/links.js が正規の一元管理ファイル。
+// こちらは Blog.jsx が参照しているため後方互換として残す。
 
 export const STRIPE_LINKS = {
-    // Subscription Products
-    bluesky: 'https://naofumi3.gumroad.com/l/bluesky-marketer', // Replace with Stripe link
-    instagram: 'https://naofumi3.gumroad.com/l/instagram-marketer', // Replace with Stripe link
-    bundle: 'https://naofumi3.gumroad.com/l/sns-bundle', // Replace with Stripe link
+    // Subscription Products — Stripe
+    bluesky:   'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03', // Pro $20/mo
+    instagram: 'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03', // Pro $20/mo
+    bundle:    'https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04', // Enterprise $99/mo
 
-    // One-time Products
-    fortress: 'https://naofumi3.gumroad.com/l/sage-professional', // Replace with Stripe link
-    developer: 'https://naofumi3.gumroad.com/l/sage-developer', // Replace with Stripe link
+    // ブログCTA → Proプランへ誘導
+    fortress:  'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03', // Pro $20/mo
+    developer: 'https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04', // Enterprise $99/mo
 };
 
 // UTM Parameters for tracking

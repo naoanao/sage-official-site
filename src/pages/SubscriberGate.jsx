@@ -14,6 +14,7 @@
 
 import React, { useState, useEffect } from 'react';
 import SageOS from './SageOS';
+import { trackEvent as track } from '../utils/tracking';
 
 const IS_LOCAL = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -42,19 +43,21 @@ export const PlanBadge = ({ plan }) => {
 };
 
 // ── Upgrade modal (shown to non-subscribers) ──────────────────────────────────
-const UpgradeModal = ({ email, onDismiss }) => (
+const UpgradeModal = ({ email, onDismiss }) => {
+  useEffect(() => { track('modal_view', { email }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
   <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
     <div className="w-full max-w-lg bg-gray-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
       {/* Header */}
       <div className="px-8 pt-8 pb-6 text-center">
-        <div className="text-4xl mb-3">🤖</div>
+        <div className="text-4xl mb-3">⚡</div>
         <h2 className="text-2xl font-black text-white mb-2">
-          Sage AI is for subscribers only
+          Turn any idea into revenue — daily
         </h2>
         <p className="text-gray-400 text-sm">
           {email
-            ? `No active subscription found for ${email}.`
-            : 'A subscription is required to access the dashboard.'}
+            ? `No active subscription found for ${email}. Choose a plan below to get started.`
+            : 'Blog posts, social captions, and sales copy — personalized to your niche, automated every day.'}
         </p>
       </div>
 
@@ -65,13 +68,19 @@ const UpgradeModal = ({ email, onDismiss }) => (
           href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03"
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => track('payment_click', { plan: 'pro', email })}
           className="flex-1 p-5 rounded-2xl border border-violet-500/40 bg-violet-900/20 hover:bg-violet-900/40 transition-all text-center group"
         >
           <div className="text-xs text-violet-400 font-mono uppercase tracking-widest mb-2">Most Popular</div>
           <div className="text-3xl font-black text-white mb-0.5">$20</div>
-          <div className="text-gray-400 text-sm mb-4">/月</div>
+          <div className="text-gray-400 text-sm mb-4">/month</div>
           <ul className="space-y-1.5 text-left mb-5">
-            {['Sage AI Dashboard', 'Daily auto-posting to SNS', 'AI content generation', 'Full feature access'].map(f => (
+            {[
+              '1 idea → blog + 5 posts + copy in 90s',
+              'Content tailored to your niche & tone',
+              'Daily Bluesky & Instagram auto-posting',
+              '100 AI chats + 20 generations/day',
+            ].map(f => (
               <li key={f} className="text-xs text-gray-300 flex items-center gap-1.5">
                 <span className="text-emerald-400">✓</span> {f}
               </li>
@@ -87,13 +96,14 @@ const UpgradeModal = ({ email, onDismiss }) => (
           href="https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04"
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => track('payment_click', { plan: 'enterprise', email })}
           className="flex-1 p-5 rounded-2xl border border-amber-500/30 bg-amber-900/10 hover:bg-amber-900/20 transition-all text-center group"
         >
           <div className="text-xs text-amber-400 font-mono uppercase tracking-widest mb-2">Enterprise</div>
           <div className="text-3xl font-black text-white mb-0.5">$99</div>
-          <div className="text-gray-400 text-sm mb-4">/月</div>
+          <div className="text-gray-400 text-sm mb-4">/month</div>
           <ul className="space-y-1.5 text-left mb-5">
-            {['Pro の全機能', 'API直接アクセス', 'ホワイトラベル', 'オンボーディング通話'].map(f => (
+            {['Everything in Pro', 'Direct API access', 'White-label option', 'Onboarding call'].map(f => (
               <li key={f} className="text-xs text-gray-300 flex items-center gap-1.5">
                 <span className="text-emerald-400">✓</span> {f}
               </li>
@@ -107,13 +117,16 @@ const UpgradeModal = ({ email, onDismiss }) => (
 
       {/* Footer actions */}
       <div className="px-8 pb-8 flex flex-col items-center gap-3">
+        <p className="text-xs text-gray-600 text-center">
+          🔒 Secure checkout via Stripe · Cancel anytime · No contracts
+        </p>
         <p className="text-xs text-gray-500">
           Already subscribed?{' '}
           <button
             onClick={onDismiss}
             className="text-violet-400 hover:underline"
           >
-            Try a different email
+            Enter your email
           </button>
         </p>
         <a href="/" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
@@ -122,7 +135,8 @@ const UpgradeModal = ({ email, onDismiss }) => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // ── Email input modal ─────────────────────────────────────────────────────────
 const EmailModal = ({ onVerify, loading }) => {
