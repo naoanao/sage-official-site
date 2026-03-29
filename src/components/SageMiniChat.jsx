@@ -47,7 +47,7 @@ const SageMiniChat = ({ phase, topic }) => {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-3">
+        <div className="fixed bottom-6 right-[4.5rem] z-[9999] flex flex-col items-end gap-3">
             {/* Drawer */}
             {open && (
                 <div className="w-80 h-96 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl shadow-2xl flex flex-col overflow-hidden">

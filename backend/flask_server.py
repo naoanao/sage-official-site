@@ -1391,6 +1391,32 @@ def api_content_save():
         logger.error(f"Content save error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/content/read', methods=['GET'])
+def api_content_read():
+    """Read a content file body (strips YAML frontmatter). Returns up to 3000 chars."""
+    if not content_mgr:
+        return jsonify({"error": "Content Manager Offline"}), 503
+    path = request.args.get('path', '').strip()
+    if not path or '..' in path:
+        return jsonify({"error": "Invalid path"}), 400
+    try:
+        full_path = content_mgr.base_dir / path
+        if not full_path.exists() or not full_path.is_file():
+            return jsonify({"error": "Not found"}), 404
+        with open(full_path, 'r', encoding='utf-8') as f:
+            raw = f.read()
+        # Strip YAML frontmatter (--- ... ---)
+        body = raw
+        if raw.startswith('---'):
+            end = raw.find('\n---', 3)
+            if end >= 0:
+                body = raw[end + 4:].lstrip('\n')
+        return jsonify({"status": "ok", "content": body[:3000]})
+    except Exception as e:
+        logger.error(f"Content read error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 def _pick(data, *keys, default=None):
     for k in keys:
         if k in data and data[k] not in (None, ""):

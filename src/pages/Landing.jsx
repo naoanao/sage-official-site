@@ -404,9 +404,9 @@ const Landing = () => {
             {/* ── Hero ──────────────────────────────────────────────────── */}
             <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-24 pb-16 z-10 text-center">
                 <Motion.div
-                    initial={{ opacity: 0, y: 24 }}
+                    initial={{ opacity: 0.2, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                     className="max-w-5xl mx-auto"
                 >
                     {/* Status badge */}

@@ -2465,6 +2465,7 @@ const ContentManager = () => {
     const [error, setError] = useState(null);
     const [filter, setFilter] = useState('all');
     const [expandedIdx, setExpandedIdx] = useState(null);
+    const [contentCache, setContentCache] = useState({}); // { [path]: string | 'loading' | 'error' }
 
     useEffect(() => {
         setLoading(true);
@@ -2475,6 +2476,17 @@ const ContentManager = () => {
             .catch(e => setError(e?.response?.data?.error || e?.response?.data?.message || 'Content Manager offline'))
             .finally(() => setLoading(false));
     }, [filter]);
+
+    const handleExpand = (i, item) => {
+        const newIdx = expandedIdx === i ? null : i;
+        setExpandedIdx(newIdx);
+        if (newIdx !== null && item.path && !contentCache[item.path]) {
+            setContentCache(prev => ({ ...prev, [item.path]: 'loading' }));
+            api.get(`/api/content/read?path=${encodeURIComponent(item.path)}`)
+                .then(res => setContentCache(prev => ({ ...prev, [item.path]: res.data?.content || 'error' })))
+                .catch(() => setContentCache(prev => ({ ...prev, [item.path]: 'error' })));
+        }
+    };
 
     const FILTERS = [
         { value: 'all', label: 'All' },
@@ -2527,7 +2539,7 @@ const ContentManager = () => {
                     {items.map((item, i) => (
                         <div key={i}
                             className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl p-4 hover:border-blue-500/40 transition-all cursor-pointer"
-                            onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
+                            onClick={() => handleExpand(i, item)}
                         >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
@@ -2549,13 +2561,22 @@ const ContentManager = () => {
                             )}
                             {expandedIdx === i && (
                                 <div className="mt-3 pt-3 border-t border-[var(--c-border)]">
-                                    {item.content && (
+                                    {contentCache[item.path] === 'loading' && (
+                                        <div className="flex gap-1 py-1">
+                                            {[0, 150, 300].map(d => (
+                                                <div key={d} className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                                            ))}
+                                        </div>
+                                    )}
+                                    {contentCache[item.path] && contentCache[item.path] !== 'loading' && contentCache[item.path] !== 'error' && (
                                         <pre className="text-xs text-[var(--c-muted)] whitespace-pre-wrap break-words max-h-64 overflow-y-auto font-sans leading-relaxed">
-                                            {typeof item.content === 'string' ? item.content.slice(0, 2000) : JSON.stringify(item.content, null, 2).slice(0, 2000)}
-                                            {(typeof item.content === 'string' ? item.content : JSON.stringify(item.content)).length > 2000 && '…'}
+                                            {contentCache[item.path].slice(0, 2000)}
+                                            {contentCache[item.path].length > 2000 && '…'}
                                         </pre>
                                     )}
-                                    {!item.content && <p className="text-xs text-[var(--c-subtle)] italic">No content preview available</p>}
+                                    {(!contentCache[item.path] || contentCache[item.path] === 'error') && (
+                                        <p className="text-xs text-[var(--c-subtle)] italic">No content preview available</p>
+                                    )}
                                 </div>
                             )}
                         </div>
