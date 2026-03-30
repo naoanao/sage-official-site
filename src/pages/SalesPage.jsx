@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { FiArrowRight, FiShoppingCart, FiCheck, FiShield, FiZap } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
+import { trackEvent } from '../utils/tracking';
 
 // ── Static direct payment links ───────────────────────────────────────────────
 const STATIC_LINKS = {
@@ -45,12 +46,6 @@ const PLANS = [
 ];
 
 
-const TESTIMONIALS = [
-    { text: 'Two weeks in, I gained 340 new followers — and I did nothing. Sage posts every morning at 9 AM while I\'m still asleep. This is what passive growth actually feels like.', name: 'Alex R. — Solopreneur, Austin TX', rating: 5 },
-    { text: 'I close my laptop and the posts still go out. I used to spend 2 hours a day on content. Now I spend zero. Sage handles it completely.', name: 'Mia K. — Content Creator, London', rating: 5 },
-    { text: 'The Groq-powered generation is insanely fast — under a second. I\'ve tried every AI tool out there, and nothing comes close to this pipeline for speed and quality.', name: 'Jordan T. — Freelance Designer, Toronto', rating: 5 },
-    { text: 'We\'re on the Enterprise plan. The direct API access let us plug Sage into our internal tools. ROI was covered in under 3 months. Highly recommend.', name: 'Sam L. — CTO, SaaS Startup', rating: 5 },
-];
 
 const STATS = [
     { value: '14+', label: 'SNS posts ready in your queue today' },
@@ -60,6 +55,7 @@ const STATS = [
 ];
 
 const SalesPage = () => {
+    useEffect(() => { trackEvent('sales_visit'); }, []);
     return (
         <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
             <SpaceBackground />
@@ -182,6 +178,7 @@ const SalesPage = () => {
                                     href={plan.link}
                                     target={plan.link.startsWith('http') ? '_blank' : undefined}
                                     rel="noreferrer"
+                                    onClick={() => trackEvent('payment_click', { plan: plan.id })}
                                     className={`w-full py-3 rounded-xl text-sm font-bold text-center transition-all ${plan.ctaStyle}`}
                                 >
                                     {plan.cta}
@@ -192,33 +189,15 @@ const SalesPage = () => {
                 </div>
             </section>
 
-            {/* ③ Testimonials ─────────────────────────────────────────────── */}
+            {/* ③ Early Adopter CTA ─────────────────────────────────────── */}
             <section className="relative z-10 py-20 px-4 border-t border-white/5">
-                <div className="max-w-5xl mx-auto">
-                    <div className="text-center mb-12">
-                        <div className="text-xs font-mono text-blue-400 mb-2">WHAT USERS SAY</div>
-                        <h2 className="text-3xl font-black tracking-tighter">Real results from real solopreneurs</h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        {TESTIMONIALS.map((t, i) => (
-                            <Motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 16 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.08 }}
-                                className="p-6 rounded-2xl bg-white/[0.03] border border-white/8"
-                            >
-                                <div className="flex gap-0.5 mb-3">
-                                    {Array.from({ length: t.rating }).map((_, j) => (
-                                        <span key={j} className="text-amber-400 text-sm">★</span>
-                                    ))}
-                                </div>
-                                <p className="text-slate-300 text-sm leading-relaxed mb-4">"{t.text}"</p>
-                                <p className="text-xs text-slate-500">— {t.name}</p>
-                            </Motion.div>
-                        ))}
-                    </div>
+                <div className="max-w-3xl mx-auto text-center">
+                    <div className="text-xs font-mono text-blue-400 mb-2">EARLY ACCESS</div>
+                    <h2 className="text-3xl font-black tracking-tighter mb-4">Be one of the first.</h2>
+                    <p className="text-slate-400 text-sm leading-relaxed max-w-xl mx-auto">
+                        Sage is in active development. Early adopters get locked-in pricing and direct access to the builder.
+                        Your feedback shapes what gets built next.
+                    </p>
                 </div>
             </section>
 

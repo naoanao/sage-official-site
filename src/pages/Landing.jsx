@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
+import { trackEvent } from '../utils/tracking';
 import {
     FiArrowRight, FiShoppingCart, FiClock, FiZap,
     FiTrendingUp, FiGlobe, FiShield, FiCode,
@@ -182,7 +183,7 @@ const AutoPublishCard = () => (
         <div className="space-y-2">
             {[
                 { name: 'Bluesky', active: true },
-                { name: 'Instagram', active: true },
+                { name: 'Instagram', active: false },
                 { name: 'Notion', active: true },
                 { name: 'Medium', active: false },
                 { name: 'WordPress', active: false },
@@ -364,6 +365,8 @@ const Landing = () => {
         const t = setInterval(() => setInputIndex(i => (i + 1) % DEMO_INPUTS.length), 3200);
         return () => clearInterval(t);
     }, []);
+
+    useEffect(() => { trackEvent('lp_visit'); }, []);
 
     return (
         <div className="min-h-screen mesh-bg noise font-sans selection:bg-blue-500/20 overflow-x-hidden"

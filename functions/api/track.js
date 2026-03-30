@@ -16,6 +16,8 @@
  */
 
 const ALLOWED_EVENTS = new Set([
+  'lp_visit',
+  'sales_visit',
   'modal_view',
   'payment_click',
   'dashboard_visit',
@@ -54,6 +56,17 @@ export async function onRequestPost({ request, env }) {
     // Write to D1 — intentionally not awaited on error (fire & forget)
     const db = env.SUBSCRIBERS_DB;
     if (db) {
+      // Ensure table exists (idempotent — no-op if already created)
+      await db.prepare(
+        `CREATE TABLE IF NOT EXISTS funnel_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event TEXT NOT NULL,
+          email TEXT,
+          session_id TEXT,
+          metadata TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        )`
+      ).run().catch(() => {});
       await db.prepare(
         `INSERT INTO funnel_events (event, email, session_id, metadata)
          VALUES (?, ?, ?, ?)`
