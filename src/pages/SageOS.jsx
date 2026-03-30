@@ -233,6 +233,7 @@ const SageOS = () => {
     const [presetResults, setPresetResults] = useState({}); // { [presetId]: 'success'|'error' }
     const [rewriteError, setRewriteError] = useState(null);
     const [rewriteFailedIndices, setRewriteFailedIndices] = useState([]); // indices of sections that failed last global rewrite
+    const [rewriteProgress, setRewriteProgress] = useState({ current: 0, total: 0 }); // e.g. {current:2, total:5}
     const [rewriteEmptyIdx, setRewriteEmptyIdx] = useState(null); // shake effect for empty instruction
     const [expandedSection, setExpandedSection] = useState(null);
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
@@ -663,6 +664,8 @@ const SageOS = () => {
         setGlobalRewriting(true);
         setRewriteError(null);
         setRewriteFailedIndices([]);
+        const totalItems = editedSections.length + (editedSalesPage ? 1 : 0);
+        setRewriteProgress({ current: 0, total: totalItems });
         try {
             const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
             const rewritePayload = (content) => tonePreset
@@ -671,9 +674,10 @@ const SageOS = () => {
 
             // Sequential rewrite to avoid Groq rate limits (parallel causes 429 → timeout)
             const sectionResults = [];
-            for (const s of editedSections) {
+            for (let i = 0; i < editedSections.length; i++) {
+                setRewriteProgress({ current: i + 1, total: totalItems });
                 try {
-                    const r = await apiRewrite.post('/api/productize/rewrite', rewritePayload(s.content));
+                    const r = await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSections[i].content));
                     sectionResults.push({ status: 'fulfilled', value: r });
                 } catch (err) {
                     sectionResults.push({ status: 'rejected', reason: err });
@@ -710,6 +714,7 @@ const SageOS = () => {
             throw e; // let applyPreset catch it for per-button error state
         } finally {
             setGlobalRewriting(false);
+            setRewriteProgress({ current: 0, total: 0 });
         }
     };
 
@@ -1755,8 +1760,8 @@ const SageOS = () => {
                                             <div className="flex items-center justify-between p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
                                                 <div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className={`text-xs font-bold px-2 py-1 rounded ${generateData.qa_status === 'PASS' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                                            QA {generateData.qa_status || 'WARN'}
+                                                        <span className={`text-xs font-bold px-2 py-1 rounded ${(globalRewriting || rewritingPreset) ? 'bg-slate-500/20 text-slate-400' : generateData.qa_status === 'PASS' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                            {(globalRewriting || rewritingPreset) ? 'QA …' : `QA ${generateData.qa_status || 'WARN'}`}
                                                         </span>
                                                         <span className="text-[var(--c-text)] font-bold truncate max-w-xs">{isDemo ? 'Demo: AI Passive Income Guide' : monetizeTopic}</span>
                                                     </div>
@@ -1904,7 +1909,7 @@ const SageOS = () => {
                                                                         ? <div className="w-4 h-4 rounded-full border-2 border-purple-300 border-t-transparent animate-spin shrink-0" />
                                                                         : <span className="text-base shrink-0">{result === 'success' ? '✅' : result === 'error' ? '❌' : preset.icon}</span>
                                                                     }
-                                                                    <span className="text-xs">{isThis ? 'Rewriting...' : result === 'success' ? 'Done!' : result === 'error' ? 'Failed — Retry' : preset.label}</span>
+                                                                    <span className="text-xs">{isThis ? (rewriteProgress.total > 0 ? `${rewriteProgress.current}/${rewriteProgress.total}` : 'Rewriting...') : result === 'success' ? 'Done!' : result === 'error' ? 'Failed — Retry' : preset.label}</span>
                                                                 </button>
                                                             );
                                                         })}
@@ -1925,7 +1930,7 @@ const SageOS = () => {
                                                             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all whitespace-nowrap"
                                                         >
                                                             {globalRewriting
-                                                                ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> Rewriting...</>
+                                                                ? <><div className="w-4 h-4 rounded-full border border-white border-t-transparent animate-spin" /> {rewriteProgress.total > 0 ? `${rewriteProgress.current}/${rewriteProgress.total}` : 'Rewriting...'}</>
                                                                 : <><FiPlay /> Apply</>}
                                                         </button>
                                                     </div>

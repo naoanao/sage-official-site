@@ -210,8 +210,8 @@ class LangGraphOrchestrator:
                         model_name="llama-3.3-70b-versatile",
                         api_key=groq_key,
                         max_tokens=4096,
-                        max_retries=3,
-                        timeout=10.0
+                        max_retries=1,
+                        timeout=15.0
                     )
                     use_groq = True
                     logger.info("✅ Groq initialized (llama-3.3-70b-versatile) - PRIMARY LLM")
@@ -250,7 +250,10 @@ class LangGraphOrchestrator:
                         else:
                             text = str(input_data)
                         
-                        response = self.model.generate_content(text)
+                        response = self.model.generate_content(
+                            text,
+                            request_options={"timeout": 25}
+                        )
                         
                         # Return in LangChain format
                         from langchain_core.messages import AIMessage

@@ -74,8 +74,8 @@ class CourseProductionPipeline:
                     err = str(e).lower()
                     is_rate_limit = any(k in err for k in _rate_limit_keywords)
                     if is_rate_limit and attempt == 0:
-                        logger.warning("Groq TPM/quota limit — waiting 28s then retrying once")
-                        time.sleep(28)
+                        logger.warning("Groq TPM/quota limit — waiting 5s then retrying once")
+                        time.sleep(5)
                         continue
                     logger.warning(f"Primary LLM failed (attempt {attempt + 1}): {e}")
                     break
