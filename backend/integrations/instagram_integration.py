@@ -6,11 +6,20 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _load_token():
+    """Always read the latest token from .env file (not os.environ which may be stale)."""
+    try:
+        from dotenv import dotenv_values
+        vals = dotenv_values()
+        return vals.get('INSTAGRAM_ACCESS_TOKEN') or os.getenv('INSTAGRAM_ACCESS_TOKEN')
+    except Exception:
+        return os.getenv('INSTAGRAM_ACCESS_TOKEN')
+
 class InstagramBot:
     def __init__(self):
-        self.access_token = os.getenv('INSTAGRAM_ACCESS_TOKEN')
+        self.access_token = _load_token()
         self.account_id = os.getenv('INSTAGRAM_ACCOUNT_ID') # Business Account ID
-        self.api_version = "v18.0"
+        self.api_version = "v21.0"
         self.base_url = f"https://graph.facebook.com/{self.api_version}"
 
     def post_image(self, image_url, caption):

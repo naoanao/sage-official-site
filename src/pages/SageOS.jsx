@@ -232,6 +232,7 @@ const SageOS = () => {
     const [rewritingPreset, setRewritingPreset] = useState(null); // preset.id currently running
     const [presetResults, setPresetResults] = useState({}); // { [presetId]: 'success'|'error' }
     const [rewriteError, setRewriteError] = useState(null);
+    const [rewriteFailedIndices, setRewriteFailedIndices] = useState([]); // indices of sections that failed last global rewrite
     const [rewriteEmptyIdx, setRewriteEmptyIdx] = useState(null); // shake effect for empty instruction
     const [expandedSection, setExpandedSection] = useState(null);
     const [nicheValidation, setNicheValidation] = useState({ status: 'idle', data: null });
@@ -642,6 +643,7 @@ const SageOS = () => {
             });
             if (res.data?.status === 'success') {
                 setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, content: res.data.rewritten } : s));
+                setRewriteFailedIndices(prev => prev.filter(i => i !== idx));
                 if (!instructionOverride) setSectionInstructions(prev => ({ ...prev, [idx]: '' }));
             } else {
                 setRewriteError(`Rewrite failed: ${res.data?.error || 'Unknown error'}`);
@@ -660,6 +662,7 @@ const SageOS = () => {
         if (overrideInstruction && !tonePreset) setGlobalInstruction(overrideInstruction);
         setGlobalRewriting(true);
         setRewriteError(null);
+        setRewriteFailedIndices([]);
         try {
             const resolvedLang = lang === 'auto' ? (monetizeTopic.match(/[\u3000-\u9fff]/) ? 'ja' : 'en') : lang;
             const rewritePayload = (content) => tonePreset
@@ -688,9 +691,13 @@ const SageOS = () => {
             }));
             if (salesPageRes?.data?.status === 'success') setEditedSalesPage(salesPageRes.data.rewritten);
 
-            const failCount = sectionResults.filter(r => r.status === 'rejected').length;
-            if (failCount > 0) {
-                setRewriteError(`${failCount} section(s) failed to rewrite. Others were updated.`);
+            const failedIdxList = sectionResults
+                .map((r, i) => r.status === 'rejected' ? i : -1)
+                .filter(i => i >= 0);
+            if (failedIdxList.length > 0) {
+                setRewriteFailedIndices(failedIdxList);
+                const failedTitles = failedIdxList.map(i => editedSections[i]?.title || `Section ${i + 1}`);
+                setRewriteError(`${failedIdxList.length} section(s) failed (LLM rate limit or timeout): ${failedTitles.join(', ')}. Click ↩ retry on each section.`);
             }
             setGlobalInstruction('');
         } catch (e) {
@@ -785,13 +792,32 @@ const SageOS = () => {
     const handlePublishInstagram = async () => {
         setPublishChecklist(p => ({ ...p, instagram: 'running' }));
         try {
-            const imageEntries = generateData?.images ? Object.entries(generateData.images) : [];
-            const firstImageUrl = imageEntries.length > 0 ? imageEntries[0][1]?.url : null;
-            if (!firstImageUrl) throw new Error('No image available');
+            let imageEntries = generateData?.images ? Object.entries(generateData.images) : [];
+            let firstImageUrl = imageEntries.length > 0 ? imageEntries[0][1]?.url : null;
+
+            // Auto-generate images if none exist yet
+            if (!firstImageUrl) {
+                const regenRes = await api.post('/api/productize/regenerate_images', {
+                    sections: editedSections,
+                    topic: monetizeTopic,
+                    custom_instruction: globalInstruction || ''
+                });
+                if (regenRes.data?.status === 'success' && regenRes.data.images) {
+                    setGenerateData(prev => ({ ...prev, images: regenRes.data.images }));
+                    imageEntries = Object.entries(regenRes.data.images);
+                    firstImageUrl = imageEntries.length > 0 ? imageEntries[0][1]?.url : null;
+                }
+            }
+
+            if (!firstImageUrl) throw new Error('画像の生成に失敗しました。再試行してください。');
             const caption = editedCaptions[0] || (editedSections[0]?.content?.slice(0, 280) ?? '');
-            await api.post('/api/instagram/post', { image_url: firstImageUrl, caption });
+            const res = await api.post('/api/instagram/post', { image_url: firstImageUrl, caption });
+            if (res.data?.status !== 'success') throw new Error(res.data?.message || res.data?.error || 'Post failed');
             setPublishChecklist(p => ({ ...p, instagram: 'done' }));
-        } catch { setPublishChecklist(p => ({ ...p, instagram: 'error' })); }
+        } catch (e) {
+            console.error('[Instagram]', e?.response?.data || e.message);
+            setPublishChecklist(p => ({ ...p, instagram: 'error', instagram_error: e?.response?.data?.message || e.message }));
+        }
     };
 
     const handleCopyBlogPost = async () => {
@@ -829,7 +855,7 @@ const SageOS = () => {
         setMonetizeResult(null);
         setContentTab('blog');
         setEditedCaptions([]);
-        setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false });
+        setPublishChecklist({ bluesky: 'idle', instagram: 'idle', copied: false, instagram_error: null });
         _ls.del('sage_phase');
         _ls.del('sage_topic');
         _ls.del('sage_activeTopic');
@@ -880,6 +906,7 @@ const SageOS = () => {
                 setNicheValidation({ status: 'rate_limited', data: e.response?.data });
             } else {
                 setNicheValidation({ status: 'error', data: null });
+                toast.error('Market check failed — Flask may not be running');
             }
         }
     };
@@ -1368,7 +1395,8 @@ const SageOS = () => {
                                                 <button
                                                     onClick={handleNicheValidate}
                                                     disabled={!monetizeTopic.trim() || nicheValidation.status === 'running'}
-                                                    className={`text-xs px-3 py-1 disabled:opacity-40 rounded-lg flex items-center gap-1.5 transition-all border ${
+                                                    title={!monetizeTopic.trim() ? 'Enter a topic first' : 'Check market demand for this topic'}
+                                                    className={`text-xs px-3 py-1 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg flex items-center gap-1.5 transition-all border ${
                                                         nicheValidation.status === 'error'
                                                             ? 'bg-red-900/30 text-red-300 border-red-500/30 hover:bg-red-800/40'
                                                             : nicheValidation.status === 'done'
@@ -1747,7 +1775,7 @@ const SageOS = () => {
                                             {/* Blog sections list */}
                                             <div className="space-y-3">
                                                 {editedSections.map((section, idx) => (
-                                                    <div key={idx} className="bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl overflow-hidden">
+                                                    <div key={idx} className={`bg-[var(--c-raised)] border rounded-2xl overflow-hidden ${rewriteFailedIndices.includes(idx) ? 'border-amber-500/40' : 'border-[var(--c-border)]'}`}>
                                                         <button
                                                             className="w-full flex items-center justify-between px-5 py-3 hover:bg-[var(--c-raised)] transition-all"
                                                             onClick={() => setExpandedSection(expandedSection === idx ? null : idx)}
@@ -1755,6 +1783,7 @@ const SageOS = () => {
                                                             <div className="flex items-center gap-3 text-left flex-wrap">
                                                                 <span className="text-xs text-[var(--c-subtle)] font-mono w-5">{idx + 1}</span>
                                                                 <span className="text-sm font-semibold text-[var(--c-text)]">{section.title}</span>
+                                                                {rewriteFailedIndices.includes(idx) && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-400">⚠ rewrite failed</span>}
                                                                 <span className="text-xs text-[var(--c-subtle)]">{section.content?.length || 0} chars</span>
                                                                 {(() => {
                                                                     const q = analyzeContentQuality(section.content);
@@ -2116,7 +2145,9 @@ const SageOS = () => {
                                                             {/* Fallback actions shown on failure */}
                                                             {publishChecklist[key] === 'error' && (
                                                                 <div className="space-y-1.5 pl-2">
-                                                                    {errorHint && (
+                                                                    {publishChecklist[`${key}_error`] ? (
+                                                                        <div className="text-[10px] text-red-400/90 px-1">❌ {publishChecklist[`${key}_error`]}</div>
+                                                                    ) : errorHint && (
                                                                         <div className="text-[10px] text-amber-400/80 px-1">⚠️ {errorHint}</div>
                                                                     )}
                                                                     <div className="flex gap-2">

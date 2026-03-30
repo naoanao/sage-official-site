@@ -989,7 +989,37 @@ def instagram_post():
 
     try:
         from backend.integrations.instagram_integration import InstagramBot
+        from backend.integrations.image_generation import image_gen_enhanced
+        import requests as _req
+
+        # Pollinations/LoremFlickr URLs are dynamic — Instagram's crawler may reject them.
+        # If IMGBB_API_KEY is available, download the image and re-upload for a stable URL.
+        _unstable = ('pollinations.ai', 'loremflickr.com')
+        if any(h in image_url for h in _unstable) and image_gen_enhanced.imgbb_api_key:
+            try:
+                r = _req.get(image_url, timeout=30)
+                ct = r.headers.get('content-type', '')
+                if r.status_code == 200 and ct.startswith('image'):
+                    stable_url = image_gen_enhanced._upload_to_imgbb(r.content)
+                    if stable_url:
+                        logger.info(f"[IG] Converted dynamic URL → imgbb: {stable_url}")
+                        image_url = stable_url
+                else:
+                    # Original URL unreachable (e.g. Pollinations 500).
+                    # LoremFlickr works directly with Instagram (it follows Flickr CDN redirects).
+                    logger.warning(f"[IG] Image URL returned {r.status_code}, using LoremFlickr fallback")
+                    image_url = image_gen_enhanced._loremflickr_url(caption[:100])
+                    logger.info(f"[IG] Fallback URL: {image_url}")
+            except Exception as _e:
+                logger.warning(f"[IG] imgbb pre-conversion failed ({_e}), using original URL")
+
         bot = InstagramBot()
+        if not bot.access_token or not bot.account_id:
+            return jsonify({
+                "status": "error",
+                "error": "missing_credentials",
+                "message": "INSTAGRAM_ACCESS_TOKEN or INSTAGRAM_ACCOUNT_ID not set in .env"
+            }), 503
 
         result = bot.post_image(image_url, caption)
 
@@ -1002,7 +1032,11 @@ def instagram_post():
                 pass
             return jsonify({"status": "success", "result": result}), 200
         else:
-            return jsonify({"status": "error", "error": result.get("error")}), 500
+            err = result.get("error", {})
+            # Extract human-readable message from Meta API error structure
+            msg = err.get("message") if isinstance(err, dict) else str(err)
+            logger.error(f"Instagram post failed: {err}")
+            return jsonify({"status": "error", "error": err, "message": msg or "Instagram post failed"}), 500
 
     except Exception as e:
         logger.error(f"Instagram post error: {e}")

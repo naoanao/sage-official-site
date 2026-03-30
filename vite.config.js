@@ -10,6 +10,13 @@ export default defineConfig({
         'process.env': {}
     },
     server: {
+        warmup: {
+            clientFiles: [
+                './src/pages/SageOS.jsx',
+                './src/pages/SubscriberGate.jsx',
+                './src/App.jsx',
+            ],
+        },
         proxy: {
             '/api': {
                 target: 'http://localhost:8080',
