@@ -76,18 +76,30 @@ class SageJobRunner:
         return True
 
     def process_pending(self) -> int:
-        """Process all pending jobs. Returns count of processed jobs."""
+        """Process pending jobs — max 1 per day to prevent spam. Returns count of processed jobs."""
         jobs = self._load_jobs()
         processed = 0
         changed = False
+        today = datetime.utcnow().date().isoformat()
+
+        # Safety: count how many jobs were already posted today
+        posted_today = sum(
+            1 for j in jobs
+            if j.get("status") == "posted" and j.get("posted_at", "")[:10] == today
+        )
 
         for job in jobs:
             if job.get("status") == "pending":
+                # Daily limit: max 1 post per day (CF Worker handles the rest)
+                if posted_today >= 1:
+                    logger.info(f"[JOB] Daily limit reached ({posted_today} posts today). Skipping.")
+                    break
                 success = self._process_job(job)
                 if success:
                     job["status"] = "posted"
                     job["posted_at"] = datetime.utcnow().isoformat()
                     processed += 1
+                    posted_today += 1
                     changed = True
 
         if changed:

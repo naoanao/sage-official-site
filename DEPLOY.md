@@ -100,7 +100,7 @@ cd C:\Users\nao\Desktop\Sage_Final_Unified\workers\sage-content-replenisher
 
 既存の Webhook エンドポイントが以下を指していること:
 ```
-https://sage-ai.pages.dev/api/webhook/stripe
+https://sage-official-site.pages.dev/api/webhook/stripe
 ```
 
 > ✅ ローカルFlaskではなくCloudflare Pagesのエッジ関数が処理します。PCオフでも動作。
@@ -110,7 +110,7 @@ https://sage-ai.pages.dev/api/webhook/stripe
 ## ステップ 6: 動作テスト
 
 ### 購入フローテスト
-1. ブラウザで `https://sage-ai.pages.dev/sales` を開く
+1. ブラウザで `https://sage-official-site.pages.dev/sales` を開く
 2. "Start Pro — $20/mo" をクリック → Stripeテスト決済
 3. `/thank-you` にリダイレクトされること確認
 4. "Sage AI を開く" → `/dashboard` に遷移すること確認
