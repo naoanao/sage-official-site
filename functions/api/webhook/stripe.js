@@ -63,7 +63,7 @@ async function forwardToMake(makeUrl, eventType, sessionObj) {
     await fetch(makeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: eventType, ...sessionObj }),
+      body: JSON.stringify({ type: eventType, event: eventType, ...sessionObj }),
     });
   } catch { /* best-effort */ }
 }

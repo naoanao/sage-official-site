@@ -1390,10 +1390,10 @@ def api_content_list():
     # List generated content (blogs, articles, memos) with metadata.
     if not content_mgr:
         return jsonify({"error": "Content Manager Offline"}), 503
-    
+
     ctype = request.args.get('type')
     limit = int(request.args.get('limit', 20))
-    
+
     try:
         raw = content_mgr.list_content(ctype, limit)
         # Flatten metadata dict to top-level so frontend can access item.title etc.
@@ -1401,6 +1401,39 @@ def api_content_list():
         for item in raw:
             meta = item.pop("metadata", {}) or {}
             items.append({**item, **meta})
+
+        # For blog type, also include posts from src/blog/posts/ (mdx)
+        if ctype == 'blog' and not items:
+            import glob as _glob
+            blog_dir = os.path.join(os.path.dirname(__file__), '..', 'src', 'blog', 'posts')
+            blog_files = sorted(_glob.glob(os.path.join(blog_dir, '*.mdx')), key=os.path.getmtime, reverse=True)
+            for f_path in blog_files[:limit]:
+                try:
+                    with open(f_path, 'r', encoding='utf-8') as f:
+                        first = f.readline().strip()
+                        meta = {}
+                        if first == '---':
+                            fm = []
+                            for _ in range(20):
+                                line = f.readline()
+                                if line.strip() == '---':
+                                    break
+                                fm.append(line)
+                            import yaml as _yaml
+                            meta = _yaml.safe_load(''.join(fm)) or {}
+                    fname = os.path.basename(f_path)
+                    items.append({
+                        'path': f'blog/posts/{fname}',
+                        'filename': fname,
+                        'size': os.path.getsize(f_path),
+                        'modified': os.path.getmtime(f_path),
+                        'type': 'blog',
+                        'title': meta.get('title', fname.replace('.mdx', '')),
+                        **{k: v for k, v in meta.items() if k != 'title'},
+                    })
+                except Exception:
+                    pass
+
         return jsonify({"status": "success", "items": items})
     except Exception as e:
         logger.error(f"Content list error: {e}")

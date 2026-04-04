@@ -12,15 +12,16 @@ crons = ["0 0 * * *"]
 #   wrangler secret put GROQ_API_KEY
 #   wrangler secret put BLUESKY_APP_PASSWORD
 #   wrangler secret put INSTAGRAM_ACCESS_TOKEN
+#   wrangler secret put IMGBB_API_KEY          ← 追加推奨: Pollinations→imgbb安定URL変換
 #   wrangler secret put TELEGRAM_BOT_TOKEN
 # Plain vars:
 #   wrangler vars set BLUESKY_HANDLE "kanagawajapan.bsky.social"
 #   wrangler vars set INSTAGRAM_ACCOUNT_ID "17841480111989457"
 #   wrangler vars set NOTION_CONTENT_POOL_DB_ID "b4f36b500abc45a28c08f5d59463d8cc"
-#   wrangler vars set TELEGRAM_CHAT_ID "778654915"
+#   wrangler vars set TELEGRAM_CHAT_ID "7785549153"
 
 [vars]
 BLUESKY_HANDLE              = "kanagawajapan.bsky.social"
 INSTAGRAM_ACCOUNT_ID        = "17841480111989457"
 NOTION_CONTENT_POOL_DB_ID   = "b4f36b500abc45a28c08f5d59463d8cc"
-TELEGRAM_CHAT_ID            = "778654915"
+TELEGRAM_CHAT_ID            = "7785549153"

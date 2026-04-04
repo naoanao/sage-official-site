@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing'
 import SageOS from './pages/SageOS'
 import SubscriberGate from './pages/SubscriberGate'
@@ -30,6 +30,7 @@ function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/manager" element={<StoreManager />} />
+        <Route path="/automations" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
   )
