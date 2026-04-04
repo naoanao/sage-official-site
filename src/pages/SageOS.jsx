@@ -796,7 +796,10 @@ const SageOS = () => {
             const caption = editedCaptions[0] || (editedSections[0]?.content?.slice(0, 280) ?? '');
             await api.post('/api/bluesky/post', { content: caption });
             setPublishChecklist(p => ({ ...p, bluesky: 'done' }));
-        } catch { setPublishChecklist(p => ({ ...p, bluesky: 'error' })); }
+        } catch (e) {
+            const errMsg = e?.response?.data?.detail || e?.response?.data?.error || e?.message || 'Post failed';
+            setPublishChecklist(p => ({ ...p, bluesky: 'error', bluesky_error: errMsg }));
+        }
     };
 
     const handlePublishInstagram = async () => {
@@ -2198,22 +2201,30 @@ const SageOS = () => {
 
                                         {/* Finalize */}
                                         {monetizeStatus !== 'finalized' ? (
-                                            <div className="flex gap-3">
-                                                {isDemo ? (
-                                                    <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
-                                                        className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(147,51,234,0.3)]">
-                                                        💎 Upgrade to Save & Publish Real Output
-                                                    </a>
-                                                ) : (
-                                                    <button
-                                                        onClick={handleFinalize}
-                                                        disabled={monetizeStatus === 'finalizing'}
-                                                        className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 disabled:opacity-50 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]"
-                                                    >
-                                                        {monetizeStatus === 'finalizing'
-                                                            ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Saving...</>
-                                                            : <><FiCheckCircle /> Confirm &amp; Save to Obsidian</>}
-                                                    </button>
+                                            <div className="space-y-3">
+                                                <div className="flex gap-3">
+                                                    {isDemo ? (
+                                                        <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                            className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(147,51,234,0.3)]">
+                                                            💎 Upgrade to Save & Publish Real Output
+                                                        </a>
+                                                    ) : (
+                                                        <button
+                                                            onClick={handleFinalize}
+                                                            disabled={monetizeStatus === 'finalizing'}
+                                                            className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 disabled:opacity-50 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]"
+                                                        >
+                                                            {monetizeStatus === 'finalizing'
+                                                                ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Saving...</>
+                                                                : <><FiCheckCircle /> Confirm &amp; Save to Obsidian</>}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {monetizeStatus === 'error' && monetizeResult && (
+                                                    <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2">
+                                                        <span>❌</span>
+                                                        <span>{monetizeResult}</span>
+                                                    </div>
                                                 )}
                                             </div>
                                         ) : (
