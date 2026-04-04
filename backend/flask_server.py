@@ -2360,7 +2360,11 @@ def jobs_pipeline_start():
                     raise RuntimeError("Course Production Pipeline not initialized")
                 language = data.get('language', 'auto')
                 logger.info(f"[JOB:{job_id}] COURSE start: topic={topic} lang={language}")
-                result = course_gen_ref.generate_course(topic=topic, language=language)
+
+                def _progress(pct, label):
+                    _job_set(job_id, progress={'percent': pct, 'label': label})
+
+                result = course_gen_ref.generate_course(topic=topic, language=language, progress_callback=_progress)
                 # Whop auto-publish (graceful)
                 try:
                     from backend.integrations.whop_publisher import create_and_publish, build_sns_caption
@@ -2398,6 +2402,8 @@ def jobs_status(job_id):
     if not job:
         return jsonify({"error": "Job not found"}), 404
     resp = {"status": job['status']}
+    if job.get('progress'):
+        resp['progress'] = job['progress']
     if job['status'] == 'done':
         resp['result'] = job.get('result')
     elif job['status'] == 'error':

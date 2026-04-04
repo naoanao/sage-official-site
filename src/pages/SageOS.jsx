@@ -483,12 +483,13 @@ const SageOS = () => {
             [4000,   '🧠 Building product structure...',       18],
             [12000,  '✍️ Generating content...',               40],
             [30000,  '💡 Refining with market data...',        62],
-            [60000,  '⏳ Still working (LLM processing)...',   80],
-            [100000, '🔥 Almost there...',                     93],
-            [130000, '🔥 Almost there... (LLM slow today)',    94],
-            [155000, '⏳ Finalizing your product...',          95],
-            [180000, '🔥 Just wrapping up, hang tight!',      96],
-            [210000, '⏳ Nearly done...',                      97],
+            [55000,  '⏳ Still working (LLM processing)...',   74],
+            [70000,  '🖼️ Processing visuals...',               82],
+            [85000,  '💰 Writing sales page...',               87],
+            [105000, '📝 Generating blog content...',          91],
+            [125000, '🎁 Creating product extras...',          94],
+            [150000, '⏳ Finalizing your product...',          96],
+            [180000, '🔥 Just wrapping up, hang tight!',      97],
         ];
         const _progressTimers = _progressSteps.map(([delay, msg, pct]) =>
             setTimeout(() => { setGenerateProgress(msg); setProgressPercent(pct); }, delay)
@@ -579,7 +580,11 @@ const SageOS = () => {
                     }
                     try {
                         const statusRes = await api.get(`/api/jobs/${jobId}/status`);
-                        const { status, result, error } = statusRes.data;
+                        const { status, result, error, progress } = statusRes.data;
+                        if (progress && progress.percent) {
+                            setProgressPercent(progress.percent);
+                            if (progress.label) setGenerateProgress(progress.label);
+                        }
                         if (status === 'done') {
                             clearInterval(pollInterval);
                             resolve(result);
