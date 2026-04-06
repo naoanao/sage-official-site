@@ -29,7 +29,7 @@ export default function Terms() {
 
                     <section>
                         <h2 className="text-lg font-bold text-white mb-4">Contact</h2>
-                        <p className="text-sm"><a href="mailto:sage@onelovepeople.com" className="text-blue-400 hover:text-blue-300">sage@onelovepeople.com</a></p>
+                        <p className="text-sm"><a href="mailto:naofumi0930@gmail.com" className="text-blue-400 hover:text-blue-300">naofumi0930@gmail.com</a></p>
                     </section>
                 </div>
             </div>

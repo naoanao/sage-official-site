@@ -257,7 +257,7 @@ const SalesPage = () => {
                     <div className="flex gap-5 text-xs font-mono text-slate-600">
                         <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
                         <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
-                        <a href="mailto:sage@onelovepeople.com" className="hover:text-white transition-colors">Contact</a>
+                        <a href="mailto:naofumi0930@gmail.com" className="hover:text-white transition-colors">Contact</a>
                     </div>
                     <p className="text-slate-700 text-xs font-mono">© 2026 SAGE AI · Yokohama, Japan</p>
                 </div>

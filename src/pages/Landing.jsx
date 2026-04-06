@@ -778,7 +778,7 @@ const Landing = () => {
                         {[
                             { label: 'Privacy Policy', to: '/privacy', internal: true },
                             { label: 'Terms of Service', to: '/terms', internal: true },
-                            { label: 'Contact', to: 'mailto:sage@onelovepeople.com', internal: false },
+                            { label: 'Contact', to: 'mailto:naofumi0930@gmail.com', internal: false },
                             { label: 'Bluesky', to: 'https://bsky.app/profile/naofumi.bsky.social', internal: false },
                             { label: 'Instagram', to: 'https://www.instagram.com/sege.ai/', internal: false },
                         ].map((link) =>

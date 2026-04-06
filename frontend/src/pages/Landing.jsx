@@ -76,7 +76,7 @@ const Landing = () => {
                 <div className="flex gap-6 text-sm font-medium text-slate-400">
                     <a href="/blog" className="hover:text-white transition-colors">Blog</a>
                     <a href="/offer" className="hover:text-white transition-colors">Store</a>
-                    <a href="https://bsky.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">SNS</a>
+                    <a href="https://bsky.app/profile/kanagawajapan.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">SNS</a>
                 </div>
             </nav>
 
@@ -258,7 +258,7 @@ const Landing = () => {
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> API access</li>
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dedicated support</li>
                             </ul>
-                            <a href="mailto:sage@onelovepeople.com" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
+                            <a href="mailto:naofumi0930@gmail.com" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
                                 Book a Demo
                             </a>
                         </div>
@@ -330,9 +330,9 @@ const Landing = () => {
             <footer className="relative z-10 py-12 px-6 border-t border-white/5 bg-black">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex gap-6 text-xs font-mono text-slate-500">
-                        <a href="https://onelovepeople.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy Policy</a>
-                        <a href="https://onelovepeople.com/terms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Terms of Service</a>
-                        <a href="mailto:sage@onelovepeople.com" className="hover:text-white transition-colors">Contact</a>
+                        <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+                        <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+                        <a href="mailto:naofumi0930@gmail.com" className="hover:text-white transition-colors">Contact</a>
                     </div>
 
                     <div className="text-center md:text-right">
