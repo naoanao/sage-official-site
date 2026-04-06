@@ -176,11 +176,11 @@ const Shop = () => {
             <footer className="py-10 px-6" style={{ borderTop: '1px solid var(--c-border)' }}>
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex gap-6 text-xs font-mono" style={{ color: 'var(--c-subtle)' }}>
-                        <a href="https://onelovepeople.com/privacy" target="_blank" rel="noopener noreferrer"
+                        <a href="/privacy"
                             className="hover:text-blue-600 transition-colors">Privacy Policy</a>
-                        <a href="https://onelovepeople.com/terms" target="_blank" rel="noopener noreferrer"
+                        <a href="/terms"
                             className="hover:text-blue-600 transition-colors">Terms of Service</a>
-                        <a href="mailto:sage@onelovepeople.com"
+                        <a href="/contact"
                             className="hover:text-blue-600 transition-colors">Contact</a>
                     </div>
                     <p className="text-xs font-mono" style={{ color: 'var(--c-subtle)' }}>

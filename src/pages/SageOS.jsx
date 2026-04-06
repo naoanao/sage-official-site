@@ -202,7 +202,7 @@ const SageOS = () => {
     const [monetizeTopic, setMonetizeTopic] = useState(() => _ls.get('sage_topic', ''));
     const [market, setMarket] = useState('US');
     const [price, setPrice] = useState('$29.99');
-    const [lang, setLang] = useState('auto');
+    const [lang, setLang] = useState(() => _ls.get('sage_lang', 'auto'));
     const [monetizeStatus, setMonetizeStatus] = useState('idle');
     const [monetizeResult, setMonetizeResult] = useState(null);
     const [generateProgress, setGenerateProgress] = useState('');
@@ -822,7 +822,7 @@ const SageOS = () => {
                 }
             }
 
-            if (!firstImageUrl) throw new Error('画像の生成に失敗しました。再試行してください。');
+            if (!firstImageUrl) throw new Error('No image available. Please regenerate images and try again.');
             const caption = editedCaptions[0] || (editedSections[0]?.content?.slice(0, 280) ?? '');
             const res = await api.post('/api/instagram/post', { image_url: firstImageUrl, caption });
             if (res.data?.status !== 'success') throw new Error(res.data?.message || res.data?.error || 'Post failed');
@@ -1503,7 +1503,7 @@ const SageOS = () => {
                                         <label className="block text-sm font-bold text-[var(--c-text)] mb-2">Output Language</label>
                                         <div className="flex gap-2">
                                             {[['auto', '🌐 Auto'], ['ja', '🇯🇵 Japanese'], ['en', '🇺🇸 English']].map(([val, label]) => (
-                                                <button key={val} onClick={() => setLang(val)}
+                                                <button key={val} onClick={() => { setLang(val); _ls.set('sage_lang', val); }}
                                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${lang === val ? 'bg-purple-600 text-white' : 'bg-[var(--c-raised)] text-[var(--c-muted)] hover:bg-[var(--c-raised)] hover:text-[var(--c-text)]'}`}>
                                                     {label}
                                                 </button>
@@ -2391,7 +2391,7 @@ const SageOS = () => {
                                             <div className="divide-y divide-white/5">
                                                 {tests.length === 0 ? (
                                                     <div className="px-4 py-3 text-xs text-slate-600 italic">
-                                                        "▶ Run" でこの Tier を実行
+                                                        Click "▶ Run" to execute this Tier
                                                     </div>
                                                 ) : tests.map(t => (
                                                     <div key={t.name} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
@@ -2418,7 +2418,7 @@ const SageOS = () => {
                                     );
                                 })}
                                 <p className="text-center text-xs text-slate-700 pb-1">
-                                    毎日 JST 07:00 自動実行 / Tier 1: 30 分ごと
+                                    Auto-runs daily at 07:00 JST / Tier 1: every 30 min
                                 </p>
                             </div>
                         </div>

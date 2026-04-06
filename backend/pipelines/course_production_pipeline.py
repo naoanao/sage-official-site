@@ -195,15 +195,15 @@ class CourseProductionPipeline:
                         pass
 
             # Step 1: Generate outline
-            _cb(15, '📋 アウトライン生成中...')
+            _cb(15, '📋 Generating outline...')
             outline = self._generate_outline(safe_topic, num_sections, research_data, language=language)
             logger.info(f"✅ Outline generated: {len(outline)} sections")
-            _cb(22, '✍️ セクション内容を生成中...')
+            _cb(22, '✍️ Writing section content...')
 
             # Step 2: Generate section content
             sections = self._generate_sections(outline, safe_topic, language=language)
             logger.info(f"✅ Content generated: {len(sections)} sections")
-            _cb(55, '🖼️ ビジュアル素材を処理中...')
+            _cb(55, '🖼️ Processing visual assets...')
 
             # Step 3: Generate slide images
             slides = self._generate_slides(sections, topic=safe_topic)
@@ -223,7 +223,7 @@ class CourseProductionPipeline:
             # Save image prompts to a file for the purchaser
             self._write_image_prompts_file(image_results, output_dir)
             logger.info(f"✅ Visual assets processed: {len(image_results)} items")
-            _cb(68, '💰 セールスページを作成中...')
+            _cb(68, '💰 Building sales page...')
 
             # Step 4: Generate sales page
             sales_page = self._generate_sales_page(safe_topic, sections, research_data, language=language)
@@ -255,22 +255,22 @@ class CourseProductionPipeline:
                         f"This guide is currently in preparation. Details coming soon.\n"
                     )
             
-            _cb(78, '💾 データを保存中...')
+            _cb(78, '💾 Saving data...')
             # Step 5: Save to Obsidian
             note_path = self._save_to_obsidian(safe_topic, outline, sections, slides, sales_page, research_data)
             logger.info(f"✅ Saved to Obsidian: {note_path}")
-            _cb(84, '📝 ブログ記事を生成中...')
+            _cb(84, '📝 Generating blog post...')
 
             # Step 6: Generate blog post (SEO article from course content)
             blog_post = self._generate_blog_post(safe_topic, sections, language=language)
             if blog_post:
                 logger.info(f"✅ Blog post generated ({len(blog_post)} chars)")
-            _cb(92, '🎁 特典パッケージを作成中...')
+            _cb(92, '🎁 Creating product extras...')
 
             # Step 7: Generate product package extras (bonus stack, product hook, launch checklist)
             product_extras = self._generate_product_extras(safe_topic, sections, language=language)
             logger.info(f"✅ Product extras generated")
-            _cb(97, '🔍 品質チェック中...')
+            _cb(97, '🔍 Quality check...')
 
             result = {
                 "status": "success",
