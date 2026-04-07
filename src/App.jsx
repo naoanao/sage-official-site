@@ -30,7 +30,7 @@ function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/manager" element={<StoreManager />} />
-        <Route path="/automations" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/automations" element={<Navigate to="/dashboard" state={{ openAutomations: true }} replace />} />
       </Routes>
     </Router>
   )

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder } from 'react-icons/fi';
 import axios from 'axios';
@@ -183,10 +183,11 @@ const _ls = {
 };
 
 const SageOS = () => {
+    const location = useLocation();
     // ── Phase navigation state ───────────────────────────────────────────────
     const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
-    const [showAutomations, setShowAutomations] = useState(false);
+    const [showAutomations, setShowAutomations] = useState(() => !!location.state?.openAutomations);
     const [showContentManager, setShowContentManager] = useState(false);
     // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
@@ -879,9 +880,9 @@ const SageOS = () => {
         const badges = [];
         let score = 0;
         if (/\d+/.test(content)) { score += 25; badges.push({ label: 'Numbers', color: 'blue' }); }
-        if (/\d+\.\s|今すぐ|ステップ|手順|Take Action|Step \d|Action \d/.test(content)) { score += 25; badges.push({ label: 'Action', color: 'green' }); }
-        if (/失敗|ミス|注意|間違い|エラー|Mistake|Common Error|Warning|Caution|Avoid/.test(content)) { score += 25; badges.push({ label: 'Mistakes', color: 'orange' }); }
-        if (/分間|時間|円|%|km|kg|回|分|秒|minutes|hours|billion|million|\$\d/.test(content)) { score += 25; badges.push({ label: 'Specific', color: 'purple' }); }
+        if (/\d+\.\s|今すぐ|ステップ|手順|Take Action|Step \d|Action \d|start by|begin with|implement|here'?s how|you (can|should|need to)|first[,:]|next[,:]|finally[,:]/.test(content)) { score += 25; badges.push({ label: 'Action', color: 'green' }); }
+        if (/失敗|ミス|注意|間違い|エラー|Mistake|Common Error|Warning|Caution|Avoid|don'?t|instead of|pitfall|trap|risk/.test(content)) { score += 25; badges.push({ label: 'Mistakes', color: 'orange' }); }
+        if (/分間|時間|円|%|km|kg|回|分|秒|minutes|hours|billion|million|\$\d|\d+x|\d+ (times|days|weeks|users|people)/.test(content)) { score += 25; badges.push({ label: 'Specific', color: 'purple' }); }
         return { score, badges };
     };
 
@@ -1973,7 +1974,7 @@ const SageOS = () => {
                                             {/* Product Value Stack */}
                                             {generateData && (generateData.bonus_stack || generateData.product_hook || generateData.launch_checklist) && (
                                                 <div className="p-4 bg-emerald-900/10 border border-emerald-500/20 rounded-2xl space-y-3">
-                                                    <div className="text-xs font-bold text-emerald-300 uppercase tracking-widest">🎁 商品一式 Product Stack</div>
+                                                    <div className="text-xs font-bold text-emerald-300 uppercase tracking-widest">🎁 Product Stack</div>
 
                                                     {/* Product Hook */}
                                                     {generateData.product_hook && (
