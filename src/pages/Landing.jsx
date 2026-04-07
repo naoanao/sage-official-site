@@ -319,7 +319,7 @@ const FAQ_ITEMS = [
     { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. No code, no dashboards, no configuration." },
     { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
     { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
-    { q: "What if it doesn't work for me?", a: "Gumroad's 30-day money-back guarantee. One-click full refund, no questions asked." },
+    { q: "What if it doesn't work for me?", a: "30-day money-back guarantee. Email us at naofumi0930@gmail.com within 30 days of purchase and we'll issue a full refund via Stripe — no questions asked." },
     { q: "Do I need to install anything?", a: "No. Sage runs entirely on Cloudflare's global network — no download, no local setup. Open the dashboard in any browser and start." },
 ];
 
