@@ -9,22 +9,32 @@ export default function Terms() {
                     ← Back to Sage
                 </Link>
                 <h1 className="text-4xl font-black mb-4">Terms of Service</h1>
-                <p className="text-slate-500 text-sm font-mono mb-16">Last updated: March 2026</p>
+                <p className="text-slate-500 text-sm font-mono mb-16">Last updated: April 2026</p>
 
                 <div className="space-y-12 text-slate-300 leading-relaxed">
                     <section>
-                        <h2 className="text-lg font-bold text-white mb-4">Digital Products</h2>
-                        <p className="text-sm">All products are digital downloads. Refunds are handled through Gumroad's 30-day money-back guarantee — one-click, no questions asked.</p>
+                        <h2 className="text-lg font-bold text-white mb-4">Service Description</h2>
+                        <p className="text-sm">Sage AI is a cloud-based SaaS platform that automates content generation and social media publishing. The service runs on Cloudflare's global network and is accessible via any web browser — no local installation required.</p>
+                    </section>
+
+                    <section>
+                        <h2 className="text-lg font-bold text-white mb-4">Subscriptions & Billing</h2>
+                        <p className="text-sm">Subscriptions are billed monthly via Stripe. You may cancel at any time from your account settings. Cancellation takes effect at the end of the current billing period.</p>
+                    </section>
+
+                    <section>
+                        <h2 className="text-lg font-bold text-white mb-4">Refund Policy</h2>
+                        <p className="text-sm">We offer a 30-day money-back guarantee. To request a refund, contact us at <a href="mailto:naofumi0930@gmail.com" className="text-blue-400 hover:text-blue-300">naofumi0930@gmail.com</a> within 30 days of your initial purchase. Refunds are processed through Stripe and typically appear within 5–10 business days.</p>
                     </section>
 
                     <section>
                         <h2 className="text-lg font-bold text-white mb-4">Usage</h2>
-                        <p className="text-sm">Products are for personal use. Resale or redistribution without written permission is prohibited.</p>
+                        <p className="text-sm">Your subscription is for personal or single-business use. Resale, redistribution, or white-labeling without written permission is prohibited. Enterprise plan holders may request white-label rights separately.</p>
                     </section>
 
                     <section>
-                        <h2 className="text-lg font-bold text-white mb-4">Platform Availability</h2>
-                        <p className="text-sm">Sage is currently Windows-only. Mac and Linux support is on the roadmap. No refund is issued for platform incompatibility — please confirm compatibility before purchasing.</p>
+                        <h2 className="text-lg font-bold text-white mb-4">Service Availability</h2>
+                        <p className="text-sm">We aim for maximum uptime but do not guarantee uninterrupted access. Scheduled maintenance will be communicated in advance where possible. No refund is issued for brief outages.</p>
                     </section>
 
                     <section>

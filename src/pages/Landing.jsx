@@ -200,7 +200,7 @@ const AutoPublishCard = () => (
             ))}
         </div>
         <p className="text-[10px] font-mono mt-auto" style={{ color: 'var(--c-subtle)' }}>
-            40+ platforms available
+            More platforms coming soon
         </p>
     </div>
 );
@@ -320,7 +320,7 @@ const FAQ_ITEMS = [
     { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
     { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
     { q: "What if it doesn't work for me?", a: "Gumroad's 30-day money-back guarantee. One-click full refund, no questions asked." },
-    { q: "Do I need to install anything?", a: "The Blueprint ($29.99) is a download-and-run ZIP. No installation needed. Windows only for now." },
+    { q: "Do I need to install anything?", a: "No. Sage runs entirely on Cloudflare's global network — no download, no local setup. Open the dashboard in any browser and start." },
 ];
 
 const FaqAccordion = () => {
@@ -415,7 +415,7 @@ const Landing = () => {
                     {/* Status badge */}
                     <div className="inline-flex items-center gap-2 mb-8 sage-badge">
                         <span className="live-dot" />
-                        BETA LAUNCH · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
+                        EARLY ACCESS · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
                     </div>
 
                     {/* Headline */}

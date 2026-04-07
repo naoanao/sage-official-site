@@ -243,7 +243,7 @@ const SalesPage = () => {
                             <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Cancel anytime</span>
                             <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> 30-day money-back guarantee</span>
                             <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Instant access</span>
-                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Free plan — no credit card needed</span>
+                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Secure checkout via Stripe</span>
                         </div>
                     </Motion.div>
                 </div>
