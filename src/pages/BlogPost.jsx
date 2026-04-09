@@ -134,41 +134,16 @@ const BlogPost = () => {
                 <div className="mt-16 p-8 rounded-2xl bg-gradient-to-br from-violet-900/20 to-pink-900/20 border border-violet-500/20">
                     <h3 className="text-3xl font-bold mb-4">Ready to Automate Your Business?</h3>
                     <p className="text-gray-300 mb-6">
-                        Get Sage Fortress Edition and start automating everything—no coding required.
+                        Sage automates your blog, social media, and product pipeline — no coding required. $20/month, cancel anytime.
                     </p>
                     <a
-                        href={import.meta.env.VITE_GUMROAD_URL || "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="/sales"
                         className="inline-block px-8 py-4 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
                     >
                         Get Started →
                     </a>
                 </div>
             </article>
-
-            {/* Related Products Sidebar */}
-            <aside className="max-w-4xl mx-auto px-4 pb-16">
-                <h3 className="text-2xl font-bold mb-6">Related Products</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[
-                        { name: 'Bluesky Marketer', price: '$29/mo', url: import.meta.env.VITE_GUMROAD_URL || '#' },
-                        { name: 'Instagram Marketer', price: '$39/mo', url: import.meta.env.VITE_GUMROAD_URL || '#' },
-                        { name: 'Fortress Edition', price: '$299', url: import.meta.env.VITE_GUMROAD_URL || '#' },
-                    ].map((product, i) => (
-                        <a
-                            key={i}
-                            href={product.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all"
-                        >
-                            <div className="text-lg font-bold mb-2">{product.name}</div>
-                            <div className="text-violet-400 font-bold">{product.price}</div>
-                        </a>
-                    ))}
-                </div>
-            </aside>
         </div>
     );
 };
