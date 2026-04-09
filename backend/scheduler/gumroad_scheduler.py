@@ -28,7 +28,7 @@ GUMROAD_PRODUCTS_API = "https://api.gumroad.com/v2/products"
 # Fallback product if API is unreachable
 FALLBACK_PRODUCT = {
     "name": "2026 AI Influencer Monetization Express",
-    "short_url": "https://naofumi3.gumroad.com/l/yvzrfjd",
+    "short_url": os.getenv("GUMROAD_PRODUCT_URL", ""),
     "price": 2999,
 }
 

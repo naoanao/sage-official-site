@@ -54,9 +54,9 @@ class PayPalIntegration:
         self,
         amount: str,
         currency: str = "USD",
-        description: str = "Sage 3.0 — AI Influencer Blueprint",
-        return_url: str = "https://sage-official-site.pages.dev/thank-you",
-        cancel_url:  str = "https://sage-official-site.pages.dev/sales",
+        description: str = "Sage AI — Self-Hosted AI Toolkit",
+        return_url: str = os.getenv("SITE_URL", "https://your-site.pages.dev") + "/thank-you",
+        cancel_url:  str = os.getenv("SITE_URL", "https://your-site.pages.dev") + "/sales",
     ) -> Dict[str, Any]:
         """
         Creates a PayPal order and returns the approve URL.
@@ -69,7 +69,7 @@ class PayPalIntegration:
             # No keys configured — return PayPal.me fallback (japanletgo account)
             return {
                 "status": "no_keys",
-                "url": f"https://paypal.me/japanletgo/{amount}",
+                "url": f"{os.getenv('PAYPAL_ME_URL', '')}/{amount}",
                 "message": "PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET not set. Using PayPal.me fallback.",
             }
 
