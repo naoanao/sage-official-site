@@ -137,7 +137,7 @@ const BlogPost = () => {
                         Get Sage Fortress Edition and start automating everything—no coding required.
                     </p>
                     <a
-                        href="https://naofumi3.gumroad.com/l/sage-professional"
+                        href={import.meta.env.VITE_GUMROAD_URL || "#"}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-block px-8 py-4 bg-gradient-to-r from-violet-600 to-pink-600 rounded-full text-white font-bold hover:shadow-lg hover:shadow-violet-500/50 transition-all"
@@ -152,9 +152,9 @@ const BlogPost = () => {
                 <h3 className="text-2xl font-bold mb-6">Related Products</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
-                        { name: 'Bluesky Marketer', price: '$29/mo', url: 'https://naofumi3.gumroad.com/l/bluesky-marketer' },
-                        { name: 'Instagram Marketer', price: '$39/mo', url: 'https://naofumi3.gumroad.com/l/instagram-marketer' },
-                        { name: 'Fortress Edition', price: '$299', url: 'https://naofumi3.gumroad.com/l/sage-professional' },
+                        { name: 'Bluesky Marketer', price: '$29/mo', url: import.meta.env.VITE_GUMROAD_URL || '#' },
+                        { name: 'Instagram Marketer', price: '$39/mo', url: import.meta.env.VITE_GUMROAD_URL || '#' },
+                        { name: 'Fortress Edition', price: '$299', url: import.meta.env.VITE_GUMROAD_URL || '#' },
                     ].map((product, i) => (
                         <a
                             key={i}
