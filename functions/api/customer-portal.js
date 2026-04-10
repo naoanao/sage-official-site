@@ -19,7 +19,12 @@
  */
 
 const STRIPE_API = 'https://api.stripe.com/v1';
-const RETURN_URL = 'https://sage-official-site.pages.dev/thank-you';
+// RETURN_URL: reads from CF Pages env var, falls back to the request's own origin
+function getReturnUrl(request, env) {
+  if (env.SITE_URL) return `${env.SITE_URL}/thank-you`;
+  const origin = new URL(request.url).origin;
+  return `${origin}/thank-you`;
+}
 
 async function stripePost(path, params, secret) {
   const body = new URLSearchParams(params);
@@ -44,12 +49,12 @@ export async function onRequestGet(context) {
     'Cache-Control': 'no-store',
   };
 
-  // If no STRIPE_SECRET_KEY bound, tell user to configure
+  // If no STRIPE_SECRET_KEY, skip D1/Stripe lookup and go straight to generic portal
   if (!env.STRIPE_SECRET_KEY) {
-    return new Response('STRIPE_SECRET_KEY not configured in CF Pages settings', {
-      status: 503,
-      headers: corsHeaders,
-    });
+    return Response.redirect(
+      `https://billing.stripe.com/p/login/cNi6oI2c0afr9pJ71493y00${email ? `?prefilled_email=${encodeURIComponent(email)}` : ''}`,
+      302
+    );
   }
 
   let customerId = null;
@@ -88,7 +93,7 @@ export async function onRequestGet(context) {
     // Stripe supports email-based portal access at the customer portal URL
     // Users can enter their email at the portal to authenticate
     return Response.redirect(
-      `https://billing.stripe.com/p/login/00g14n0Yl6cDgAg000${email ? `?prefilled_email=${encodeURIComponent(email)}` : ''}`,
+      `https://billing.stripe.com/p/login/cNi6oI2c0afr9pJ71493y00${email ? `?prefilled_email=${encodeURIComponent(email)}` : ''}`,
       302
     );
   }
@@ -97,7 +102,7 @@ export async function onRequestGet(context) {
   try {
     const session = await stripePost(
       '/billing_portal/sessions',
-      { customer: customerId, return_url: RETURN_URL },
+      { customer: customerId, return_url: getReturnUrl(request, env) },
       env.STRIPE_SECRET_KEY
     );
 
@@ -106,7 +111,7 @@ export async function onRequestGet(context) {
     }
 
     // Fallback: session creation failed
-    return Response.redirect(RETURN_URL, 302);
+    return Response.redirect(getReturnUrl(request, env), 302);
 
   } catch (err) {
     return new Response(`Portal session error: ${err.message}`, {
