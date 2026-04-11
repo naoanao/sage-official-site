@@ -2007,26 +2007,65 @@ def chat_endpoint():
             "System Error during reporting:",
         ]
         if any(m in ai_response for m in _ORCH_FAIL_MARKERS):
-            logger.warning(f"[FALLBACK] Orchestrator returned error response, trying direct LLM call")
+            logger.warning(f"[FALLBACK] Orchestrator returned error response, trying multi-tier LLM fallback")
+            _lang = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
+            _sys_prompt = (
+                "あなたはSage Pilotです。ユーザーのビジネス・コンテンツの質問に具体的かつ丁寧に日本語で答えてください。"
+                if _lang == "ja" else
+                "You are Sage Pilot. Answer the user's business and content questions helpfully and concisely."
+            )
+            _full_prompt = f"{_sys_prompt}\n\nUser: {user_message}\nSage:"
+            _fallback_result = ""
+
+            # Tier 1: orchestrator.llm (Groq via LangChain)
             try:
                 from langchain_core.messages import SystemMessage as _SysMsg, HumanMessage as _HumMsg
-                _lang = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
-                _sys = (
-                    "あなたはSage Pilotです。ユーザーのビジネス・コンテンツの質問に具体的かつ丁寧に日本語で答えてください。"
-                    if _lang == "ja" else
-                    "You are Sage Pilot. Answer the user's question helpfully and concisely."
-                )
-                _fallback_msgs = [_SysMsg(content=_sys)] + history_msgs + [_HumMsg(content=user_message)]
+                _fallback_msgs = [_SysMsg(content=_sys_prompt)] + history_msgs + [_HumMsg(content=user_message)]
                 _fallback_res = orchestrator.llm.invoke(_fallback_msgs)
-                ai_response = _fallback_res.content or ai_response
-                logger.info(f"[FALLBACK] Direct LLM succeeded: {ai_response[:80]}")
-            except Exception as _fe:
-                logger.error(f"[FALLBACK] Direct LLM also failed: {_fe}")
-                _lang2 = "ja" if any(ord(c) > 0x3000 for c in user_message) else "en"
+                _fallback_result = _fallback_res.content if hasattr(_fallback_res, 'content') else str(_fallback_res)
+                if _fallback_result:
+                    logger.info(f"[FALLBACK-T1] orchestrator.llm succeeded: {_fallback_result[:60]}")
+            except Exception as _fe1:
+                logger.warning(f"[FALLBACK-T1] orchestrator.llm failed: {_fe1}")
+
+            # Tier 2: course_gen._invoke_llm (Gemini → Ollama chain)
+            if not _fallback_result:
+                try:
+                    import os as _os2
+                    _cg = globals().get('course_gen_global')
+                    if _cg:
+                        _fallback_result = _cg._invoke_llm(_full_prompt[:4000])
+                        if _fallback_result:
+                            logger.info(f"[FALLBACK-T2] course_gen._invoke_llm succeeded")
+                except Exception as _fe2:
+                    logger.warning(f"[FALLBACK-T2] course_gen._invoke_llm failed: {_fe2}")
+
+            # Tier 3: Direct Groq REST (bypass LangChain)
+            if not _fallback_result:
+                try:
+                    import os as _os3
+                    from groq import Groq as _Groq3
+                    _g3 = _Groq3(api_key=_os3.getenv("GROQ_API_KEY"))
+                    _r3 = _g3.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "system", "content": _sys_prompt},
+                                  {"role": "user", "content": user_message}],
+                        max_tokens=800,
+                        timeout=20,
+                    )
+                    _fallback_result = _r3.choices[0].message.content.strip()
+                    if _fallback_result:
+                        logger.info(f"[FALLBACK-T3] Direct Groq REST succeeded")
+                except Exception as _fe3:
+                    logger.warning(f"[FALLBACK-T3] Direct Groq REST failed: {_fe3}")
+
+            if _fallback_result:
+                ai_response = _fallback_result
+            else:
                 ai_response = (
-                    "申し訳ありません、現在AIの応答が遅延しています。もう一度お試しください。"
-                    if _lang2 == "ja" else
-                    "Sorry, the AI is currently slow to respond. Please try again."
+                    "AIが現在混雑しています。少し待ってから再度お試しください。"
+                    if _lang == "ja" else
+                    "Sage is busy right now. Please try again in a moment."
                 )
 
         # --- ボイラープレート除去 + Raw JSON サニタイズ ---
