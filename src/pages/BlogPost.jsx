@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
@@ -87,17 +87,25 @@ const BlogPost = () => {
 
     return (
         <div className="min-h-screen bg-black text-white">
-            {/* Header */}
-            <header className="border-b border-white/10 py-6">
-                <div className="max-w-4xl mx-auto px-4">
-                    <a href="/" className="text-violet-400 hover:text-violet-300 transition-colors">
-                        ← Back to Home
-                    </a>
+            {/* Navbar */}
+            <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center border-b border-white/10"
+                style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', background: 'rgba(0,0,0,0.85)' }}>
+                <Link to="/" className="text-base font-bold tracking-tight text-white flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                    SAGE 3.0
+                </Link>
+                <div className="flex gap-5 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                    <Link to="/" className="hover:text-white transition-colors">Home</Link>
+                    <Link to="/blog" className="hover:text-white transition-colors font-semibold text-white">Blog</Link>
+                    <Link to="/sales" className="hover:text-white transition-colors" style={{ color: '#a78bfa' }}>Get Sage →</Link>
                 </div>
-            </header>
+            </nav>
+
+            {/* spacer for fixed nav */}
+            <div className="h-16" />
 
             {/* Article */}
-            <article className="max-w-4xl mx-auto px-4 py-16">
+            <article className="max-w-4xl mx-auto px-4 py-12">
                 {/* Meta */}
                 <div className="mb-8">
                     <time className="text-gray-400 text-sm">

@@ -339,6 +339,7 @@ const FaqAccordion = () => {
                 >
                     <button
                         onClick={() => setOpen(open === i ? null : i)}
+                        aria-expanded={open === i}
                         className="w-full flex items-center justify-between px-5 py-4 text-left"
                     >
                         <span className="font-bold pr-4" style={{ fontSize: '0.9rem', color: 'var(--c-text)' }}>{item.q}</span>
