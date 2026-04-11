@@ -1,14 +1,1 @@
 /offer  https://naofumi3.gumroad.com/l/yvzrfjd  301
-/blog/* /index.html 200
-/blog /index.html 200
-/dashboard /index.html 200
-/dashboard/* /index.html 200
-/thank-you /index.html 200
-/shop /index.html 200
-/sales /index.html 200
-/privacy /index.html 200
-/terms /index.html 200
-/contact /index.html 200
-/manager /index.html 200
-/automations /index.html 200
-/*  /index.html  200
