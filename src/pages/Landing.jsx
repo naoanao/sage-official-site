@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { trackEvent } from '../utils/tracking';
+import { LINKS } from '../config/links';
 import {
     FiArrowRight, FiShoppingCart, FiClock, FiZap,
     FiTrendingUp, FiGlobe, FiShield, FiCode,
@@ -319,7 +320,7 @@ const FAQ_ITEMS = [
     { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. No code, no dashboards, no configuration." },
     { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
     { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
-    { q: "What if it doesn't work for me?", a: "30-day money-back guarantee. Email us at naofumi0930@gmail.com within 30 days of purchase and we'll issue a full refund via Stripe — no questions asked." },
+    { q: "What if it doesn't work for me?", a: `30-day money-back guarantee. Email us at ${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'} within 30 days of purchase and we'll issue a full refund via Stripe — no questions asked.` },
     { q: "Do I need to install anything?", a: "No. Sage runs entirely on Cloudflare's global network — no download, no local setup. Open the dashboard in any browser and start." },
 ];
 
@@ -717,7 +718,7 @@ const Landing = () => {
                                 ))}
                             </ul>
                             <a
-                                href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03"
+                                href={LINKS.stripe.pro}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-200"
@@ -755,7 +756,7 @@ const Landing = () => {
                                 ))}
                             </ul>
                             <a
-                                href="https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04"
+                                href={LINKS.stripe.enterprise}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-200"
@@ -778,8 +779,8 @@ const Landing = () => {
                         {[
                             { label: 'Privacy Policy', to: '/privacy', internal: true },
                             { label: 'Terms of Service', to: '/terms', internal: true },
-                            { label: 'Contact', to: 'mailto:naofumi0930@gmail.com', internal: false },
-                            { label: 'Bluesky', to: 'https://bsky.app/profile/naofumi.bsky.social', internal: false },
+                            { label: 'Contact', to: `mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`, internal: false },
+                            { label: 'Bluesky', to: LINKS.sns.bluesky, internal: false },
                             { label: 'Instagram', to: 'https://www.instagram.com/sege.ai/', internal: false },
                         ].map((link) =>
                             link.internal ? (

@@ -19,7 +19,7 @@ import pathlib
 import uuid
 from datetime import datetime, timezone
 from typing import Tuple, Optional, List, Dict
-from flask import Flask, request, jsonify, render_template, send_from_directory, g
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, g
 from flask_cors import CORS
 from pathlib import Path
 from werkzeug.exceptions import BadRequest
@@ -1467,7 +1467,12 @@ def api_content_read():
     if not path or '..' in path:
         return jsonify({"error": "Invalid path"}), 400
     try:
-        full_path = content_mgr.base_dir / path
+        # blog/posts/ files live in src/blog/posts/ (repo root), not content_mgr.base_dir
+        repo_root = Path(__file__).parent.parent
+        if path.startswith('blog/posts/'):
+            full_path = repo_root / 'src' / path
+        else:
+            full_path = content_mgr.base_dir / path
         if not full_path.exists() or not full_path.is_file():
             return jsonify({"error": "Not found"}), 404
         with open(full_path, 'r', encoding='utf-8') as f:
@@ -3676,6 +3681,19 @@ def get_brain_stats():
     return jsonify({"status": "error", "error": "brain not initialized"}), 503
 
 # ── Stripe Checkout ──────────────────────────────────────────────────────────
+@app.route('/api/customer-portal', methods=['GET'])
+@app.route('/api/customer_portal', methods=['GET'])
+def customer_portal_local():
+    """Local dev fallback for CF Pages Function /api/customer-portal.
+    Redirects directly to Stripe billing portal (email prefilled)."""
+    email = request.args.get('email', '').strip()
+    portal_url = 'https://billing.stripe.com/p/login/00g14n0Yl6cDgAg000'
+    if email:
+        from urllib.parse import quote
+        portal_url += f'?prefilled_email={quote(email)}'
+    return redirect(portal_url, 302)
+
+
 @app.route('/api/stripe/checkout', methods=['POST'])
 def stripe_checkout():
     """
@@ -3696,9 +3714,10 @@ def stripe_checkout():
         price = float(data.get('price', 29.99))
 
         if not stripe_key:
+            fallback_url = os.getenv('GUMROAD_FALLBACK_URL', os.getenv('SITE_URL', 'https://your-site.pages.dev') + '/shop')
             return jsonify({
                 'status': 'fallback',
-                'url': 'https://naofumi3.gumroad.com/l/yvzrfjd',
+                'url': fallback_url,
                 'message': 'STRIPE_SECRET_KEY not configured',
             }), 200
 
@@ -3717,9 +3736,10 @@ def stripe_checkout():
 
     except Exception as e:
         print(f"[Stripe endpoint] Error: {e}")
+        fallback_url = os.getenv('GUMROAD_FALLBACK_URL', os.getenv('SITE_URL', 'https://your-site.pages.dev') + '/shop')
         return jsonify({
             'status': 'fallback',
-            'url': 'https://naofumi3.gumroad.com/l/yvzrfjd',
+            'url': fallback_url,
             'message': str(e),
         }), 200
 
@@ -3739,9 +3759,10 @@ def paypal_checkout():
         result = paypal_integration.create_order(amount=amount)
         return jsonify(result), 200
     except Exception as e:
+        paypal_me = os.getenv('PAYPAL_ME_URL', os.getenv('SITE_URL', 'https://your-site.pages.dev') + '/shop')
         return jsonify({
             'status': 'no_keys',
-            'url': 'https://paypal.me/japanletgo/29.99',
+            'url': paypal_me,
             'message': str(e),
         }), 200
 

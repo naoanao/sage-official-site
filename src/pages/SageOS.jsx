@@ -3,10 +3,17 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder } from 'react-icons/fi';
 import axios from 'axios';
+import { marked } from 'marked';
 import { BACKEND_URL } from '../config/backendUrl';
 import toast from '../utils/toast';
 import PhaseStepperBar from '../components/PhaseStepperBar';
 import SageMiniChat from '../components/SageMiniChat';
+
+// Safe markdown renderer — strips script tags, renders inline + block markdown
+const renderMd = (text) => {
+    if (!text) return '';
+    return marked.parse(String(text), { breaks: true, gfm: true });
+};
 
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
 const apiRewrite = axios.create({ baseURL: BACKEND_URL, timeout: 90000 });
@@ -1270,22 +1277,24 @@ const SageOS = () => {
                                                     <div className="w-full max-w-xl p-4 rounded-2xl bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 text-center">
                                                         <div className="text-sm font-bold text-[var(--c-text)] mb-1">🔒 Free demo limit reached (3 messages)</div>
                                                         <p className="text-xs text-[var(--c-muted)] mb-3">Upgrade to unlock unlimited Sage conversations, automation control, and product generation.</p>
-                                                        <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                        <a href="/sales" rel="noopener noreferrer"
                                                             className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-sm transition-all">
-                                                            💎 Get Full Access on Whop →
+                                                            ⚡ Get Pro Access — $20/mo →
                                                         </a>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                                    <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user'
-                                                        ? 'bg-blue-600 rounded-tr-none'
-                                                        : msg.role === 'system'
-                                                            ? 'bg-[var(--c-raised)] border border-[var(--c-border)] text-[var(--c-muted)] text-center mx-auto text-xs font-mono uppercase'
-                                                            : 'bg-[var(--c-raised)] rounded-tl-none border border-[var(--c-border)]'
-                                                        }`}>
-                                                        {msg.content}
-                                                    </div>
+                                                    {msg.role === 'system' ? (
+                                                        <div className="bg-[var(--c-raised)] border border-[var(--c-border)] text-[var(--c-muted)] text-center mx-auto text-xs font-mono uppercase p-4 rounded-2xl max-w-[80%]">
+                                                            {msg.content}
+                                                        </div>
+                                                    ) : (
+                                                        <div
+                                                            className={`max-w-[80%] p-4 rounded-2xl prose prose-sm max-w-none ${msg.role === 'user' ? 'bg-blue-600 rounded-tr-none prose-invert' : 'bg-[var(--c-raised)] rounded-tl-none border border-[var(--c-border)] prose-invert'}`}
+                                                            dangerouslySetInnerHTML={{ __html: renderMd(msg.content) }}
+                                                        />
+                                                    )}
                                                     {/* Action buttons after last Sage reply */}
                                                     {msg.role === 'sage' && msg.id === messages.filter(m => m.role === 'sage').slice(-1)[0]?.id && (
                                                         <div className="flex gap-2 flex-wrap mt-3 ml-1">
@@ -1450,9 +1459,9 @@ const SageOS = () => {
                                                     <div className="text-sm font-bold text-[var(--c-text)]">🔒 Free demo limit reached (1/day)</div>
                                                     <p className="text-xs text-[var(--c-muted)] mt-0.5">Upgrade for unlimited market demand checks.</p>
                                                 </div>
-                                                <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                <a href="/sales"
                                                     className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all">
-                                                    💎 Upgrade on Whop
+                                                    ⚡ Upgrade to Pro
                                                 </a>
                                             </div>
                                         )}
@@ -1559,7 +1568,7 @@ const SageOS = () => {
                                     {!IS_OWNER && !['needs_research', 'review', 'finalizing', 'finalized'].includes(monetizeStatus) && (
                                         <div className="flex items-center justify-between px-4 py-3 bg-amber-900/20 border border-amber-500/20 rounded-xl text-xs">
                                             <span className="text-amber-300">⚡ Demo mode — sample output will be shown</span>
-                                            <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                            <a href="/sales"
                                                 className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
                                                 Upgrade for real output →
                                             </a>
@@ -1758,9 +1767,9 @@ const SageOS = () => {
                                                         <div className="text-sm font-bold text-amber-300 flex items-center gap-2">⚡ Demo Preview — Sample Output</div>
                                                         <p className="text-xs text-[var(--c-muted)] mt-0.5">This is pre-built demo content. Upgrade to generate real AI output for your topic.</p>
                                                     </div>
-                                                    <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                    <a href="/sales"
                                                         className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all whitespace-nowrap">
-                                                        💎 Upgrade on Whop
+                                                        ⚡ Upgrade to Pro
                                                     </a>
                                                 </div>
                                             )}
@@ -1888,7 +1897,7 @@ const SageOS = () => {
                                             {isDemo ? (
                                                 <div className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl flex items-center justify-between gap-4">
                                                     <div className="text-xs text-[var(--c-subtle)]">🔒 Rewrite & editing locked in demo mode</div>
-                                                    <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                    <a href="/sales"
                                                         className="text-xs px-3 py-1.5 bg-purple-600/50 hover:bg-purple-600 text-white rounded-lg font-bold transition-all whitespace-nowrap">
                                                         Upgrade →
                                                     </a>
@@ -1950,7 +1959,7 @@ const SageOS = () => {
                                             <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-2xl space-y-2">
                                                 <div className="text-xs font-bold text-blue-300 uppercase tracking-widest">Regenerate Images</div>
                                                 {isDemo ? (
-                                                    <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                    <a href="/sales"
                                                         className="w-full px-4 py-2.5 bg-purple-600/50 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-purple-600">
                                                         🔒 Upgrade to Regenerate Images
                                                     </a>
@@ -2060,17 +2069,40 @@ const SageOS = () => {
                                                         </div>
                                                     )}
                                                     {contentTab === 'images' && (
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            {generateData.images && Object.entries(generateData.images).map(([title, data]) => (
-                                                                <div key={title} className="rounded-lg overflow-hidden border border-[var(--c-border)]">
-                                                                    {data.type === 'generated' && data.url ? (
-                                                                        <img src={data.url} alt={title} className="w-full h-16 object-cover" onError={e => { e.target.style.display = 'none'; }} />
-                                                                    ) : (
-                                                                        <div className="w-full h-16 flex items-center justify-center bg-[var(--c-raised)]/60 text-[9px] text-[var(--c-subtle)]">Prompt Only</div>
-                                                                    )}
-                                                                    <div className="p-1"><p className="text-[9px] text-[var(--c-muted)] truncate">{title}</p></div>
+                                                        <div>
+                                                            {!generateData.images || Object.keys(generateData.images).length === 0 ? (
+                                                                <div className="flex flex-col items-center gap-2 py-6 text-center">
+                                                                    <span className="text-2xl">🖼️</span>
+                                                                    <p className="text-xs text-[var(--c-muted)]">No images generated yet.</p>
+                                                                    <p className="text-[10px] text-[var(--c-subtle)]">Re-run pipeline — image API may have been rate-limited.</p>
                                                                 </div>
-                                                            ))}
+                                                            ) : (
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {Object.entries(generateData.images).map(([title, data]) => (
+                                                                        <div key={title} className="rounded-lg overflow-hidden border border-[var(--c-border)]">
+                                                                            {data.type === 'generated' && data.url ? (
+                                                                                <img
+                                                                                    src={data.url}
+                                                                                    alt={title}
+                                                                                    className="w-full h-20 object-cover"
+                                                                                    onError={e => {
+                                                                                        e.target.style.display = 'none';
+                                                                                        e.target.nextSibling.style.display = 'flex';
+                                                                                    }}
+                                                                                />
+                                                                            ) : null}
+                                                                            <div className={`w-full h-20 ${data.type === 'generated' && data.url ? 'hidden' : 'flex'} flex-col items-center justify-center gap-1 bg-[var(--c-raised)]/60 px-2`} style={{ display: data.type === 'prompt_only' ? 'flex' : undefined }}>
+                                                                                <span className="text-sm">📝</span>
+                                                                                <p className="text-[9px] text-[var(--c-subtle)] text-center leading-tight line-clamp-3">{data.prompt?.slice(0, 80)}</p>
+                                                                            </div>
+                                                                            <div className="p-1.5 bg-[var(--c-surface)]">
+                                                                                <p className="text-[9px] text-[var(--c-muted)] truncate font-medium">{title}</p>
+                                                                                <p className="text-[9px] text-[var(--c-subtle)]">{data.type === 'generated' ? '✅ Generated' : '📝 Prompt only'}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -2115,9 +2147,9 @@ const SageOS = () => {
                                                     <div className="text-sm font-bold text-amber-300 flex items-center gap-2">⚡ Demo Preview</div>
                                                     <p className="text-xs text-[var(--c-muted)] mt-0.5">Upgrade to publish real AI-generated content.</p>
                                                 </div>
-                                                <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                <a href="/sales"
                                                     className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all whitespace-nowrap">
-                                                    💎 Upgrade on Whop
+                                                    ⚡ Upgrade to Pro
                                                 </a>
                                             </div>
                                         )}
@@ -2128,7 +2160,7 @@ const SageOS = () => {
                                             {isDemo ? (
                                                 <div className="space-y-2">
                                                     {['🚀 Post to Bluesky', '📸 Post to Instagram'].map(label => (
-                                                        <a key={label} href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                        <a key={label} href="/sales"
                                                             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-[var(--c-raised)] border border-[var(--c-border)] text-[var(--c-subtle)] cursor-pointer hover:bg-[var(--c-raised)] transition-all">
                                                             <span>🔒</span><span>{label}</span><span className="ml-auto text-xs text-purple-400">Upgrade →</span>
                                                         </a>
@@ -2205,7 +2237,7 @@ const SageOS = () => {
                                             <div className="space-y-3">
                                                 <div className="flex gap-3">
                                                     {isDemo ? (
-                                                        <a href="https://whop.com/segeai/" target="_blank" rel="noopener noreferrer"
+                                                        <a href="/sales"
                                                             className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(147,51,234,0.3)]">
                                                             💎 Upgrade to Save & Publish Real Output
                                                         </a>
@@ -2533,11 +2565,12 @@ const ContentManager = () => {
     const handleExpand = (i, item) => {
         const newIdx = expandedIdx === i ? null : i;
         setExpandedIdx(newIdx);
-        if (newIdx !== null && item.path && !contentCache[item.path]) {
-            setContentCache(prev => ({ ...prev, [item.path]: 'loading' }));
+        const cacheKey = item.path || `idx_${i}`;
+        if (newIdx !== null && item.path && !contentCache[cacheKey]) {
+            setContentCache(prev => ({ ...prev, [cacheKey]: 'loading' }));
             api.get(`/api/content/read?path=${encodeURIComponent(item.path)}`)
-                .then(res => setContentCache(prev => ({ ...prev, [item.path]: res.data?.content || 'error' })))
-                .catch(() => setContentCache(prev => ({ ...prev, [item.path]: 'error' })));
+                .then(res => setContentCache(prev => ({ ...prev, [cacheKey]: res.data?.content || 'error' })))
+                .catch(() => setContentCache(prev => ({ ...prev, [cacheKey]: 'error' })));
         }
     };
 
@@ -2614,22 +2647,27 @@ const ContentManager = () => {
                             )}
                             {expandedIdx === i && (
                                 <div className="mt-3 pt-3 border-t border-[var(--c-border)]">
-                                    {contentCache[item.path] === 'loading' && (
-                                        <div className="flex gap-1 py-1">
-                                            {[0, 150, 300].map(d => (
-                                                <div key={d} className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                                            ))}
-                                        </div>
-                                    )}
-                                    {contentCache[item.path] && contentCache[item.path] !== 'loading' && contentCache[item.path] !== 'error' && (
-                                        <pre className="text-xs text-[var(--c-muted)] whitespace-pre-wrap break-words max-h-64 overflow-y-auto font-sans leading-relaxed">
-                                            {contentCache[item.path].slice(0, 2000)}
-                                            {contentCache[item.path].length > 2000 && '…'}
-                                        </pre>
-                                    )}
-                                    {(!contentCache[item.path] || contentCache[item.path] === 'error') && (
-                                        <p className="text-xs text-[var(--c-subtle)] italic">No content preview available</p>
-                                    )}
+                                    {(() => {
+                                        const cacheKey = item.path || `idx_${i}`;
+                                        const cached = contentCache[cacheKey];
+                                        if (cached === 'loading') return (
+                                            <div className="flex gap-1 py-1">
+                                                {[0, 150, 300].map(d => (
+                                                    <div key={d} className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                                                ))}
+                                            </div>
+                                        );
+                                        if (cached && cached !== 'error') {
+                                            const preview = cached.slice(0, 3000);
+                                            return (
+                                                <div
+                                                    className="prose prose-sm max-w-none text-[var(--c-muted)] prose-headings:text-[var(--c-text)] prose-headings:font-bold prose-strong:text-[var(--c-text)] prose-a:text-blue-500 max-h-64 overflow-y-auto"
+                                                    dangerouslySetInnerHTML={{ __html: renderMd(preview) + (cached.length > 3000 ? '<p>…</p>' : '') }}
+                                                />
+                                            );
+                                        }
+                                        return <p className="text-xs text-[var(--c-subtle)] italic">No content preview available</p>;
+                                    })()}
                                 </div>
                             )}
                         </div>

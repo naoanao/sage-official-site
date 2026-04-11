@@ -39,8 +39,14 @@ const SageMiniChat = ({ phase, topic }) => {
             const res = await api.post('/api/chat', { message: `${systemContext} ${userMsg}` });
             setMessages(prev => [...prev, { role: 'sage', content: res.data.response || 'No response.' }]);
         } catch (e) {
-            const err = e?.response?.data?.error || e?.message || 'Backend unreachable';
-            setMessages(prev => [...prev, { role: 'sage', content: `${err} — Make sure Flask is running.` }]);
+            const isTimeout = e.code === 'ECONNABORTED' || e?.message?.includes('timeout');
+            const isOffline = !e?.response;
+            const err = isTimeout
+                ? 'AIの応答が遅くなっています。少し待ってから再試行してください。'
+                : isOffline
+                    ? 'Flaskが起動していないか、接続できません。'
+                    : (e?.response?.data?.error || e?.message || 'エラーが発生しました。');
+            setMessages(prev => [...prev, { role: 'sage', content: err }]);
         } finally {
             setLoading(false);
         }
