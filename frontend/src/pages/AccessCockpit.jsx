@@ -20,6 +20,28 @@ const AccessCockpit = () => (
             >
                 Get Access on Whop →
             </a>
+            {/* Admin link for owner */}
+            <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #1e293b' }}>
+                <p style={{ color: '#475569', fontSize: 12, marginBottom: 12, fontFamily: 'monospace' }}>
+                    Already set up? Open the admin panel:
+                </p>
+                <a
+                    href="/admin"
+                    style={{
+                        display: 'inline-block', padding: '10px 24px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid #334155',
+                        color: '#94a3b8', borderRadius: 8, fontWeight: 600,
+                        textDecoration: 'none', fontSize: 14,
+                    }}
+                >
+                    Open Admin Dashboard →
+                </a>
+                <p style={{ color: '#334155', fontSize: 11, marginTop: 8, fontFamily: 'monospace' }}>
+                    Requires run_sage.ps1 to be running
+                </p>
+            </div>
+
             <br />
             <a href="/" style={{ color: '#64748b', fontSize: 14 }}>← Back to Home</a>
         </div>

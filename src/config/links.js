@@ -1,49 +1,53 @@
 /**
  * src/config/links.js
  * ──────────────────────────────────────────────────────────────
- * 外部リンク（購入URL）の一元管理
+ * External link (payment URL) central management.
+ * Edit this file to update links across all pages.
  *
- * 以前は Landing.jsx / SalesPage.jsx / BlogPost.jsx / Shop.jsx に
- * 同じ URL が重複してハードコードされていた。ここで一元管理する。
- *
- * URL を変更する場合はこのファイルだけ編集すれば全ページに反映される。
- *
- * 使い方:
+ * Usage:
  *   import { LINKS } from '../config/links'
  *   <a href={LINKS.stripe.pro}>...</a>
+ *
+ * NOTE: Replace all placeholder values (#) with your actual URLs
+ * before deploying. Set them as VITE_* environment variables.
  */
 
 export const LINKS = {
-  /** Stripe サブスクリプション購入リンク */
+  /** Stripe subscription purchase links */
   stripe: {
-    pro:        'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03',  // $20/月
-    enterprise: 'https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04', // $99/月
+    pro:        import.meta.env.VITE_STRIPE_PRO_URL || 'https://buy.stripe.com/7sY4gA17Wcnz6dxclo93y05',
+    enterprise: import.meta.env.VITE_STRIPE_ENT_URL || 'https://buy.stripe.com/eVq4gA7wkafr9pJ85893y06',
   },
 
-  /** Gumroad — デジタル商品（買い切り） */
+  /** Gumroad — digital products (one-time) */
   gumroad: {
-    monetization: 'https://naofumi3.gumroad.com/l/yvzrfjd', // $29.99 AI Influencer Monetization Express
+    monetization: import.meta.env.VITE_GUMROAD_URL || 'https://naofumi3.gumroad.com/l/yvzrfjd',
   },
 
-  /** Whop — メンバーシップ */
+  /** Whop — membership */
   whop: {
-    membership: 'https://whop.com/segeai/',
+    membership: import.meta.env.VITE_WHOP_URL || 'https://whop.com/segeai/',
   },
 
-  /** PayPal — 直接支払い */
+  /** PayPal — direct payment */
   paypal: {
-    direct: 'https://paypal.me/japanletgo/29.99',
+    direct: import.meta.env.VITE_PAYPAL_URL || 'https://paypal.me/japanletgo',
   },
 
-  /** SNS */
+  /** Support contact */
+  support: {
+    email: import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app',
+  },
+
+  /** Social media */
   sns: {
-    bluesky:   'https://bsky.app/profile/naofumi.bsky.social',
-    instagram: 'https://www.instagram.com/sege.ai/',
+    bluesky:   import.meta.env.VITE_BLUESKY_URL   || 'https://bsky.app/profile/kanagawajapan.bsky.social',
+    instagram: import.meta.env.VITE_INSTAGRAM_URL || 'https://www.instagram.com/sege.ai/',
   },
 };
 
 // ──────────────────────────────────────────────────────────────
-// 後方互換: SalesPage.jsx が STATIC_LINKS という名前で使っていた
+// Backward compat: SalesPage.jsx uses STATIC_LINKS
 // ──────────────────────────────────────────────────────────────
 export const STATIC_LINKS = {
   whop:       LINKS.whop.membership,

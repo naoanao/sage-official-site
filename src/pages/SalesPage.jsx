@@ -4,14 +4,15 @@ import { motion as Motion } from 'framer-motion';
 import { FiArrowRight, FiShoppingCart, FiCheck, FiShield, FiZap } from 'react-icons/fi';
 import SpaceBackground from '../components/SpaceBackground';
 import { trackEvent } from '../utils/tracking';
+import { LINKS } from '../config/links';
 
 // ── Static direct payment links ───────────────────────────────────────────────
 const STATIC_LINKS = {
-    whop:       'https://whop.com/segeai/',
-    gumroad:    'https://naofumi3.gumroad.com/l/yvzrfjd',
-    paypal:     'https://paypal.me/japanletgo/29.99',
-    proMonthly: 'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03',
-    enterprise: 'https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04',
+    whop:       LINKS.whop.membership,
+    gumroad:    LINKS.gumroad.monetization,
+    paypal:     LINKS.paypal.direct,
+    proMonthly: LINKS.stripe.pro,
+    enterprise: LINKS.stripe.enterprise,
 };
 
 // ── Subscription plans ─────────────────────────────────────────────────────
@@ -23,7 +24,7 @@ const PLANS = [
         period: '/ month',
         badge: '🔥 Most Popular',
         description: 'Full autonomous AI solopreneur stack.',
-        features: ['Unlimited Sage Chat', 'SNS auto-posting (Bluesky + X + Instagram)', 'Course & product generation pipeline', 'Notion sync + Git daily log', 'Self-healing AI agent', 'All future updates'],
+        features: ['☁️ SNS auto-posting 24/7 (Bluesky + Instagram)', '☁️ Content queue auto-replenishment', '🖥️ Unlimited Sage Chat (local core)', '🖥️ Blog & course generation pipeline', '🖥️ Notion sync + Git daily log', 'All future updates'],
         cta: 'Start Pro — $20/mo',
         link: STATIC_LINKS.proMonthly,
         style: 'border-blue-500/50 bg-blue-500/[0.05] shadow-[0_0_40px_rgba(59,130,246,0.15)]',
@@ -57,7 +58,7 @@ const STATS = [
 const SalesPage = () => {
     useEffect(() => { trackEvent('sales_visit'); }, []);
     return (
-        <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 overflow-x-hidden" style={{ backgroundColor: '#000' }}>
             <SpaceBackground />
 
             {/* Navbar */}
@@ -257,9 +258,9 @@ const SalesPage = () => {
                     <div className="flex gap-5 text-xs font-mono text-slate-600">
                         <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
                         <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
-                        <a href="mailto:naofumi0930@gmail.com" className="hover:text-white transition-colors">Contact</a>
+                        <a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`} className="hover:text-white transition-colors">Contact</a>
                     </div>
-                    <p className="text-slate-700 text-xs font-mono">© 2026 SAGE AI · Yokohama, Japan</p>
+                    <p className="text-slate-700 text-xs font-mono">© 2026 SAGE AI</p>
                 </div>
             </footer>
         </div>

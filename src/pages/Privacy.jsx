@@ -38,12 +38,12 @@ export default function Privacy() {
 
                     <section>
                         <h2 className="text-lg font-bold text-white mb-4">Data deletion</h2>
-                        <p className="text-sm">To request deletion of your email and subscription record, contact us at <a href="mailto:naofumi0930@gmail.com" className="text-blue-400 hover:text-blue-300">naofumi0930@gmail.com</a>. We will process your request within 30 days.</p>
+                        <p className="text-sm">To request deletion of your email and subscription record, contact us at <a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`} className="text-blue-400 hover:text-blue-300">{import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}</a>. We will process your request within 30 days.</p>
                     </section>
 
                     <section>
                         <h2 className="text-lg font-bold text-white mb-4">Contact</h2>
-                        <p className="text-sm"><a href="mailto:naofumi0930@gmail.com" className="text-blue-400 hover:text-blue-300">naofumi0930@gmail.com</a></p>
+                        <p className="text-sm"><a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`} className="text-blue-400 hover:text-blue-300">{import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}</a></p>
                     </section>
                 </div>
             </div>

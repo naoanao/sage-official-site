@@ -1,42 +1,42 @@
 [
   {
     "id": "local-001",
-    "topic": "AIで副収入を月5万円作る方法",
-    "content": "AIツールを使えば、スキルゼロでも副収入が作れます。\n\nSage AIが自動でコンテンツ生成・SNS投稿・リサーチをやってくれるので、あなたは「方向性を決めるだけ」。\n\n✅ 毎日自動投稿\n✅ 24時間リサーチ継続\n✅ 月額$20から始められる\n\n👉 sage-official-site.pages.dev",
-    "image_prompt": "minimalist AI robot working on laptop, purple neon glow, dark background, modern tech aesthetic",
+    "topic": "How to build passive income with AI automation",
+    "content": "You don't need to be a developer to automate your content.\n\nSage AI handles:\n✅ Daily social posts — auto-generated & scheduled\n✅ Market research — running 24/7 in the background\n✅ Blog drafts — from idea to published\n\nSet it up once, let it run forever.\n\n👉 Deploy yours today",
+    "image_prompt": "minimalist AI automation dashboard, clean dark background, purple accent lights, solopreneur at laptop",
     "category": "monetization",
     "platform": ["bluesky", "instagram"]
   },
   {
     "id": "local-002",
-    "topic": "自律型AIエージェントが変える働き方",
-    "content": "2026年、AIは「使うもの」から「働かせるもの」に変わった。\n\nSage AIは：\n🤖 自動でSNS投稿\n📊 市場リサーチを毎日実行\n📝 ブログ記事を自動生成\n💰 収益化の機会を自動発見\n\nあなたが寝ている間も、AIが働き続ける。\n\n👉 sage-official-site.pages.dev でデモを見る",
-    "image_prompt": "futuristic AI agent dashboard, autonomous system running 24/7, dark purple theme, data streams",
+    "topic": "Autonomous AI agents are changing solo business",
+    "content": "In 2026, AI went from tool to teammate.\n\nSage AI runs autonomously:\n🤖 Posts to social media daily\n📊 Scans trends every morning\n📝 Generates long-form content\n💡 Spots monetization opportunities\n\nWhile you sleep, your AI works.\n\n👉 Self-hosted. Your data. Your brand.",
+    "image_prompt": "futuristic AI agent loop, autonomous system, dark purple neon theme, data streams flowing",
     "category": "ai_tips",
     "platform": ["bluesky"]
   },
   {
     "id": "local-003",
-    "topic": "Sage AI Pro プラン紹介",
-    "content": "Sage AI Proプランなら月$20で：\n\n⚡ 完全自律モード ON\n📱 SNS自動投稿（Instagram・Bluesky）\n🧠 AI記憶システム搭載\n📈 市場スキャン毎日実行\n📧 レポート自動送信\n\n今すぐ試す → sage-official-site.pages.dev\n\n#AI副業 #自動化 #副収入",
-    "image_prompt": "premium AI SaaS product showcase, purple gradient, modern UI screenshot, professional",
-    "category": "product_launch",
-    "platform": ["instagram", "bluesky"]
+    "topic": "Why self-hosted AI beats SaaS for solopreneurs",
+    "content": "Monthly SaaS fees add up fast.\n\nWith Sage AI (self-hosted):\n• $0 to OpenAI for routine posts — uses free Gemini tier\n• No subscription lock-in\n• Your API keys, your data\n• Runs on a $5/month VPS or your own laptop\n\nOwn your automation stack.\n\n👉 One-time setup, lifetime value",
+    "image_prompt": "server rack in home office, indie developer, self-hosted tech aesthetic, minimal dark design",
+    "category": "tech",
+    "platform": ["bluesky", "instagram"]
   },
   {
     "id": "local-004",
-    "topic": "AIソロプレナーの時代が来た",
-    "content": "チームなし、資金なし、でも月収100万円を目指せる時代。\n\nAIエージェントを「従業員」として使えば：\n・マーケティング担当 → AI\n・リサーチ担当 → AI\n・コンテンツ制作 → AI\n・データ分析 → AI\n\nあなたは戦略だけに集中する。\n\n🔗 Sage AIで今すぐ始める → sage-official-site.pages.dev",
-    "image_prompt": "solo entrepreneur working with AI team, minimalist office, multiple AI screens, empowering atmosphere",
-    "category": "general",
+    "topic": "Content creation on autopilot — real results",
+    "content": "What Sage AI produces daily (no manual input):\n\n📱 3 social posts — Bluesky + Instagram\n📰 1 blog article draft\n📊 Market trend report\n💬 Engagement replies to comments\n\nTotal time spent by you: ~5 minutes to review.\n\n👉 That's the solopreneur advantage.",
+    "image_prompt": "productivity dashboard showing automated tasks completed, clean UI, dark mode, green success indicators",
+    "category": "productivity",
     "platform": ["bluesky"]
   },
   {
     "id": "local-005",
-    "topic": "自動化で時間を取り戻す",
-    "content": "毎日のルーティン作業、AIに任せてみませんか？\n\nSage AIが自動でやること：\n✅ SNS投稿（毎日）\n✅ トレンドリサーチ\n✅ ブログ記事作成\n✅ 収益レポート生成\n\n空いた時間で、本当にやりたいことを。\n\n#自動化 #AI活用 #時間節約\n👉 sage-official-site.pages.dev",
-    "image_prompt": "person relaxing while AI handles work, beach background, laptop with AI dashboard, freedom concept",
-    "category": "general",
-    "platform": ["instagram", "bluesky"]
+    "topic": "Getting started with Sage AI in 30 minutes",
+    "content": "Setup is simpler than you think.\n\nStep 1: Clone the repo\nStep 2: Run setup.py (fills in API keys)\nStep 3: Deploy 2 Cloudflare Workers\nStep 4: Connect your Notion Content Pool\n\nThat's it. Your AI assistant is live.\n\n👉 Full setup guide included with every purchase.",
+    "image_prompt": "step-by-step terminal setup, glowing code, dark background, modern tech aesthetic, clean typography",
+    "category": "tutorial",
+    "platform": ["bluesky", "instagram"]
   }
 ]

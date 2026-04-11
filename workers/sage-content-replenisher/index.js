@@ -31,7 +31,7 @@ async function countPendingItems(env) {
 
   do {
     const body = {
-      filter: { property: 'Status', select: { equals: '予約済み' } },
+      filter: { property: 'Status', select: { equals: env.NOTION_STATUS_PENDING || 'Scheduled' } },
       page_size: 100,
     };
     if (cursor) body.start_cursor = cursor;
@@ -145,7 +145,7 @@ async function createNotionPage(env, title, category) {
           title: [{ text: { content: title } }],
         },
         Status: {
-          select: { name: '予約済み' },
+          select: { name: env.NOTION_STATUS_PENDING || 'Scheduled' },
         },
         Category: {
           select: { name: category },

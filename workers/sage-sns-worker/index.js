@@ -37,7 +37,7 @@ async function notionQuery(env) {
       'Notion-Version': '2022-06-28',
     },
     body: JSON.stringify({
-      filter: { property: 'Status', select: { equals: '予約済み' } },
+      filter: { property: 'Status', select: { equals: env.NOTION_STATUS_PENDING || 'Scheduled' } },
       page_size: 1,
     }),
   });
@@ -63,7 +63,7 @@ async function notionMarkDone(env, pageId) {
       'Notion-Version': '2022-06-28',
     },
     body: JSON.stringify({
-      properties: { Status: { select: { name: '完了' } } },
+      properties: { Status: { select: { name: env.NOTION_STATUS_DONE || 'Done' } } },
     }),
   });
 }
@@ -106,18 +106,54 @@ Output the post text only (no explanation):`;
   return data.choices?.[0]?.message?.content?.trim() || `🤖 ${topic}\n\nAI automation is changing how solopreneurs work. Are you keeping up?\n\n#AIAutomation #Solopreneur #PassiveIncome`;
 }
 
-// ── Pollinations image URL (no API key needed) ────────────────────────────────
-function getImageUrl(topic) {
+// ── Image generation with stable URL ─────────────────────────────────────────
+// Priority: Pollinations → imgbb upload (stable) → LoremFlickr (always works)
+function _pollinationsUrl(topic) {
   const encoded = encodeURIComponent(
-    `${topic}, futuristic AI technology, vibrant colors, professional social media aesthetic, 1080x1080`
+    `${topic}, futuristic AI technology, vibrant colors, professional social media, 1080x1080`
   );
   const seed = Math.floor(Math.random() * 999999);
   return `https://image.pollinations.ai/prompt/${encoded}?seed=${seed}&width=1080&height=1080&nologo=true`;
 }
 
-// ── Bluesky posting ───────────────────────────────────────────────────────────
-async function postToBluesky(env, text) {
-  // 1. Auth
+function _loremFlickrUrl(topic) {
+  // Extract up to 2 ASCII keywords from topic for LoremFlickr
+  const words = topic.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/)
+    .filter(w => w.length >= 4 && /^[a-z]+$/.test(w))
+    .slice(0, 2);
+  const kw = words.length > 0 ? words.join(',') : 'technology';
+  const seed = Math.floor(Math.random() * 9999);
+  return `https://loremflickr.com/1080/1080/${kw}?lock=${seed}`;
+}
+
+async function getStableImageUrl(env, topic) {
+  const pollinationsUrl = _pollinationsUrl(topic);
+
+  // If IMGBB_API_KEY is set in CF Worker secrets, download Pollinations → upload → stable URL
+  if (env.IMGBB_API_KEY) {
+    try {
+      const imgRes = await fetch(pollinationsUrl, { cf: { cacheEverything: false } });
+      if (imgRes.ok && imgRes.headers.get('content-type')?.startsWith('image')) {
+        const imgBytes = await imgRes.arrayBuffer();
+        const b64 = btoa(String.fromCharCode(...new Uint8Array(imgBytes)));
+        const form = new FormData();
+        form.append('key', env.IMGBB_API_KEY);
+        form.append('image', b64);
+        const uploadRes = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: form });
+        const uploadData = await uploadRes.json();
+        if (uploadData.success) {
+          return { url: uploadData.data.url, source: 'pollinations→imgbb' };
+        }
+      }
+    } catch (_) { /* fall through */ }
+  }
+
+  // LoremFlickr — always returns a real image, no API key needed
+  return { url: _loremFlickrUrl(topic), source: 'loremflickr' };
+}
+
+// ── Bluesky auth (shared) ─────────────────────────────────────────────────────
+async function blueskyAuth(env) {
   const authRes = await fetch(`${BSKY_API}/com.atproto.server.createSession`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -128,6 +164,13 @@ async function postToBluesky(env, text) {
   });
   const auth = await authRes.json();
   if (!auth.accessJwt) throw new Error(`Bluesky auth failed: ${JSON.stringify(auth)}`);
+  return auth;
+}
+
+// ── Bluesky posting ───────────────────────────────────────────────────────────
+async function postToBluesky(env, text) {
+  // 1. Auth
+  const auth = await blueskyAuth(env);
 
   // 2. Post (text only — Bluesky image upload requires blob upload, skip for now)
   const postRes = await fetch(`${BSKY_API}/com.atproto.repo.createRecord`, {
@@ -196,6 +239,121 @@ async function notifyTelegram(env, message) {
   }).catch(() => {});
 }
 
+// ── Bluesky engagement (reply to mentions/replies) ────────────────────────────
+function detectLang(text) {
+  return /[\u3000-\u9fff\uff00-\uffef]/.test(text) ? 'ja' : 'en';
+}
+
+async function generateReply(env, commentText, authorHandle) {
+  const lang = detectLang(commentText);
+  const systemMsg = lang === 'ja'
+    ? 'あなたはSage AIの公式アカウントです。ユーザーのコメントに2〜3文で温かく共感して返信してください。絵文字1〜2個OK。宣伝は不要。'
+    : 'You are the official Sage AI account. Reply with genuine warmth and empathy in 2-3 sentences. 1-2 emojis OK. No sales pitch.';
+
+  try {
+    const res = await fetch(GROQ_API, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemMsg },
+          { role: 'user', content: `@${authorHandle} said: "${commentText}"\n\nReply:` },
+        ],
+        max_tokens: 150,
+        temperature: 0.8,
+      }),
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content?.trim();
+    if (reply) return reply;
+  } catch (_) { /* fall through to fallback */ }
+
+  return lang === 'ja'
+    ? `@${authorHandle} ありがとうございます！とても嬉しいです 🙌`
+    : `@${authorHandle} Thank you so much! Really appreciate it 🙌`;
+}
+
+async function runEngagementCycle(env) {
+  const log = [];
+  let repliedCount = 0;
+
+  try {
+    const auth = await blueskyAuth(env);
+    log.push('✅ Bluesky auth OK');
+
+    // 未読通知を取得（最大30件）
+    const notifRes = await fetch(`${BSKY_API}/app.bsky.notification.listNotifications?limit=30`, {
+      headers: { 'Authorization': `Bearer ${auth.accessJwt}` },
+    });
+    const notifData = await notifRes.json();
+    const notifications = notifData.notifications || [];
+
+    // 未読のreply/mentionのみ対象
+    const targets = notifications.filter(n =>
+      !n.isRead && (n.reason === 'reply' || n.reason === 'mention')
+    );
+    log.push(`📬 未読 reply/mention: ${targets.length}件`);
+
+    // 1日最大10件まで返信
+    for (const notif of targets.slice(0, 10)) {
+      const commentText  = notif.record?.text || '';
+      const authorHandle = notif.author?.handle || 'user';
+      if (!commentText) continue;
+
+      try {
+        const replyText = await generateReply(env, commentText, authorHandle);
+
+        // リプライ参照を構築
+        const root   = notif.record?.reply?.root || { uri: notif.uri, cid: notif.cid };
+        const parent = { uri: notif.uri, cid: notif.cid };
+
+        const postRes = await fetch(`${BSKY_API}/com.atproto.repo.createRecord`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${auth.accessJwt}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repo:       auth.did,
+            collection: 'app.bsky.feed.post',
+            record: {
+              '$type':   'app.bsky.feed.post',
+              text:       replyText.slice(0, 300),
+              reply:      { root, parent },
+              createdAt:  new Date().toISOString(),
+            },
+          }),
+        });
+        const postData = await postRes.json();
+        if (postData.uri) {
+          log.push(`💬 @${authorHandle} に返信: ${replyText.slice(0, 50)}...`);
+          repliedCount++;
+        } else {
+          log.push(`⚠️ @${authorHandle} 返信失敗: ${JSON.stringify(postData)}`);
+        }
+
+        // 1.5秒待機（レート制限対策）
+        await new Promise(r => setTimeout(r, 1500));
+      } catch (e) {
+        log.push(`⚠️ @${authorHandle} 返信エラー: ${e.message}`);
+      }
+    }
+
+    // 全通知を既読にする
+    if (notifications.length > 0) {
+      await fetch(`${BSKY_API}/app.bsky.notification.updateSeen`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${auth.accessJwt}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seenAt: new Date().toISOString() }),
+      });
+      log.push('✅ 通知を既読にしました');
+    }
+
+    return { status: 'success', replied: repliedCount, log };
+  } catch (err) {
+    log.push(`❌ Engagement error: ${err.message}`);
+    return { status: 'error', error: err.message, log };
+  }
+}
+
 // ── Main SNS cycle ────────────────────────────────────────────────────────────
 async function runSNSCycle(env) {
   const now = new Date().toISOString();
@@ -222,9 +380,9 @@ async function runSNSCycle(env) {
     const snsText = await generateSNSContent(env, topic, category);
     log.push(`✅ Content: ${snsText.slice(0, 80)}...`);
 
-    // 3. Image URL (Pollinations.ai — AI-generated, no API key)
-    const imageUrl = getImageUrl(topic);
-    log.push(`🎨 Image: ${imageUrl.slice(0, 80)}...`);
+    // 3. Image URL — Pollinations→imgbb (stable) or LoremFlickr fallback
+    const { url: imageUrl, source: imageSource } = await getStableImageUrl(env, topic);
+    log.push(`🎨 Image (${imageSource}): ${imageUrl.slice(0, 80)}...`);
 
     // 4. Post to Bluesky
     log.push('🦋 Posting to Bluesky...');
@@ -258,6 +416,7 @@ async function runSNSCycle(env) {
       `🤖 <b>Sage SNS Worker — 投稿完了</b>`,
       `トピック: ${topic}`,
       `プラットフォーム: ${platforms || 'なし（エラー）'}`,
+      `画像: ${imageSource}`,
       `時刻: ${now.slice(0, 16)} UTC`,
     ].join('\n'));
 
@@ -273,12 +432,23 @@ async function runSNSCycle(env) {
 
 // ── Worker export ─────────────────────────────────────────────────────────────
 export default {
-  // Cron trigger (scheduled)
+  // Cron trigger (scheduled) — 毎日09:00 JST
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runSNSCycle(env));
+    ctx.waitUntil((async () => {
+      // 1. SNS投稿
+      const snsResult = await runSNSCycle(env);
+      // 2. Bluesky返信（SNS投稿後に実行）
+      const engResult = await runEngagementCycle(env);
+      // 3. Telegramでengagementサマリー通知
+      if (engResult.replied > 0) {
+        await notifyTelegram(env,
+          `🦋 <b>Bluesky Engagement</b>\n${engResult.replied}件のコメントに返信しました\n${new Date().toISOString().slice(0,16)} UTC`
+        );
+      }
+    })());
   },
 
-  // HTTP handler — manual trigger via GET https://sage-sns-worker.{subdomain}.workers.dev/run
+  // HTTP handler — 手動テスト用
   async fetch(request, env) {
     const url = new URL(request.url);
 
@@ -289,11 +459,22 @@ export default {
       });
     }
 
+    // Bluesky返信のみ手動テスト
+    if (url.pathname === '/engage') {
+      const result = await runEngagementCycle(env);
+      return new Response(JSON.stringify(result, null, 2), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({
-      name:    'Sage SNS Automation Worker',
-      status:  'running',
-      trigger: '/run  (GET — manual fire)',
-      cron:    '0 0 * * * (daily 09:00 JST)',
+      name:     'Sage SNS Automation Worker',
+      status:   'running',
+      triggers: {
+        '/run':    'SNS投稿 手動実行',
+        '/engage': 'Bluesky返信 手動実行',
+      },
+      cron: '0 0 * * * (毎日09:00 JST — SNS投稿 + Bluesky返信)',
     }), {
       headers: { 'Content-Type': 'application/json' },
     });

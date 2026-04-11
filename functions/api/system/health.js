@@ -24,8 +24,8 @@ export async function onRequestGet(context) {
     checks,
     timestamp: new Date().toISOString(),
     workers: {
-      sns_worker: 'sage-sns-worker.naofumi0930.workers.dev',
-      replenisher: 'sage-content-replenisher.naofumi0930.workers.dev',
+      sns_worker: (env.SNS_WORKER_URL || 'sage-sns-worker.<your-account>.workers.dev'),
+      replenisher: (env.REPLENISHER_URL || 'sage-content-replenisher.<your-account>.workers.dev'),
     },
   }), {
     headers: {

@@ -30,8 +30,8 @@ def _extract_json(text: str) -> dict:
             return json.loads(m.group())
         except json.JSONDecodeError:
             pass
-    # フォールバック: テキストをそのまま返す
-    return {"raw": text}
+    # フォールバック: 空辞書（各フィールドがデフォルト値を使用する）
+    return {}
 
 
 class NicheValidator:
@@ -74,7 +74,7 @@ Output ONLY valid JSON (no markdown, no explanation):
             "trend": d.get("trend", "STABLE"),
             "search_volume": d.get("search_volume", "MEDIUM"),
             "social_buzz": d.get("social_buzz", "MEDIUM"),
-            "reason": d.get("reason", raw[:200]),
+            "reason": d.get("reason") or "分析中",
         }
 
     def _analyze_competition(self, topic: str) -> dict:
@@ -98,7 +98,7 @@ Output ONLY valid JSON (no markdown):
             "avg_price_jpy": int(d.get("avg_price_jpy", 3000)),
             "avg_rating": float(d.get("avg_rating", 3.8)),
             "gaps": d.get("gaps", []),
-            "reason": d.get("reason", raw[:200]),
+            "reason": d.get("reason") or "分析中",
         }
 
     def _analyze_audience(self, topic: str) -> dict:
@@ -127,7 +127,7 @@ Output ONLY valid JSON (no markdown):
                 "pain_point": persona.get("pain_point", ""),
                 "willingness_to_pay_jpy": int(persona.get("willingness_to_pay_jpy", 3000)),
             },
-            "reason": d.get("reason", raw[:200]),
+            "reason": d.get("reason") or "分析中",
         }
 
     def _suggest_pricing(self, competition: dict, audience: dict) -> dict:

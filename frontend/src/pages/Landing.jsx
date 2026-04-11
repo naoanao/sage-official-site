@@ -75,8 +75,9 @@ const Landing = () => {
                 </div>
                 <div className="flex gap-6 text-sm font-medium text-slate-400">
                     <a href="/blog" className="hover:text-white transition-colors">Blog</a>
-                    <a href="/offer" className="hover:text-white transition-colors">Store</a>
-                    <a href="https://bsky.app/profile/kanagawajapan.bsky.social" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">SNS</a>
+                    <a href="/sales" className="hover:text-white transition-colors">Store</a>
+                    <a href={import.meta.env.VITE_BLUESKY_URL || 'https://bsky.app/profile/kanagawajapan.bsky.social'} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bluesky</a>
+                    <a href={import.meta.env.VITE_INSTAGRAM_URL || 'https://www.instagram.com/sege.ai/'} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a>
                 </div>
             </nav>
 
@@ -89,52 +90,44 @@ const Landing = () => {
                     className="max-w-5xl mx-auto"
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-slate-300 mb-8 backdrop-blur-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        FOR SOLOPRENEURS & CREATORS — AUTONOMOUS AI SYSTEM LIVE
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        SELF-HOSTED AI TOOLKIT — BUILT & USED BY NAOOO IN YOKOHAMA
                     </div>
 
                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-none mb-6">
-                        One Chat.<br />
+                        Clone my<br />
                         <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
-                            Full Business.
+                            AI stack.
                         </span>
                     </h1>
 
                     <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
-                        Stop juggling 10 tools. Sage turns <span className="text-white">one conversation</span> into
-                        <span className="text-white"> SEO blogs</span>, <span className="text-white">social posts</span>, and <span className="text-white">revenue</span> — while you sleep.
+                        Sage is the exact system I use to auto-post to social media 24/7, generate SEO blogs, and run my solopreneur business. Deploy it on your own infrastructure — <span className="text-white">30 minutes, $0 server cost.</span>
                     </p>
 
                     {/* CTAs */}
                     <div className="flex flex-col md:flex-row items-center justify-center gap-4">
                         <Motion.a
-                            href="/dashboard"
+                            href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_50px_rgba(37,99,235,0.4)] flex items-center gap-3 transition-all"
                         >
-                            Try the Cockpit Free <FiArrowRight />
+                            Get the Toolkit — $20/mo <FiArrowRight />
                         </Motion.a>
 
                         <Motion.a
-                            href="/offer"
+                            href="#whats-included"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             className="px-10 py-5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl text-lg font-bold backdrop-blur-md transition-all flex items-center gap-3"
                         >
-                            Get the Full Blueprint <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-white/70">$29</span>
-                        </Motion.a>
-
-                        <Motion.a
-                            href="/builder"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-10 py-5 border text-slate-300 hover:text-white rounded-xl text-lg font-bold backdrop-blur-md transition-all flex items-center gap-3"
-                            style={{ borderColor: 'rgba(124,58,237,0.4)', background: 'rgba(124,58,237,0.08)' }}
-                        >
-                            <FiCode /> AI Builder
+                            What's Included <FiArrowRight />
                         </Motion.a>
                     </div>
+                    <p className="text-xs text-slate-600 mt-4 font-mono">Setup ~30 min · Runs on your own Cloudflare account · Cancel anytime</p>
                 </Motion.div>
             </section>
 
@@ -142,8 +135,9 @@ const Landing = () => {
             <section className="relative z-10 py-32 px-4 bg-gradient-to-b from-black via-slate-900/20 to-black">
                 <div className="max-w-6xl mx-auto">
                     <div className="mb-20 text-center">
+                        <div className="text-xs font-mono text-blue-400 mb-2 tracking-widest uppercase">The System</div>
                         <h2 className="text-3xl md:text-4xl font-bold mb-4">How SAGE Works</h2>
-                        <p className="text-slate-500">From a single chat to a fully automated business loop.</p>
+                        <p className="text-slate-500">Once deployed on your infrastructure, the full loop runs automatically.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
@@ -182,22 +176,25 @@ const Landing = () => {
             {/* Social Proof */}
             <section className="relative z-10 py-24 border-t border-white/5 bg-black">
                 <div className="max-w-6xl mx-auto px-4">
+                    <div className="text-center mb-8">
+                        <div className="text-xs font-mono text-slate-600 mb-6 uppercase tracking-widest">Live stats from Nao's Sage instance (Yokohama, Japan)</div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center mb-16">
                         <div>
-                            <div className="text-4xl md:text-5xl font-black text-blue-500 mb-2">{snsStats.total_posts}</div>
-                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">Autonomous Posts Shipped</div>
+                            <div className="text-4xl md:text-5xl font-black text-blue-500 mb-2">{snsStats.total_posts > 0 ? snsStats.total_posts : '200+'}</div>
+                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">SNS Posts Auto-Published</div>
                         </div>
                         <div>
-                            <div className="text-4xl md:text-5xl font-black text-purple-500 mb-2">24/7</div>
-                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">Active System Uptime</div>
+                            <div className="text-4xl md:text-5xl font-black text-purple-500 mb-2">$0</div>
+                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">Monthly Server Cost</div>
                         </div>
                         <div>
                             <div className="text-4xl md:text-5xl font-black text-emerald-500 mb-2">{snsStats.success_rate}</div>
-                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">Execution Reliability</div>
+                            <div className="text-sm font-mono text-slate-500 uppercase tracking-widest">Posting Reliability</div>
                         </div>
                     </div>
                     <p className="text-center text-slate-400 italic font-light max-w-2xl mx-auto">
-                        "Sage doesn't just suggest ideas; it builds the evidence of your growing empire in real-time."
+                        "I built Sage to run my solopreneur business. Now you can deploy the same stack on your own infrastructure."
                     </p>
                 </div>
             </section>
@@ -217,7 +214,7 @@ const Landing = () => {
                             <div className="text-4xl font-black mb-1">$0</div>
                             <div className="text-sm text-slate-500 mb-8">See what Sage can do</div>
                             <ul className="space-y-3 text-sm text-slate-400 mb-8">
-                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> AI Chat (unlimited)</li>
+                                <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> AI Chat (when Sage core is running)</li>
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dashboard access</li>
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> 3 blog posts / month</li>
                                 <li className="flex items-start gap-2"><span className="text-slate-600 mt-0.5">—</span> <span className="text-slate-600">Autonomous SNS posting</span></li>
@@ -232,8 +229,9 @@ const Landing = () => {
                         <div className="p-8 rounded-2xl bg-blue-600/10 border border-blue-500/30 relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
                             <div className="text-sm font-mono text-blue-400 mb-2">PRO — {snsStats.total_posts > 0 ? `${snsStats.total_posts}+ POSTS SHIPPED` : 'AUTONOMOUS AI POSTING'}</div>
-                            <div className="text-4xl font-black mb-1">$29<span className="text-lg font-normal text-slate-500">/mo</span></div>
-                            <div className="text-sm text-slate-400 mb-8">~<span className="text-white font-medium">$1/day</span> · You sleep. Sage ships.</div>
+                            <div className="text-4xl font-black mb-1">$20<span className="text-lg font-normal text-slate-500">/mo</span></div>
+                            <div className="text-sm text-slate-400 mb-2">~<span className="text-white font-medium">$0.66/day</span> · You sleep. Sage ships.</div>
+                            <div className="text-xs text-slate-600 mb-6 font-mono">SNS runs 24/7 in cloud · Blog gen runs on your machine</div>
                             <ul className="space-y-3 text-sm text-slate-300 mb-8">
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Everything in Starter</li>
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> <span className="text-white font-medium">Unlimited AI blog posts</span></li>
@@ -241,8 +239,8 @@ const Landing = () => {
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Monetization dashboard</li>
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Priority support</li>
                             </ul>
-                            <a href="/offer" className="block w-full text-center py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]">
-                                Go Autopilot — 7 Days Free
+                            <a href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03" target="_blank" rel="noopener noreferrer" className="block w-full text-center py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]">
+                                Go Autopilot — Start Now
                             </a>
                         </div>
 
@@ -258,10 +256,85 @@ const Landing = () => {
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> API access</li>
                                 <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span> Dedicated support</li>
                             </ul>
-                            <a href="mailto:naofumi0930@gmail.com" className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
+                            <a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`} className="block w-full text-center py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all text-sm font-bold">
                                 Book a Demo
                             </a>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* What's Included */}
+            <section id="whats-included" className="relative z-10 py-28 px-4 border-t border-white/5 bg-slate-900/10 scroll-mt-16">
+                <div className="max-w-4xl mx-auto">
+                    <div className="mb-14 text-center">
+                        <div className="text-xs font-mono text-blue-400 mb-2 tracking-widest uppercase">What You Actually Get</div>
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything in the Toolkit</h2>
+                        <p className="text-slate-500 text-sm max-w-xl mx-auto">Sage is a complete open-source AI solopreneur stack. You own every line of code. Deploy to your own accounts.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                        {/* Cloud — zero PC */}
+                        <div className="p-6 rounded-2xl bg-emerald-500/[0.05] border border-emerald-500/20">
+                            <div className="flex items-center gap-2 mb-5">
+                                <span className="text-lg">☁️</span>
+                                <div>
+                                    <div className="text-xs font-mono text-emerald-400 uppercase tracking-widest">Cloud-native (no PC needed)</div>
+                                    <div className="text-sm text-slate-500">Runs on your Cloudflare free tier</div>
+                                </div>
+                            </div>
+                            <ul className="space-y-3 text-sm text-slate-300">
+                                {[
+                                    ['SNS Worker', 'Daily 9AM auto-post to Bluesky + Instagram'],
+                                    ['Content Replenisher', 'Weekly Notion queue refill (keeps 14 posts ready)'],
+                                    ['Stripe Webhook Handler', 'Edge-native payment processing + D1 database'],
+                                    ['Make.com Integration', 'Telegram alerts + Notion sync on each sale'],
+                                ].map(([name, desc], i) => (
+                                    <li key={i} className="flex flex-col gap-0.5">
+                                        <span className="font-semibold text-white">{name}</span>
+                                        <span className="text-slate-400 text-xs">{desc}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {/* Local — needs your machine */}
+                        <div className="p-6 rounded-2xl bg-blue-500/[0.05] border border-blue-500/20">
+                            <div className="flex items-center gap-2 mb-5">
+                                <span className="text-lg">🖥️</span>
+                                <div>
+                                    <div className="text-xs font-mono text-blue-400 uppercase tracking-widest">Local core (run when creating)</div>
+                                    <div className="text-sm text-slate-500">Python + Node.js on your machine</div>
+                                </div>
+                            </div>
+                            <ul className="space-y-3 text-sm text-slate-300">
+                                {[
+                                    ['Flask Backend', 'REST API powering the dashboard + AI features'],
+                                    ['Admin Dashboard', 'Real-time analytics, content pipeline, brain stats'],
+                                    ['Sage Chat', 'LLM-powered solopreneur advisor interface'],
+                                    ['Blog Generator', 'AI-written SEO posts → auto-push to Notion'],
+                                    ['Knowledge Bank', 'RAG-powered vector search over your content'],
+                                ].map(([name, desc], i) => (
+                                    <li key={i} className="flex flex-col gap-0.5">
+                                        <span className="font-semibold text-white">{name}</span>
+                                        <span className="text-slate-400 text-xs">{desc}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+
+                    {/* Requirements */}
+                    <div className="p-5 rounded-xl bg-black/40 border border-white/5 text-sm">
+                        <div className="text-xs font-mono text-slate-500 mb-3 uppercase tracking-widest">Prerequisites</div>
+                        <div className="flex flex-wrap gap-3">
+                            {['Python 3.10+', 'Node.js 18+', 'Cloudflare account (free)', 'Notion account (free)', 'Groq API key (free)', 'Bluesky account', 'Instagram Basic API'].map((req, i) => (
+                                <span key={i} className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-slate-400 text-xs font-mono">
+                                    {req}
+                                </span>
+                            ))}
+                        </div>
+                        <p className="text-slate-600 text-xs mt-3">The setup guide walks you through every step. Estimated time: ~30 minutes.</p>
                     </div>
                 </div>
             </section>
@@ -297,12 +370,16 @@ const Landing = () => {
                     <div className="space-y-6">
                         {[
                             {
-                                q: "I'm not technical. Can I actually use this?",
-                                a: "Yes — that's the whole point. You type what you want in plain English. Sage writes the blog, posts to social media, and tracks the results. No code, no dashboards to configure, no learning curve."
+                                q: "What technical skills do I need?",
+                                a: "You need to be comfortable running terminal commands and creating API accounts. The setup guide is step-by-step — if you can follow instructions, you can get it running. You'll need: Python + Node.js installed, a free Cloudflare account, and API keys for Groq and Notion (all free). Setup takes about 30 minutes."
+                            },
+                            {
+                                q: "What runs automatically 24/7 (no PC needed)?",
+                                a: "Social media posting to Bluesky & Instagram, content queue replenishment, Stripe payments, and subscriber management all run on Cloudflare's global network — no PC required. Blog generation, AI chat, and content editing require your local Sage core to be running."
                             },
                             {
                                 q: "What exactly gets automated?",
-                                a: "Blog post generation, SEO optimization, social media posting (Bluesky & Instagram), content scheduling, and performance analytics. All running 24/7."
+                                a: "SNS posting (Bluesky + Instagram) runs daily at 9AM JST automatically. Blog post generation, SEO optimization, and content scheduling run when your Sage core is active. Think of it as a hybrid: cloud handles distribution, your machine handles creation."
                             },
                             {
                                 q: "Can I cancel anytime?",
@@ -310,11 +387,11 @@ const Landing = () => {
                             },
                             {
                                 q: "Is my data safe?",
-                                a: "Absolutely. Sage runs a hybrid AI architecture — sensitive data stays on your local machine, only non-private content touches the cloud for speed."
+                                a: "Yes. Sage uses a hybrid architecture by design — your API keys and personal data stay on your local machine. Only content (blog posts, SNS text) touches the cloud. Nothing sensitive is ever stored on external servers."
                             },
                             {
                                 q: "What kind of support do I get?",
-                                a: "Starter users get community support. Pro users get priority email support with 24h response time. Enterprise gets a dedicated engineer."
+                                a: "All users get a setup guide and community support. Pro users get priority email support with 24h response time. Enterprise gets a dedicated engineer."
                             }
                         ].map((item, i) => (
                             <div key={i} className="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all">
@@ -332,7 +409,7 @@ const Landing = () => {
                     <div className="flex gap-6 text-xs font-mono text-slate-500">
                         <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
                         <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
-                        <a href="mailto:naofumi0930@gmail.com" className="hover:text-white transition-colors">Contact</a>
+                        <a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`} className="hover:text-white transition-colors">Contact</a>
                     </div>
 
                     <div className="text-center md:text-right">

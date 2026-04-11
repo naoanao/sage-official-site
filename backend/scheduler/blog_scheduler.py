@@ -20,7 +20,7 @@ from backend.data.jobs_store import append as _jobs_append
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
 POSTS_DIR = "src/blog/posts"
-SAGE_BASE_URL = os.getenv("SAGE_BASE_URL", "https://sage-official-site.pages.dev")
+SAGE_BASE_URL = os.getenv("SAGE_BASE_URL") or os.getenv("SITE_URL", "https://your-pages-site.pages.dev")
 
 
 class BlogScheduler:

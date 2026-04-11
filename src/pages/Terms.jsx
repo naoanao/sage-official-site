@@ -24,7 +24,7 @@ export default function Terms() {
 
                     <section>
                         <h2 className="text-lg font-bold text-white mb-4">Refund Policy</h2>
-                        <p className="text-sm">We offer a 30-day money-back guarantee. To request a refund, contact us at <a href="mailto:naofumi0930@gmail.com" className="text-blue-400 hover:text-blue-300">naofumi0930@gmail.com</a> within 30 days of your initial purchase. Refunds are processed through Stripe and typically appear within 5–10 business days.</p>
+                        <p className="text-sm">We offer a 30-day money-back guarantee. To request a refund, contact us at <a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`} className="text-blue-400 hover:text-blue-300">{import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}</a> within 30 days of your initial purchase. Refunds are processed through Stripe and typically appear within 5–10 business days.</p>
                     </section>
 
                     <section>
@@ -39,7 +39,7 @@ export default function Terms() {
 
                     <section>
                         <h2 className="text-lg font-bold text-white mb-4">Contact</h2>
-                        <p className="text-sm"><a href="mailto:naofumi0930@gmail.com" className="text-blue-400 hover:text-blue-300">naofumi0930@gmail.com</a></p>
+                        <p className="text-sm"><a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`} className="text-blue-400 hover:text-blue-300">{import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}</a></p>
                     </section>
                 </div>
             </div>

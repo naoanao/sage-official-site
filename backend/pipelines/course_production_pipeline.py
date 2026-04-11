@@ -1347,7 +1347,7 @@ Order right now and you'll also receive these 3 exclusive bonuses — FREE:
 
 ## 7. CTA
 
-[今すぐ購入して資産を手に入れる]({_os.getenv('GUMROAD_PAY_URL', 'https://naofumi3.gumroad.com/l/yvzrfjd')})
+[今すぐ購入して資産を手に入れる]({_os.getenv('GUMROAD_PAY_URL', 'https://your-gumroad-url.com')})
 
 出力はMarkdownのみ。余分な前置き、解説、挨拶などは一切不要。
 """
@@ -1386,7 +1386,7 @@ Focus on specificity, actionability, and AI-backed research over generic advice.
 Specific job roles, situations, and goals. Make readers say "that's me."
 
 ## 7. CTA
-[Get instant access →]({_os.getenv('GUMROAD_PAY_URL', 'https://naofumi3.gumroad.com/l/yvzrfjd')})
+[Get instant access →]({_os.getenv('GUMROAD_PAY_URL', 'https://your-gumroad-url.com')})
 
 Output Markdown only. No preamble, explanations, or greetings.
 """
@@ -1510,7 +1510,7 @@ Output Markdown only. No preamble, explanations, or greetings.
             f"- {s['title']}: {s['content'][:300].strip()}"
             for s in sections[:3]
         )
-        gumroad_url = _os.getenv("GUMROAD_PAY_URL", "https://naofumi3.gumroad.com/l/yvzrfjd")
+        gumroad_url = _os.getenv("GUMROAD_PAY_URL", "https://your-gumroad-url.com")
 
         if language == "ja":
             prompt = f"""あなたはSEOに強いブログライターです。以下のオンラインコース情報をもとに、読者が「読んでよかった」と感じる日本語ブログ記事を書いてください。

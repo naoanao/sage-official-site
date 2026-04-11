@@ -18,7 +18,7 @@ class StrategyManager:
             return {
                 "mission": "Prove the value of Sage 3.0 and Architect an Autonomous Paradise.",
                 "target_product": "Sage 3.0 Architect Edition",
-                "target_url": "https://naofumi3.gumroad.com/l/apvbzh?wanted=true",
+                "target_url": os.getenv("GUMROAD_PRODUCT_URL", os.getenv("SITE_URL", "") + "/shop"),
                 "core_directive": "Resonance Mastery",
                 "focus_tags": ["self_hosted_tech", "metrics_driven", "autonomous_wealth"]
             }

@@ -1,18 +1,25 @@
 name               = "sage-content-replenisher"
 main               = "index.js"
 compatibility_date = "2024-01-01"
-account_id         = "9a00225a365387adfb3b047cbadd38de"
+account_id         = "YOUR_CLOUDFLARE_ACCOUNT_ID"   # ← Replace with your CF Account ID
 
 # Cron: Every Sunday 20:00 JST (= 11:00 UTC)
 [triggers]
 crons = ["0 11 * * SUN"]
 
+# ─────────────────────────────────────────────────────────────
+# SETUP INSTRUCTIONS
+# Set secrets once after deploying:
+#   wrangler secret put NOTION_API_KEY
+#   wrangler secret put GROQ_API_KEY
+#   wrangler secret put TELEGRAM_BOT_TOKEN   (optional)
+#
+# Then deploy:
+#   wrangler deploy
+# ─────────────────────────────────────────────────────────────
+
 # Plain vars (non-secret):
 [vars]
-NOTION_CONTENT_POOL_DB_ID = "b4f36b500abc45a28c08f5d59463d8cc"
-TELEGRAM_CHAT_ID          = "7785549153"
-
-# Secrets (set via wrangler secret put or deploy.ps1):
-#   NOTION_API_KEY
-#   GROQ_API_KEY
-#   TELEGRAM_BOT_TOKEN
+NOTION_CONTENT_POOL_DB_ID = "YOUR_NOTION_DATABASE_ID"   # ← 32-char ID from your Notion DB URL
+TELEGRAM_CHAT_ID          = "YOUR_TELEGRAM_CHAT_ID"     # ← Optional: get from @userinfobot
+NOTION_STATUS_PENDING     = "Scheduled"                  # ← Must match Status value in your Notion DB

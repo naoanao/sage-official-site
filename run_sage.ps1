@@ -9,14 +9,24 @@
 #   5. git commit + push (first time/if needed)
 # ============================================================
 
-$SageDir   = "C:\Users\nao\Desktop\Sage_Final_Unified"
-$Python    = "C:\Users\nao\AppData\Local\Programs\Python\Python311\python.exe"
+# Auto-detect the directory this script lives in
+$SageDir   = $PSScriptRoot
+if (-not $SageDir) { $SageDir = Split-Path -Parent $MyInvocation.MyCommand.Definition }
+
+# Auto-detect Python (tries python, python3, py in order)
+$Python = @("python", "python3", "py") | Where-Object { Get-Command $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
+if (-not $Python) { Write-Error "Python not found. Install from https://python.org"; exit 1 }
+
 $NgrokExe  = "ngrok"
 $LogFile   = "$SageDir\logs\sage_autostart.log"
 $NgrokLog  = "$SageDir\logs\ngrok.log"
 $BackendFn = "$SageDir\functions\_backend.js"
-$StaticDomain = "tetchy-byssal-katherin.ngrok-free.dev"
-$TunnelUrl = "https://$StaticDomain"
+
+# ── Set your ngrok static domain here (free at ngrok.com → Domains) ──────────
+# Leave blank to use a random ngrok URL each time (URL will change on restart)
+$StaticDomain = $env:NGROK_STATIC_DOMAIN   # reads from .env if set
+if (-not $StaticDomain) { $StaticDomain = "" }
+$TunnelUrl = if ($StaticDomain) { "https://$StaticDomain" } else { "https://pending-ngrok-start" }
 
 Set-Location $SageDir
 

@@ -58,7 +58,7 @@ class GeminiLPGenerator:
     1. **デザイン**: "Cyberpunk / High-Tech" (黒背景、ネオンカラー、近未来的)
     2. **コピーライティング**: ユーザーの感情を揺さぶる、魅力的で力強い文章。
     3. **CTAボタン**: 
-       - メイン: "今すぐ購入する ($29)" -> リンク先: `https://naofumi3.gumroad.com/l/yvzrfjd`
+       - メイン: "今すぐ購入する ($29)" -> リンク先: `{os.getenv('GUMROAD_PRODUCT_URL', '#')}`
        - サブ: "クレジットカードで購入 (Stripe)" -> リンク先: `#` (Coming Soonと明記)
     4. **構成**:
        - Hero Section: インパクトのある見出しと画像プレースホルダー

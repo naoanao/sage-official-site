@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 /* ─── Base — Light Theme ──────────────────────────────────── */
+html, body {
+  background-color: #F4F8FF;
+}
+
 :root {
   --c-bg:        #F4F8FF;
   --c-surface:   #FFFFFF;

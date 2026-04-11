@@ -15,6 +15,7 @@
 import React, { useState, useEffect } from 'react';
 import SageOS from './SageOS';
 import { trackEvent as track } from '../utils/tracking';
+import { LINKS } from '../config/links';
 
 const IS_LOCAL = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -65,7 +66,7 @@ const UpgradeModal = ({ email, onDismiss }) => {
       <div className="px-8 pb-4 flex gap-4">
         {/* Pro */}
         <a
-          href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03"
+          href={LINKS.stripe.pro}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => track('payment_click', { plan: 'pro', email })}
@@ -79,7 +80,7 @@ const UpgradeModal = ({ email, onDismiss }) => {
               '1 idea → blog + 5 posts + copy in 90s',
               'Content tailored to your niche & tone',
               'Daily Bluesky & Instagram auto-posting',
-              '100 AI chats + 20 generations/day',
+              'Unlimited AI conversations & content generation',
             ].map(f => (
               <li key={f} className="text-xs text-gray-300 flex items-center gap-1.5">
                 <span className="text-emerald-400">✓</span> {f}
@@ -93,7 +94,7 @@ const UpgradeModal = ({ email, onDismiss }) => {
 
         {/* Enterprise */}
         <a
-          href="https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04"
+          href={LINKS.stripe.enterprise}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => track('payment_click', { plan: 'enterprise', email })}
@@ -176,7 +177,7 @@ const EmailModal = ({ onVerify, loading }) => {
           <p className="text-xs text-gray-500">
             Not subscribed yet?{' '}
             <a
-              href="https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03"
+              href={LINKS.stripe.pro}
               target="_blank"
               rel="noopener noreferrer"
               className="text-violet-400 hover:underline"

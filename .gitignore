@@ -35,6 +35,8 @@ node_modules/
 .env
 .env.bak
 .env.*
+!.env.example
+!frontend/.env.example
 *.bak
 *secrets*.json
 sage_security.key
@@ -70,6 +72,10 @@ tmp/
 notion_latest_full.txt
 sage_3_hp.md
 
+# Archive and work-in-progress (not for distribution)
+_ARCHIVE_2026_Preservation/
+_work/
+
 # Temp / debug scripts
 tmp_*.py
 tmp_*.json
@@ -95,6 +101,10 @@ latest_e2e_result.json
 
 # Output directory (generated course content)
 output/
+
+# Runtime-generated content (buyer's content goes here, not seller's)
+backend/content/blog/
+backend/content/course/
 
 # Misc root-level artifacts
 traceback.txt

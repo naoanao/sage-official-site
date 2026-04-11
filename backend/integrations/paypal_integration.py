@@ -66,7 +66,7 @@ class PayPalIntegration:
         """
         token = self._get_access_token()
         if not token:
-            # No keys configured — return PayPal.me fallback (japanletgo account)
+            # No keys configured — return PayPal.me fallback (set PAYPAL_ME_URL in .env)
             return {
                 "status": "no_keys",
                 "url": f"{os.getenv('PAYPAL_ME_URL', '')}/{amount}",
@@ -134,4 +134,4 @@ class PayPalIntegration:
 
 
 # Singleton
-paypal_integration = PayPalIntegration()
+paypal_integration = PayPalIntegration

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { STRIPE_LINKS, addUTM } from '../config/stripe';
+import { LINKS } from '../config/links';
 
 // Dynamically load all MDX files from src/blog/posts/
 const postModules = import.meta.glob('../blog/posts/*.mdx', { eager: true, query: '?raw', import: 'default' });
@@ -45,10 +45,10 @@ const Blog = () => {
                     <nav className="flex gap-6 text-sm">
                         <Link to="/" className="transition-colors hover:text-blue-600" style={{ color: 'var(--c-muted)' }}>Home</Link>
                         <Link to="/blog" className="font-bold" style={{ color: 'var(--c-blue)' }}>Blog</Link>
-                        <a href="https://naofumi3.gumroad.com/l/sage-professional" target="_blank" rel="noopener noreferrer"
+                        <Link to="/sales"
                             className="transition-colors hover:text-blue-700" style={{ color: 'var(--c-blue)' }}>
                             Get Sage →
-                        </a>
+                        </Link>
                     </nav>
                 </div>
             </header>
@@ -177,10 +177,10 @@ const Blog = () => {
                         Ready to Automate Everything?
                     </h2>
                     <p className="text-xl mb-8" style={{ color: 'var(--c-muted)' }}>
-                        Get Sage Fortress Edition and let AI handle your entire business workflow.
+                        Let Sage AI handle your entire content and business workflow — automatically.
                     </p>
                     <a
-                        href={addUTM(STRIPE_LINKS.fortress, 'blog', 'cta_section')}
+                        href={LINKS.stripe.pro}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-block px-12 py-6 rounded-full text-white text-xl font-bold transition-all hover:shadow-xl"
@@ -189,7 +189,7 @@ const Blog = () => {
                             boxShadow: '0 4px 20px rgba(26,86,219,0.25)',
                         }}
                     >
-                        Get Started - $299
+                        Start Pro — $20/mo
                     </a>
                 </div>
             </section>

@@ -11,6 +11,7 @@ import SalesPage from './pages/SalesPage'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import StoreManager from './pages/StoreManager'
+import Contact from './pages/Contact'
 import ToastContainer from './components/ToastContainer'
 import './App.css'
 
@@ -30,6 +31,7 @@ function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/manager" element={<StoreManager />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/automations" element={<Navigate to="/dashboard" state={{ openAutomations: true }} replace />} />
       </Routes>
     </Router>

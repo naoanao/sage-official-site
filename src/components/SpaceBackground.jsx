@@ -56,25 +56,32 @@ const SpaceBackground = () => {
             }
         };
 
-        window.addEventListener('resize', resize);
-        resize();
-
         const animate = () => {
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
             stars.forEach(star => {
                 star.update();
                 star.draw(ctx);
             });
-
             animationFrameId = requestAnimationFrame(animate);
         };
 
-        animate();
+        const start = () => {
+            cancelAnimationFrame(animationFrameId);
+            resize();
+            animate();
+        };
+
+        // BFCache restore: browser back/forward from external link
+        const handlePageShow = (e) => { if (e.persisted) start(); };
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('pageshow', handlePageShow);
+        start();
 
         return () => {
             window.removeEventListener('resize', resize);
+            window.removeEventListener('pageshow', handlePageShow);
             cancelAnimationFrame(animationFrameId);
         };
     }, []);
