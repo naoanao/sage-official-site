@@ -20,8 +20,10 @@ obsidian_vault/knowledge/
 *.pid
 
 # Claude Code local settings (machine-specific)
-.claude/settings.local.json
-.claude/settings.json
+.claude/
+.agents/
+.continue/
+skills-lock.json
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Sage 3.0 Protection
