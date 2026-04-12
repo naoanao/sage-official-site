@@ -169,11 +169,13 @@ export default function StoreManager() {
                 setNewProduct({ name: '', description: '', amount: '' });
                 setShowAddForm(false);
                 toast.success('Product created on Stripe');
+            } else if (data.status === 'no_key') {
+                toast.error('Stripe is not connected — add your Stripe API key to enable product creation.');
             } else {
                 toast.error(data.message || 'Failed to create product');
             }
         } catch (e) {
-            toast.error(`Error: ${e.message}`);
+            toast.error('Cannot reach backend — make sure the service is running.');
         } finally {
             setAdding(false);
         }

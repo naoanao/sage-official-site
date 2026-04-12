@@ -2675,7 +2675,12 @@ const ContentManager = () => {
                                                 />
                                             );
                                         }
-                                        return <p className="text-xs text-[var(--c-subtle)] italic">No content preview available</p>;
+                                        if (!item.path) return (
+                                            <p className="text-xs text-[var(--c-subtle)] italic">No file path recorded for this item.</p>
+                                        );
+                                        return (
+                                            <p className="text-xs text-[var(--c-subtle)] italic">Preview not yet generated — run the pipeline to create this post.</p>
+                                        );
                                     })()}
                                 </div>
                             )}
