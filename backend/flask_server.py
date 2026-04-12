@@ -3889,6 +3889,40 @@ def store_products():
         return jsonify({'status': 'error', 'products': [], 'message': str(e)}), 200
 
 
+@app.route('/api/store/products/create', methods=['POST'])
+def store_product_create():
+    """Create a new Stripe product with a one-time price."""
+    try:
+        import stripe as _stripe
+        stripe_key = os.getenv('STRIPE_SECRET_KEY')
+        if not stripe_key:
+            return jsonify({'status': 'no_key', 'message': 'Stripe key not configured'}), 200
+        _stripe.api_key = stripe_key
+        data = request.get_json(silent=True) or {}
+        name = (data.get('name') or '').strip()
+        description = (data.get('description') or '').strip()
+        amount_usd = float(data.get('amount', 0))
+        if not name or amount_usd <= 0:
+            return jsonify({'status': 'error', 'message': 'name and amount are required'}), 400
+        product = _stripe.Product.create(name=name, description=description or None)
+        price = _stripe.Price.create(
+            product=product.id,
+            unit_amount=int(amount_usd * 100),
+            currency='usd',
+        )
+        return jsonify({
+            'status': 'ok',
+            'product': {
+                'id': product.id,
+                'name': product.name,
+                'description': product.description or '',
+                'prices': [{'id': price.id, 'amount': amount_usd, 'currency': 'usd'}],
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 200
+
+
 @app.route('/api/store/products/<product_id>/update', methods=['POST'])
 def store_product_update(product_id):
     """Update Stripe product name / description."""

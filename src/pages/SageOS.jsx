@@ -1132,10 +1132,10 @@ const SageOS = () => {
                                 <button
                                     key={p.id}
                                     onClick={() => goToPhase(p.id)}
-                                    disabled={currentPhase < p.id}
+                                    disabled={p.id === 4 ? (!generateData && currentPhase < 4) : currentPhase < p.id}
                                     className={`w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all text-sm ${currentPhase === p.id
                                         ? 'bg-purple-600 text-white'
-                                        : currentPhase > p.id
+                                        : (currentPhase > p.id || (p.id === 4 && generateData))
                                             ? 'text-emerald-400 hover:bg-[var(--c-raised)]'
                                             : 'text-[var(--c-subtle)] cursor-not-allowed'
                                         }`}
@@ -1366,9 +1366,9 @@ const SageOS = () => {
                                                 className="text-xs px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg border border-blue-500 transition-all flex items-center gap-1">
                                                 {d1Status === 'running' ? <><div className="animate-spin w-3 h-3 rounded-full border-2 border-white/30 border-t-white mr-1"></div> Processing...</> : d1Status === 'complete' ? <><FiCheck /> Done</> : d1Status === 'error' ? <><FiXCircle /> Error</> : <>🚀 Run Research (D1)</>}
                                             </button>
-                                            <button type="button" onClick={() => setInputValue('Research a topic for me: ')}
+                                            <button type="button" onClick={() => setInputValue(v => v ? v : 'Research a topic for me: ')}
                                                 className="text-xs px-3 py-2 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)] rounded-lg border border-[var(--c-border)] transition-all">🔍 Find ideas</button>
-                                            <button type="button" onClick={() => setInputValue('Generate content about: ')}
+                                            <button type="button" onClick={() => setInputValue(v => v ? v : 'Generate content about: ')}
                                                 className="text-xs px-3 py-2 bg-[var(--c-raised)] hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)] rounded-lg border border-[var(--c-border)] transition-all">⚡ Generate content</button>
                                             <button type="button" onClick={() => goToPhase(2, monetizeTopic || extractTopic(messages))}
                                                 className="text-xs px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 hover:text-[var(--c-text)] rounded-lg border border-purple-500/30 transition-all">⚡ Skip to Create</button>

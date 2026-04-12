@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiArrowLeft, FiEdit2, FiCheck, FiX, FiArchive, FiRefreshCw, FiDollarSign, FiShoppingBag, FiTrendingUp } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit2, FiCheck, FiX, FiArchive, FiRefreshCw, FiDollarSign, FiShoppingBag, FiTrendingUp, FiPlus } from 'react-icons/fi';
 import toast from '../utils/toast';
 import { BACKEND_URL } from '../config/backendUrl';
 
@@ -124,6 +124,9 @@ export default function StoreManager() {
     const [whop, setWhop]         = useState({});
     const [loading, setLoading]   = useState(true);
     const [tab, setTab]           = useState('overview');
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [newProduct, setNewProduct]   = useState({ name: '', description: '', amount: '' });
+    const [adding, setAdding]           = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -147,6 +150,34 @@ export default function StoreManager() {
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    async function handleAddProduct(e) {
+        e.preventDefault();
+        const name = newProduct.name.trim();
+        const amount = parseFloat(newProduct.amount);
+        if (!name || !amount || amount <= 0) return;
+        setAdding(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/store/products/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, description: newProduct.description, amount }),
+            });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                setProducts(prev => [data.product, ...prev]);
+                setNewProduct({ name: '', description: '', amount: '' });
+                setShowAddForm(false);
+                toast.success('Product created on Stripe');
+            } else {
+                toast.error(data.message || 'Failed to create product');
+            }
+        } catch (e) {
+            toast.error(`Error: ${e.message}`);
+        } finally {
+            setAdding(false);
+        }
+    }
 
     async function handleArchive(id, name) {
         if (!confirm(`Archive "${name}"? It will be hidden from Stripe.`)) return;
@@ -249,10 +280,56 @@ export default function StoreManager() {
                         {/* Products */}
                         {tab === 'products' && (
                             <div className="space-y-3">
+                                {/* Add product button / form */}
+                                {!showAddForm ? (
+                                    <button
+                                        onClick={() => setShowAddForm(true)}
+                                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-white/20 text-slate-400 hover:border-blue-500/50 hover:text-blue-400 transition-all text-sm"
+                                    >
+                                        <FiPlus size={14} /> Add Product to Stripe
+                                    </button>
+                                ) : (
+                                    <form onSubmit={handleAddProduct} className="p-4 rounded-xl bg-white/[0.03] border border-blue-500/30 space-y-3">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-sm font-semibold text-white">New Stripe Product</span>
+                                            <button type="button" onClick={() => setShowAddForm(false)} className="text-slate-500 hover:text-slate-300"><FiX size={14} /></button>
+                                        </div>
+                                        <input
+                                            required
+                                            placeholder="Product name *"
+                                            value={newProduct.name}
+                                            onChange={e => setNewProduct(p => ({ ...p, name: e.target.value }))}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                                        />
+                                        <input
+                                            placeholder="Description (optional)"
+                                            value={newProduct.description}
+                                            onChange={e => setNewProduct(p => ({ ...p, description: e.target.value }))}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                                        />
+                                        <input
+                                            required
+                                            type="number"
+                                            min="0.50"
+                                            step="0.01"
+                                            placeholder="Price in USD (e.g. 29.99) *"
+                                            value={newProduct.amount}
+                                            onChange={e => setNewProduct(p => ({ ...p, amount: e.target.value }))}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={adding}
+                                            className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+                                        >
+                                            {adding ? 'Creating...' : 'Create Product'}
+                                        </button>
+                                    </form>
+                                )}
                                 {products.map(p => (
                                     <ProductRow key={p.id} product={p} onArchive={handleArchive} />
                                 ))}
-                                {products.length === 0 && <p className="text-slate-600 text-sm py-8 text-center">No active Stripe products</p>}
+                                {products.length === 0 && !showAddForm && <p className="text-slate-600 text-sm py-4 text-center">No active Stripe products</p>}
                             </div>
                         )}
 
