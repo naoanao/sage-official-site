@@ -4,12 +4,12 @@
 
 export const STRIPE_LINKS = {
     // Subscription Products — Stripe
-    bluesky:   'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03', // Pro $20/mo
-    instagram: 'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03', // Pro $20/mo
+    bluesky:   'https://buy.stripe.com/dRmcN6eYM4V7fO785893y09', // Pro $20/mo
+    instagram: 'https://buy.stripe.com/dRmcN6eYM4V7fO785893y09', // Pro $20/mo
     bundle:    'https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04', // Enterprise $99/mo
 
     // ブログCTA → Proプランへ誘導
-    fortress:  'https://buy.stripe.com/fZueVe9EsevHdFZ3OS93y03', // Pro $20/mo
+    fortress:  'https://buy.stripe.com/dRmcN6eYM4V7fO785893y09', // Pro $20/mo
     developer: 'https://buy.stripe.com/8x25kE3g42MZ45p1GK93y04', // Enterprise $99/mo
 };
 

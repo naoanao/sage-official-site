@@ -18,6 +18,17 @@ const renderMd = (text) => {
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 130000 });
 const apiRewrite = axios.create({ baseURL: BACKEND_URL, timeout: 90000 });
 
+// Returns a user-friendly error message; hides internal Flask/infra details.
+const friendlyApiError = (e) => {
+    const status = e?.response?.status;
+    if (!e?.response || status === 403 || status === 502 || status === 503) {
+        return 'This feature requires an active Pro backend. Upgrade to Pro to unlock live AI generation.';
+    }
+    if (status === 429) return 'Too many requests — please wait a moment and try again.';
+    if (status === 404) return 'Feature not available in this version.';
+    return e?.response?.data?.error || e?.message || 'Something went wrong. Please try again.';
+};
+
 // ── Demo output shown to public visitors (no real API call) ─────────────────
 const DEMO_RESULT = {
     qa_status: 'PASS',
@@ -335,7 +346,7 @@ const SageOS = () => {
                     saveAutomationState(reverted);
                     return reverted;
                 });
-                toast.error(`Toggle failed: ${err.message}`);
+                toast.error(friendlyApiError(err));
             }
             // Offline: keep optimistic state (CF Worker handles actual scheduling)
         } finally {
@@ -465,13 +476,10 @@ const SageOS = () => {
             setMonetizeStatus('idle');
         } catch (e) {
             setMonetizeStatus('idle');
-            const isOffline = !e.response;
             const isTimeout = e.code === 'ECONNABORTED' || e.message?.includes('timeout');
-            const errMsg = isOffline
-                ? 'Research requires the local backend. Start run_sage.ps1 and try again.'
-                : isTimeout
-                    ? 'Research may still be running in the background. Wait 1–2 minutes then click Generate.'
-                    : `Research error: ${e?.response?.data?.error || e.message}`;
+            const errMsg = isTimeout
+                ? 'Research may still be running in the background. Wait 1–2 minutes then click Generate.'
+                : friendlyApiError(e);
             setMessages(prev => [...prev, { id: Date.now(), role: 'sage', content: errMsg }]);
         }
     };
@@ -927,7 +935,7 @@ const SageOS = () => {
                 setNicheValidation({ status: 'rate_limited', data: e.response?.data });
             } else {
                 setNicheValidation({ status: 'error', data: null });
-                toast.error('Market check failed — Flask may not be running');
+                toast.error(friendlyApiError(e));
             }
         }
     };
@@ -992,11 +1000,10 @@ const SageOS = () => {
                 return next;
             });
         } catch (e) {
-            const errMsg = e?.response?.data?.error || e?.message || 'Backend unreachable';
             setMessages(prev => [...prev, {
                 id: Date.now() + 1,
                 role: 'sage',
-                content: `${errMsg} — If running locally, make sure Flask is running (run_sage.ps1).`
+                content: friendlyApiError(e),
             }]);
         }
     };
@@ -1021,7 +1028,7 @@ const SageOS = () => {
                     return { ...prev, [tierKey]: { ...(prev[tierKey] || {}), tests } };
                 });
             } else {
-                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: res.data.report }));
+                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: res.data.report?.[`tier${tier}`] ?? null }));
             }
         } catch (e) {
             console.error('[SelfTest]', e);
@@ -2407,7 +2414,7 @@ const SageOS = () => {
                                             <div className="flex items-center justify-between px-4 py-2.5 bg-black/30 border-b border-white/8">
                                                 <span className="text-xs font-bold text-slate-300">{ST_TIER_LABEL[tier]}</span>
                                                 <div className="flex items-center gap-2">
-                                                    {tierData && (
+                                                    {tierData?.summary && (
                                                         <span className="text-xs text-slate-600 font-mono">
                                                             P:{tierData.summary.pass} F:{tierData.summary.fail} S:{tierData.summary.skip}
                                                         </span>
@@ -2507,8 +2514,8 @@ const IdentityPanel = () => {
     };
 
     const fields = [
-        { key: 'role', label: 'Role / Persona', placeholder: 'e.g. オカルト研究家、猫好き投資家' },
-        { key: 'niche', label: 'Niche / Topic', placeholder: 'e.g. 霊的覚醒・神秘体験、猫と資産形成' },
+        { key: 'role', label: 'Role / Persona', placeholder: 'e.g. Marketing Coach & Entrepreneur' },
+        { key: 'niche', label: 'Niche / Topic', placeholder: 'e.g. Productivity & Time Management' },
         { key: 'tone', label: 'Tone / Voice', placeholder: 'e.g. mysterious and profound, friendly and warm' },
         { key: 'visual_style', label: 'Visual Style', placeholder: 'e.g. dark mystical aesthetic, cute pastel colors' },
     ];

@@ -15,7 +15,7 @@
 export const LINKS = {
   /** Stripe subscription purchase links */
   stripe: {
-    pro:        import.meta.env.VITE_STRIPE_PRO_URL || 'https://buy.stripe.com/7sY4gA17Wcnz6dxclo93y05',
+    pro:        import.meta.env.VITE_STRIPE_PRO_URL || 'https://buy.stripe.com/dRmcN6eYM4V7fO785893y09',
     enterprise: import.meta.env.VITE_STRIPE_ENT_URL || 'https://buy.stripe.com/eVq4gA7wkafr9pJ85893y06',
   },
 
