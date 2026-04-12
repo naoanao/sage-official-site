@@ -168,9 +168,9 @@ const Contact = () => {
                             <Link to="/sales" className="font-bold hover:underline" style={{ color: 'var(--c-blue)' }}>
                                 View plans
                             </Link>
-                            {' '}· Existing subscribers can manage via{' '}
-                            <a href="/api/customer-portal" className="font-bold hover:underline" style={{ color: 'var(--c-blue)' }}>
-                                Stripe Portal
+                            {' '}· To cancel or change your subscription, email{' '}
+                            <a href={`mailto:${LINKS.support.email}?subject=Subscription%20Management`} className="font-bold hover:underline" style={{ color: 'var(--c-blue)' }}>
+                                {LINKS.support.email}
                             </a>
                         </p>
                     </Motion.div>

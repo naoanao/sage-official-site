@@ -199,6 +199,12 @@ const _ls = {
     set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
     del: (k) => { try { localStorage.removeItem(k); } catch {} },
 };
+// sessionStorage — persists within tab, clears on new tab/session
+const _ss = {
+    get: (k, d) => { try { const v = sessionStorage.getItem(k); return v != null ? JSON.parse(v) : d; } catch { return d; } },
+    set: (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del: (k) => { try { sessionStorage.removeItem(k); } catch {} },
+};
 
 const SageOS = () => {
     const location = useLocation();
@@ -231,6 +237,7 @@ const SageOS = () => {
     const nicheResultRef = useRef(null);
     const mainScrollRef = useRef(null);
     const chatBottomRef = useRef(null);
+    const rewriteAbortRef = useRef(null); // AbortController for cancelling in-flight rewrite requests
 
     const CREATE_PLACEHOLDERS = [
         "e.g. Beginner's guide to passive income with AI",
@@ -239,11 +246,11 @@ const SageOS = () => {
     ];
     const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
-    // Review & Edit state
-    const [generateData, setGenerateData] = useState(null);
-    const [editedSections, setEditedSections] = useState([]);
-    const [editedSalesPage, setEditedSalesPage] = useState('');
-    const [editedCaptions, setEditedCaptions] = useState([]);
+    // Review & Edit state — restored from sessionStorage so navigation to /manager doesn't wipe progress
+    const [generateData, setGenerateData] = useState(() => _ss.get('sage_generateData', null));
+    const [editedSections, setEditedSections] = useState(() => _ss.get('sage_editedSections', []));
+    const [editedSalesPage, setEditedSalesPage] = useState(() => _ss.get('sage_editedSalesPage', ''));
+    const [editedCaptions, setEditedCaptions] = useState(() => _ss.get('sage_editedCaptions', []));
     const [globalInstruction, setGlobalInstruction] = useState('');
     const [sectionInstructions, setSectionInstructions] = useState({});
     const [rewritingIdx, setRewritingIdx] = useState(null);
@@ -423,6 +430,11 @@ const SageOS = () => {
     useEffect(() => { _ls.set('sage_phase', currentPhase); }, [currentPhase]);
     useEffect(() => { _ls.set('sage_topic', monetizeTopic); }, [monetizeTopic]);
     useEffect(() => { _ls.set('sage_activeTopic', activeTopic); }, [activeTopic]);
+    // Persist generated content to sessionStorage so sidebar navigation (e.g. /manager) doesn't wipe progress
+    useEffect(() => { _ss.set('sage_generateData', generateData); }, [generateData]);
+    useEffect(() => { _ss.set('sage_editedSections', editedSections); }, [editedSections]);
+    useEffect(() => { _ss.set('sage_editedSalesPage', editedSalesPage); }, [editedSalesPage]);
+    useEffect(() => { _ss.set('sage_editedCaptions', editedCaptions); }, [editedCaptions]);
 
     const handleD1Run = async () => {
         setD1Status('running');
@@ -682,6 +694,10 @@ const SageOS = () => {
         const instruction = overrideInstruction || globalInstruction;
         if (!tonePreset && !instruction.trim()) return;
         if (overrideInstruction && !tonePreset) setGlobalInstruction(overrideInstruction);
+        // Cancel any previous rewrite
+        if (rewriteAbortRef.current) rewriteAbortRef.current.abort();
+        const controller = new AbortController();
+        rewriteAbortRef.current = controller;
         setGlobalRewriting(true);
         setRewriteError(null);
         setRewriteFailedIndices([]);
@@ -696,6 +712,7 @@ const SageOS = () => {
             // Sequential rewrite to avoid Groq rate limits (parallel causes 429 → timeout)
             const sectionResults = [];
             for (let i = 0; i < editedSections.length; i++) {
+                if (controller.signal.aborted) break;
                 setRewriteProgress({ current: i + 1, total: totalItems });
                 try {
                     const r = await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSections[i].content));
@@ -869,6 +886,7 @@ const SageOS = () => {
         } catch (e) { success = false; }
         setCopyStatus(success ? 'success' : 'error');
         setCopyToast(success ? 'success' : 'error');
+        toast[success ? 'success' : 'error'](success ? 'Blog post copied to clipboard!' : 'Copy failed — please try again');
         setPublishChecklist(p => ({ ...p, copied: success }));
         setTimeout(() => {
             setCopyStatus('idle');
@@ -888,6 +906,10 @@ const SageOS = () => {
         _ls.del('sage_phase');
         _ls.del('sage_topic');
         _ls.del('sage_activeTopic');
+        _ss.del('sage_generateData');
+        _ss.del('sage_editedSections');
+        _ss.del('sage_editedSalesPage');
+        _ss.del('sage_editedCaptions');
     };
 
     const analyzeContentQuality = (content) => {
@@ -1181,13 +1203,15 @@ const SageOS = () => {
                         <FiFolder /> <span>Content</span>
                     </button>
 
-                    {/* Store Manager link */}
-                    <Link
-                        to="/manager"
+                    {/* Store Manager link — opens in new tab to preserve session state */}
+                    <a
+                        href="/manager"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
                     >
                         <FiDollarSign /> <span>Store Manager</span>
-                    </Link>
+                    </a>
 
                     {/* Whop member link */}
                     <a
@@ -1797,7 +1821,7 @@ const SageOS = () => {
                                                     )}
                                                 </div>
                                                 <button
-                                                    onClick={() => { setIsDemo(false); setMonetizeStatus('idle'); setGenerateData(null); goToPhase(2); }}
+                                                    onClick={() => { if (rewriteAbortRef.current) rewriteAbortRef.current.abort(); setGlobalRewriting(false); setRewritingPreset(null); setIsDemo(false); setMonetizeStatus('idle'); setGenerateData(null); goToPhase(2); }}
                                                     className="text-xs text-[var(--c-subtle)] hover:text-[var(--c-text)] px-3 py-1.5 rounded-lg hover:bg-[var(--c-raised)] transition-all"
                                                 >
                                                     ← Start Over
@@ -2209,10 +2233,12 @@ const SageOS = () => {
                                                                         <button
                                                                             onClick={async () => {
                                                                                 const caption = editedCaptions[0] || editedSections.map(s => s.title).join(' ');
+                                                                                let ok = false;
                                                                                 try {
-                                                                                    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(caption);
-                                                                                    else { const el = document.createElement('textarea'); el.value = caption; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); }
+                                                                                    if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(caption); ok = true; }
+                                                                                    else { const el = document.createElement('textarea'); el.value = caption; document.body.appendChild(el); el.select(); ok = document.execCommand('copy'); document.body.removeChild(el); }
                                                                                 } catch {}
+                                                                                import('../utils/toast').then(m => ok ? m.default.success('Caption copied!') : m.default.error('Copy failed — try again'));
                                                                             }}
                                                                             className="flex-1 py-1.5 px-3 bg-[var(--c-raised)]/60 hover:bg-[var(--c-raised)]/60 border border-[var(--c-border)] rounded-lg text-[11px] text-[var(--c-text)] transition-all flex items-center justify-center gap-1.5"
                                                                         >
