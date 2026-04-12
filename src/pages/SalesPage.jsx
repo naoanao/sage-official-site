@@ -23,9 +23,11 @@ const PLANS = [
         price: '$20',
         period: '/ month',
         badge: '🔥 Most Popular',
-        description: 'Full autonomous AI solopreneur stack.',
-        features: ['☁️ SNS auto-posting 24/7 (Bluesky + Instagram)', '☁️ Content queue auto-replenishment', '🖥️ Unlimited Sage Chat (local core)', '🖥️ Blog & course generation pipeline', '🖥️ Notion sync + Git daily log', 'All future updates'],
-        cta: 'Start Pro — $20/mo',
+        description: 'Everything in the demo — on your brand, forever.',
+        demoNote: 'What the demo just showed you:',
+        demoFeatures: ['Auto-post to Bluesky + Instagram (demo mode)', 'Sage Chat AI assistant (demo mode)', 'Content generation pipeline (demo mode)'],
+        features: ['☁️ SNS auto-posting 24/7 — YOUR brand, YOUR accounts', '☁️ Content queue auto-replenishment (Cloudflare Worker)', '🖥️ Unlimited Sage Chat — no rate limits, local LLM', '🖥️ Blog & course generation pipeline', '🖥️ Notion content pool sync + daily Git log', '🤖 EngagementBot — auto-replies to comments', '📊 MarketScan — daily trend + Reddit signals', 'All future updates'],
+        cta: 'Unlock Pro — $20/mo',
         link: STATIC_LINKS.proMonthly,
         style: 'border-blue-500/50 bg-blue-500/[0.05] shadow-[0_0_40px_rgba(59,130,246,0.15)]',
         ctaStyle: 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)]',
@@ -37,8 +39,10 @@ const PLANS = [
         price: '$99',
         period: '/ month',
         badge: null,
-        description: 'Full system + priority support + API access.',
-        features: ['Everything in Pro', 'Direct API access', 'Priority email support', 'White-label option', 'Custom identity setup', 'Onboarding call (1×30min)'],
+        description: 'Full system + white-label + direct support.',
+        demoNote: null,
+        demoFeatures: [],
+        features: ['Everything in Pro', 'Direct API access (build on top)', 'Priority email support (24h SLA)', 'White-label deployment rights', 'Custom identity + niche setup call', 'Onboarding call (1×30 min live)'],
         cta: 'Go Enterprise — $99/mo',
         link: STATIC_LINKS.enterprise,
         style: 'border-purple-500/30 bg-purple-500/[0.03]',
@@ -167,6 +171,17 @@ const SalesPage = () => {
                                     </div>
                                     <p className="text-xs text-slate-500 mt-1">{plan.description}</p>
                                 </div>
+                                {plan.demoNote && (
+                                    <div className="mb-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                                        <p className="text-xs font-mono text-slate-500 mb-2">{plan.demoNote}</p>
+                                        {plan.demoFeatures.map((f, i) => (
+                                            <div key={i} className="flex items-center gap-2 text-xs text-slate-500 line-through">
+                                                <span className="text-red-400/60">✗</span>{f}
+                                            </div>
+                                        ))}
+                                        <div className="mt-2 text-xs font-bold text-blue-400">→ Pro removes all limits</div>
+                                    </div>
+                                )}
                                 <ul className="space-y-2 mb-6 flex-1">
                                     {plan.features.map((f, i) => (
                                         <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
@@ -204,46 +219,78 @@ const SalesPage = () => {
 
             {/* ④ Final CTA ────────────────────────────────────────────────── */}
             <section id="buy" className="relative z-10 py-24 px-4 border-t border-white/5 scroll-mt-20">
-                <div className="max-w-2xl mx-auto text-center">
+                <div className="max-w-3xl mx-auto">
                     <Motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
+                        className="text-center mb-12"
                     >
-                        <div className="text-xs font-mono text-emerald-400 mb-4">GET STARTED TODAY</div>
+                        <div className="text-xs font-mono text-emerald-400 mb-4">YOU JUST SAW IT WORK</div>
                         <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-4">
-                            Your AI starts<br />
+                            One Idea →<br />
                             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                                working tonight.
+                                Full Revenue Pipeline.
                             </span>
                         </h2>
-                        <p className="text-slate-400 mb-10 text-sm">
-                            Setup takes about 90 seconds. After that, Sage AI posts to social media every single day — automatically.
+                        <p className="text-slate-400 mb-2 text-base max-w-xl mx-auto">
+                            You just ran a demo on our servers. Purchase gives you the complete system —
+                            running on <strong className="text-white">your brand</strong>, your accounts, your domain. In about 30 minutes.
                         </p>
+                    </Motion.div>
 
+                    {/* What happens after purchase */}
+                    <Motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12"
+                    >
+                        {[
+                            { step: '01', icon: '💳', title: 'Buy via Stripe', desc: 'Instant access. You get the repo link + setup guide immediately after payment.' },
+                            { step: '02', icon: '⚡', title: 'Run setup.py', desc: 'One script walks you through every API key — Notion, Bluesky, Gemini. Takes ~15 min.' },
+                            { step: '03', icon: '🚀', title: 'Deploy 2 Workers', desc: 'wrangler deploy × 2. Your AI starts posting every morning at 9 AM automatically.' },
+                        ].map(({ step, icon, title, desc }) => (
+                            <div key={step} className="relative p-5 rounded-xl border border-white/10 bg-white/[0.03] text-left">
+                                <div className="text-xs font-mono text-slate-600 mb-2">{step}</div>
+                                <div className="text-2xl mb-2">{icon}</div>
+                                <div className="font-bold text-sm text-white mb-1">{title}</div>
+                                <div className="text-xs text-slate-500 leading-relaxed">{desc}</div>
+                            </div>
+                        ))}
+                    </Motion.div>
+
+                    {/* CTA buttons */}
+                    <Motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center"
+                    >
                         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
                             <a
                                 href={STATIC_LINKS.proMonthly}
                                 target="_blank"
                                 rel="noreferrer"
+                                onClick={() => trackEvent('payment_click', { plan: 'pro', source: 'buy_section' })}
                                 className="flex items-center justify-center gap-3 px-10 py-5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl text-lg font-bold shadow-[0_0_60px_rgba(37,99,235,0.4)] transition-all"
                             >
-                                <FiZap size={20} /> Start Pro — $20/mo
+                                <FiZap size={20} /> Unlock Pro — $20/mo
                             </a>
                             <a
                                 href={STATIC_LINKS.enterprise}
                                 target="_blank"
                                 rel="noreferrer"
+                                onClick={() => trackEvent('payment_click', { plan: 'enterprise', source: 'buy_section' })}
                                 className="flex items-center justify-center gap-3 px-8 py-5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-lg font-bold border border-white/10 transition-all"
                             >
                                 <FiShield size={18} /> Enterprise — $99/mo
                             </a>
                         </div>
-
                         <div className="flex flex-wrap justify-center gap-4 text-xs text-slate-500">
                             <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Cancel anytime</span>
                             <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> 30-day money-back guarantee</span>
-                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Instant access</span>
+                            <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Runs on Cloudflare free tier</span>
                             <span className="flex items-center gap-1"><FiCheck size={11} className="text-emerald-400" /> Secure checkout via Stripe</span>
                         </div>
                     </Motion.div>
