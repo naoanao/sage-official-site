@@ -715,14 +715,15 @@ const SageOS = () => {
                 if (controller.signal.aborted) break;
                 setRewriteProgress({ current: i + 1, total: totalItems });
                 try {
-                    const r = await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSections[i].content));
+                    const r = await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSections[i].content), { signal: controller.signal });
                     sectionResults.push({ status: 'fulfilled', value: r });
                 } catch (err) {
+                    if (err?.code === 'ERR_CANCELED' || controller.signal.aborted) break;
                     sectionResults.push({ status: 'rejected', reason: err });
                 }
             }
-            const salesPageRes = editedSalesPage
-                ? await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSalesPage)).catch(() => null)
+            const salesPageRes = editedSalesPage && !controller.signal.aborted
+                ? await apiRewrite.post('/api/productize/rewrite', rewritePayload(editedSalesPage), { signal: controller.signal }).catch(() => null)
                 : null;
 
             setEditedSections(prev => prev.map((s, i) => {
@@ -2238,7 +2239,7 @@ const SageOS = () => {
                                                                                     if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(caption); ok = true; }
                                                                                     else { const el = document.createElement('textarea'); el.value = caption; document.body.appendChild(el); el.select(); ok = document.execCommand('copy'); document.body.removeChild(el); }
                                                                                 } catch {}
-                                                                                import('../utils/toast').then(m => ok ? m.default.success('Caption copied!') : m.default.error('Copy failed — try again'));
+                                                                                ok ? toast.success('Caption copied!') : toast.error('Copy failed — try again');
                                                                             }}
                                                                             className="flex-1 py-1.5 px-3 bg-[var(--c-raised)]/60 hover:bg-[var(--c-raised)]/60 border border-[var(--c-border)] rounded-lg text-[11px] text-[var(--c-text)] transition-all flex items-center justify-center gap-1.5"
                                                                         >
