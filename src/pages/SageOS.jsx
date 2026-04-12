@@ -1028,7 +1028,9 @@ const SageOS = () => {
                     return { ...prev, [tierKey]: { ...(prev[tierKey] || {}), tests } };
                 });
             } else {
-                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: res.data.report?.[`tier${tier}`] ?? null }));
+                // Flask returns flat tier object; CF Pages wraps under tier1/tier2 key
+                const tierReport = res.data.report?.[`tier${tier}`] ?? res.data.report ?? null;
+                setSelfTestResults(prev => ({ ...prev, [`tier${tier}`]: tierReport }));
             }
         } catch (e) {
             console.error('[SelfTest]', e);
