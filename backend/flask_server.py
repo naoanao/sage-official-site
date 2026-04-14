@@ -2743,6 +2743,67 @@ def api_browser_search():
         logger.error(f"Search error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
+# --- COMPUTER VISION / PC CONTROL (Sage's Eyes & Hands) ---
+
+@app.route('/api/computer/screenshot', methods=['POST'])
+def api_computer_screenshot():
+    """スクリーンショットを撮影してパスを返す"""
+    try:
+        from backend.integrations.computer_vision_agent import ComputerVisionAgent
+        data = request.get_json(silent=True) or {}
+        filename = data.get('filename', f"sage_screen_{int(__import__('time').time())}.png")
+        agent = ComputerVisionAgent()
+        path = agent.capture_screen(filename)
+        return jsonify({"status": "success", "screenshot_path": str(path)})
+    except Exception as e:
+        logger.error(f"Computer screenshot error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/computer/find-and-click', methods=['POST'])
+def api_computer_find_and_click():
+    """画面上の要素を説明文で探してクリック（分身の目と手）"""
+    try:
+        from backend.integrations.computer_vision_agent import ComputerVisionAgent
+        data = request.get_json(silent=True) or {}
+        description = data.get('description', '')
+        if not description:
+            return jsonify({"status": "error", "message": "description required"}), 400
+        agent = ComputerVisionAgent()
+        result = agent.find_and_click(description)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Computer find-and-click error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/computer/click', methods=['POST'])
+def api_computer_click():
+    """指定座標をクリック"""
+    try:
+        from backend.integrations.computer_vision_agent import ComputerVisionAgent
+        data = request.get_json(silent=True) or {}
+        x, y = data.get('x', 0), data.get('y', 0)
+        agent = ComputerVisionAgent()
+        success = agent.click_element(x, y)
+        return jsonify({"status": "success" if success else "error", "x": x, "y": y})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/computer/status', methods=['GET'])
+def api_computer_status():
+    """ComputerVisionAgentの利用可能状態を確認"""
+    try:
+        import pyautogui
+        pyautogui_ok = True
+    except ImportError:
+        pyautogui_ok = False
+    gemini_ok = bool(os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
+    return jsonify({
+        "pyautogui": pyautogui_ok,
+        "gemini_key": gemini_ok,
+        "available": pyautogui_ok and gemini_ok,
+        "note": "PC local execution required — does not run in CF Workers"
+    })
+
 @app.route('/api/browser/screenshot', methods=['POST'])
 def api_browser_screenshot():
     try:

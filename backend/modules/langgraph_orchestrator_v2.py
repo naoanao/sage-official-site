@@ -79,6 +79,16 @@ try:
 except ImportError:
     DeployAgent = None
 
+try:
+    from backend.integrations.computer_vision_agent import ComputerVisionAgent
+except ImportError:
+    ComputerVisionAgent = None
+
+try:
+    from backend.modules.browser_automation_agent import BrowserAutomationAgent
+except ImportError:
+    BrowserAutomationAgent = None
+
 # Logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("LangGraphOrchestrator")
@@ -202,6 +212,24 @@ class LangGraphOrchestrator:
         self.sheets_agent = SheetsAgent() if SheetsAgent else None
         self.gmail_agent = GmailAgent() if GmailAgent else None
         self.robot_agent = RobotAgent(self.jira_agent) if RobotAgent else None
+
+        # 👁️ Computer Vision Agent (Sage's Eyes + Hands — local PC control)
+        self.cv_agent = None
+        if ComputerVisionAgent:
+            try:
+                self.cv_agent = ComputerVisionAgent()
+                logger.info("✅ ComputerVisionAgent initialized (screen control enabled)")
+            except Exception as cv_err:
+                logger.warning(f"ComputerVisionAgent not available: {cv_err}")
+
+        # 🌐 Browser Automation Agent (Playwright)
+        self.browser_automation = None
+        if BrowserAutomationAgent:
+            try:
+                self.browser_automation = BrowserAutomationAgent(headless=True)
+                logger.info("✅ BrowserAutomationAgent initialized (Playwright)")
+            except Exception as ba_err:
+                logger.warning(f"BrowserAutomationAgent not available: {ba_err}")
 
         # 🖐 File Operations Agent (Sage's Hands)
         if FileOperationsAgent:
@@ -468,6 +496,69 @@ class LangGraphOrchestrator:
                         res = self.file_ops.execute_command(params.get("command", ""))
                     else:
                         res = "FileOperationsAgent (execute_command) not available"
+
+                # 👁️ COMPUTER VISION / PC CONTROL (Sage's Eyes & Hands)
+                elif tool == "computer_screenshot":
+                    if self.cv_agent:
+                        try:
+                            path = self.cv_agent.capture_screen(
+                                params.get("filename", "sage_screen.png")
+                            )
+                            res = {"status": "success", "screenshot_path": str(path)}
+                        except Exception as e:
+                            res = {"status": "error", "message": str(e)}
+                    else:
+                        res = "ComputerVisionAgent not available (pyautogui required)"
+
+                elif tool == "computer_find_and_click":
+                    # 画面上の要素を説明で見つけてクリック
+                    if self.cv_agent:
+                        try:
+                            desc = params.get("description", "")
+                            result = self.cv_agent.find_and_click(desc)
+                            res = result
+                        except Exception as e:
+                            res = {"status": "error", "message": str(e)}
+                    else:
+                        res = "ComputerVisionAgent not available"
+
+                elif tool == "computer_click":
+                    # 座標を直接指定してクリック
+                    if self.cv_agent:
+                        try:
+                            x, y = params.get("x", 0), params.get("y", 0)
+                            success = self.cv_agent.click_element(x, y)
+                            res = {"status": "success" if success else "error", "x": x, "y": y}
+                        except Exception as e:
+                            res = {"status": "error", "message": str(e)}
+                    else:
+                        res = "ComputerVisionAgent not available"
+
+                elif tool == "browser_automate":
+                    # Playwrightでブラウザ操作
+                    if self.browser_automation:
+                        try:
+                            action = params.get("action", "navigate")
+                            if action == "navigate":
+                                self.browser_automation.start()
+                                res = self.browser_automation.navigate(params.get("url", ""))
+                            elif action == "screenshot":
+                                self.browser_automation.start()
+                                res = self.browser_automation.take_screenshot(
+                                    params.get("url", ""), params.get("output_path", "browser_shot.png")
+                                )
+                            elif action == "fill":
+                                res = self.browser_automation.fill_form(
+                                    params.get("selector", ""), params.get("value", "")
+                                )
+                            elif action == "click":
+                                res = self.browser_automation.click(params.get("selector", ""))
+                            else:
+                                res = f"Unknown browser action: {action}"
+                        except Exception as e:
+                            res = {"status": "error", "message": str(e)}
+                    else:
+                        res = "BrowserAutomationAgent not available (playwright required)"
 
                 else:
                     res = f"Tool '{tool}' not implemented in v2 engine"
