@@ -45,9 +45,11 @@ class BlogScheduler:
     def __init__(self):
         from groq import Groq
         from backend.modules.notion_content_pool import NotionContentPool
+        from backend.integrations.devto_integration import DevToIntegration
 
         self.groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.notion = NotionContentPool()
+        self.devto = DevToIntegration()
         self.dry_run = os.getenv("SAGE_DRY_RUN", "False").lower() == "true"
         self.identity = _load_identity()
         logger.info(f"[BLOG] BlogScheduler initialized. identity={self.identity.get('niche')} dry_run={self.dry_run}")
@@ -268,6 +270,45 @@ One-time purchase. Your code, your keys, your data."""
         _jobs_append(job)
         logger.info(f"[BLOG] Queued SNS post for blog: {url}")
 
+    # ── Dev.to publisher ─────────────────────────────────────────────────────
+
+    def _post_devto(self, article: dict) -> None:
+        """Post the article to Dev.to. Strips frontmatter before sending."""
+        body = article["body"]
+        # Strip YAML frontmatter (--- ... ---) before posting
+        if body.startswith("---"):
+            parts = body.split("---", 2)
+            content = parts[2].strip() if len(parts) == 3 else body
+        else:
+            content = body
+
+        # Build tags from identity niche keywords (Dev.to max 4 tags, lowercase, no spaces)
+        niche = self.identity.get("niche", "")
+        tag_map = {
+            "developer": ["ai", "python", "automation", "productivity"],
+            "python": ["python", "ai", "automation", "programming"],
+            "solopreneur": ["ai", "automation", "productivity", "business"],
+            "automation": ["automation", "ai", "python", "productivity"],
+            "finance": ["ai", "finance", "automation", "productivity"],
+            "fitness": ["ai", "fitness", "automation", "health"],
+        }
+        tags = ["ai", "automation", "productivity", "python"]  # default
+        for kw, t in tag_map.items():
+            if kw in niche.lower():
+                tags = t
+                break
+
+        result = self.devto.post_article(
+            title=article["title"],
+            content_markdown=content,
+            tags=tags,
+            published=True,
+        )
+        if result.get("status") == "success":
+            logger.info(f"[BLOG] ✅ Dev.to published: {result.get('url')}")
+        else:
+            logger.warning(f"[BLOG] Dev.to post skipped/failed: {result.get('message', result)}")
+
     # ── Main ──────────────────────────────────────────────────────────────────
 
     def _auto_topic(self) -> str | None:
@@ -338,6 +379,7 @@ Respond with ONLY the topic title, nothing else. Make it specific and compelling
             if page_id:
                 self._update_notion_status(page_id, "完了")
             self._queue_sns_post(article["title"], article["slug"])
+            self._post_devto(article)
             logger.info(f"[BLOG] ✅ Article published: {article['slug']}")
         else:
             logger.error("[BLOG] git push failed. Notion status not updated.")
