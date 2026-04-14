@@ -957,6 +957,48 @@ def notion_write():
         logger.error(f"Notion write error: {e}")
         return jsonify({"error": str(e)}), 500
 
+# --- DEV.TO ---
+
+@app.route('/api/devto/post', methods=['POST'])
+def devto_post():
+    """Post an article to DEV.to from the PUBLISH phase UI."""
+    api_key = os.getenv('DEVTO_API_KEY')
+    if not api_key:
+        return jsonify({'status': 'error', 'message': 'DEVTO_API_KEY not set'}), 403
+
+    data = request.get_json(silent=True) or {}
+    title = data.get('title', 'Sage AI Post')
+    body = data.get('body', '')
+    tags = data.get('tags', ['ai', 'automation'])
+    published = data.get('published', True)
+    canonical_url = data.get('canonical_url')
+
+    if not body:
+        return jsonify({'status': 'error', 'message': 'No body provided'}), 400
+
+    try:
+        from backend.integrations.devto_integration import DevToIntegration
+        agent = DevToIntegration()
+        result = agent.post_article(
+            title=title,
+            content_markdown=body,
+            tags=tags[:4],  # Dev.to max 4 tags
+            published=published,
+            canonical_url=canonical_url,
+        )
+        if result.get('status') == 'success':
+            return jsonify({'status': 'success', 'url': result.get('url'), 'id': result.get('id')})
+        else:
+            return jsonify({'status': 'error', 'message': result.get('message', 'Post failed')}), 500
+    except Exception as e:
+        logger.error(f'[DEV.TO] post error: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/devto/status', methods=['GET'])
+def devto_status():
+    api_key = os.getenv('DEVTO_API_KEY')
+    return jsonify({'configured': bool(api_key), 'status': 'ready' if api_key else 'missing_key'})
+
 # --- SPA ROUTING (Moved to bottom for priority) ---
 
 @app.route('/api/instagram/status', methods=['GET'])

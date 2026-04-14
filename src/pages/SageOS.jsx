@@ -272,7 +272,7 @@ const SageOS = () => {
     // Content tabs & publish
     const [contentTab, setContentTab] = useState('blog');
     const [imageRegenStatus, setImageRegenStatus] = useState('idle');
-    const [publishChecklist, setPublishChecklist] = useState({ bluesky: 'idle', instagram: 'idle', copied: false });
+    const [publishChecklist, setPublishChecklist] = useState({ bluesky: 'idle', instagram: 'idle', devto: 'idle', copied: false });
 
     // Automations
     const [automationLoading, setAutomationLoading] = useState(new Set());
@@ -864,6 +864,24 @@ const SageOS = () => {
         } catch (e) {
             console.error('[Instagram]', e?.response?.data || e.message);
             setPublishChecklist(p => ({ ...p, instagram: 'error', instagram_error: e?.response?.data?.message || e.message }));
+        }
+    };
+
+    const handlePublishDevTo = async () => {
+        setPublishChecklist(p => ({ ...p, devto: 'running' }));
+        try {
+            const title = generateData?.title || monetizeTopic || 'Sage AI Post';
+            const body = editedSections.map(s => `## ${s.title}\n\n${s.content}`).join('\n\n');
+            const tags = ['ai', 'automation', 'python', 'productivity'];
+            const res = await api.post('/api/devto/post', { title, body, tags, published: true });
+            if (res.data?.status === 'success') {
+                setPublishChecklist(p => ({ ...p, devto: 'done', devto_url: res.data?.url }));
+            } else {
+                throw new Error(res.data?.message || 'Post failed');
+            }
+        } catch (e) {
+            const errMsg = e?.response?.data?.detail || e?.response?.data?.error || e?.message || 'Post failed';
+            setPublishChecklist(p => ({ ...p, devto: 'error', devto_error: errMsg }));
         }
     };
 
@@ -2211,6 +2229,11 @@ const SageOS = () => {
                                                             key: 'instagram', icon: '📸', label: 'Post to Instagram', action: handlePublishInstagram,
                                                             fallbackUrl: 'https://www.instagram.com', fallbackLabel: 'Open Instagram',
                                                             errorHint: 'Instagram requires a public image URL. Copy your caption and post manually.',
+                                                        },
+                                                        {
+                                                            key: 'devto', icon: <span style={{fontWeight:'bold',fontSize:'0.85em'}}>DEV</span>, label: 'Post to DEV.to', action: handlePublishDevTo,
+                                                            fallbackUrl: 'https://dev.to/new', fallbackLabel: 'Open DEV.to',
+                                                            errorHint: 'Check your DEVTO_API_KEY in .env and restart Flask.',
                                                         },
                                                     ].map(({ key, icon, label, action, fallbackUrl, fallbackLabel, errorHint }) => (
                                                         <div key={key} className="space-y-1">

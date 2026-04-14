@@ -298,11 +298,15 @@ One-time purchase. Your code, your keys, your data."""
                 tags = t
                 break
 
+        # canonical_urlでSageサイトをオリジナルとして指定（SEO保護）
+        canonical = f"{SAGE_BASE_URL}/blog/{article.get('slug', '')}"
+
         result = self.devto.post_article(
             title=article["title"],
             content_markdown=content,
             tags=tags,
             published=True,
+            canonical_url=canonical,
         )
         if result.get("status") == "success":
             logger.info(f"[BLOG] ✅ Dev.to published: {result.get('url')}")

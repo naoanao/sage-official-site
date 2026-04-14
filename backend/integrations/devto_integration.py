@@ -25,7 +25,7 @@ class DevToIntegration:
         else:
             logger.info("✅ DEV.to API Initialized")
 
-    def post_article(self, title, content_markdown, tags=[], cover_image=None, published=False):
+    def post_article(self, title, content_markdown, tags=[], cover_image=None, published=False, canonical_url=None):
         """
         Post an article to DEV.to.
         """
@@ -45,9 +45,13 @@ class DevToIntegration:
                 "tags": tags
             }
         }
-        
+
         if cover_image:
             article_data["article"]["main_image"] = cover_image
+
+        # canonical_url: Sageサイトをオリジナルとして設定（SEO保護）
+        if canonical_url:
+            article_data["article"]["canonical_url"] = canonical_url
 
         try:
             response = requests.post(f"{self.base_url}/articles", json=article_data, headers=headers, timeout=10)
