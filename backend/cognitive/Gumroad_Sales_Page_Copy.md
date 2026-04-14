@@ -1,43 +1,99 @@
-# AutoPilot AI Pro - Your Autonomous AI Assistant
+# Sage 3.0 Developer Blueprint
+## Build Your Own AI Clone — A 24/7 Content Engine That Runs in Your Niche
 
-## Practical Automation × Autonomous Intelligence
+---
 
-「自動化」だけじゃない。「考える」自動化。
+### The core idea
 
-SelfThinking AI Proは、あなたのPC作業を自律的に思考し、学習し、進化しながら自動化する世界初のAIアシスタントです。プログラミング知識は一切不要。スマートフォンから自然言語で指示するだけで、AIがあなたの代わりに仕事をこなし、時間と労力を解放します。
+You set your niche. Sage becomes your AI clone in that niche.
 
-### ✨ こんな方におすすめ
+Change three lines in a config file and Sage transforms from an "AI automation expert" into a fitness coach, a Python developer, a financial educator, an e-commerce consultant — whatever you are. Every piece of content it generates from that moment forward speaks in your niche, to your audience, in your voice.
 
-* **フリーランサー**: 請求書作成、メール返信、SNS投稿など、ルーティンワークをAIに任せて本業に集中。
-* **中小企業経営者**: 顧客対応、データ分析、レポート作成など、AIがビジネスを加速。
-* **コンテンツクリエイター**: ブログ記事作成、動画生成、SNS投稿など、AIがコンテンツ制作をサポート。
-* **多忙なビジネスパーソン**: 毎日のPC作業に追われる時間をAIが削減し、より重要な業務に集中。
+This is not a generic automation tool. It's a configurable AI identity system built on a production codebase that has been running since January 2026.
 
-### 🚀 SelfThinking AI Proでできること
+---
 
-* **完全自律実行**: AIがあなたの指示を理解し、最適な計画を立て、PC上でタスクを自律的に実行します。あなたが寝ている間も、外出している間も、AIは働き続けます。
-* **スマートタスクスケジューラー**: AIがタスクの優先順位と最適な実行タイミングを判断し、自動でスケジュールを管理します。
-* **インテリジェントファイル管理**: AIがあなたの意図を汲み取り、ファイルを整理、リネーム、削除するなど、賢く管理します。
-* **自己進化するAI**: AIはあなたの作業パターンやフィードバックから学習し、使うほどに賢く、効率的になります。世界初の自己コーディング機能により、AI自身が機能を改善・追加することも可能です。
-* **豊富な外部連携**: Notion、Obsidian、WordPress、主要SNS、メールなど、あなたが日常的に使うツールとシームレスに連携し、作業を自動化します。
-* **マルチモーダル対応**: テキストだけでなく、画像や動画（Sora API統合）もAIが生成・分析します。
+### What it actually does
 
-### 💡 使い方
+Every morning at 9am (your timezone), a Cloudflare Worker fires. It pulls a topic from your Notion database, generates a full blog post using Groq (Llama 3.3 70B), and publishes it to your site. No PC required. No action from you.
 
-1. **アプリをインストール**: スマートフォンにSelfThinking AI Proアプリをインストールします。
-2. **PCと接続**: PCでバックエンドを起動し、アプリから接続設定を行います。
-3. **AIに指示**: スマートフォンアプリのチャット画面から、自然言語でAIにタスクを指示します。
+Throughout the day it posts to Bluesky and Instagram. It replies to comments in your brand voice. It scans Google Trends, Reddit, and AI-optimized search to find what your audience is searching for right now. At 3am it combines those trends with your past high-performing content and generates five fresh ideas — waiting in your Notion when you wake up.
 
-### 💰 価格
+**The niche is yours. The system is Sage.**
 
-**Early Access Special:**
+---
 
-* **$49.99/月** (先着100名様限定)
+### The customization that makes this a clone, not a tool
 
-**通常価格 (2026年1月以降):**
+Three files define who Sage is:
 
-* **$79.99/月**
+**identity.json** — your role, niche, tone, target audience, brand name. Change these and every piece of content shifts immediately. A fitness coach writes about workout automation. A developer writes about Python scripts. A solopreneur writes about passive income tools. Sage adapts completely.
 
-### 今すぐダウンロードして、あなたのPC作業をAIに任せましょう
+**SOUL.md** — your values, ethical limits, communication style, what Sage will and won't say. This is the personality layer. It persists across every session, every post, every piece of content.
 
-[ダウンロードリンク]
+**HEARTBEAT.md** — your autonomous schedule. What fires at 9am, what happens at 3am, what runs weekly. You define the rhythm once. Sage executes it forever.
+
+---
+
+### Who this is for
+
+Developers and AI engineers who:
+- Can read Python and understand what `flask_server.py` does
+- Want to ship an autonomous content system, not just learn about one
+- Are comfortable setting up API keys and deploying to Cloudflare
+- Want the underlying system so they can extend it, not just use it
+
+**This is NOT for non-technical users.** Setup takes half a day. The reward is a system that runs forever without you.
+
+---
+
+### Technical stack
+
+- **Backend:** Python / Flask (80+ endpoints), LangGraph v2, CrewAI
+- **LLM chain:** Groq → Gemini → Ollama (automatic fallback)
+- **Memory:** Neuromorphic Brain + ChromaDB + SageMemory
+- **Edge:** Cloudflare Workers (cron) + Pages (hosting) + D1 (subscribers)
+- **SNS:** Bluesky (AT Protocol), Instagram Graph API, Twitter/X
+- **CMS:** Notion (content pool + evidence ledger)
+- **Identity system:** identity.json + SOUL.md + HEARTBEAT.md
+
+---
+
+### What's included
+
+- Full source code — the exact system running in production
+- `setup.py` — interactive setup wizard, guides you through every API key
+- `setup_verify.py` — automated connection tester with AI diagnosis
+- SOUL.md template — define your AI clone's identity and ethics
+- HEARTBEAT.md template — configure your 24/7 autonomous schedule
+- Video walkthrough — real setup on a real machine, start to finish
+- AI support via support@sage-ai.app — 24/7 response
+
+---
+
+### Realistic expectations
+
+Setup time: half a day (4–6 hours) for full deployment.
+Minimum viable setup (Bluesky + blog only): 1–2 hours.
+After setup: the system runs autonomously. You manage the niche config when you want to change direction.
+
+---
+
+### Price
+
+**$49 — one-time**
+
+No subscription. No royalties. Your code, your identity, your clone.
+
+**[Get Sage 3.0 Developer Blueprint →](https://naofumi3.gumroad.com/l/apvbzh)**
+
+---
+
+### 30-day guarantee
+
+Set it up. If it doesn't run and support can't fix it, full refund.
+Email support@sage-ai.app with your `setup_verify.py` output.
+
+---
+
+*Running in production since January 2026. Built by a solopreneur for anyone who wants their own AI clone.*

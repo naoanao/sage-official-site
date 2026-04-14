@@ -75,14 +75,34 @@ class SageJobRunner:
 
         return True
 
+    # 環境変数で上書き可能。デフォルトは3件/日
+    DAILY_POST_LIMIT = int(os.getenv("SAGE_JOB_DAILY_LIMIT", "3"))
+    # pendingジョブの保持上限。これを超えた古いものは自動削除
+    MAX_PENDING_JOBS = int(os.getenv("SAGE_MAX_PENDING_JOBS", "50"))
+
+    def _prune_old_pending(self, jobs: list) -> list:
+        """古いpendingジョブを削除して積み上がりを防ぐ。新しいものを優先。"""
+        pending = [j for j in jobs if j.get("status") == "pending"]
+        non_pending = [j for j in jobs if j.get("status") != "pending"]
+
+        if len(pending) > self.MAX_PENDING_JOBS:
+            # 作成日時で降順ソートし、新しい順に上限件数だけ残す
+            pending.sort(key=lambda j: j.get("created_at", ""), reverse=True)
+            dropped = len(pending) - self.MAX_PENDING_JOBS
+            pending = pending[:self.MAX_PENDING_JOBS]
+            logger.info(f"[JOB] Pruned {dropped} old pending jobs (kept newest {self.MAX_PENDING_JOBS}).")
+
+        return non_pending + pending
+
     def process_pending(self) -> int:
-        """Process pending jobs — max 1 per day to prevent spam. Returns count of processed jobs."""
+        """pending ジョブを処理する。1日の上限は SAGE_JOB_DAILY_LIMIT 件。"""
         jobs = self._load_jobs()
+        jobs = self._prune_old_pending(jobs)
         processed = 0
         changed = False
         today = datetime.utcnow().date().isoformat()
 
-        # Safety: count how many jobs were already posted today
+        # 本日すでに投稿した件数
         posted_today = sum(
             1 for j in jobs
             if j.get("status") == "posted" and j.get("posted_at", "")[:10] == today
@@ -90,9 +110,10 @@ class SageJobRunner:
 
         for job in jobs:
             if job.get("status") == "pending":
-                # Daily limit: max 1 post per day (CF Worker handles the rest)
-                if posted_today >= 1:
-                    logger.info(f"[JOB] Daily limit reached ({posted_today} posts today). Skipping.")
+                if posted_today >= self.DAILY_POST_LIMIT:
+                    logger.info(
+                        f"[JOB] Daily limit reached ({posted_today}/{self.DAILY_POST_LIMIT}). Stopping."
+                    )
                     break
                 success = self._process_job(job)
                 if success:
@@ -105,6 +126,7 @@ class SageJobRunner:
         if changed:
             self._save_jobs(jobs)
 
+        logger.info(f"[JOB] process_pending done: {processed} posted, {posted_today} total today.")
         return processed
 
     def run(self) -> None:

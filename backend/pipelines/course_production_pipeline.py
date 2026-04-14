@@ -1225,16 +1225,20 @@ Content:""")
             return f"""
 ---
 
-## 🎁 48時間限定ボーナス（先着30名様）
+## ✅ このガイドに含まれるもの
 
-今すぐ購入された方に、以下の3点を無料でプレゼントします：
+このガイドは、AIを使って実際に稼いでいる人たちが実践している手順を
+ステップごとにまとめたものです。
 
-1. **【独占PDF】{topic} 完全調査レポート（50ページ）** — 通常価格 ¥{bonus_value_1 * 150:,} 相当
-2. **【永久アクセス】専門家インタビュー書き起こし集** — 通常価格 ¥{bonus_value_2 * 150:,} 相当
-3. **【VIP招待】プライベートコミュニティへのアクセス** — プライスレス
+1. **{topic} 実践ガイド（PDF）** — すぐに使えるチェックリスト付き
+2. **よくある失敗パターンと対策** — 時間と遠回りを減らすために
+3. **Sage AIで自動化する方法** — 購入後のステップガイド
 
-⏰ **販売数：50部限定** / 残り：**{remaining}部**
-⚠️ 48時間経過またはSOLD OUTで終了。再販なし。
+---
+
+**もっと自動化を進めたい方へ:**
+Sage AIを使えば、このガイドの内容を毎日自動で実行できます。
+👉 [Sage AI $20/月で始める →](https://buy.stripe.com/dRmcN6eYM4V7fO785893y09)
 
 ---
 """
@@ -1242,16 +1246,21 @@ Content:""")
             return f"""
 ---
 
-## 🎁 48-Hour Bonus Package (First 30 Buyers Only)
+## ✅ What's included
 
-Order right now and you'll also receive these 3 exclusive bonuses — FREE:
+A practical, step-by-step guide based on what actually works for AI solopreneurs in 2026.
 
-1. **[Exclusive PDF] {topic} Deep Dive Report (50 pages)** — Valued at ${bonus_value_1}
-2. **[Lifetime Access] Expert Interview Transcripts** — Valued at ${bonus_value_2}
-3. **[VIP Invite] Private Community Access** — Priceless
+1. **{topic} — Action Guide (PDF)** — with ready-to-use checklists
+2. **Common mistakes and how to avoid them** — save time and frustration
+3. **How to automate this with Sage AI** — your next step after the guide
 
-⏰ **Limited to 50 copies** / Remaining: **{remaining} copies**
-⚠️ Offer expires in 48 hours or when sold out. No re-release.
+---
+
+**Want this running on autopilot?**
+Sage AI does everything in this guide automatically, every day.
+👉 [Start Sage AI — $20/month →](https://buy.stripe.com/dRmcN6eYM4V7fO785893y09)
+
+---
 
 ---
 """
@@ -1347,7 +1356,7 @@ Order right now and you'll also receive these 3 exclusive bonuses — FREE:
 
 ## 7. CTA
 
-[今すぐ購入して資産を手に入れる]({_os.getenv('GUMROAD_PAY_URL', 'https://your-gumroad-url.com')})
+[今すぐ購入して資産を手に入れる]({_os.getenv('GUMROAD_PAY_URL', 'https://naofumi3.gumroad.com/l/apvbzh')})
 
 出力はMarkdownのみ。余分な前置き、解説、挨拶などは一切不要。
 """
@@ -1386,7 +1395,7 @@ Focus on specificity, actionability, and AI-backed research over generic advice.
 Specific job roles, situations, and goals. Make readers say "that's me."
 
 ## 7. CTA
-[Get instant access →]({_os.getenv('GUMROAD_PAY_URL', 'https://your-gumroad-url.com')})
+[Get instant access →]({_os.getenv('GUMROAD_PAY_URL', 'https://naofumi3.gumroad.com/l/apvbzh')})
 
 Output Markdown only. No preamble, explanations, or greetings.
 """

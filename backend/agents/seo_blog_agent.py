@@ -12,11 +12,24 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _load_identity_for_agent() -> dict:
+    """identity.jsonを読み込む（SEOBlogAgent用）"""
+    import json
+    try:
+        path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "identity.json")
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"niche": "AI tools and automation", "brand_name": "Sage AI",
+                "target_audience": "developers", "language": "en"}
+
+
 class SEOBlogAgent:
     def __init__(self):
         self.pytrends = TrendReq(hl='ja-JP', tz=360)
         self.groq_api_key = os.getenv("GROQ_API_KEY")
         self.model_name = "llama-3.3-70b-versatile"
+        self.identity = _load_identity_for_agent()
         if not self.groq_api_key:
             logger.warning("Groq API key not found. AI generation will fail.")
 
@@ -31,19 +44,43 @@ class SEOBlogAgent:
             return "AIによるビジネス自動化の未来"
 
     def generate_article(self, keyword):
+        # identity.jsonから動的に設定を読み込む
+        identity = _load_identity_for_agent()
+        niche = identity.get("niche", "AI tools and automation")
+        brand = identity.get("brand_name", "Sage AI")
+        target = identity.get("target_audience", "developers")
+        lang = identity.get("language", "en")
+        lang_instruction = "Write in Japanese." if lang == "ja" else "Write in English."
+
         prompt = f"""
-        Write a high-quality, SEO-optimized blog article in localized Japanese.
+        Write a high-quality, SEO-optimized blog article.
+        {lang_instruction}
         Target Word Count: 1000-1200 words.
         Topic: {keyword}
-        Focus: Practical AI automation, business efficiency, and ROI for small businesses.
+        Brand: {brand}
+        Niche/Focus: {niche}
+        Target audience: {target}
         Structure:
         1. Impactful title
         2. Engaging introduction
         3. 4-5 numbered sections with details
         4. Code example or technical implementation
         5. ROI calculation
-        6. Conclusion and CTA
-        
+        6. Conclusion with a strong, specific CTA
+
+        IMPORTANT - The conclusion MUST end with this exact CTA block (translate naturally to Japanese):
+        ---CTA---
+        この記事で紹介したシステムを、自分で構築したいですか？
+
+        **Sage 3.0 Developer Blueprint** は、2026年1月から実際に稼働しているAI自動化システムの
+        完全な技術実装ガイドです。Flask・LangGraph・Cloudflare Workers・Groqの本番構成を
+        そのまま手に入れられます。
+
+        👉 **$49（一回払い）で今すぐ入手 → https://naofumi3.gumroad.com/l/apvbzh**
+
+        半日でセットアップ完了。あとはCloudflare Workersが毎朝動き続けます。
+        ---END CTA---
+
         FORMAT: Use MDX. Include frontmatter:
         ---
         title: "[Title]"

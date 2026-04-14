@@ -19,6 +19,7 @@ MarketScanAgent — 自律市場調査エージェント
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime
 from typing import Any
@@ -29,16 +30,18 @@ logger = logging.getLogger(__name__)
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
-# サブレディット — AI/デジタル商品/ソロプレナー系
+# サブレディット — AI/デジタル商品/ソロプレナー系（英語圏のみ）
 REDDIT_SOURCES = [
     "entrepreneur",
     "passive_income",
     "digitalnomad",
     "SideProject",
     "artificial",
+    "ChatGPT",
+    "AItools",
 ]
 
-# Google Trends のシード — Sage が扱う領域
+# Google Trends のシード — 英語・日本語のみ
 TREND_SEEDS = [
     "AI tools 2026",
     "digital product ideas",
@@ -47,6 +50,29 @@ TREND_SEEDS = [
     "prompt engineering",
     "solopreneur tools",
 ]
+
+# ── 言語フィルター ────────────────────────────────────────────────────────────
+# インドネシア語・マレー語・スペイン語等の誤混入を防ぐ
+_NON_TARGET_PATTERNS = re.compile(
+    r'\b(yang|untuk|dengan|adalah|dalam|ditandai|mencakup|karakteristik'
+    r'|efektif|penggunaan|digunakan|penulisan|jurnal|deccan|hannahgrams'
+    r'|haze|comprar|como|para|este|esta|esto|los|las|del|que|por)\b',
+    re.IGNORECASE
+)
+
+def _is_english_or_japanese(text: str) -> bool:
+    """英語または日本語のキーワードかどうかを判定する。"""
+    if not text or len(text.strip()) < 3:
+        return False
+    # 非対象言語パターンに一致する場合は除外
+    if _NON_TARGET_PATTERNS.search(text):
+        return False
+    # 日本語文字（ひらがな・カタカナ・漢字）が含まれる場合はOK
+    if re.search(r'[\u3040-\u9fff]', text):
+        return True
+    # 英語のみの場合：ASCII文字が70%以上ならOK
+    ascii_chars = sum(1 for c in text if ord(c) < 128)
+    return (ascii_chars / len(text)) >= 0.7
 
 # AI で生成できる商品カテゴリ（スコアリング判定用）
 AI_GENERATABLE_CATEGORIES = [
@@ -61,6 +87,82 @@ class MarketScanAgent:
         from groq import Groq
         self.groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.dry_run = os.getenv("SAGE_DRY_RUN", "False").lower() == "true"
+        self.tavily_api_key = os.getenv("TAVILY_API_KEY", "")
+        if self.tavily_api_key:
+            logger.info("[MarketScan] Tavily API key found — AI-optimized search enabled ✅")
+        else:
+            logger.info("[MarketScan] No TAVILY_API_KEY — Tavily search disabled")
+
+    # ── Source 0: Tavily AI Search（★新機能）──────────────────────────────────
+
+    def scan_tavily(self, queries: list[str] = None) -> list[dict]:
+        """
+        Tavily APIを使ったAI最適化リアルタイム検索。
+        Google Trends + DuckDuckGoより高精度。
+        DeepResearch BenchでOpenAI超え実績（2026年）。
+
+        HEARTBEAT.md: MarketScan 本格実行（10:00 JST）の主要データソース
+        """
+        if not self.tavily_api_key:
+            logger.info("[MarketScan] Tavily: skipped (no API key)")
+            return []
+
+        if queries is None:
+            queries = [
+                "AI tools trending solopreneurs 2026",
+                "passive income automation latest news",
+                "best AI productivity tools april 2026",
+                "solopreneur success stories AI 2026",
+            ]
+
+        results = []
+        try:
+            from tavily import TavilyClient
+            client = TavilyClient(api_key=self.tavily_api_key)
+
+            for query in queries[:4]:  # 最大4クエリ（レート制限考慮）
+                try:
+                    response = client.search(
+                        query=query,
+                        search_depth="advanced",  # より深い検索
+                        max_results=5,
+                        include_answer=True,  # AI生成サマリーも取得
+                        include_raw_content=False,
+                    )
+
+                    # AI生成サマリーをキーワードとして追加
+                    if response.get("answer"):
+                        results.append({
+                            "keyword": f"[Tavily Insight] {response['answer'][:120]}",
+                            "source": "tavily_ai_summary",
+                            "raw_score": 9,  # Tavilyのインサイトは高スコア
+                        })
+
+                    # 検索結果の各タイトルをキーワードとして追加
+                    for item in response.get("results", []):
+                        title = item.get("title", "")
+                        url = item.get("url", "")
+                        content = item.get("content", "")
+                        if title:
+                            results.append({
+                                "keyword": title[:120],
+                                "source": "tavily_web",
+                                "url": url,
+                                "snippet": content[:200],
+                                "raw_score": 8,
+                            })
+
+                    time.sleep(0.5)  # APIレート制限
+                except Exception as e:
+                    logger.warning(f"[MarketScan] Tavily query '{query}' failed: {e}")
+
+        except ImportError:
+            logger.warning("[MarketScan] tavily-python not installed. Run: pip install tavily-python")
+        except Exception as e:
+            logger.error(f"[MarketScan] Tavily scan failed: {e}")
+
+        logger.info(f"[MarketScan] Tavily: {len(results)} signals")
+        return results
 
     # ── Source 1: Google Trends ───────────────────────────────────────────────
 
@@ -83,16 +185,21 @@ class MarketScanAgent:
             except Exception as e:
                 logger.warning(f"[MarketScan] Google daily trends error: {e}")
 
-            # 2) シードキーワードの関連クエリ（急上昇）
+            # 2) シードキーワードの関連クエリ（急上昇）— 米国・英語圏のみ
             try:
-                pt.build_payload(TREND_SEEDS[:5], timeframe="now 7-d", geo="")
+                pt.build_payload(TREND_SEEDS[:5], timeframe="now 7-d", geo="US")
                 related = pt.related_queries()
                 for seed, data in related.items():
                     rising = data.get("rising")
                     if rising is not None and not rising.empty:
                         for _, row in rising.head(5).iterrows():
+                            kw = str(row.get("query", ""))
+                            # 言語フィルター: 英語・日本語以外を除外
+                            if not _is_english_or_japanese(kw):
+                                logger.debug(f"[MarketScan] Filtered non-EN/JP: {kw}")
+                                continue
                             results.append({
-                                "keyword": str(row.get("query", "")),
+                                "keyword": kw,
                                 "source": "google_trends_rising",
                                 "raw_score": min(int(row.get("value", 50)) // 10 + 5, 10),
                             })
@@ -126,6 +233,10 @@ class MarketScanAgent:
                     title = d.get("title", "")
                     score = d.get("score", 0)
                     if title and score > 50:
+                        # 言語フィルター: 英語・日本語以外を除外
+                        if not _is_english_or_japanese(title):
+                            logger.debug(f"[MarketScan] Reddit filtered: {title[:60]}")
+                            continue
                         results.append({
                             "keyword": title[:120],
                             "source": f"reddit/{sub}",
@@ -268,7 +379,11 @@ Keywords to evaluate:
         signals: list[dict] = []
 
         # ── Scan sources ──
+        # Tier 0: Tavily AI Search（最優先・最高精度）
+        signals.extend(self.scan_tavily())
+        # Tier 1: Google Trends
         signals.extend(self.scan_google_trends())
+        # Tier 2: Reddit
         signals.extend(self.scan_reddit())
 
         logger.info(f"[MarketScan] Total raw signals: {len(signals)}")

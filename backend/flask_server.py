@@ -4277,6 +4277,14 @@ if __name__ == '__main__':
     # Initialize Brain AFTER securing the lock
     init_brain()
 
+    # Register AI Support Bot endpoints
+    try:
+        from backend.modules.support_bot import register_support_endpoints
+        register_support_endpoints(app)
+        logger.info("✅ SupportBot endpoints registered")
+    except Exception as _e:
+        logger.warning(f"SupportBot registration skipped: {_e}")
+
     try:
         app.run(host='0.0.0.0', port=port, debug=debug_mode, use_reloader=False)
     except KeyboardInterrupt:

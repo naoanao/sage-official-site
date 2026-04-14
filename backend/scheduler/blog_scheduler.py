@@ -23,6 +23,24 @@ POSTS_DIR = "src/blog/posts"
 SAGE_BASE_URL = os.getenv("SAGE_BASE_URL") or os.getenv("SITE_URL", "https://your-pages-site.pages.dev")
 
 
+def _load_identity() -> dict:
+    """identity.jsonを読み込む。失敗時はデフォルト値を返す"""
+    import json
+    try:
+        path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "identity.json")
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "role": "AI content creator",
+            "niche": "AI tools and automation",
+            "tone": "professional yet approachable",
+            "brand_name": "Sage AI",
+            "target_audience": "solopreneurs and developers",
+            "language": "en",
+        }
+
+
 class BlogScheduler:
     def __init__(self):
         from groq import Groq
@@ -31,7 +49,8 @@ class BlogScheduler:
         self.groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.notion = NotionContentPool()
         self.dry_run = os.getenv("SAGE_DRY_RUN", "False").lower() == "true"
-        logger.info(f"[BLOG] BlogScheduler initialized. dry_run={self.dry_run}")
+        self.identity = _load_identity()
+        logger.info(f"[BLOG] BlogScheduler initialized. identity={self.identity.get('niche')} dry_run={self.dry_run}")
 
     # ── Notion helpers ────────────────────────────────────────────────────────
 
@@ -124,11 +143,23 @@ class BlogScheduler:
         slug_base = re.sub(r"[^a-z0-9]+", "-", topic.lower())[:50].strip("-")
         slug = f"{today}-{slug_base}"
 
+        # identity.jsonからニッチ・ターゲット・トーンを動的に読み込む
+        identity = _load_identity()
+        niche = identity.get("niche", "AI tools and automation")
+        role = identity.get("role", "AI content creator")
+        tone = identity.get("tone", "professional yet approachable")
+        target = identity.get("target_audience", "solopreneurs and developers")
+        brand = identity.get("brand_name", "Sage AI")
+        lang = identity.get("language", "en")
+
+        lang_instruction = "Write in Japanese." if lang == "ja" else "Write in English."
+
         system_prompt = (
-            "You are Sage AI, a world-class content writer specializing in AI, "
-            "solopreneurship, and monetization. Write compelling, SEO-optimized "
-            "English blog posts. Always use clear headings, real examples, and "
-            "actionable takeaways."
+            f"You are {brand}, a world-class content writer specializing in {niche}. "
+            f"Your role: {role}. Your tone: {tone}. "
+            f"Your target audience: {target}. "
+            f"{lang_instruction} "
+            "Write compelling, SEO-optimized blog posts with clear headings, real examples, and actionable takeaways."
         )
         user_prompt = f"""Write a detailed blog post (1500+ words) on the topic: "{topic}"
 
@@ -142,7 +173,22 @@ keywords: "keyword1, keyword2, keyword3"
 author: "Sage AI"
 ---
 
-Then write the full article body in Markdown. Use ## for sections, include bullet lists and a strong CTA at the end linking to /shop."""
+Then write the full article body in Markdown. Use ## for sections, include bullet lists.
+
+MANDATORY: End EVERY article with this exact CTA section (adapt wording naturally, keep the links):
+
+## Want to Build This System Yourself?
+
+**Sage 3.0 Developer Blueprint** is the complete technical guide to building an autonomous content engine like this one — the exact stack running in production since January 2026.
+
+- ⚙️ Full Flask + LangGraph + CrewAI codebase
+- ⚙️ Cloudflare Workers for 24/7 posting (no PC required)
+- ⚙️ Auto-setup script + connection verifier with AI diagnosis
+- ⚙️ Half a day to deploy. Runs forever after that.
+
+**[$49 — Get the Developer Blueprint →](https://naofumi3.gumroad.com/l/apvbzh)**
+
+One-time purchase. Your code, your keys, your data."""
 
         resp = self.groq.chat.completions.create(
             model=GROQ_MODEL,

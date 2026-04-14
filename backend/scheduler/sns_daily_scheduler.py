@@ -36,6 +36,26 @@ class SNSDailyScheduler:
         self.quality_gate = os.getenv("SAGE_QUALITY_GATE_STRICT", "True").lower() == "true"
         self.stability_gate = os.getenv("SAGE_STABILITY_GATE_STRICT", "True").lower() == "true"
 
+        # identity.jsonを読み込んで分身の設定をロード
+        self.identity = self._load_identity()
+        logger.info(f"[SNS] Identity loaded: niche={self.identity.get('niche')}")
+
+    def _load_identity(self) -> dict:
+        """identity.jsonを読み込む。失敗時はデフォルト値を返す"""
+        import json
+        try:
+            path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "identity.json")
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {
+                "role": "AI content creator",
+                "niche": "AI tools and automation",
+                "tone": "professional yet approachable",
+                "brand_name": "Sage AI",
+                "target_audience": "solopreneurs and developers",
+            }
+
     def _load_strategy(self, path: str) -> str:
         try:
             with open(path, 'r', encoding='utf-8') as f:
@@ -52,14 +72,33 @@ class SNSDailyScheduler:
 
     def _generate_content(self, topic: str, content: str, motif: str) -> dict:
         """LLM generates ig_caption, bs_text, image_prompt in one JSON call."""
+        # identity.jsonから動的に設定を読み込む（分身AI対応）
+        niche = self.identity.get("niche", "AI tools and automation")
+        tone = self.identity.get("tone", "professional yet approachable")
+        brand = self.identity.get("brand_name", "Sage AI")
+        target = self.identity.get("target_audience", "solopreneurs and developers")
+
         prompt = (
-            "You are the Sage AI Marketing CEO. Generate high-performing content for BOTH Instagram and Bluesky.\n\n"
+            f"You are the {brand} Marketing AI. Generate high-performing content for BOTH Instagram and Bluesky.\n"
+            f"Brand niche: {niche}\n"
+            f"Target audience: {target}\n"
+            f"Tone: {tone}\n\n"
             f"[STRATEGIES]\nInstagram: {self.ig_strategy}\nBluesky: {self.bs_strategy}\n[/STRATEGIES]\n\n"
             f"[RAW CONTENT]\nTopic: {topic}\nDetail: {content}\nDirection: {motif}\n[/RAW CONTENT]\n\n"
             "### TASK:\n"
             "1. INSTAGRAM CAPTION: Professional, save-rate optimized, with hashtags.\n"
+            "   - End EVERY caption with a link-in-bio CTA, e.g.: '👉 Link in bio to automate yours'\n"
             "2. BLUESKY SKEET: Punchy, high-energy tech vibe, US/EU market focus. (Max 240 chars)\n"
+            "   - End with: ' → sage-official-site.pages.dev'\n"
             f"3. UNIFIED IMAGE PROMPT: Unique visual for Stable Diffusion reflecting '{motif}' motif.\n\n"
+            "BRAND RULE: The product is 'Sage 3.0 Developer Blueprint' — a technical guide to building\n"
+            "an autonomous AI content system. $49 one-time purchase. Target: developers and AI engineers.\n"
+            "Never mention AutoPilot AI Pro, SelfThinking AI Pro, or $20/month subscription.\n\n"
+            "ACCURACY RULES (strictly enforced):\n"
+            "- Do NOT invent income figures. Never write specific amounts like ¥500,000/月 or $10,000/mo.\n"
+            "- Use only factual claims: 'automated daily posting', 'runs 24/7 on Cloudflare', etc.\n"
+            "- Never mix currencies in the same post.\n"
+            "- Product CTA: 'naofumi3.gumroad.com/l/apvbzh' — $49 Developer Blueprint.\n\n"
             'Output strictly in JSON format:\n'
             '{\n    "ig_caption": "...",\n    "bs_text": "...",\n    "image_prompt": "..."\n}'
         )

@@ -19,9 +19,9 @@ export const LINKS = {
     enterprise: import.meta.env.VITE_STRIPE_ENT_URL || 'https://buy.stripe.com/eVq4gA7wkafr9pJ85893y06',
   },
 
-  /** Gumroad — digital products (one-time) */
+  /** Gumroad — primary product: Sage 3.0 Developer Blueprint ($49) */
   gumroad: {
-    monetization: import.meta.env.VITE_GUMROAD_URL || 'https://naofumi3.gumroad.com/l/yvzrfjd',
+    monetization: import.meta.env.VITE_GUMROAD_URL || 'https://naofumi3.gumroad.com/l/apvbzh',
   },
 
   /** Whop — membership */
