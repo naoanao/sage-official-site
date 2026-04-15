@@ -585,6 +585,42 @@ def get_automations():
             "active": _is_automation_active("notion_sync"),
             "schedule": "Hourly (Daily Log)",
             "lastRun": _get_last_run_time("notion_sync")
+        },
+        {
+            "id": "market_scan",
+            "name": "MarketScan + Tavily AI Search",
+            "icon": "🔍",
+            "active": _is_automation_active("market_scan"),
+            "schedule": "Daily 10:00 JST",
+            "lastRun": _get_last_run_time("market_scan"),
+            "note": "Google Trends + Reddit + Tavily AI"
+        },
+        {
+            "id": "dream_mode",
+            "name": "Dream Mode (Nightly Ideation)",
+            "icon": "🌙",
+            "active": _is_automation_active("dream_mode"),
+            "schedule": "03:00–05:00 JST",
+            "lastRun": _get_last_run_time("dream_mode"),
+            "note": "Memory × Trends → 5 ideas → Notion"
+        },
+        {
+            "id": "moltbook",
+            "name": "Moltbook AI-SNS Agent",
+            "icon": "🐾",
+            "active": _is_automation_active("moltbook"),
+            "schedule": "Every 4 hours",
+            "lastRun": _get_last_run_time("moltbook"),
+            "note": "Requires MOLTBOOK_API_KEY"
+        },
+        {
+            "id": "video_pipeline",
+            "name": "Video Pipeline (Blog→Reels)",
+            "icon": "🎬",
+            "active": _is_automation_active("video_pipeline"),
+            "schedule": "Weekly (per 5 blog posts)",
+            "lastRun": _get_last_run_time("video_pipeline"),
+            "note": "MusicGen + LTX-Video → Instagram Reels"
         }
     ]
     return jsonify(automations)

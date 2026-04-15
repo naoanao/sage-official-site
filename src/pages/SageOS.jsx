@@ -213,6 +213,7 @@ const SageOS = () => {
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(() => !!location.state?.openAutomations);
     const [showContentManager, setShowContentManager] = useState(false);
+    const [showSoulPanel, setShowSoulPanel] = useState(false);
     // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
     const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
@@ -1198,9 +1199,17 @@ const SageOS = () => {
                         </div>
                     )}
 
+                    {/* SOUL.md identity quick-view */}
+                    <button
+                        onClick={() => { setShowSoulPanel(p => !p); setShowAutomations(false); setShowSelfTest(false); setShowContentManager(false); }}
+                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showSoulPanel ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                    >
+                        <span>🧬</span> <span>SOUL</span>
+                    </button>
+
                     {/* Automations toggle */}
                     <button
-                        onClick={() => { setShowAutomations(p => !p); setShowSelfTest(false); }}
+                        onClick={() => { setShowAutomations(p => !p); setShowSelfTest(false); setShowSoulPanel(false); }}
                         className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showAutomations ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
                     >
                         <FiActivity /> <span>Automations</span>
@@ -1260,6 +1269,52 @@ const SageOS = () => {
 
             {/* ── Main Content ─────────────────────────────────────────────── */}
             <div ref={mainScrollRef} className="flex-1 bg-[var(--c-bg)] overflow-y-auto" translate="no">
+
+                {/* SOUL.md Identity Panel */}
+                {showSoulPanel && (
+                    <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-8 max-w-3xl mx-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-black flex items-center gap-2">🧬 <span style={{ color: '#4f98a3' }}>Sage Identity (SOUL.md)</span></h2>
+                            <button onClick={() => setShowSoulPanel(false)} className="text-[var(--c-muted)] hover:text-[var(--c-text)] text-sm px-3 py-1 bg-[var(--c-raised)] rounded-lg">✕ Close</button>
+                        </div>
+                        <div className="space-y-4">
+                            {/* Current identity from identity.json */}
+                            <div className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl">
+                                <div className="text-xs font-bold text-[var(--c-muted)] mb-3 uppercase tracking-wider">Current Identity (identity.json)</div>
+                                <div className="grid grid-cols-1 gap-2 text-sm">
+                                    {[
+                                        ['Role', identity?.role],
+                                        ['Niche', identity?.niche],
+                                        ['Brand', identity?.brand_name],
+                                        ['Audience', identity?.target_audience],
+                                        ['Tone', identity?.tone],
+                                        ['Language', identity?.language],
+                                    ].map(([k, v]) => v && (
+                                        <div key={k} className="flex gap-2">
+                                            <span className="text-[var(--c-muted)] w-20 flex-shrink-0">{k}</span>
+                                            <span className="text-[var(--c-text)]">{v}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* SOUL.md status */}
+                            <div className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl">
+                                <div className="text-xs font-bold text-[var(--c-muted)] mb-3 uppercase tracking-wider">SOUL.md — Persistent Identity Layer</div>
+                                <div className="space-y-2 text-xs text-[var(--c-muted)]">
+                                    <div className="flex items-center gap-2"><span className="text-green-400">✅</span> Loaded at Flask startup · injected into all LLM calls</div>
+                                    <div className="flex items-center gap-2"><span className="text-green-400">✅</span> Gatekeeper v2 — Tier1/2/3 action approval active</div>
+                                    <div className="flex items-center gap-2"><span className="text-green-400">✅</span> Content safety check on all generated outputs</div>
+                                    <div className="flex items-center gap-2"><span className="text-green-400">✅</span> HEARTBEAT.md — 24/7 autonomous schedule defined</div>
+                                </div>
+                            </div>
+                            {/* Quick identity edit link */}
+                            <div className="text-xs text-[var(--c-muted)] mt-2">
+                                Edit identity: use the <strong>Identity Panel</strong> below → changes apply to all content from next generation.
+                                <br />To update SOUL.md personality/ethics: edit <code className="bg-[var(--c-surface-offset)] px-1 rounded">SOUL.md</code> in project root.
+                            </div>
+                        </div>
+                    </Motion.div>
+                )}
 
                 {/* Automations Panel */}
                 {showAutomations && (
