@@ -214,6 +214,7 @@ const SageOS = () => {
     const [showAutomations, setShowAutomations] = useState(() => !!location.state?.openAutomations);
     const [showContentManager, setShowContentManager] = useState(false);
     const [showSoulPanel, setShowSoulPanel] = useState(false);
+    const [soulIdentity, setSoulIdentity] = useState(null);
     const [showToolsGroup, setShowToolsGroup] = useState(false);
     // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
@@ -427,6 +428,15 @@ const SageOS = () => {
             chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages]);
+
+    // Fetch identity when SOUL panel is opened
+    useEffect(() => {
+        if (showSoulPanel && !soulIdentity) {
+            api.get('/api/identity')
+                .then(res => setSoulIdentity(res.data))
+                .catch(() => setSoulIdentity({}));
+        }
+    }, [showSoulPanel]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Persist phase + topic to localStorage so refresh restores state
     useEffect(() => { _ls.set('sage_phase', currentPhase); }, [currentPhase]);
@@ -1158,10 +1168,10 @@ const SageOS = () => {
 
             {/* ── Sidebar ─────────────────────────────────────────────────── */}
             <div className="w-64 bg-[var(--c-surface)] border-r border-[var(--c-border)] flex flex-col p-4 z-10 shrink-0 shadow-sm">
-                <div className="text-xl font-bold tracking-tighter mb-8 flex items-center gap-2">
+                <Link to="/" className="text-xl font-bold tracking-tighter mb-8 flex items-center gap-2 hover:opacity-80 transition-opacity">
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" translate="no"></span>
                     <span>SAGE COCKPIT</span>
-                </div>
+                </Link>
 
                 <div className="space-y-2 flex-grow">
                     <Link
@@ -1292,14 +1302,17 @@ const SageOS = () => {
                             {/* Current identity from identity.json */}
                             <div className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl">
                                 <div className="text-xs font-bold text-[var(--c-muted)] mb-3 uppercase tracking-wider">Current Identity (identity.json)</div>
+                                {soulIdentity === null ? (
+                                    <div className="text-xs text-[var(--c-muted)]">Loading…</div>
+                                ) : (
                                 <div className="grid grid-cols-1 gap-2 text-sm">
                                     {[
-                                        ['Role', identity?.role],
-                                        ['Niche', identity?.niche],
-                                        ['Brand', identity?.brand_name],
-                                        ['Audience', identity?.target_audience],
-                                        ['Tone', identity?.tone],
-                                        ['Language', identity?.language],
+                                        ['Role', soulIdentity?.role],
+                                        ['Niche', soulIdentity?.niche],
+                                        ['Brand', soulIdentity?.brand_name],
+                                        ['Audience', soulIdentity?.target_audience],
+                                        ['Tone', soulIdentity?.tone],
+                                        ['Language', soulIdentity?.language],
                                     ].map(([k, v]) => v && (
                                         <div key={k} className="flex gap-2">
                                             <span className="text-[var(--c-muted)] w-20 flex-shrink-0">{k}</span>
@@ -1307,6 +1320,7 @@ const SageOS = () => {
                                         </div>
                                     ))}
                                 </div>
+                                )}
                             </div>
                             {/* SOUL.md status */}
                             <div className="p-4 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-xl">
@@ -1370,10 +1384,8 @@ const SageOS = () => {
                 {/* Phase Pages */}
                 {!showAutomations && !showSelfTest && !showContentManager && (
                     <>
-                        {/* PhaseStepperBar (phases 2-4) */}
-                        {currentPhase >= 2 && (
-                            <PhaseStepperBar currentPhase={currentPhase} topic={activeTopic} onPhaseClick={goToPhase} />
-                        )}
+                        {/* PhaseStepperBar (all phases) */}
+                        <PhaseStepperBar currentPhase={currentPhase} topic={activeTopic} onPhaseClick={goToPhase} />
 
                         {/* ════════════════════════════════════════════════════
                             Phase 1: TALK
@@ -1421,7 +1433,7 @@ const SageOS = () => {
                                                         <p className="text-xs text-[var(--c-muted)] mb-3">Upgrade to unlock unlimited Sage conversations, automation control, and product generation.</p>
                                                         <a href="/sales" rel="noopener noreferrer"
                                                             className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-sm transition-all">
-                                                            ⚡ Get the Blueprint — $29 →
+                                                            ⚡ Get the Blueprint — $49 →
                                                         </a>
                                                     </div>
                                                 </div>
@@ -1825,7 +1837,7 @@ const SageOS = () => {
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <div className={`text-lg font-black ${recStyle.label}`}>{recStyle.text}</div>
-                                                    <div className="text-[var(--c-muted)] text-sm mt-0.5">総合スコア: <span className={`${recStyle.score} font-bold text-xl`}>{v.overall_score}</span>/100</div>
+                                                    <div className="text-[var(--c-muted)] text-sm mt-0.5">Overall Score: <span className={`${recStyle.score} font-bold text-xl`}>{v.overall_score}</span>/100</div>
                                                 </div>
                                                 <button onClick={() => { setNicheValidation({ status: 'idle', data: null }); if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0; }} className="text-xs text-[var(--c-subtle)] hover:text-[var(--c-text)] px-2 py-1 rounded-lg hover:bg-[var(--c-raised)]">✕</button>
                                             </div>
@@ -1839,7 +1851,7 @@ const SageOS = () => {
                                                 <div className="bg-[var(--c-raised)] rounded-xl p-3">
                                                     <div className="text-[var(--c-muted)] mb-1 uppercase tracking-widest font-bold">Competition</div>
                                                     <div className="text-[var(--c-text)] font-bold text-base">{v.competition?.level}</div>
-                                                    <div className="text-[var(--c-subtle)]">Avg ¥{(v.competition?.avg_price_jpy || 0).toLocaleString()}</div>
+                                                    <div className="text-[var(--c-subtle)]">Avg ${(v.competition?.avg_price_usd || 0)}</div>
                                                     {(v.competition?.gaps || []).length > 0 && (
                                                         <div className="mt-1 text-indigo-300">Gap: {v.competition.gaps[0]}</div>
                                                     )}
@@ -1855,15 +1867,15 @@ const SageOS = () => {
                                                 <div className="flex gap-3 text-xs">
                                                     <div className="bg-[var(--c-raised)] rounded-xl px-4 py-2 flex-1 text-center">
                                                         <div className="text-[var(--c-muted)]">Basic</div>
-                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.basic || 0).toLocaleString()}</div>
+                                                        <div className="text-[var(--c-text)] font-bold">${v.pricing.us?.basic || 0}</div>
                                                     </div>
                                                     <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl px-4 py-2 flex-1 text-center">
                                                         <div className="text-purple-300">Standard ★</div>
-                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.standard || 0).toLocaleString()}</div>
+                                                        <div className="text-[var(--c-text)] font-bold">${v.pricing.us?.standard || 0}</div>
                                                     </div>
                                                     <div className="bg-[var(--c-raised)] rounded-xl px-4 py-2 flex-1 text-center">
                                                         <div className="text-[var(--c-muted)]">Premium</div>
-                                                        <div className="text-[var(--c-text)] font-bold">¥{(v.pricing.japan?.premium || 0).toLocaleString()}</div>
+                                                        <div className="text-[var(--c-text)] font-bold">${v.pricing.us?.premium || 0}</div>
                                                     </div>
                                                 </div>
                                             )}

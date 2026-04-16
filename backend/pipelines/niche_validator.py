@@ -69,14 +69,14 @@ Output ONLY valid JSON (no markdown, no explanation):
         }
 
     def _analyze_competition(self, topic: str) -> dict:
-        prompt = f"""You are a competitive intelligence analyst.
+        prompt = f"""You are a competitive intelligence analyst targeting the English-speaking (US/global) market.
 Analyze competition level for this digital product niche: "{topic}"
 
 Output ONLY valid JSON (no markdown):
 {{
   "level": "<LOW|MEDIUM|HIGH>",
   "estimated_products": <integer>,
-  "avg_price_jpy": <integer>,
+  "avg_price_usd": <integer in USD>,
   "avg_rating": <1.0-5.0>,
   "gaps": ["<market gap 1 in English>", "<market gap 2 in English>"],
   "reason": "<1-2 sentences in English>"
@@ -86,14 +86,14 @@ Output ONLY valid JSON (no markdown):
         return {
             "level": d.get("level", "MEDIUM"),
             "estimated_products": int(d.get("estimated_products", 10)),
-            "avg_price_jpy": int(d.get("avg_price_jpy", 3000)),
+            "avg_price_usd": int(d.get("avg_price_usd", 20)),
             "avg_rating": float(d.get("avg_rating", 3.8)),
             "gaps": d.get("gaps", []),
             "reason": d.get("reason") or "Analyzing...",
         }
 
     def _analyze_audience(self, topic: str) -> dict:
-        prompt = f"""You are a customer persona expert.
+        prompt = f"""You are a customer persona expert targeting the English-speaking (US/global) market.
 Define the ideal buyer persona for: "{topic}"
 
 Output ONLY valid JSON (no markdown):
@@ -103,7 +103,7 @@ Output ONLY valid JSON (no markdown):
     "age_range": "<e.g. 30-45>",
     "occupation": "<in English>",
     "pain_point": "<main problem in English>",
-    "willingness_to_pay_jpy": <integer>
+    "willingness_to_pay_usd": <integer in USD>
   }},
   "reason": "<1-2 sentences in English>"
 }}"""
@@ -116,29 +116,24 @@ Output ONLY valid JSON (no markdown):
                 "age_range": persona.get("age_range", "30-45"),
                 "occupation": persona.get("occupation", "Professional"),
                 "pain_point": persona.get("pain_point", ""),
-                "willingness_to_pay_jpy": int(persona.get("willingness_to_pay_jpy", 3000)),
+                "willingness_to_pay_usd": int(persona.get("willingness_to_pay_usd", 20)),
             },
             "reason": d.get("reason") or "Analyzing...",
         }
 
     def _suggest_pricing(self, competition: dict, audience: dict) -> dict:
-        wtp = audience["persona"]["willingness_to_pay_jpy"]
-        avg = competition["avg_price_jpy"]
+        wtp = audience["persona"]["willingness_to_pay_usd"]
+        avg = competition["avg_price_usd"]
 
         mid = (wtp + avg) // 2
-        basic = max(980, round(mid * 0.5 / 100) * 100)
-        standard = max(2980, round(mid / 100) * 100)
-        premium = max(9800, round(mid * 2.5 / 100) * 100)
+        basic = max(7, round(mid * 0.5))
+        standard = max(19, round(mid))
+        premium = max(49, round(mid * 2.5))
 
         return {
-            "japan": {"basic": basic, "standard": standard, "premium": premium},
-            "us": {
-                "basic_usd": round(basic / 150),
-                "standard_usd": round(standard / 150),
-                "premium_usd": round(premium / 150),
-            },
+            "us": {"basic": basic, "standard": standard, "premium": premium},
             "recommended_tier": "standard",
-            "note": f"Based on avg ¥{avg:,} / estimated WTP ¥{wtp:,}",
+            "note": f"Based on avg ${avg} / estimated WTP ${wtp}",
         }
 
     def validate(self, topic: str) -> dict:

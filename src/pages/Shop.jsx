@@ -51,7 +51,7 @@ const DIGITAL_PRODUCTS = [
     {
         id: 'guide',
         title: '2026 AI Influencer Monetization Express',
-        price: '$29.99',
+        price: '$49',
         badge: 'ONE-TIME PURCHASE',
         badgeStyle: { color: '#059669', borderColor: 'rgba(5,150,105,0.25)', background: 'rgba(5,150,105,0.08)' },
         accentColor: 'from-emerald-500 to-teal-600',
@@ -62,7 +62,7 @@ const DIGITAL_PRODUCTS = [
             'Monetization funnel step-by-step',
             'Lifetime access + future updates',
         ],
-        buttonLabel: 'Buy on Gumroad — $29.99',
+        buttonLabel: 'Buy on Gumroad — $49',
         url: LINKS.gumroad.monetization,
     },
 ];

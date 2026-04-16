@@ -20,7 +20,7 @@ const PLANS = [
     {
         id: 'blueprint',
         name: 'Blueprint',
-        price: '$29',
+        price: '$49',
         period: 'one-time',
         badge: '⚡ Start Here',
         description: 'Build your own 24/7 AI content engine from scratch.',
@@ -39,7 +39,7 @@ const PLANS = [
             '💬 AI support via SageMiniChat (answers your questions)',
             '🔄 Free updates when the guide is revised',
         ],
-        cta: 'Get the Blueprint — $29',
+        cta: 'Get the Blueprint — $49',
         link: STATIC_LINKS.gumroad,
         style: 'border-emerald-500/50 bg-emerald-500/[0.05] shadow-[0_0_40px_rgba(16,185,129,0.15)]',
         ctaStyle: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]',
@@ -153,7 +153,7 @@ const SalesPage = () => {
                             className="inline-flex items-center gap-3 px-10 py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-lg font-bold shadow-[0_0_60px_rgba(16,185,129,0.4)] transition-all"
                         >
                             <FiZap size={20} />
-                            Get the Blueprint — $29
+                            Get the Blueprint — $49
                         </a>
                         <a
                             href={STATIC_LINKS.proMonthly}
