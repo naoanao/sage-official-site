@@ -326,6 +326,24 @@ Generate {self.num_ideas} dream content ideas that bridge these two worlds."""
         notion_saved = self.save_to_notion(ideas)
         telegram_sent = self.notify_owner(ideas)
 
+        # ── ContentPool への自動投入（BlogScheduler が翌朝記事化） ──────────
+        pool_added = 0
+        if not self.dry_run:
+            try:
+                from backend.modules.notion_content_pool import NotionContentPool
+                pool = NotionContentPool()
+                for idea in ideas[:3]:
+                    title = idea.get("title", "")
+                    if title:
+                        ok = pool.add_topic(title, category="blog", status="予約済み")
+                        if ok:
+                            pool_added += 1
+                logger.info(f"🌙 DreamMode: {pool_added} ideas pushed to ContentPool")
+            except Exception as e:
+                logger.warning(f"DreamMode: ContentPool push failed: {e}")
+        else:
+            logger.info("🌙 DreamMode [DRY_RUN]: Would push ideas to ContentPool")
+
         result = {
             "status": "success",
             "timestamp": start.isoformat(),
@@ -333,9 +351,10 @@ Generate {self.num_ideas} dream content ideas that bridge these two worlds."""
             "ideas": ideas,
             "notion_saved": notion_saved,
             "telegram_notified": telegram_sent,
+            "content_pool_added": pool_added,
         }
 
-        logger.info(f"🌙 DreamMode complete: {len(ideas)} ideas generated")
+        logger.info(f"🌙 DreamMode complete: {len(ideas)} ideas generated, {pool_added} → ContentPool")
         return result
 
 

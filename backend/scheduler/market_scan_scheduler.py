@@ -63,7 +63,8 @@ class MarketScanScheduler:
                 f"[MARKET_SCAN] Notifications: "
                 f"Slack={notify_results['slack']} "
                 f"Telegram={notify_results['telegram']} "
-                f"Notion={notify_results['notion']}"
+                f"Notion={notify_results['notion']} "
+                f"BlogQueue={notify_results['blog_queue']}"
             )
 
         except Exception as e:

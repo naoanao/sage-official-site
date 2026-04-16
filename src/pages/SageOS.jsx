@@ -214,6 +214,7 @@ const SageOS = () => {
     const [showAutomations, setShowAutomations] = useState(() => !!location.state?.openAutomations);
     const [showContentManager, setShowContentManager] = useState(false);
     const [showSoulPanel, setShowSoulPanel] = useState(false);
+    const [showToolsGroup, setShowToolsGroup] = useState(false);
     // Self-Test panel
     const [showSelfTest, setShowSelfTest] = useState(false);
     const [selfTestResults, setSelfTestResults] = useState({ tier1: null, tier2: null });
@@ -279,8 +280,8 @@ const SageOS = () => {
     const [automationLoading, setAutomationLoading] = useState(new Set());
     const AUTO_DEFAULTS = [
         { id: 'bluesky', name: 'Bluesky Daily Post', icon: '🦋', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
-        { id: 'instagram', name: 'Instagram Daily Post', icon: '📸', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
-        { id: 'blog', name: 'Blog Weekly Post', icon: '📝', active: false, schedule: 'Weekly · Mon 09:00', lastRun: 'Not connected' },
+        { id: 'devto', name: 'Dev.to Cross-Post', icon: '📝', active: true, schedule: 'Daily · UTC 00:00', lastRun: 'Today ✓' },
+        { id: 'blog', name: 'Blog Weekly Post', icon: '📄', active: false, schedule: 'Weekly · Mon 09:00', lastRun: 'Not connected' },
     ];
     const loadAutomations = () => {
         try {
@@ -1215,41 +1216,51 @@ const SageOS = () => {
                         <FiActivity /> <span>Automations</span>
                     </button>
 
-                    {/* Self-Test toggle */}
+                    {/* ⚙️ Tools group — Self-Test / Content / Store / Whop */}
                     <button
-                        onClick={() => { setShowSelfTest(p => !p); setShowAutomations(false); setShowContentManager(false); }}
-                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showSelfTest ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                        onClick={() => setShowToolsGroup(p => !p)}
+                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showToolsGroup ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
                     >
-                        <FiCpu /> <span>Self-Test</span>
+                        <FiRefreshCw size={14} />
+                        <span>Tools</span>
+                        <span className="ml-auto text-xs opacity-50">{showToolsGroup ? '▲' : '▼'}</span>
                     </button>
-
-                    {/* Content Manager toggle */}
-                    <button
-                        onClick={() => { setShowContentManager(p => !p); setShowAutomations(false); setShowSelfTest(false); }}
-                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${showContentManager ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
-                    >
-                        <FiFolder /> <span>Content</span>
-                    </button>
-
-                    {/* Store Manager link — opens in new tab to preserve session state */}
-                    <a
-                        href="/manager"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
-                    >
-                        <FiDollarSign /> <span>Store Manager</span>
-                    </a>
-
-                    {/* Whop member link */}
-                    <a
-                        href="https://whop.com/joined/segeai/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
-                    >
-                        <FiShoppingCart /> <span>Whop Members</span>
-                    </a>
+                    {showToolsGroup && (
+                        <div className="pl-3 space-y-1 border-l border-[var(--c-border)] ml-4">
+                            {/* Self-Test */}
+                            <button
+                                onClick={() => { setShowSelfTest(p => !p); setShowAutomations(false); setShowContentManager(false); }}
+                                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm transition-all ${showSelfTest ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                            >
+                                <FiCpu size={13} /> <span>Self-Test</span>
+                            </button>
+                            {/* Content Manager */}
+                            <button
+                                onClick={() => { setShowContentManager(p => !p); setShowAutomations(false); setShowSelfTest(false); }}
+                                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm transition-all ${showContentManager ? 'bg-[var(--c-raised)] text-[var(--c-text)]' : 'hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+                            >
+                                <FiFolder size={13} /> <span>Content</span>
+                            </button>
+                            {/* Store Manager */}
+                            <a
+                                href="/manager"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
+                            >
+                                <FiDollarSign size={13} /> <span>Store Manager</span>
+                            </a>
+                            {/* Whop Members */}
+                            <a
+                                href="https://whop.com/joined/segeai/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 text-sm transition-all hover:bg-[var(--c-raised)] text-[var(--c-muted)] hover:text-[var(--c-text)]"
+                            >
+                                <FiShoppingCart size={13} /> <span>Whop Members</span>
+                            </a>
+                        </div>
+                    )}
                 </div>
 
                 {/* Brake Widget */}
@@ -1370,6 +1381,30 @@ const SageOS = () => {
                         {currentPhase === 1 && (
                             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                                 className="max-w-3xl mx-auto py-8 px-4 flex flex-col" style={{ minHeight: 'calc(100vh - 0px)' }}>
+
+                                {/* ── Today's Status Bar ─────────────────────────── */}
+                                {automations.length > 0 && (() => {
+                                    const getLastRun = (id) => automations.find(a => a.id === id)?.lastRun || 'Never';
+                                    const isActive = (id) => automations.find(a => a.id === id)?.active;
+                                    const blogRun = getLastRun('blog');
+                                    const dreamRun = getLastRun('dream_mode');
+                                    const scanRun = getLastRun('market_scan');
+                                    const blueskyActive = isActive('bluesky');
+                                    return (
+                                        <div className="mb-6 px-4 py-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-raised)] flex flex-wrap gap-x-5 gap-y-1.5 items-center text-[10px] font-mono"
+                                            style={{ color: 'var(--c-muted)' }}>
+                                            <span className="font-bold uppercase tracking-widest" style={{ color: 'var(--c-subtle)' }}>TODAY</span>
+                                            <span>
+                                                <span style={{ color: blueskyActive ? 'var(--c-emerald)' : 'var(--c-subtle)' }}>●</span>
+                                                {' '}Bluesky {blueskyActive ? 'live' : 'off'}
+                                            </span>
+                                            <span>📝 Blog: <span style={{ color: 'var(--c-text)' }}>{blogRun}</span></span>
+                                            <span>🌙 Dream: <span style={{ color: 'var(--c-text)' }}>{dreamRun}</span></span>
+                                            <span>🔍 Scan: <span style={{ color: 'var(--c-text)' }}>{scanRun}</span></span>
+                                        </div>
+                                    );
+                                })()}
+
                                 <div className="text-center mb-8">
                                     <div className="text-5xl mb-4">🤖</div>
                                     <h1 className="text-3xl font-black mb-2" style={{ background: 'linear-gradient(135deg, #0284C7 0%, #1A56DB 50%, #1E40AF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Hi, I'm Sage.</h1>
@@ -1386,7 +1421,7 @@ const SageOS = () => {
                                                         <p className="text-xs text-[var(--c-muted)] mb-3">Upgrade to unlock unlimited Sage conversations, automation control, and product generation.</p>
                                                         <a href="/sales" rel="noopener noreferrer"
                                                             className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-xl font-bold text-sm transition-all">
-                                                            ⚡ Get Pro Access — $20/mo →
+                                                            ⚡ Get the Blueprint — $29 →
                                                         </a>
                                                     </div>
                                                 </div>
@@ -2266,7 +2301,7 @@ const SageOS = () => {
                                             <div className="text-sm font-bold text-[var(--c-text)] mb-3 flex items-center gap-2">📋 Publish Checklist</div>
                                             {isDemo ? (
                                                 <div className="space-y-2">
-                                                    {['🚀 Post to Bluesky', '📸 Post to Instagram'].map(label => (
+                                                    {['🚀 Post to Bluesky', 'DEV Post to DEV.to'].map(label => (
                                                         <a key={label} href="/sales"
                                                             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-[var(--c-raised)] border border-[var(--c-border)] text-[var(--c-subtle)] cursor-pointer hover:bg-[var(--c-raised)] transition-all">
                                                             <span>🔒</span><span>{label}</span><span className="ml-auto text-xs text-purple-400">Upgrade →</span>

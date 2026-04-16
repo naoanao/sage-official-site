@@ -26,9 +26,9 @@ const allPosts = Object.entries(postModules).map(([path, raw]) => {
 
 const DEMO_RESULTS = [
     { icon: '✦', label: 'Blog post generated', detail: '1,200 words · SEO optimized · ready to publish', color: '#059669' },
-    { icon: '✦', label: '5 social captions ready', detail: 'Bluesky · Instagram · formatted & reviewed', color: '#1A56DB' },
+    { icon: '✦', label: '5 social captions ready', detail: 'Bluesky · Dev.to · formatted & reviewed', color: '#1A56DB' },
     { icon: '✦', label: 'Gumroad package ready', detail: 'ZIP bundle · sales copy · ready to upload', color: '#D97706' },
-    { icon: '✦', label: 'Posted to Bluesky', detail: 'Auto-published · Instagram draft ready', color: '#7C3AED' },
+    { icon: '✦', label: 'Posted to Bluesky', detail: 'Auto-published · Dev.to cross-post ready', color: '#7C3AED' },
 ];
 
 const DEMO_INPUTS = [
@@ -38,9 +38,9 @@ const DEMO_INPUTS = [
 ];
 
 const HOW_IT_WORKS = [
-    { step: '01', title: 'Type your idea', desc: 'Tell Sage what you want to build or sell. Plain English. No setup required.' },
-    { step: '02', title: 'Sage builds it', desc: 'Blog post, 5 social captions, and a Gumroad package — in 90 seconds.' },
-    { step: '03', title: 'Publish & earn', desc: 'Review the output, hit publish. Bluesky posts automatically.' },
+    { step: '01', title: 'Define your niche', desc: 'Write your expertise, voice, and goals in SOUL.md. One setup. Sage reads it every time.' },
+    { step: '02', title: 'Sage becomes you', desc: 'Your AI clone generates content in your voice — blog posts, social captions, and products to sell. In 90 seconds.' },
+    { step: '03', title: 'It runs while you sleep', desc: 'Bluesky auto-posts every morning. DreamMode finds new ideas overnight. MarketScan finds what sells.' },
 ];
 
 const formatDate = (dateStr) => {
@@ -184,9 +184,9 @@ const AutoPublishCard = () => (
         <div className="space-y-2">
             {[
                 { name: 'Bluesky', active: true },
-                { name: 'Instagram', active: false },
+                { name: 'Dev.to', active: true },
                 { name: 'Notion', active: true },
-                { name: 'Medium', active: false },
+                { name: 'Gumroad', active: true },
                 { name: 'WordPress', active: false },
             ].map((p) => (
                 <div key={p.name} className="flex items-center justify-between py-1.5 px-3 rounded"
@@ -318,7 +318,7 @@ const BuilderCard = () => (
 
 const FAQ_ITEMS = [
     { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. No code, no dashboards, no configuration." },
-    { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Instagram posting, and Gumroad package creation — all automated end-to-end." },
+    { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Dev.to cross-posting, and Gumroad package creation — all automated end-to-end." },
     { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
     { q: "What if it doesn't work for me?", a: `30-day money-back guarantee. Email us at ${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'} within 30 days of purchase and we'll issue a full refund via Stripe — no questions asked.` },
     { q: "Do I need to install anything?", a: "No. Sage runs entirely on Cloudflare's global network — no download, no local setup. Open the dashboard in any browser and start." },
@@ -417,13 +417,13 @@ const Landing = () => {
                     {/* Status badge */}
                     <div className="inline-flex items-center gap-2 mb-8 sage-badge">
                         <span className="live-dot" />
-                        EARLY ACCESS · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
+                        RUNNING 24/7 · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
                     </div>
 
                     {/* Headline */}
                     <h1 className="mb-6 font-black"
                         style={{
-                            fontSize: 'clamp(3rem, 9vw, 6.5rem)',
+                            fontSize: 'clamp(2.8rem, 8.5vw, 6rem)',
                             letterSpacing: '-0.045em',
                             lineHeight: '0.92',
                             background: 'linear-gradient(135deg, #0284C7 0%, #1A56DB 50%, #1E40AF 100%)',
@@ -431,16 +431,17 @@ const Landing = () => {
                             backgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                         }}>
-                        One Chat.<br />
-                        Full Business.
+                        Your AI Clone.<br />
+                        Your Business.
                     </h1>
 
                     {/* Sub */}
                     <p className="mb-10 font-light"
-                        style={{ fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: 'var(--c-muted)', maxWidth: 560, margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
-                        Type one idea. Get a <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>blog post</span>,{' '}
-                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>5 captions</span>, and a{' '}
-                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>product ready to sell</span>. In 90 seconds.
+                        style={{ fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: 'var(--c-muted)', maxWidth: 580, margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
+                        Write your niche in <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>SOUL.md</span>.{' '}
+                        Sage becomes <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>your AI double</span> — writing your blog,
+                        posting to Bluesky, and building products to sell.{' '}
+                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>24/7. Without you.</span>
                     </p>
 
                     {/* CTAs */}
@@ -782,7 +783,7 @@ const Landing = () => {
                             { label: 'Terms of Service', to: '/terms', internal: true },
                             { label: 'Contact', to: `mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'}`, internal: false },
                             { label: 'Bluesky', to: LINKS.sns.bluesky, internal: false },
-                            { label: 'Instagram', to: 'https://www.instagram.com/sege.ai/', internal: false },
+                            { label: 'Dev.to', to: 'https://dev.to/sageai', internal: false },
                         ].map((link) =>
                             link.internal ? (
                                 <Link key={link.label} to={link.to}

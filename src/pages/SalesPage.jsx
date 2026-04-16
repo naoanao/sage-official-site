@@ -18,35 +18,59 @@ const STATIC_LINKS = {
 // ── Subscription plans ─────────────────────────────────────────────────────
 const PLANS = [
     {
-        id: 'pro',
-        name: 'Pro',
-        price: '$20',
-        period: '/ month',
-        badge: '🔥 Most Popular',
-        description: 'Everything in the demo — on your brand, forever.',
-        demoNote: 'What the demo just showed you:',
-        demoFeatures: ['Auto-post to Bluesky + Instagram (demo mode)', 'Sage Chat AI assistant (demo mode)', 'Content generation pipeline (demo mode)'],
-        features: ['☁️ SNS auto-posting 24/7 — YOUR brand, YOUR accounts', '☁️ Content queue auto-replenishment (Cloudflare Worker)', '🖥️ Unlimited Sage Chat — no rate limits, local LLM', '🖥️ Blog & course generation pipeline', '🖥️ Notion content pool sync + daily Git log', '🤖 EngagementBot — auto-replies to comments', '📊 MarketScan — daily trend + Reddit signals', 'All future updates'],
-        cta: 'Unlock Pro — $20/mo',
-        link: STATIC_LINKS.proMonthly,
-        style: 'border-blue-500/50 bg-blue-500/[0.05] shadow-[0_0_40px_rgba(59,130,246,0.15)]',
-        ctaStyle: 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)]',
+        id: 'blueprint',
+        name: 'Blueprint',
+        price: '$29',
+        period: 'one-time',
+        badge: '⚡ Start Here',
+        description: 'Build your own 24/7 AI content engine from scratch.',
+        demoNote: "What you'll be able to do after setup:",
+        demoFeatures: [
+            'Auto-post to Bluesky + Dev.to daily',
+            'Auto-publish SEO blog posts',
+            'Market scan for profitable content ideas',
+        ],
+        features: [
+            '📄 Step-by-step setup guide (PDF)',
+            '🎬 Video walkthrough — follow along in 30 min',
+            '🔑 API setup checklist (Groq, Notion, Bluesky)',
+            '🤖 SOUL.md template — define your AI brand voice',
+            '📋 HEARTBEAT.md template — 24/7 schedule config',
+            '💬 AI support via SageMiniChat (answers your questions)',
+            '🔄 Free updates when the guide is revised',
+        ],
+        cta: 'Get the Blueprint — $29',
+        link: STATIC_LINKS.gumroad,
+        style: 'border-emerald-500/50 bg-emerald-500/[0.05] shadow-[0_0_40px_rgba(16,185,129,0.15)]',
+        ctaStyle: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]',
         highlight: true,
     },
     {
-        id: 'enterprise',
-        name: 'Enterprise',
-        price: '$99',
+        id: 'monthly',
+        name: 'Monthly',
+        price: '$20',
         period: '/ month',
-        badge: null,
-        description: 'Full system + white-label + direct support.',
-        demoNote: null,
-        demoFeatures: [],
-        features: ['Everything in Pro', 'Direct API access (build on top)', 'Priority email support (24h SLA)', 'White-label deployment rights', 'Custom identity + niche setup call', 'Onboarding call (1×30 min live)'],
-        cta: 'Go Enterprise — $99/mo',
-        link: STATIC_LINKS.enterprise,
-        style: 'border-purple-500/30 bg-purple-500/[0.03]',
-        ctaStyle: 'bg-purple-700 hover:bg-purple-600 text-white',
+        badge: '📦 Keep Growing',
+        description: 'New automation templates + prompts every month. No maintenance on your end.',
+        demoNote: 'Every month you get:',
+        demoFeatures: [
+            '5 new content prompt packs',
+            '2 new automation workflow templates',
+            'MarketScan strategy update',
+        ],
+        features: [
+            '📦 Monthly: 5 new prompt packs for your niche',
+            '⚙️ Monthly: 2 new n8n/Make.com workflow templates',
+            '📊 Monthly: MarketScan trend report (what to sell next)',
+            '🤖 Priority AI support — faster response',
+            '🔔 Early access to all new Sage features',
+            'Cancel anytime — no contract',
+        ],
+        cta: 'Join Monthly — $20/mo',
+        link: STATIC_LINKS.proMonthly,
+        style: 'border-blue-500/30 bg-blue-500/[0.03]',
+        ctaStyle: 'bg-blue-700 hover:bg-blue-600 text-white',
+        highlight: false,
     },
 ];
 
@@ -94,20 +118,21 @@ const SalesPage = () => {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono text-emerald-300 mb-6">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        🤖 LIVE — Auto-posting fires every morning at 9 AM
+                        🤖 LIVE — Your AI clone posts every morning at 9 AM
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none mb-4">
-                        Your AI posts<br />
-                        <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
-                            while you sleep.
+                        Your AI clone.<br />
+                        <span className="bg-gradient-to-r from-emerald-400 via-blue-400 to-indigo-500 bg-clip-text text-transparent">
+                            Runs your business.
                         </span>
                     </h1>
-                    <p className="text-xl text-slate-500 font-light mb-4">No PC needed. No babysitting. Just results.</p>
+                    <p className="text-xl text-slate-400 font-light mb-4">Write your niche once. Sage does the rest — forever.</p>
 
                     <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-6 font-light leading-relaxed">
-                        Sage AI runs 24/7 on Cloudflare's global edge network. Every morning it pulls from your Notion content pool,
-                        generates AI-written posts, and publishes to Bluesky and Instagram — automatically. Set it up once. Walk away.
+                        Define yourself in <span className="text-white font-semibold">SOUL.md</span>. Sage becomes your digital twin —
+                        writing blog posts in your voice, posting to Bluesky, and packaging products to sell on Gumroad.
+                        24/7 on Cloudflare's edge. Set it up once. Walk away.
                     </p>
 
                     {/* Stats bar */}
@@ -122,22 +147,24 @@ const SalesPage = () => {
 
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <a
+                            href={STATIC_LINKS.gumroad}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-3 px-10 py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-lg font-bold shadow-[0_0_60px_rgba(16,185,129,0.4)] transition-all"
+                        >
+                            <FiZap size={20} />
+                            Get the Blueprint — $29
+                        </a>
+                        <a
                             href={STATIC_LINKS.proMonthly}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-3 px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-[0_0_60px_rgba(37,99,235,0.4)] transition-all"
-                        >
-                            <FiZap size={20} />
-                            Start Pro — $20/mo
-                        </a>
-                        <a
-                            href="#pricing"
                             className="inline-flex items-center gap-3 px-8 py-5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-lg font-bold transition-all border border-white/10"
                         >
-                            See Plans <FiArrowRight size={18} />
+                            Monthly — $20/mo <FiArrowRight size={18} />
                         </a>
                     </div>
-                    <p className="text-xs text-slate-600 mt-3">Cancel anytime · 30-day money-back guarantee</p>
+                    <p className="text-xs text-slate-600 mt-3">One-time · No subscription · 30-day money-back guarantee</p>
                 </Motion.div>
             </section>
 

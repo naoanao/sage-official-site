@@ -16,7 +16,7 @@ const PLANS = [
         accentColor: 'from-blue-500 to-indigo-600',
         desc: 'Full autonomous AI pipeline — blog posts, SNS auto-posting, and content generation on autopilot.',
         features: [
-            'Bluesky + Instagram auto-posting (daily)',
+            'Bluesky + Dev.to auto-posting (daily)',
             'Blog & course generation pipeline',
             'Unlimited AI conversations & content generation',
             'All future updates included',

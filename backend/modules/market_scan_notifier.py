@@ -143,7 +143,7 @@ class MarketScanNotifier:
                 keyword = opp.get("keyword", "")
 
                 properties = {
-                    "Name": {"title": [{"text": {"content": topic}}]},
+                    "Topic": {"title": [{"text": {"content": topic}}]},
                     "Status": {"select": {"name": "予約済み"}},
                     "Category": {"select": {"name": "blog"}},
                 }

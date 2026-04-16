@@ -79,7 +79,7 @@ const UpgradeModal = ({ email, onDismiss }) => {
             {[
               '1 idea → blog + 5 posts + copy in 90s',
               'Content tailored to your niche & tone',
-              'Daily Bluesky & Instagram auto-posting',
+              'Daily Bluesky & Dev.to auto-posting',
               'Unlimited AI conversations & content generation',
             ].map(f => (
               <li key={f} className="text-xs text-gray-300 flex items-center gap-1.5">
