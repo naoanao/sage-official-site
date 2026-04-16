@@ -16,6 +16,7 @@
  */
 
 const ALLOWED_EVENTS = new Set([
+  // 既存イベント
   'lp_visit',
   'sales_visit',
   'modal_view',
@@ -23,6 +24,11 @@ const ALLOWED_EVENTS = new Set([
   'dashboard_visit',
   'generate_done',
   'publish_done',
+  // ブログ・メール収集イベント（BlogPost.jsx / tracking.js で追加）
+  'blog_visit',         // ブログ記事訪問
+  'blog_subscribe',     // メール収集フォーム送信
+  'page_view',          // 全ページビュー（App.jsx trackPageView）
+  'utm_captured',       // UTMパラメータ取得
 ]);
 
 const CORS = {

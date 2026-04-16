@@ -614,6 +614,15 @@ def get_automations():
             "note": "Requires MOLTBOOK_API_KEY"
         },
         {
+            "id": "sns_performance",
+            "name": "SNS Performance → Brain Learning",
+            "icon": "🧠",
+            "active": _is_automation_active("sns_performance"),
+            "schedule": "Daily 22:00 JST",
+            "lastRun": _get_last_run_time("sns_performance"),
+            "note": "Bluesky likes/reposts → NeuromorphicBrain学習"
+        },
+        {
             "id": "video_pipeline",
             "name": "Video Pipeline (Blog→Reels)",
             "icon": "🎬",
@@ -3289,6 +3298,91 @@ def api_gumroad_run_now():
         return jsonify({"status": "success", "message": "Gumroad scheduler executed. Check logs."})
     except Exception as e:
         logger.error(f"[GUMROAD] Manual trigger error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/sns/post_bilingual', methods=['POST'])
+def api_sns_post_bilingual():
+    """
+    EN + JP を同一トピックで同時投稿する。
+    Body: { "topic": "AI automation for solopreneurs" }
+
+    Gap分析「多言語展開が手動」を解消するエンドポイント。
+    SageOSの「Publish」ボタンからも呼べる。
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        topic = (data.get("topic") or "").strip()
+        if not topic:
+            return jsonify({"status": "error", "message": "topic is required"}), 400
+
+        from backend.modules.bilingual_poster import BilingualPoster
+        poster = BilingualPoster()
+        result = poster.post_bilingual(topic)
+        return jsonify({"status": "ok", **result}), 200
+    except Exception as e:
+        logger.error(f"[BILINGUAL] post_bilingual error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/engagement/status', methods=['GET'])
+def api_engagement_status():
+    """
+    Engagement Bot（Bluesky Like-back & Reply）の稼働状態を確認する。
+    HEARTBEAT上「動いているか不明」を可視化するエンドポイント。
+
+    Returns:
+      {
+        "active": true,
+        "last_run": "2026-04-17 08:30 JST",
+        "bluesky_handle": "@kanagawajapan.bsky.social",
+        "recent_actions": [ { "type": "like", "uri": "at://...", "at": "..." }, ... ]
+      }
+    """
+    try:
+        status = {
+            "active": _is_automation_active("engagement"),
+            "last_run": _get_last_run_time("engagement"),
+            "bluesky_handle": os.getenv("BLUESKY_HANDLE", "Not set"),
+            "instagram_account": os.getenv("INSTAGRAM_ACCOUNT_ID", "Not set"),
+            "recent_actions": [],
+        }
+
+        # EngagementBotのログから最近のアクションを取得
+        try:
+            import glob as _glob
+            log_pattern = os.path.join(os.path.dirname(__file__), "..", "logs", "engagement*.log")
+            log_files = sorted(_glob.glob(log_pattern), reverse=True)
+            if log_files:
+                with open(log_files[0], "r", encoding="utf-8", errors="ignore") as f:
+                    lines = f.readlines()[-50:]  # 最新50行
+                actions = []
+                for line in lines:
+                    if "liked" in line.lower() or "replied" in line.lower() or "follow" in line.lower():
+                        actions.append(line.strip()[-150:])
+                status["recent_actions"] = actions[-10:]
+        except Exception:
+            pass
+
+        # engagement_bot.py から最終アクション情報を取得試行
+        try:
+            engagement_log_path = os.path.join(
+                os.path.dirname(__file__), "..", "data", "engagement_log.json"
+            )
+            if os.path.exists(engagement_log_path):
+                with open(engagement_log_path, "r", encoding="utf-8") as f:
+                    eng_data = json.load(f)
+                status["engagement_log_summary"] = {
+                    "total_likes":   eng_data.get("total_likes", 0),
+                    "total_replies": eng_data.get("total_replies", 0),
+                    "last_session":  eng_data.get("last_session", "Never"),
+                }
+        except Exception:
+            pass
+
+        return jsonify({"status": "ok", **status}), 200
+    except Exception as e:
+        logger.error(f"[ENGAGEMENT] status error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
