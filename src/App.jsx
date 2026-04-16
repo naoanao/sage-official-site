@@ -12,6 +12,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import StoreManager from './pages/StoreManager'
 import Contact from './pages/Contact'
+import Onboarding from './pages/Onboarding'
 import ToastContainer from './components/ToastContainer'
 import { initUTMCapture, trackPageView } from './utils/tracking'
 import './App.css'
@@ -46,6 +47,7 @@ function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/manager" element={<StoreManager />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/automations" element={<Navigate to="/dashboard" state={{ openAutomations: true }} replace />} />
       </Routes>
     </Router>
