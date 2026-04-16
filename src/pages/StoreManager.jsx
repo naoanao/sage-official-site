@@ -118,12 +118,13 @@ function ProductRow({ product, onArchive }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function StoreManager() {
-    const [revenue, setRevenue]   = useState(null);
-    const [products, setProducts] = useState([]);
-    const [orders, setOrders]     = useState([]);
-    const [whop, setWhop]         = useState({});
-    const [loading, setLoading]   = useState(true);
-    const [tab, setTab]           = useState('overview');
+    const [revenue, setRevenue]         = useState(null);
+    const [gumroadRevenue, setGumroadRevenue] = useState(null);
+    const [products, setProducts]       = useState([]);
+    const [orders, setOrders]           = useState([]);
+    const [whop, setWhop]               = useState({});
+    const [loading, setLoading]         = useState(true);
+    const [tab, setTab]                 = useState('overview');
     const [showAddForm, setShowAddForm] = useState(false);
     const [newProduct, setNewProduct]   = useState({ name: '', description: '', amount: '' });
     const [adding, setAdding]           = useState(false);
@@ -131,19 +132,21 @@ export default function StoreManager() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [revRes, prodRes, ordRes, whopRes] = await Promise.all([
+            const [revRes, prodRes, ordRes, whopRes, gumRes] = await Promise.all([
                 fetch(`${API_BASE}/api/store/revenue`),
                 fetch(`${API_BASE}/api/store/products`),
                 fetch(`${API_BASE}/api/store/orders`),
                 fetch(`${API_BASE}/api/store/whop-products`),
+                fetch(`${API_BASE}/api/gumroad/revenue`),
             ]);
-            const [revData, prodData, ordData, whopData] = await Promise.all([
-                revRes.json(), prodRes.json(), ordRes.json(), whopRes.json(),
+            const [revData, prodData, ordData, whopData, gumData] = await Promise.all([
+                revRes.json(), prodRes.json(), ordRes.json(), whopRes.json(), gumRes.json(),
             ]);
             if (revData.status === 'ok')   setRevenue(revData);
             if (prodData.status === 'ok')  setProducts(prodData.products);
             if (ordData.status === 'ok')   setOrders(ordData.orders);
             if (whopData.status === 'ok')  setWhop(whopData.products || []);
+            if (gumData.status === 'ok')   setGumroadRevenue(gumData);
         } finally {
             setLoading(false);
         }
@@ -220,12 +223,60 @@ export default function StoreManager() {
 
             <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
 
-                {/* Revenue Summary Cards */}
+                {/* Gumroad Revenue Banner — 最優先表示 */}
+                {gumroadRevenue && (
+                    <div className="p-5 rounded-2xl border"
+                        style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.12), rgba(219,39,119,0.08))', borderColor: 'rgba(139,92,246,0.25)' }}>
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                                <span className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Gumroad — Live Revenue</span>
+                            </div>
+                            <a href="https://app.gumroad.com/dashboard" target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-slate-500 hover:text-violet-400 transition-colors">
+                                Open Gumroad →
+                            </a>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-3xl font-black text-white">${gumroadRevenue.total_revenue_usd.toFixed(2)}</p>
+                                <p className="text-xs text-slate-500 mt-1">Total Revenue (all time)</p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-black text-white">{gumroadRevenue.total_sales_count}</p>
+                                <p className="text-xs text-slate-500 mt-1">Total Sales</p>
+                            </div>
+                        </div>
+                        {gumroadRevenue.products && gumroadRevenue.products.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-white/10 space-y-1">
+                                {gumroadRevenue.products.map(p => (
+                                    <div key={p.id} className="flex items-center justify-between text-xs">
+                                        <span className={`truncate max-w-[60%] ${p.published ? 'text-slate-300' : 'text-slate-600 line-through'}`}>
+                                            {p.name}
+                                        </span>
+                                        <span className="text-slate-400">
+                                            ${p.revenue_usd.toFixed(2)} ({p.sales_count} sales)
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {gumroadRevenue.total_revenue_usd === 0 && (
+                            <p className="mt-2 text-xs text-yellow-500/70">
+                                ⚠️ GUMROAD_ACCESS_TOKEN が未設定か売上ゼロ。
+                                <a href="https://app.gumroad.com/settings/advanced" target="_blank" rel="noopener noreferrer"
+                                    className="ml-1 underline hover:text-yellow-400">トークン設定 →</a>
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                {/* Stripe Revenue Summary Cards */}
                 {revenue && (
                     <div className="grid grid-cols-3 gap-4">
                         {[
-                            { icon: <FiDollarSign />, label: '30-Day Revenue', value: fmt(revenue.total, revenue.currency), color: 'text-emerald-400' },
-                            { icon: <FiShoppingBag />, label: 'Orders', value: revenue.count, color: 'text-blue-400' },
+                            { icon: <FiDollarSign />, label: 'Stripe 30-Day Revenue', value: fmt(revenue.total, revenue.currency), color: 'text-emerald-400' },
+                            { icon: <FiShoppingBag />, label: 'Stripe Orders', value: revenue.count, color: 'text-blue-400' },
                             { icon: <FiTrendingUp />, label: 'Avg Order', value: fmt(revenue.avg, revenue.currency), color: 'text-purple-400' },
                         ].map(card => (
                             <div key={card.label} className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">

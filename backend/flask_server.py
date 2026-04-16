@@ -1342,10 +1342,50 @@ def init_brain():
                                 except Exception as e:
                                     logger.error(f"[ERROR] Market Scan Scheduler Thread Error: {e}")
 
+                            # Dream Scheduler (03:00 JST = UTC 18:00)
+                            def run_dream_scheduler():
+                                try:
+                                    from backend.scheduler.dream_scheduler import DreamScheduler
+                                    DreamScheduler().run_loop()
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Dream Scheduler Thread Error: {e}", exc_info=True)
+
                             # Initialize events (IDはUIのautomation IDと一致させる)
-                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement', 'market_scan', 'self_test']:
+                            for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement', 'market_scan', 'self_test', 'dream_mode']:
                                 if auto not in _automation_stop_events:
                                     _automation_stop_events[auto] = threading.Event()
+
+                            # SNS Performance Tracker (JST 22:00 = UTC 13:00)
+                            # Bluesky投稿のエンゲージメントを取得 → NeuromorphicBrainに学習させる
+                            def run_sns_performance_tracker():
+                                import time as _time
+                                from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+                                JST = _tz(_td(hours=9))
+                                logger.info("[SNS_TRACKER] Performance tracker thread started.")
+                                while True:
+                                    if os.path.exists("SAGE_STOP"):
+                                        logger.warning("[SNS_TRACKER] SAGE_STOP detected. Exiting.")
+                                        return
+                                    now_jst = _dt.now(JST)
+                                    target = now_jst.replace(hour=22, minute=0, second=0, microsecond=0)
+                                    if now_jst >= target:
+                                        target += _td(days=1)
+                                    wait_sec = (target - now_jst).total_seconds()
+                                    logger.info(f"[SNS_TRACKER] Next sync at {target.strftime('%Y-%m-%d %H:%M JST')} (in {wait_sec/3600:.1f}h)")
+                                    elapsed = 0
+                                    while elapsed < wait_sec:
+                                        if os.path.exists("SAGE_STOP"):
+                                            return
+                                        _time.sleep(min(60, wait_sec - elapsed))
+                                        elapsed += 60
+                                    try:
+                                        from backend.modules.sns_performance_tracker import SNSPerformanceTracker
+                                        result = SNSPerformanceTracker().sync_and_learn()
+                                        logger.info(f"[SNS_TRACKER] Done: learned={result.get('learned',0)} posts")
+                                        _record_run("sns_performance")
+                                    except Exception as e:
+                                        logger.error(f"[SNS_TRACKER] Error: {e}", exc_info=True)
+                                    _time.sleep(60)
 
                             threading.Thread(target=run_scheduler, daemon=True, name="SageSNSScheduler").start()
                             # threading.Thread(target=run_worker, daemon=True, name="SageSNSWorker").start() # Need to adapt JobRunner
@@ -1354,6 +1394,8 @@ def init_brain():
                             threading.Thread(target=run_notion_scheduler, daemon=True, name="SageNotionSyncScheduler").start()
                             threading.Thread(target=run_engagement_bot, daemon=True, name="SageEngagementBot").start()
                             threading.Thread(target=run_market_scan_scheduler, daemon=True, name="SageMarketScanScheduler").start()
+                            threading.Thread(target=run_dream_scheduler, daemon=True, name="SageDreamScheduler").start()
+                            threading.Thread(target=run_sns_performance_tracker, daemon=True, name="SageSNSPerformanceTracker").start()
 
                             # Self-Test Scheduler (JST 07:00 = UTC 22:00)
                             def run_self_test_scheduler():
@@ -1364,7 +1406,7 @@ def init_brain():
                                     logger.error(f"[ERROR] Self Test Scheduler Thread Error: {e}")
 
                             threading.Thread(target=run_self_test_scheduler, daemon=True, name="SageSelfTestScheduler").start()
-                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot + MarketScan + SelfTest Threads spawned.")
+                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot + MarketScan + Dream + SelfTest Threads spawned.")
 
                         run_sns_loops()
                         
@@ -3247,6 +3289,49 @@ def api_gumroad_run_now():
         return jsonify({"status": "success", "message": "Gumroad scheduler executed. Check logs."})
     except Exception as e:
         logger.error(f"[GUMROAD] Manual trigger error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/gumroad/revenue', methods=['GET'])
+def api_gumroad_revenue():
+    """Gumroad 全商品の収益サマリーを返す（Store Manager ダッシュボード用）。"""
+    try:
+        from backend.integrations.gumroad_api import GumroadAPI
+        api = GumroadAPI()
+        summary = api.get_revenue_summary()
+        return jsonify({"status": "ok", **summary}), 200
+    except Exception as e:
+        logger.error(f"[GUMROAD] revenue endpoint error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e),
+                        "total_revenue_usd": 0, "total_sales_count": 0, "products": []}), 200
+
+
+@app.route('/api/sns/sync_performance', methods=['POST'])
+def api_sns_sync_performance():
+    """
+    Bluesky 投稿のエンゲージメントを取得して NeuromorphicBrain に学習させる。
+    HEARTBEAT: 毎日 22:00 JST に自動実行 + 手動トリガー可。
+    """
+    try:
+        from backend.modules.sns_performance_tracker import SNSPerformanceTracker
+        tracker = SNSPerformanceTracker()
+        result = tracker.sync_and_learn()
+        return jsonify({"status": "ok", **result}), 200
+    except Exception as e:
+        logger.error(f"[SNS_TRACKER] sync_performance error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/sns/performance_summary', methods=['GET'])
+def api_sns_performance_summary():
+    """SNS投稿のパフォーマンスサマリーを返す（ダッシュボード表示用）。"""
+    try:
+        from backend.modules.sns_performance_tracker import SNSPerformanceTracker
+        tracker = SNSPerformanceTracker()
+        summary = tracker.get_summary()
+        return jsonify({"status": "ok", **summary}), 200
+    except Exception as e:
+        logger.error(f"[SNS_TRACKER] summary error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 

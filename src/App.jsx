@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Landing from './pages/Landing'
 import SageOS from './pages/SageOS'
 import SubscriberGate from './pages/SubscriberGate'
@@ -13,11 +13,25 @@ import Terms from './pages/Terms'
 import StoreManager from './pages/StoreManager'
 import Contact from './pages/Contact'
 import ToastContainer from './components/ToastContainer'
+import { initUTMCapture, trackPageView } from './utils/tracking'
 import './App.css'
+
+// UTMキャプチャ + ページビュートラッキング（ルート変更ごとに実行）
+function TrackingInit() {
+  const location = useLocation();
+  React.useEffect(() => {
+    initUTMCapture();
+  }, []); // 初回のみ
+  React.useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+  return null;
+}
 
 function App() {
   return (
     <Router>
+      <TrackingInit />
       <ToastContainer />
       <Routes>
         <Route path="/" element={<Landing />} />
