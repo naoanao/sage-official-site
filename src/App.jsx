@@ -40,7 +40,8 @@ function App() {
         <Route path="/dashboard/*" element={<SubscriberGate />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
-        <Route path="/thank-you" element={<ThankYou />} />
+        {/* /thank-you は /onboarding にリダイレクト（Stripe payment link の success_url は変更不要） */}
+        <Route path="/thank-you" element={<Navigate to="/onboarding" replace />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/privacy" element={<Privacy />} />
@@ -48,10 +49,4 @@ function App() {
         <Route path="/manager" element={<StoreManager />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/automations" element={<Navigate to="/dashboard" state={{ openAutomations: true }} replace />} />
-      </Routes>
-    </Router>
-  )
-}
-
-export default App
+        <Route path="/automations" element={<Navigate to="/dashboard" stat

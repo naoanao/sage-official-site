@@ -21,9 +21,9 @@
 const STRIPE_API = 'https://api.stripe.com/v1';
 // RETURN_URL: reads from CF Pages env var, falls back to the request's own origin
 function getReturnUrl(request, env) {
-  if (env.SITE_URL) return `${env.SITE_URL}/thank-you`;
+  if (env.SITE_URL) return `${env.SITE_URL}/onboarding`;
   const origin = new URL(request.url).origin;
-  return `${origin}/thank-you`;
+  return `${origin}/onboarding`;
 }
 
 async function stripePost(path, params, secret) {
