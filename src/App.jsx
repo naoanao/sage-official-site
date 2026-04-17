@@ -49,4 +49,10 @@ function App() {
         <Route path="/manager" element={<StoreManager />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/automations" element={<Navigate to="/dashboard" stat
+        <Route path="/automations" element={<Navigate to="/dashboard" state={{ openAutomations: true }} replace />} />
+      </Routes>
+    </Router>
+  )
+}
+
+export default App
