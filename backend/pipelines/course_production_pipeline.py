@@ -203,27 +203,32 @@ class CourseProductionPipeline:
             # Step 2: Generate section content
             sections = self._generate_sections(outline, safe_topic, language=language)
             logger.info(f"✅ Content generated: {len(sections)} sections")
-            _cb(55, '🖼️ Processing visual assets...')
+            _cb(55, '🖼️ Generating slide visuals...')
 
-            # Step 3: Generate slide images
-            slides = self._generate_slides(sections, topic=safe_topic)
+            # Step 3: Generate slide images (with per-slide progress 55→62)
+            n_sections = len(sections)
+            slides = self._generate_slides(
+                sections, topic=safe_topic,
+                progress_callback=_cb, pct_start=55, pct_end=62
+            )
             logger.info(f"✅ Slides generated: {len(slides)} images")
+            _cb(62, '🖼️ Generating section images...')
 
-            # Step 3b: Generate image prompts and actual images
+            # Step 3b: Generate image prompts and actual images (62→68)
             target_market = kwargs.get('target_market', 'us')
             output_dir = self._get_output_dir(safe_topic)
 
-            # Generate prompts and try to generate images
             image_results = self._generate_section_images(
                 sections=sections,
                 topic=safe_topic,
-                target_market=target_market
+                target_market=target_market,
+                progress_callback=_cb, pct_start=62, pct_end=68
             )
 
-            # Save image prompts to a file for the purchaser
+            _cb(68, '💾 Saving visual assets...')
             self._write_image_prompts_file(image_results, output_dir)
             logger.info(f"✅ Visual assets processed: {len(image_results)} items")
-            _cb(68, '💰 Building sales page...')
+            _cb(69, '💰 Building sales page...')
 
             # Step 4: Generate sales page
             sales_page = self._generate_sales_page(safe_topic, sections, research_data, language=language)
@@ -907,11 +912,13 @@ Content:""")
             cleaned.append(para)
         return '\n\n'.join(cleaned)
     
-    def _generate_slides(self, sections: List[Dict], topic: str = "") -> List[Dict]:
+    def _generate_slides(self, sections: List[Dict], topic: str = "",
+                         progress_callback=None, pct_start: int = 55, pct_end: int = 62) -> List[Dict]:
         """Generate slide images using image_gen_enhanced (HF Flux → Gemini → LoremFlickr)"""
         from backend.integrations.image_generation import image_gen_enhanced
         slides = []
         topic_kw = self._get_topic_visual_keywords(topic) if topic else None
+        total = len(sections) or 1
 
         for i, section in enumerate(sections):
             logger.info(f"🖼️  Generating slide {section['number']}: {section['title']}")
@@ -939,6 +946,14 @@ Content:""")
                     "title": section['title'],
                     "status": "image_generation_skipped"
                 })
+
+            # Report per-slide progress
+            if progress_callback:
+                pct = pct_start + int((i + 1) / total * (pct_end - pct_start))
+                try:
+                    progress_callback(pct, f'🖼️ Slide {i + 1}/{total} generated...')
+                except Exception:
+                    pass
 
         return slides
     
@@ -1130,12 +1145,13 @@ Content:""")
                 return f"{_random.choice(visuals)}, {prompt_base}"
         return f"dramatic documentary photography related to: {section_title}, dark moody atmosphere, cinematic, {prompt_base}"
 
-    def _generate_section_images(self, sections: list, topic: str, 
-                                   target_market: str = "us") -> dict:
+    def _generate_section_images(self, sections: list, topic: str,
+                                   target_market: str = "us",
+                                   progress_callback=None, pct_start: int = 62, pct_end: int = 68) -> dict:
         """
         各セクションに対応するAI画像プロンプトを生成し、
         画像ファイルをZIPに含める準備をする。
-        
+
         Returns: {section_title: {type, path, prompt}}
         """
         import os as _os
@@ -1144,6 +1160,7 @@ Content:""")
         output_dir = self._get_output_dir(topic)
 
         topic_kw = self._get_topic_visual_keywords(topic) if topic else None
+        total = len(sections) or 1
 
         for sec_idx, section in enumerate(sections):
             title = section.get("title", "")
@@ -1173,6 +1190,14 @@ Content:""")
                     "type": "prompt_only",
                     "prompt": prompt
                 }
+
+            # Report per-image progress
+            if progress_callback:
+                pct = pct_start + int((sec_idx + 1) / total * (pct_end - pct_start))
+                try:
+                    progress_callback(pct, f'🖼️ Image {sec_idx + 1}/{total} processed...')
+                except Exception:
+                    pass
 
         return image_results
 

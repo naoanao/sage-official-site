@@ -1046,6 +1046,17 @@ def devto_status():
 
 # --- SPA ROUTING (Moved to bottom for priority) ---
 
+@app.route('/api/images/<path:filename>', methods=['GET'])
+def serve_tmp_image(filename):
+    """Serve locally cached images so Meta's crawler can reach them via ngrok."""
+    import re
+    # Whitelist: UUID hex + extension only — no path traversal
+    if not re.match(r'^[a-f0-9\-]{8,64}\.(jpg|jpeg|png|webp)$', filename, re.IGNORECASE):
+        return '', 404
+    img_dir = os.path.join(os.path.dirname(__file__), 'data', 'tmp_images')
+    return send_from_directory(img_dir, filename)
+
+
 @app.route('/api/instagram/status', methods=['GET'])
 def instagram_status():
     from backend.integrations.instagram_integration import InstagramBot
@@ -1078,27 +1089,35 @@ def instagram_post():
         from backend.integrations.instagram_integration import InstagramBot
         from backend.integrations.image_generation import image_gen_enhanced
         import requests as _req
+        import uuid as _uuid
 
-        # Pollinations/LoremFlickr URLs are dynamic — Instagram's crawler may reject them.
-        # If IMGBB_API_KEY is available, download the image and re-upload for a stable URL.
-        _unstable = ('pollinations.ai', 'loremflickr.com')
-        if any(h in image_url for h in _unstable) and image_gen_enhanced.imgbb_api_key:
+        # ── Strategy: download image → serve via Flask/ngrok → stable URL for Meta ──
+        # Meta's crawler cannot reach imgbb (i.ibb.co) or Pollinations directly.
+        # We download the bytes and serve them locally through ngrok instead.
+        backend_url = (os.getenv('VITE_BACKEND_URL') or '').rstrip('/')
+        tmp_dir = os.path.join(os.path.dirname(__file__), 'data', 'tmp_images')
+        os.makedirs(tmp_dir, exist_ok=True)
+
+        if backend_url:
             try:
-                r = _req.get(image_url, timeout=30)
-                ct = r.headers.get('content-type', '')
+                r = _req.get(image_url, timeout=30, stream=True)
+                ct = r.headers.get('content-type', 'image/jpeg')
                 if r.status_code == 200 and ct.startswith('image'):
-                    stable_url = image_gen_enhanced._upload_to_imgbb(r.content)
-                    if stable_url:
-                        logger.info(f"[IG] Converted dynamic URL → imgbb: {stable_url}")
-                        image_url = stable_url
+                    ext = 'jpg' if 'jpeg' in ct or 'jpg' in ct else ct.split('/')[-1].split(';')[0].strip() or 'jpg'
+                    fname = f"{_uuid.uuid4().hex}.{ext}"
+                    fpath = os.path.join(tmp_dir, fname)
+                    with open(fpath, 'wb') as _f:
+                        for chunk in r.iter_content(8192):
+                            _f.write(chunk)
+                    stable_url = f"{backend_url}/api/images/{fname}"
+                    logger.info(f"[IG] Serving image via ngrok: {stable_url}")
+                    image_url = stable_url
                 else:
-                    # Original URL unreachable (e.g. Pollinations 500).
-                    # LoremFlickr works directly with Instagram (it follows Flickr CDN redirects).
-                    logger.warning(f"[IG] Image URL returned {r.status_code}, using LoremFlickr fallback")
-                    image_url = image_gen_enhanced._loremflickr_url(caption[:100])
-                    logger.info(f"[IG] Fallback URL: {image_url}")
-            except Exception as _e:
-                logger.warning(f"[IG] imgbb pre-conversion failed ({_e}), using original URL")
+                    logger.warning(f"[IG] Source image returned {r.status_code} — using original URL")
+            except Exception as _dl_err:
+                logger.warning(f"[IG] Local cache failed ({_dl_err}) — using original URL")
+        else:
+            logger.warning("[IG] VITE_BACKEND_URL not set — Meta may reject the image URL")
 
         bot = InstagramBot()
         if not bot.access_token or not bot.account_id:
