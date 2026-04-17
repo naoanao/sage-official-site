@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion as Motion } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { FiPlay, FiShield, FiDollarSign, FiActivity, FiXCircle, FiCheckCircle, FiCheck, FiAlertTriangle, FiHome, FiShoppingCart, FiCpu, FiRefreshCw, FiFolder } from 'react-icons/fi';
 import axios from 'axios';
 import { marked } from 'marked';
@@ -212,6 +212,10 @@ const SageOS = () => {
     const [currentPhase, setCurrentPhase] = useState(() => _ls.get('sage_phase', 1));
     const [activeTopic, setActiveTopic] = useState(() => _ls.get('sage_activeTopic', ''));
     const [showAutomations, setShowAutomations] = useState(() => !!location.state?.openAutomations);
+    const [selectedAutomation, setSelectedAutomation] = useState(null); // detail drawer
+    const [autoLogs, setAutoLogs] = useState([]);
+    const [autoLogsLoading, setAutoLogsLoading] = useState(false);
+    const [autoTriggerStatus, setAutoTriggerStatus] = useState(null); // 'running'|'done'|'error'
     const [showContentManager, setShowContentManager] = useState(false);
     const [showSoulPanel, setShowSoulPanel] = useState(false);
     const [soulIdentity, setSoulIdentity] = useState(null);
@@ -333,6 +337,29 @@ const SageOS = () => {
             const map = Object.fromEntries(updatedList.map(a => [a.id, a.active]));
             localStorage.setItem('sage_automations', JSON.stringify(map));
         } catch { /* ignore */ }
+    };
+
+    const openAutomationDetail = async (automation) => {
+        setSelectedAutomation(automation);
+        setAutoLogs([]);
+        setAutoTriggerStatus(null);
+        setAutoLogsLoading(true);
+        try {
+            const res = await api.get(`/api/automations/${automation.id}/logs?limit=30`);
+            setAutoLogs(res.data?.logs || []);
+        } catch { setAutoLogs([]); }
+        finally { setAutoLogsLoading(false); }
+    };
+
+    const triggerAutomation = async (id) => {
+        setAutoTriggerStatus('running');
+        try {
+            await api.post(`/api/automations/${id}/trigger`);
+            setAutoTriggerStatus('done');
+            setTimeout(() => fetchAutomations(), 2000);
+        } catch (e) {
+            setAutoTriggerStatus(e?.response?.data?.message || 'error');
+        }
     };
 
     const handleToggle = async (id, currentActive) => {
@@ -1351,10 +1378,15 @@ const SageOS = () => {
                         <div className="p-5 bg-[var(--c-raised)] border border-[var(--c-border)] rounded-2xl">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="text-sm font-bold text-[var(--c-text)] flex items-center gap-2">⚡ Active Automations</div>
+                                <span className="text-xs text-[var(--c-muted)]">Click any card for details & controls</span>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {automations.map(a => (
-                                    <div key={a.id} className={`p-4 rounded-xl border transition-all ${a.active ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-[var(--c-raised)] border-[var(--c-border)]'}`}>
+                                    <div
+                                        key={a.id}
+                                        onClick={() => openAutomationDetail(a)}
+                                        className={`p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.02] hover:shadow-lg ${a.active ? 'bg-emerald-900/10 border-emerald-500/20 hover:border-emerald-400/40' : 'bg-[var(--c-raised)] border-[var(--c-border)] hover:border-[var(--c-subtle)]'}`}
+                                    >
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-xl">{a.icon}</span>
                                             <div className={`w-2 h-2 rounded-full ${a.active ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}></div>
@@ -1362,18 +1394,161 @@ const SageOS = () => {
                                         <div className="text-sm font-semibold text-[var(--c-text)] mb-0.5">{a.name}</div>
                                         <div className="text-xs text-[var(--c-subtle)]">{a.schedule}</div>
                                         <div className="text-xs text-[var(--c-subtle)] mb-3">{a.lastRun || 'Never'}</div>
-                                        <button
-                                            onClick={() => handleToggle(a.id, a.active)}
-                                            disabled={automationLoading.has(a.id)}
-                                            className={`w-full text-xs py-1.5 rounded-lg transition-all ${automationLoading.has(a.id) ? 'opacity-50 cursor-not-allowed' : ''} ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}>
-                                            {automationLoading.has(a.id) ? '…' : (a.active ? 'Stop' : 'Start')}
-                                        </button>
+                                        <div className="flex gap-1.5">
+                                            <button
+                                                onClick={e => { e.stopPropagation(); handleToggle(a.id, a.active); }}
+                                                disabled={automationLoading.has(a.id)}
+                                                className={`flex-1 text-xs py-1.5 rounded-lg transition-all ${automationLoading.has(a.id) ? 'opacity-50 cursor-not-allowed' : ''} ${a.active ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400' : 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400'}`}>
+                                                {automationLoading.has(a.id) ? '…' : (a.active ? 'Stop' : 'Start')}
+                                            </button>
+                                            <button
+                                                onClick={e => { e.stopPropagation(); openAutomationDetail(a); }}
+                                                className="px-2 py-1.5 text-xs rounded-lg bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-muted)] hover:text-[var(--c-text)] transition-all"
+                                                title="View details">
+                                                ›
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </Motion.div>
                 )}
+
+                {/* Automation Detail Drawer */}
+                <AnimatePresence>
+                {selectedAutomation && (
+                    <>
+                        {/* Backdrop */}
+                        <Motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setSelectedAutomation(null)}
+                            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                        />
+                        {/* Drawer */}
+                        <Motion.div
+                            initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                            className="fixed right-0 top-0 h-full w-full max-w-md z-50 flex flex-col"
+                            style={{ background: 'var(--c-surface)', borderLeft: '1px solid var(--c-border)' }}
+                        >
+                            {/* Drawer Header */}
+                            <div className="flex items-center gap-3 p-5 border-b border-[var(--c-border)]">
+                                <span className="text-2xl">{selectedAutomation.icon}</span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-[var(--c-text)] text-sm leading-tight">{selectedAutomation.name}</div>
+                                    <div className="text-xs text-[var(--c-muted)] mt-0.5">{selectedAutomation.schedule}</div>
+                                </div>
+                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-mono ${selectedAutomation.active ? 'bg-emerald-900/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${selectedAutomation.active ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}/>
+                                    {selectedAutomation.active ? 'ACTIVE' : 'STOPPED'}
+                                </div>
+                                <button onClick={() => setSelectedAutomation(null)} className="text-[var(--c-muted)] hover:text-[var(--c-text)] p-1">✕</button>
+                            </div>
+
+                            {/* Drawer Body */}
+                            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+                                {/* Stats row */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-raised)]">
+                                        <div className="text-xs text-[var(--c-muted)] mb-1">Last Run</div>
+                                        <div className="text-sm font-mono text-[var(--c-text)]">{selectedAutomation.lastRun || 'Never'}</div>
+                                    </div>
+                                    <div className="p-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-raised)]">
+                                        <div className="text-xs text-[var(--c-muted)] mb-1">Log Entries</div>
+                                        <div className="text-sm font-mono text-[var(--c-text)]">{autoLogsLoading ? '…' : autoLogs.length}</div>
+                                    </div>
+                                </div>
+
+                                {/* Note / description */}
+                                {selectedAutomation.note && (
+                                    <div className="p-3 rounded-xl border border-indigo-500/20 bg-indigo-900/10 text-xs text-indigo-300">
+                                        ℹ️ {selectedAutomation.note}
+                                    </div>
+                                )}
+
+                                {/* Run Now */}
+                                <div>
+                                    <div className="text-xs font-bold text-[var(--c-text)] mb-2 uppercase tracking-wider">Manual Control</div>
+                                    <button
+                                        onClick={() => triggerAutomation(selectedAutomation.id)}
+                                        disabled={autoTriggerStatus === 'running' || !selectedAutomation.active}
+                                        className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                                            !selectedAutomation.active
+                                                ? 'opacity-40 cursor-not-allowed bg-[var(--c-raised)] text-[var(--c-muted)]'
+                                                : autoTriggerStatus === 'running'
+                                                    ? 'bg-indigo-900/30 text-indigo-300 cursor-not-allowed'
+                                                    : autoTriggerStatus === 'done'
+                                                        ? 'bg-emerald-900/30 text-emerald-400'
+                                                        : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:opacity-90'
+                                        }`}
+                                    >
+                                        {autoTriggerStatus === 'running' ? '⏳ Running…' :
+                                         autoTriggerStatus === 'done' ? '✅ Triggered! Check logs below' :
+                                         typeof autoTriggerStatus === 'string' && autoTriggerStatus !== 'running' && autoTriggerStatus !== 'done' ? `❌ ${autoTriggerStatus}` :
+                                         !selectedAutomation.active ? '⛔ Enable automation first' :
+                                         '▶ Run Now'}
+                                    </button>
+                                    {autoTriggerStatus === 'done' && (
+                                        <p className="text-xs text-[var(--c-muted)] mt-2 text-center">Running in background — refresh logs in a few seconds</p>
+                                    )}
+                                </div>
+
+                                {/* Toggle */}
+                                <div>
+                                    <div className="text-xs font-bold text-[var(--c-text)] mb-2 uppercase tracking-wider">Status</div>
+                                    <button
+                                        onClick={() => {
+                                            handleToggle(selectedAutomation.id, selectedAutomation.active);
+                                            setSelectedAutomation(prev => ({ ...prev, active: !prev.active }));
+                                        }}
+                                        disabled={automationLoading.has(selectedAutomation.id)}
+                                        className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                                            selectedAutomation.active
+                                                ? 'bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-500/20'
+                                                : 'bg-emerald-900/20 hover:bg-emerald-900/40 text-emerald-400 border border-emerald-500/20'
+                                        }`}
+                                    >
+                                        {automationLoading.has(selectedAutomation.id) ? '…' : selectedAutomation.active ? '⏹ Stop Automation' : '▶ Start Automation'}
+                                    </button>
+                                </div>
+
+                                {/* Activity Log */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="text-xs font-bold text-[var(--c-text)] uppercase tracking-wider">Activity Log</div>
+                                        <button
+                                            onClick={() => openAutomationDetail(selectedAutomation)}
+                                            className="text-xs text-[var(--c-muted)] hover:text-[var(--c-text)] transition-colors"
+                                        >↻ Refresh</button>
+                                    </div>
+                                    <div className="rounded-xl border border-[var(--c-border)] bg-[var(--c-bg)] overflow-hidden" style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                                        {autoLogsLoading ? (
+                                            <div className="p-4 text-xs text-[var(--c-muted)] text-center">Loading logs…</div>
+                                        ) : autoLogs.length === 0 ? (
+                                            <div className="p-4 text-xs text-[var(--c-muted)] text-center">No log entries found yet</div>
+                                        ) : (
+                                            <div className="p-3 space-y-1">
+                                                {[...autoLogs].reverse().map((line, i) => {
+                                                    const isError = /error|failed|❌/i.test(line);
+                                                    const isOk = /✅|success|done|posted/i.test(line);
+                                                    return (
+                                                        <div key={i} className={`text-xs font-mono leading-relaxed px-2 py-1 rounded ${isError ? 'text-red-400 bg-red-900/10' : isOk ? 'text-emerald-400' : 'text-[var(--c-muted)]'}`}>
+                                                            {line.replace(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+ - \w+ - /, '')}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                            </div>
+                        </Motion.div>
+                    </>
+                )}
+                </AnimatePresence>
 
                 {/* Self-Test Panel */}
                 {/* old Self-Test panel removed — new modal rendered at root level below */}

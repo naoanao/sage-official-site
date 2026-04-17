@@ -707,6 +707,103 @@ def toggle_automation():
         logger.error(f"[TOGGLE] Error: {e}")
         return jsonify({'error': str(e)}), 500
 
+# --- AUTOMATION DETAIL: LOGS + TRIGGER ---
+
+# Log keywords per automation ID (used to filter sage_ultimate.log)
+_AUTO_LOG_KEYWORDS = {
+    "bluesky":       ["[SNS]", "[BLUESKY]", "Bluesky", "bluesky"],
+    "engagement":    ["[ENGAGEMENT]", "Engagement", "engagement", "like-back"],
+    "blog":          ["[BLOG]", "BlogScheduler", "blog_scheduler", "run_once"],
+    "gumroad":       ["[GUMROAD]", "GumroadScheduler", "gumroad"],
+    "notion_sync":   ["[NOTION]", "Notion", "notion_sync"],
+    "market_scan":   ["[MARKET_SCAN]", "[MarketScan]", "MarketScan", "market_scan"],
+    "dream_mode":    ["[DREAM]", "DreamMode", "dream_mode", "Dream Mode"],
+    "moltbook":      ["[MOLTBOOK]", "Moltbook", "moltbook"],
+    "sns_performance":["[SNS_PERF]", "SNSPerformance", "sns_performance", "NeuromorphicBrain"],
+    "video_pipeline":["[VIDEO]", "VideoAgent", "video_pipeline"],
+}
+
+_LOG_FILE = os.path.join(os.path.dirname(__file__), '..', 'logs', 'sage_ultimate.log')
+
+@app.route('/api/automations/<automation_id>/logs', methods=['GET'])
+def get_automation_logs(automation_id):
+    """直近Nライン（デフォルト50）のうち automation_id に関連するログを返す"""
+    limit = int(request.args.get('limit', 30))
+    keywords = _AUTO_LOG_KEYWORDS.get(automation_id, [automation_id])
+    lines = []
+    try:
+        if os.path.exists(_LOG_FILE):
+            with open(_LOG_FILE, 'r', encoding='utf-8', errors='replace') as f:
+                # Read last 5000 lines for efficiency
+                all_lines = f.readlines()[-5000:]
+            for line in all_lines:
+                if any(kw in line for kw in keywords):
+                    lines.append(line.rstrip())
+            lines = lines[-limit:]  # most recent N
+    except Exception as e:
+        logger.warning(f"[LOGS] Could not read log for {automation_id}: {e}")
+    return jsonify({"automation_id": automation_id, "logs": lines})
+
+
+@app.route('/api/automations/<automation_id>/trigger', methods=['POST'])
+def trigger_automation(automation_id):
+    """指定automationを今すぐ1回だけバックグラウンドで実行する（時刻チェック不要）"""
+    if _automation_stop_events.get(automation_id, threading.Event()).is_set():
+        return jsonify({"status": "error", "message": f"{automation_id} is disabled. Enable it first."}), 403
+
+    def _run_in_bg(fn):
+        try:
+            fn()
+            _record_run(automation_id)
+        except Exception as e:
+            logger.error(f"[TRIGGER:{automation_id}] {e}", exc_info=True)
+
+    try:
+        if automation_id == "blog":
+            from backend.scheduler.blog_scheduler import BlogScheduler
+            threading.Thread(target=_run_in_bg, args=(BlogScheduler().run_once,), daemon=True).start()
+
+        elif automation_id == "gumroad":
+            from backend.scheduler.gumroad_scheduler import GumroadScheduler
+            threading.Thread(target=_run_in_bg, args=(GumroadScheduler().run_once,), daemon=True).start()
+
+        elif automation_id == "market_scan":
+            from backend.modules.market_scanner import MarketScanner
+            scanner = MarketScanner()
+            threading.Thread(target=_run_in_bg, args=(scanner.run,), daemon=True).start()
+
+        elif automation_id == "dream_mode":
+            from backend.modules.dream_mode import DreamMode
+            dream = DreamMode()
+            threading.Thread(target=_run_in_bg, args=(dream.run,), daemon=True).start()
+
+        elif automation_id == "sns_performance":
+            from backend.modules.sns_performance_tracker import SNSPerformanceTracker
+            tracker = SNSPerformanceTracker()
+            threading.Thread(target=_run_in_bg, args=(tracker.run_once,), daemon=True).start()
+
+        elif automation_id == "bluesky":
+            from backend.integrations.bluesky_agent import BlueskyAgent
+            agent = BlueskyAgent()
+            threading.Thread(target=_run_in_bg, args=(agent.run_once,), daemon=True).start()
+
+        elif automation_id == "engagement":
+            from backend.integrations.engagement_bot import EngagementBot
+            bot = EngagementBot()
+            threading.Thread(target=_run_in_bg, args=(bot.run_once,), daemon=True).start()
+
+        else:
+            return jsonify({"status": "unsupported", "message": f"Manual trigger not yet supported for: {automation_id}"}), 422
+
+        logger.info(f"[TRIGGER] {automation_id} fired manually")
+        return jsonify({"status": "triggered", "automation_id": automation_id,
+                        "message": f"{automation_id} is running in background."})
+
+    except Exception as e:
+        logger.error(f"[TRIGGER:{automation_id}] {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 # --- IDENTITY API ---
 @app.route('/api/identity', methods=['GET'])
 def get_identity():
