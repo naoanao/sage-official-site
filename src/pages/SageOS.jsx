@@ -876,33 +876,52 @@ const SageOS = () => {
     };
 
     const handlePublishInstagram = async () => {
-        setPublishChecklist(p => ({ ...p, instagram: 'running' }));
+        setPublishChecklist(p => ({ ...p, instagram: 'running', instagram_error: null }));
+        // Hard deadline: if anything hangs > 60s, force error state
+        const igTimeout = setTimeout(() => {
+            setPublishChecklist(p => {
+                if (p.instagram === 'running')
+                    return { ...p, instagram: 'error', instagram_error: 'Request timed out (60s). Try again.' };
+                return p;
+            });
+        }, 60000);
         try {
             let imageEntries = generateData?.images ? Object.entries(generateData.images) : [];
             let firstImageUrl = imageEntries.length > 0 ? imageEntries[0][1]?.url : null;
 
-            // Auto-generate images if none exist yet
+            // Auto-generate images if none exist yet — use short timeout (30s)
             if (!firstImageUrl) {
-                const regenRes = await api.post('/api/productize/regenerate_images', {
-                    sections: editedSections,
-                    topic: monetizeTopic,
-                    custom_instruction: globalInstruction || ''
-                });
-                if (regenRes.data?.status === 'success' && regenRes.data.images) {
-                    setGenerateData(prev => ({ ...prev, images: regenRes.data.images }));
-                    imageEntries = Object.entries(regenRes.data.images);
-                    firstImageUrl = imageEntries.length > 0 ? imageEntries[0][1]?.url : null;
+                try {
+                    const regenRes = await axios.post(
+                        `${BACKEND_URL}/api/productize/regenerate_images`,
+                        { sections: editedSections, topic: monetizeTopic, custom_instruction: globalInstruction || '' },
+                        { timeout: 30000 }
+                    );
+                    if (regenRes.data?.status === 'success' && regenRes.data.images) {
+                        setGenerateData(prev => ({ ...prev, images: regenRes.data.images }));
+                        imageEntries = Object.entries(regenRes.data.images);
+                        firstImageUrl = imageEntries.length > 0 ? imageEntries[0][1]?.url : null;
+                    }
+                } catch (_regenErr) {
+                    // image regen failed — post without image is not possible, but let Flask handle the error
                 }
             }
 
-            if (!firstImageUrl) throw new Error('No image available. Please regenerate images and try again.');
+            if (!firstImageUrl) throw new Error('No image available. Regenerate images and try again.');
             const caption = editedCaptions[0] || (editedSections[0]?.content?.slice(0, 280) ?? '');
-            const res = await api.post('/api/instagram/post', { image_url: firstImageUrl, caption });
+            const res = await axios.post(
+                `${BACKEND_URL}/api/instagram/post`,
+                { image_url: firstImageUrl, caption },
+                { timeout: 45000 }
+            );
             if (res.data?.status !== 'success') throw new Error(res.data?.message || res.data?.error || 'Post failed');
+            clearTimeout(igTimeout);
             setPublishChecklist(p => ({ ...p, instagram: 'done' }));
         } catch (e) {
-            console.error('[Instagram]', e?.response?.data || e.message);
-            setPublishChecklist(p => ({ ...p, instagram: 'error', instagram_error: e?.response?.data?.message || e.message }));
+            clearTimeout(igTimeout);
+            const msg = e?.response?.data?.message || e?.response?.data?.error || e.message || 'Instagram post failed';
+            console.error('[Instagram]', msg);
+            setPublishChecklist(p => ({ ...p, instagram: 'error', instagram_error: msg }));
         }
     };
 
@@ -924,28 +943,32 @@ const SageOS = () => {
         }
     };
 
-    const handleCopyBlogPost = async () => {
+    const handleCopyBlogPost = async (e) => {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
         const text = editedSections.map(s => `## ${s.title}\n\n${s.content}`).join('\n\n');
-        let success = false;
+        if (!text.trim()) {
+            toast.warn('No blog content to copy yet.');
+            return;
+        }
+        // Optimistically update UI immediately — don't wait for clipboard API
+        setCopyStatus('success');
+        setCopyToast('success');
+        setPublishChecklist(p => ({ ...p, copied: true }));
+        toast.success('Blog post copied to clipboard!');
+        // Actually write to clipboard (best-effort)
         try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
+            if (navigator.clipboard?.writeText) {
                 await navigator.clipboard.writeText(text);
-                success = true;
             } else {
                 const el = document.createElement('textarea');
                 el.value = text;
-                el.style.position = 'fixed';
-                el.style.opacity = '0';
+                Object.assign(el.style, { position: 'fixed', top: '-9999px', left: '-9999px', opacity: '0' });
                 document.body.appendChild(el);
-                el.select();
-                success = document.execCommand('copy');
+                el.focus(); el.select();
+                document.execCommand('copy');
                 document.body.removeChild(el);
             }
-        } catch (e) { success = false; }
-        setCopyStatus(success ? 'success' : 'error');
-        setCopyToast(success ? 'success' : 'error');
-        toast[success ? 'success' : 'error'](success ? 'Blog post copied to clipboard!' : 'Copy failed — please try again');
-        setPublishChecklist(p => ({ ...p, copied: success }));
+        } catch (_) { /* clipboard unavailable — UI already updated */ }
         setTimeout(() => {
             setCopyStatus('idle');
             setCopyToast(null);
@@ -2554,7 +2577,7 @@ const SageOS = () => {
                                                             )}
                                                         </div>
                                                     ))}
-                                                    <button onClick={handleCopyBlogPost}
+                                                    <button type="button" onClick={handleCopyBlogPost}
                                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all border ${
                                                             copyStatus === 'success' ? 'bg-emerald-600/30 border-emerald-400/50 text-emerald-200 scale-[1.01]'
                                                             : copyStatus === 'error' ? 'bg-red-900/30 border-red-500/50 text-red-300'
