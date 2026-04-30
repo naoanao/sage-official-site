@@ -155,5 +155,5 @@ Order right now and you'll also receive these 3 exclusive bonuses — FREE:
 * Automation specialists aiming to implement effective recovery techniques and ensure seamless pipeline operation.
 
 ## 7. CTA
-[Get instant access →](https://naofumi3.gumroad.com/l/yvzrfjd)
+[Get instant access →](https://naofumi3.gumroad.com/l/sage-professional)
 
