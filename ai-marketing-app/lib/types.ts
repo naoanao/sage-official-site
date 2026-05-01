@@ -24,6 +24,7 @@ export interface OnboardingData {
   customer_desc: string;
   main_problem: string;
   final_goal: string;
+  booking_url?: string;
 }
 
 export interface Action {

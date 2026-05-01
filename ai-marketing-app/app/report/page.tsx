@@ -34,7 +34,8 @@ export default function ReportPage() {
   const router = useRouter();
   const [actions, setActions] = useState<Action[]>([]);
   const usage = typeof window !== "undefined" ? getUsageData() : { count: 0, month: "" };
-  const isFree = usage.count < FREE_LIMIT;
+  const isDevMode = typeof window !== "undefined" && localStorage.getItem("growl_dev") === "true";
+  const isFree = isDevMode ? false : usage.count < FREE_LIMIT;
 
   useEffect(() => {
     const s = loadSession();

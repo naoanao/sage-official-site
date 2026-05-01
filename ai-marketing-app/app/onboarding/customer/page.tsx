@@ -1,13 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { saveOnboarding } from "@/lib/store";
+import { saveOnboarding, loadOnboarding } from "@/lib/store";
 import ProgressBar from "@/components/ProgressBar";
+
+const EXAMPLES: Record<string, string> = {
+  restaurant: "近くのオフィスで働く20〜40代のサラリーマンが多いです",
+  salon: "結婚式や成人式前後の20代女性が中心です",
+  ec: "20〜30代の女性でプレゼント用に購入する方が多いです",
+  professional: "開業したばかりの個人事業主や小規模法人の経営者です",
+  construction: "築20年以上の戸建てにお住まいの50〜60代の方です",
+  other: "英語で転職や留学を考えている20〜35歳の社会人です",
+};
 
 export default function CustomerPage() {
   const router = useRouter();
   const [value, setValue] = useState("");
+  const [example, setExample] = useState("近くに住む30〜50代の主婦の方が多いです");
+
+  useEffect(() => {
+    const data = loadOnboarding();
+    if (data.industry && EXAMPLES[data.industry]) {
+      setExample(EXAMPLES[data.industry]);
+    }
+  }, []);
 
   function next() {
     if (!value.trim()) return;
@@ -20,7 +37,7 @@ export default function CustomerPage() {
       <div className="w-full max-w-md">
         <ProgressBar current={3} total={5} />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">お客さんはどんな人が多いですか？</h1>
-        <p className="text-gray-500 text-sm mb-8">例：「近くに住む30〜50代の主婦の方が多いです」</p>
+        <p className="text-gray-500 text-sm mb-8">例：「{example}」</p>
         <textarea
           className="w-full border-2 border-gray-200 focus:border-indigo-400 rounded-2xl p-4 text-gray-800 text-base resize-none outline-none transition-colors"
           rows={4}

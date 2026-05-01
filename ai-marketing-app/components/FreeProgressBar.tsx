@@ -39,7 +39,12 @@ export function incrementUsage(): number {
 }
 
 export function isLimitReached(): boolean {
+  if (typeof window !== "undefined" && localStorage.getItem("growl_dev") === "true") return false;
   return getUsageData().count >= MONTHLY_LIMIT;
+}
+
+export function isDevMode(): boolean {
+  return typeof window !== "undefined" && localStorage.getItem("growl_dev") === "true";
 }
 
 export default function FreeProgressBar() {

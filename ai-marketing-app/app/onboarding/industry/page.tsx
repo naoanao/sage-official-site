@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { saveOnboarding } from "@/lib/store";
+import { saveOnboarding, clearOnboarding } from "@/lib/store";
 import { Industry, INDUSTRY_LABELS, INDUSTRY_ICONS } from "@/lib/types";
 import ProgressBar from "@/components/ProgressBar";
 
@@ -11,6 +11,7 @@ export default function IndustryPage() {
   const router = useRouter();
 
   function select(industry: Industry) {
+    clearOnboarding(); // 前回データを完全リセットしてから新規保存
     saveOnboarding({ industry });
     router.push("/onboarding/business");
   }
