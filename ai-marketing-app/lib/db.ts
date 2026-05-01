@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Action } from "./types";
 
-// サーバーサイド用クライアント（service role key使用）
 function getServer() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +17,12 @@ export interface UserProfile {
   booking_url?: string;
 }
 
-/** ユーザーをupsert（なければ作成、あれば更新） */
+export interface LearningEntry {
+  week: string;
+  action: string;
+  result: string;
+}
+
 export async function upsertUser(deviceId: string, profile: UserProfile): Promise<string> {
   const db = getServer();
   const { data, error } = await db
@@ -43,7 +47,6 @@ export async function upsertUser(deviceId: string, profile: UserProfile): Promis
   return data.id;
 }
 
-/** 週次セッションを保存 */
 export async function saveWeeklySession(
   userId: string,
   weekStart: string,
@@ -68,7 +71,6 @@ export async function saveWeeklySession(
   return data.id;
 }
 
-/** 直近の週次セッションを取得 */
 export async function getLatestSession(userId: string) {
   const db = getServer();
   const { data, error } = await db
@@ -83,14 +85,16 @@ export async function getLatestSession(userId: string) {
   return data;
 }
 
-/** アクション完了を記録 */
-export async function markActionComplete(sessionId: string, actionIndex: number) {
+export async function markActionComplete(
+  sessionId: string,
+  actionIndex: number,
+  resultMemo: string | null = null
+) {
   const db = getServer();
 
-  // sessionsのactions JSONBを更新
   const { data: session } = await db
     .from("weekly_sessions")
-    .select("actions")
+    .select("actions, completed_count")
     .eq("id", sessionId)
     .single();
 
@@ -99,28 +103,95 @@ export async function markActionComplete(sessionId: string, actionIndex: number)
   const actions = session.actions as Action[];
   if (actions[actionIndex]) {
     actions[actionIndex].completed = true;
+    const completedCount = actions.filter((a) => a.completed).length;
     await db
       .from("weekly_sessions")
-      .update({ actions })
+      .update({ actions, completed_count: completedCount })
       .eq("id", sessionId);
   }
 
-  // 完了ログも記録
   await db.from("action_completions").insert({
     session_id: sessionId,
     action_index: actionIndex,
     completed_at: new Date().toISOString(),
+    result_memo: resultMemo,
   });
 }
 
-/** 全ユーザーを取得（週次Cron用） */
+export async function updateCompletionMemo(
+  sessionId: string,
+  actionIndex: number,
+  resultMemo: string
+) {
+  const db = getServer();
+  await db
+    .from("action_completions")
+    .update({ result_memo: resultMemo })
+    .eq("session_id", sessionId)
+    .eq("action_index", actionIndex)
+    .is("result_memo", null);
+}
+
+export async function appendLearningHistory(userId: string, entry: LearningEntry) {
+  const db = getServer();
+
+  const { data: user } = await db
+    .from("users")
+    .select("learning_history")
+    .eq("id", userId)
+    .single();
+
+  const history: LearningEntry[] = (user?.learning_history as LearningEntry[]) ?? [];
+  const updated = [...history, entry].slice(-10);
+
+  await db
+    .from("users")
+    .update({ learning_history: updated })
+    .eq("id", userId);
+}
+
+export async function setFeedbackState(lineUserId: string, state: string | null) {
+  const db = getServer();
+  await db
+    .from("users")
+    .update({ feedback_state: state })
+    .eq("line_user_id", lineUserId);
+}
+
+export async function getUserByLineId(lineUserId: string) {
+  const db = getServer();
+  const { data, error } = await db
+    .from("users")
+    .select("id, business_desc, feedback_state, learning_history, line_user_id")
+    .eq("line_user_id", lineUserId)
+    .single();
+
+  if (error) return null;
+  return data;
+}
+
 export async function getAllUsersForCron() {
   const db = getServer();
   const { data, error } = await db
     .from("users")
-    .select("id, device_id, industry, business_desc, customer_desc, main_problem, final_goal, booking_url, line_user_id")
+    .select(
+      "id, device_id, industry, business_desc, customer_desc, main_problem, final_goal, booking_url, line_user_id, learning_history"
+    )
     .not("industry", "is", null);
 
   if (error) return [];
   return data ?? [];
+}
+
+export async function getWeeklySessionForUser(userId: string, weekStart: string) {
+  const db = getServer();
+  const { data, error } = await db
+    .from("weekly_sessions")
+    .select("id, actions, completed_count")
+    .eq("user_id", userId)
+    .eq("week_start", weekStart)
+    .single();
+
+  if (error) return null;
+  return data;
 }

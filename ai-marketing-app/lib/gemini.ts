@@ -13,6 +13,7 @@ export interface UserProfile {
   main_problem: string;
   final_goal: string;
   booking_url?: string;
+  learning_history?: Array<{ week: string; action: string; result: string }>;
 }
 
 const CHANNEL_HINTS: Record<string, string> = {
@@ -24,30 +25,48 @@ const CHANNEL_HINTS: Record<string, string> = {
   other: "業種に合ったSNS投稿文・LINE配信文・告知文を使う。",
 };
 
+function buildLearningSection(
+  history: Array<{ week: string; action: string; result: string }> | undefined
+): string {
+  if (!history || history.length === 0) return "";
+
+  const entries = history
+    .slice(-5)
+    .map((h) => `  - 週: ${h.week} | アクション: ${h.action} | 結果: ${h.result}`)
+    .join("\n");
+
+  return `
+
+【過去の実績（必ず参考にして提案を最適化すること）】
+${entries}
+- ポジティブな結果（反応良かった・来店につながった）のアクションに近い施策を優先する
+- ネガティブな結果（反応なかった・やりにくかった）のアクションは避けるか別のアプローチにする
+- 同じアクションタイトルを繰り返さず、バリエーションをつける`;
+}
+
 function buildPrompt(user: UserProfile): string {
   const channelHint = CHANNEL_HINTS[user.industry] ?? CHANNEL_HINTS["other"];
   const urlInstruction = user.booking_url
     ? `予約・購入・問い合わせのURLは必ず「${user.booking_url}」を使う。`
     : "架空のURL（example.comなど）は絶対に使わない。URLが必要な場合は「予約はDMまたはお電話で承っております」などの代替表現に置き換える。";
 
+  const learningSection = buildLearningSection(user.learning_history);
+
   return `あなたは優秀なマーケティング部長です。以下のユーザー情報をもとに、「今週やること」をちょうど3つ生成してください。
 
 【絶対ルール】
-- アクションの数は**必ずちょうど3つ**。4つ以上も2つ以下もNG
-- フレームワーク名（3C・STP・4P など）は絶対に使わない。専門用語も禁止
-- titleは「〜する」形式の短いアクション名（15文字以内）。例：「新規向け投稿をする」「リピーター限定LINEを送る」「口コミ返信をする」
+- アクションの数は必ずちょうど3つ。4つ以上も2つ以下もNG
+- フレームワーク名（3C・STP・4Pなど）は絶対に使わない。専門用語も禁止
+- titleは「〜する」形式の短いアクション名（15文字以内）
 - detailはそのアクションの目的・使い方を説明する一文（60文字以内）
-- content_typeは業種・目的に合ったものを選ぶ。選択肢：「Instagram投稿文」「LINE配信文」「Googleレビュー返信文」「ブログ記事冒頭」「メール文」「告知文」「チラシ文」
-- **【最重要】contentは「お客さんに直接届ける完成した文章」のこと。ビジネスオーナーへのアドバイスや内部メモは絶対に書かない。**
-  - NG例：「SNSを活用してお客さんに告知しましょう」「価格を見直すことで売上が上がります」
-  - OK例：ユーザーの業種・地域・サービス名を使ったオリジナルの投稿文・LINE文・チラシ文
-- **このプロンプト内に書かれている文章例を絶対にそのまま出力しないこと。ユーザー情報から完全にオリジナルで生成すること。**
-- **ユーザーが入力した固有名詞（店名・技法名・サービス名・地名など）は必ず日本語のままそのまま使う。英訳・ローマ字変換・言い換えは絶対にしない。**
+- content_typeは業種・目的に合ったものを選ぶ。選択肢：Instagram投稿文、LINE配信文、Googleレビュー返信文、ブログ記事冒頭、メール文、告知文、チラシ文
+- contentは「お客さんに直接届ける完成した文章」。ビジネスオーナーへのアドバイスや内部メモは絶対に書かない
+- このプロンプト内の文章例を絶対にそのまま出力しないこと。ユーザー情報から完全にオリジナルで生成すること
+- ユーザーが入力した固有名詞（店名・技法名・サービス名・地名など）は必ず日本語のままそのまま使う
 - contentはコピーしてそのまま投稿・送信できる文体にする（絵文字・ハッシュタグも適宜含める）
-- Instagram投稿文は3〜5文・ハッシュタグ5〜8個を目安にして実用的な長さにする
+- Instagram投稿文は3〜5文・ハッシュタグ5〜8個を目安にする
 - Googleレビュー返信文：URLを含めない・感謝と再来店の温かい一文のみ・宣伝文句も入れない
-- titleは「〜する」形式（例：「Instagram投稿を出す」「LINEを送る」「口コミに返信する」）。「〜して」「〜してください」「〜しましょう」は使わない
-- content_typeとcontentの内容は必ず一致させる（「LINE配信文」と書いたらcontentもLINEで送る文章にする）
+- content_typeとcontentの内容は必ず一致させる
 - 工務店・建設業のcontentに「ご来店」は使わない。「現地見積もり」「お問い合わせ」「現場調査」を使う
 - ${urlInstruction}
 - ${channelHint}
@@ -57,7 +76,7 @@ function buildPrompt(user: UserProfile): string {
 仕事の内容: ${user.business_desc}
 お客さんの特徴: ${user.customer_desc}
 今一番困っていること: ${user.main_problem}
-このアプリが完璧に機能したとき、どう変わりたいか: ${user.final_goal}
+このアプリが完璧に機能したとき、どう変わりたいか: ${user.final_goal}${learningSection}
 
 【出力形式（JSONのみ、コードブロック不要、actionsは必ず3要素）】
 {"actions":[{"title":"〜する形式15文字以内","detail":"目的説明60文字以内","content_type":"Instagram投稿文","content":"お客さんに届けるコピペ用の完成文章"},{"title":"...","detail":"...","content_type":"...","content":"..."},{"title":"...","detail":"...","content_type":"...","content":"..."}]}`;
@@ -91,7 +110,6 @@ async function callGemini(prompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Gemini: API key not set");
 
-  // gemini-1.5-flash は安定版。gemini-2.5-flash より確実に動く
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
     {
@@ -108,17 +126,14 @@ async function callGemini(prompt: string): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-/** Googleレビュー返信文からURLを除去（コードで確実に処理） */
 function sanitizeActions(actions: Action[]): Action[] {
   return actions.map((action) => {
     if (action.content_type === "Googleレビュー返信文") {
-      // URLを除去
       action.content = action.content
         .replace(/https?:\/\/[^\s　、。！？\)）]+/g, "")
         .replace(/\s{2,}/g, " ")
         .trim();
     }
-    // タイトルが「〜して」命令形の場合「〜する」に統一
     action.title = action.title.replace(/して$/, "する").replace(/してください$/, "する");
     return action;
   });
@@ -129,7 +144,6 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Action[]
   const errors: string[] = [];
 
   for (const [name, caller] of [["Groq", callGroq], ["Gemini", callGemini]] as const) {
-    // 500/503（一時的なエラー）のみ1回だけ再試行。429（レート制限）は即座に次のAPIへ
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const text = await caller(prompt);
@@ -146,12 +160,9 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Action[]
         console.error(`[${name}] attempt ${attempt + 1} failed:`, msg);
         errors.push(`${name}(${attempt + 1}): ${msg}`);
 
-        // 429はレート制限 → 待っても意味ないので即座に次のAPIへ
-        // API keyなし → 即座に次のAPIへ
         const isTransient = msg.includes("503") || msg.includes("500");
         if (!isTransient || attempt === 1) break;
 
-        // 一時的なエラーのみ2秒待って再試行
         await new Promise((r) => setTimeout(r, 2000));
       }
     }

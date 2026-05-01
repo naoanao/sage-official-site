@@ -4,8 +4,6 @@ import { getAllUsersForCron, saveWeeklySession } from "@/lib/db";
 import { generateWeeklyActions, UserProfile } from "@/lib/gemini";
 
 // Vercel Cron: 毎週月曜8時JST (日曜23:00 UTC)
-// vercel.json: {"crons": [{"path": "/api/cron/notify", "schedule": "0 23 * * 0"}]}
-
 export const maxDuration = 60;
 
 function getMondayOfCurrentWeek(): string {
@@ -35,16 +33,15 @@ export async function GET(req: NextRequest) {
         main_problem: user.main_problem,
         final_goal: user.final_goal,
         booking_url: user.booking_url ?? undefined,
+        learning_history:
+          (user.learning_history as Array<{ week: string; action: string; result: string }>) ?? [],
       };
 
-      // 今週のアクションを生成
       const actions = await generateWeeklyActions(profile);
       const actionsWithStatus = actions.map((a) => ({ ...a, completed: false }));
 
-      // Supabaseに保存
       await saveWeeklySession(user.id, weekStart, actionsWithStatus);
 
-      // LINE通知（line_user_idがある場合のみ）
       if (user.line_user_id) {
         const text = buildWeeklyNotificationText(user.business_desc, actions);
         await sendLineMessage({
