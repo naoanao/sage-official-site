@@ -7,7 +7,7 @@ interface Props {
   action: Action;
   index: number;
   sessionId: string;
-  onComplete: (index: number) => void;
+  onComplete: (index: number) => void | Promise<void>;
 }
 
 const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"];

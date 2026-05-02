@@ -19,11 +19,25 @@ export default function DashboardPage() {
     setSession(s);
   }, [router]);
 
-  function handleComplete(index: number) {
+  async function handleComplete(index: number) {
+    const sessionId = session?.id;
+    if (!sessionId) return;
+
     updateActionComplete(index);
     const updated = loadSession();
     setSession(updated ? { ...updated } : null);
-    router.push(`/complete/${session?.id}?action=${index}`);
+
+    try {
+      await fetch("/api/complete-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, actionIndex: index, resultMemo: null }),
+      });
+    } catch (err) {
+      console.error("complete-action failed:", err);
+    }
+
+    router.push(`/complete/${sessionId}?action=${index}`);
   }
 
   if (!session) {
