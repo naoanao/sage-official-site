@@ -49,6 +49,19 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Marketing Banner */}
+      <section className="px-6 py-10 bg-indigo-50 text-center">
+        <p className="text-xs text-indigo-400 font-medium mb-2">NEW</p>
+        <h3 className="text-lg font-bold text-indigo-900 mb-2">AIマーケティング分析ウィザード</h3>
+        <p className="text-indigo-600 text-sm mb-4">PEST・3C・SWOT・STP・4P・AEOなど8種類のフレームワークをAIが自動入力</p>
+        <Link
+          href="/marketing"
+          className="inline-block bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-6 py-3 rounded-2xl transition-colors text-sm"
+        >
+          無料で分析してみる →
+        </Link>
+      </section>
+
       {/* CTA bottom */}
       <section className="px-6 py-16 text-center">
         <p className="text-gray-500 text-sm mb-6">5問答えるだけで、今週の施策が届きます</p>
