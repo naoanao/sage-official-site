@@ -27,7 +27,7 @@ from pathlib import Path
 
 logger = logging.getLogger("WhopPublisher")
 
-WHOP_BASE_URL = "https://api.whop.com/api/v2"
+WHOP_BASE_URL = "https://api.whop.com/api/v1"
 
 # ── Product Registry ──────────────────────────────────────────────────────────
 # Persists product_id / checkout_url so update_product() can find them
@@ -124,14 +124,15 @@ def verify_webhook_signature(payload_bytes: bytes, signature_header: str, secret
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
 def create_product(title: str, description: str, visibility: str = "visible") -> dict:
-    """POST /api/v2/products — create a new Whop product."""
+    """POST /api/v1/products — create a new Whop product."""
+    short_title = title[:40]
     payload = {
-        "title": title,
-        "description": description,
+        "title": short_title,
+        "headline": description[:120],
         "visibility": visibility,
         "company_id": _company_id(),
     }
-    logger.info(f"[WHOP] Creating product: {title!r}")
+    logger.info(f"[WHOP] Creating product: {short_title!r}")
     resp = requests.post(f"{WHOP_BASE_URL}/products", headers=_get_headers(), json=payload, timeout=30)
     if not resp.ok:
         raise RuntimeError(f"Whop product creation failed [{resp.status_code}]: {resp.text[:400]}")
@@ -147,13 +148,13 @@ def create_plan(
     billing_period: int = 1,
     billing_period_unit: str = "one_time",
 ) -> dict:
-    """POST /api/v2/plans — attach a purchase plan to a product."""
+    """POST /api/v1/plans — attach a purchase plan to a product."""
     payload = {
         "product_id": product_id,
-        "initial_price": int(price_usd * 100),  # cents
+        "initial_price": price_usd,
         "currency": currency,
-        "billing_period": billing_period,
-        "billing_period_unit": billing_period_unit,
+        "plan_type": "one_time",
+        "company_id": _company_id(),
     }
     logger.info(f"[WHOP] Creating plan for {product_id}: ${price_usd}")
     resp = requests.post(f"{WHOP_BASE_URL}/plans", headers=_get_headers(), json=payload, timeout=30)
