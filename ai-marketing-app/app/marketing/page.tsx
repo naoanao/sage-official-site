@@ -205,13 +205,27 @@ export default function MarketingPage() {
             </ol>
           </div>
 
+<<<<<<< Updated upstream
+=======
           {/* 免責注記 */}
           <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4">
             <p className="text-xs text-amber-700 leading-relaxed">
               ⚠️ この分析はAIが生成した「たたき台」です。最新の法規制・市場データは必ずご自身で確認の上、意思決定にご活用ください。経営判断の最終責任はご自身にあります。
             </p>
+            {selectedFw === "pest" && (
+              <div className="mt-2 pt-2 border-t border-amber-200">
+                <p className="text-xs text-amber-700 font-medium mb-1">📌 PEST分析は特に最新情報の確認が重要です</p>
+                <p className="text-xs text-amber-600 leading-relaxed mb-1">P（政治・法規制）とE（経済）の項目はAIの学習データと現在の状況がずれている可能性があります。以下で最新情報をご確認ください：</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <a href="https://elaws.e-gov.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・e-Gov法令検索（最新の法律・規制）</a>
+                  <a href="https://www.chusho.meti.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・中小企業庁（補助金・政策情報）</a>
+                  <a href="https://www.meti.go.jp/statistics/index.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・経済産業省 統計（市場動向データ）</a>
+                </div>
+              </div>
+            )}
           </div>
 
+>>>>>>> Stashed changes
           {/* ボタン群 */}
           <div className="flex flex-col gap-3">
             <button
