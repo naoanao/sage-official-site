@@ -12,6 +12,10 @@ interface Props {
 
 const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"];
 
+const DIRECTLY_USABLE_TYPES = [
+  "Instagram投稿文", "X(Twitter)投稿文", "LINE配信文", "メール文", "告知文", "チラシ文"
+];
+
 const CONTENT_TYPE_ICONS: Record<string, string> = {
   "Instagram投稿文": "📸",
   "Googleレビュー返信文": "⭐",
@@ -93,9 +97,11 @@ export default function ActionCard({ action, index, sessionId, onComplete }: Pro
               <span className="text-xs font-semibold text-indigo-700 tracking-wide">
                 {action.content_type || "コンテンツ"}
               </span>
-              <span className="text-xs text-indigo-500 font-medium bg-indigo-100 px-2 py-0.5 rounded-full">
-                そのまま使える
-              </span>
+              {DIRECTLY_USABLE_TYPES.includes(action.content_type) && (
+                <span className="text-xs text-indigo-500 font-medium bg-indigo-100 px-2 py-0.5 rounded-full">
+                  そのまま使える
+                </span>
+              )}
             </div>
             <span className="text-indigo-400 text-xs">{expanded ? "▲" : "▼"}</span>
           </div>

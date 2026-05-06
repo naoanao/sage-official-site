@@ -76,13 +76,25 @@ export default function MarketingPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const situation = SITUATIONS.find((s) => s.id === selectedSituation);
+
+  function isValidInput(str: string): boolean {
+    const trimmed = str.trim();
+    if (trimmed.length < 2) return false;
+    if (/^[\d\s\W]+$/.test(trimmed)) return false;
+    return true;
+  }
 
   // ── Step1 → Step2
   function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !product.trim() || !target.trim()) return;
+    if (!isValidInput(name) || !isValidInput(product) || !isValidInput(target)) {
+      setFormError("会社名・商品・ターゲット顧客は2文字以上の具体的な内容を入力してください");
+      return;
+    }
+    setFormError(null);
     setStep("situation");
   }
 
@@ -224,7 +236,7 @@ export default function MarketingPage() {
     return (
       <main className="min-h-screen bg-gray-50 px-4 py-10">
         <div className="max-w-lg mx-auto">
-          <button onClick={() => setStep("form")} className="text-gray-400 text-sm mb-4 hover:text-gray-600">← 自社情報を修正</button>
+          <button onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); }} className="text-gray-400 text-sm mb-4 hover:text-gray-600">← 自社情報を修正</button>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">どの分析をしますか？</h1>
           <p className="text-gray-500 text-sm mb-6">{name} · {product}</p>
 
@@ -269,7 +281,7 @@ export default function MarketingPage() {
                       >
                         <div className="flex-1">
                           <p className={`font-semibold text-sm ${selectedFw === fw.id ? "text-white" : "text-gray-800"}`}>{fw.name}</p>
-                          <p className={`text-xs mt-0.5 ${selectedFw === fw.id ? "text-indigo-100" : "text-gray-400"}`}>{fw.desc}</p>
+                          <p className={`text-xs mt-0.5 leading-relaxed break-words ${selectedFw === fw.id ? "text-indigo-100" : "text-gray-400"}`}>{fw.desc}</p>
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${selectedFw === fw.id ? "bg-indigo-400 text-white" : "bg-gray-100 text-gray-400"}`}>{fw.time}</span>
                       </button>
@@ -327,6 +339,13 @@ export default function MarketingPage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={(e) => {
+                if (!e.target.value.trim()) {
+                  e.target.classList.add("border-red-300");
+                } else {
+                  e.target.classList.remove("border-red-300");
+                }
+              }}
               placeholder="例: 田中カフェ / 株式会社〇〇"
               required
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
@@ -340,6 +359,13 @@ export default function MarketingPage() {
             <textarea
               value={product}
               onChange={(e) => setProduct(e.target.value)}
+              onBlur={(e) => {
+                if (!e.target.value.trim()) {
+                  e.target.classList.add("border-red-300");
+                } else {
+                  e.target.classList.remove("border-red-300");
+                }
+              }}
               placeholder="例: 地元野菜を使ったランチカフェ。テイクアウトも対応。"
               required
               rows={2}
@@ -355,6 +381,13 @@ export default function MarketingPage() {
               type="text"
               value={target}
               onChange={(e) => setTarget(e.target.value)}
+              onBlur={(e) => {
+                if (!e.target.value.trim()) {
+                  e.target.classList.add("border-red-300");
+                } else {
+                  e.target.classList.remove("border-red-300");
+                }
+              }}
               placeholder="例: 30〜50代の会社員、ランチに健康的な食事を求める人"
               required
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
@@ -374,6 +407,11 @@ export default function MarketingPage() {
             />
           </div>
 
+          {formError && (
+            <div className="text-red-500 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              {formError}
+            </div>
+          )}
           <button
             type="submit"
             disabled={!name.trim() || !product.trim() || !target.trim()}
@@ -398,7 +436,12 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <footer className="text-center py-6 text-xs text-gray-300 border-t border-gray-100">
+      <footer className="text-center py-8 text-xs text-gray-300 border-t border-gray-100">
+        <div className="flex items-center justify-center gap-4 mb-2">
+          <a href="/privacy" className="hover:text-gray-500 transition-colors">プライバシーポリシー</a>
+          <a href="/terms" className="hover:text-gray-500 transition-colors">利用規約</a>
+          <a href="mailto:contact@growl-app.vercel.app" className="hover:text-gray-500 transition-colors">お問い合わせ</a>
+        </div>
         © 2026 Growl
       </footer>
     </main>

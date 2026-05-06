@@ -32,10 +32,14 @@ export default function GoalPage() {
 
   useEffect(() => {
     const data = loadOnboarding();
-    if (data.industry && EXAMPLES[data.industry]) {
+    if (!data.industry) {
+      router.replace("/onboarding/industry");
+      return;
+    }
+    if (EXAMPLES[data.industry]) {
       setExample(EXAMPLES[data.industry as keyof typeof EXAMPLES]);
     }
-  }, []);
+  }, [router]);
 
   async function finish() {
     if (!value.trim()) return;

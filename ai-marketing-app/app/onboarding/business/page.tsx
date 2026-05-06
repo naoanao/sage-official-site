@@ -22,10 +22,14 @@ export default function BusinessPage() {
 
   useEffect(() => {
     const data = loadOnboarding();
-    if (data.industry && EXAMPLES[data.industry]) {
+    if (!data.industry) {
+      router.replace("/onboarding/industry");
+      return;
+    }
+    if (EXAMPLES[data.industry]) {
       setExample(EXAMPLES[data.industry]);
     }
-  }, []);
+  }, [router]);
 
   function next() {
     if (!value.trim()) return;
