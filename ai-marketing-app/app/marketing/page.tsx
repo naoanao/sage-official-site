@@ -205,6 +205,13 @@ export default function MarketingPage() {
             </ol>
           </div>
 
+          {/* 免責注記 */}
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4">
+            <p className="text-xs text-amber-700 leading-relaxed">
+              ⚠️ この分析はAIが生成した「たたき台」です。最新の法規制・市場データは必ずご自身で確認の上、意思決定にご活用ください。経営判断の最終責任はご自身にあります。
+            </p>
+          </div>
+
           {/* ボタン群 */}
           <div className="flex flex-col gap-3">
             <button
