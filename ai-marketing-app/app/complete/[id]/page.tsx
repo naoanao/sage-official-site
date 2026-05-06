@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { loadSession } from "@/lib/store";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ai-marke-bucho.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
 
 function shareToX(text: string) {
   const encoded = encodeURIComponent(text);

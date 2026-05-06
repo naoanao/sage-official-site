@@ -73,7 +73,12 @@ export default function LandingPage() {
         </Link>
       </section>
 
-      <footer className="text-center py-6 text-xs text-gray-300 border-t border-gray-100">
+      <footer className="text-center py-8 text-xs text-gray-300 border-t border-gray-100">
+        <div className="flex items-center justify-center gap-4 mb-2">
+          <a href="/privacy" className="hover:text-gray-500 transition-colors">プライバシーポリシー</a>
+          <a href="/terms" className="hover:text-gray-500 transition-colors">利用規約</a>
+          <a href="mailto:contact@growl-app.vercel.app" className="hover:text-gray-500 transition-colors">お問い合わせ</a>
+        </div>
         © 2026 Growl
       </footer>
     </main>
