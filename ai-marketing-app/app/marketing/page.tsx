@@ -83,7 +83,8 @@ export default function MarketingPage() {
   function isValidInput(str: string): boolean {
     const trimmed = str.trim();
     if (trimmed.length < 2) return false;
-    if (/^[\d\s\W]+$/.test(trimmed)) return false;
+    // Unicode文字（日本語・英字を含む）が1文字以上あることを確認
+    if (!/\p{L}/u.test(trimmed)) return false;
     return true;
   }
 
@@ -338,7 +339,7 @@ export default function MarketingPage() {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setFormError(null); }}
               onBlur={(e) => {
                 if (!e.target.value.trim()) {
                   e.target.classList.add("border-red-300");
@@ -358,7 +359,7 @@ export default function MarketingPage() {
             </label>
             <textarea
               value={product}
-              onChange={(e) => setProduct(e.target.value)}
+              onChange={(e) => { setProduct(e.target.value); setFormError(null); }}
               onBlur={(e) => {
                 if (!e.target.value.trim()) {
                   e.target.classList.add("border-red-300");
@@ -380,7 +381,7 @@ export default function MarketingPage() {
             <input
               type="text"
               value={target}
-              onChange={(e) => setTarget(e.target.value)}
+              onChange={(e) => { setTarget(e.target.value); setFormError(null); }}
               onBlur={(e) => {
                 if (!e.target.value.trim()) {
                   e.target.classList.add("border-red-300");
