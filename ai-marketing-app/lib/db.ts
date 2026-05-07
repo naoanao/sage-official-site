@@ -170,6 +170,114 @@ export async function getUserByLineId(lineUserId: string) {
   return data;
 }
 
+// ─────────────────────────────────────────────
+// Learning History — 過去のアクション実績をAIに渡す
+// ─────────────────────────────────────────────
+
+export async function getPastLearningHistory(userId: string): Promise<LearningEntry[]> {
+  const db = getServer();
+  const { data, error } = await db
+    .from("weekly_sessions")
+    .select("week_start, actions")
+    .eq("user_id", userId)
+    .order("week_start", { ascending: false })
+    .limit(5);
+
+  if (error || !data) return [];
+
+  const entries: LearningEntry[] = [];
+  for (const session of data) {
+    const actions = (session.actions ?? []) as Array<Action & { result_memo?: string }>;
+    for (const action of actions) {
+      if (action.completed) {
+        entries.push({
+          week: session.week_start,
+          action: action.title,
+          result: action.result_memo ?? "完了",
+        });
+      }
+    }
+    if (entries.length >= 8) break;
+  }
+  return entries.slice(0, 8);
+}
+
+export async function saveActionResult(
+  sessionId: string,
+  actionIndex: number,
+  resultMemo: string
+): Promise<void> {
+  const db = getServer();
+
+  // action_completionsのresult_memoを更新
+  await db
+    .from("action_completions")
+    .update({ result_memo: resultMemo })
+    .eq("session_id", sessionId)
+    .eq("action_index", actionIndex);
+
+  // weekly_sessionsのactions JSONにも反映（次週の学習に使う）
+  const { data: session } = await db
+    .from("weekly_sessions")
+    .select("actions, user_id, week_start")
+    .eq("id", sessionId)
+    .single();
+
+  if (!session) return;
+
+  const actions = (session.actions ?? []) as Array<Action & { result_memo?: string }>;
+  if (actions[actionIndex]) {
+    actions[actionIndex].result_memo = resultMemo;
+    await db.from("weekly_sessions").update({ actions }).eq("id", sessionId);
+  }
+
+  // learning_historyにも即時反映
+  if (actions[actionIndex]) {
+    await appendLearningHistory(session.user_id, {
+      week: session.week_start,
+      action: actions[actionIndex].title,
+      result: resultMemo,
+    });
+  }
+}
+
+// ─────────────────────────────────────────────
+// MarketSignal — Sage統合Phase1
+// ─────────────────────────────────────────────
+
+export async function saveMarketSignal(industry: string, rawSummary: string): Promise<void> {
+  const db = getServer();
+  const today = new Date().toISOString().split("T")[0];
+  await db
+    .from("market_signals")
+    .upsert(
+      {
+        industry,
+        signal_date: today,
+        raw_summary: rawSummary,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "industry,signal_date" }
+    );
+}
+
+export async function getLatestMarketSignal(industry: string): Promise<string | null> {
+  const db = getServer();
+  // 直近7日以内のシグナルを取得（古すぎるデータは使わない）
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const { data } = await db
+    .from("market_signals")
+    .select("raw_summary, signal_date")
+    .eq("industry", industry)
+    .gte("signal_date", cutoff)
+    .order("signal_date", { ascending: false })
+    .limit(1)
+    .single();
+  return data?.raw_summary ?? null;
+}
+
+// ─────────────────────────────────────────────
+
 export async function getAllUsersForCron() {
   const db = getServer();
   const { data, error } = await db

@@ -17,6 +17,16 @@ export interface UserProfile {
   market_signal?: string; // Sage統合Phase1: 今週のSNSトレンド
 }
 
+// 業界別：AIの出力をプロらしくするキーワードヒント
+const KEYWORD_HINTS: Record<string, string> = {
+  restaurant: "「季節限定」「数量限定」「シズル感」「こだわり素材」「週替わり」「店主おすすめ」「テイクアウト」「香ばしい」「とろける」「旬の食材」などの食欲をそそる表現を積極的に使う。",
+  salon: "「つや髪」「ダメージレス」「頭皮ケア」「指通り」「ツヤ感」「リラックス」「トリートメント」「カラー持ち」「お客様の声」「ビフォーアフター」などの美容専門用語を自然に組み込む。",
+  ec: "「在庫わずか」「限定品」「ハンドメイド」「1点もの」「送料無料」「プレゼントに」「丁寧な梱包」「職人の手仕事」「数量限定」「再入荷」などの購買意欲を高める表現を使う。",
+  professional: "「安心」「実績」「無料相談」「ご相談ください」「丁寧なサポート」「初回相談無料」「専門家」「実績〇件」「わかりやすく説明」などの信頼感を醸成する表現を使う。",
+  construction: "「地域密着」「施工実績」「アフターフォロー」「無料点検」「地元」「職人の技」「丁寧な仕上がり」「近隣施工例」「保証付き」「現地見積もり無料」などの信頼・実績を強調する表現を使う。",
+  other: "業種に合った専門用語・キーワードを自然に組み込み、プロらしさと親しみやすさを両立させる。",
+};
+
 const CHANNEL_HINTS: Record<string, string> = {
   restaurant: "飲食店なので、Instagram投稿文・Googleレビュー返信文・LINE配信文を優先して使うこと。ブログや専門的なメール文は避ける。",
   salon: "美容サロンなので、Instagram投稿文・LINE配信文・予約促進告知文を優先。写真映えする文体にする。",
@@ -47,6 +57,7 @@ ${entries}
 
 function buildPrompt(user: UserProfile): string {
   const channelHint = CHANNEL_HINTS[user.industry] ?? CHANNEL_HINTS["other"];
+  const keywordHint = KEYWORD_HINTS[user.industry] ?? KEYWORD_HINTS["other"];
   const urlInstruction = user.booking_url
     ? `予約・購入・問い合わせのURLは必ず「${user.booking_url}」を使う。`
     : "架空のURL（example.comなど）は絶対に使わない。URLが必要な場合は「予約はDMまたはお電話で承っております」などの代替表現に置き換える。";
@@ -79,6 +90,7 @@ function buildPrompt(user: UserProfile): string {
 - 工務店・建設業のcontentに「ご来店」は使わない。「現地見積もり」「お問い合わせ」「現場調査」を使う
 - ${urlInstruction}
 - ${channelHint}
+- ${keywordHint}
 
 【ユーザー情報】
 業種: ${user.industry}

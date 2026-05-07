@@ -3,7 +3,7 @@ export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
 import { generateWeeklyActions, UserProfile } from "@/lib/gemini";
-import { upsertUser, saveWeeklySession } from "@/lib/db";
+import { upsertUser, saveWeeklySession, getLatestMarketSignal, getPastLearningHistory } from "@/lib/db";
 
 function getMondayOfCurrentWeek(): string {
   const now = new Date();
@@ -22,23 +22,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "必要な情報が不足しています" }, { status: 400 });
     }
 
+    // Step 1: ユーザーを先にupsert → userId取得（学習履歴に必要）
+    let userId: string | null = null;
+    if (device_id && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      try {
+        userId = await upsertUser(device_id, {
+          industry, business_desc, customer_desc, main_problem, final_goal,
+          booking_url: booking_url || undefined,
+        });
+      } catch (dbErr) {
+        console.error("upsertUser failed (non-fatal):", dbErr);
+      }
+    }
+
+    // Step 2: 今週のSNSトレンドを取得（失敗してもメイン処理は継続）
+    let market_signal: string | undefined;
+    try {
+      const signal = await getLatestMarketSignal(industry);
+      if (signal) market_signal = signal;
+    } catch {
+      // シグナル取得失敗はサイレントに無視
+    }
+
+    // Step 3: 過去の学習履歴を取得（AIが週を重ねるごとに賢くなる）
+    let learning_history: UserProfile["learning_history"] = undefined;
+    if (userId) {
+      try {
+        const history = await getPastLearningHistory(userId);
+        if (history.length > 0) learning_history = history;
+      } catch {
+        // 履歴取得失敗はサイレントに無視
+      }
+    }
+
     const user: UserProfile = {
       industry, business_desc, customer_desc, main_problem, final_goal,
       booking_url: booking_url || undefined,
+      market_signal,
+      learning_history,
     };
 
-    // AI生成
+    // Step 4: AI生成
     const actions = await generateWeeklyActions(user);
     const weekStart = getMondayOfCurrentWeek();
     const actionsWithStatus = actions.map((a) => ({ ...a, completed: false }));
 
-    // Supabaseに保存（device_idがある場合）
-    let userId: string | null = null;
+    // Step 5: セッションをSupabaseに保存
     let sessionId = crypto.randomUUID();
-
-    if (device_id && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    if (userId && process.env.NEXT_PUBLIC_SUPABASE_URL) {
       try {
-        userId = await upsertUser(device_id, user);
         sessionId = await saveWeeklySession(userId, weekStart, actionsWithStatus);
       } catch (dbErr) {
         // DB保存失敗してもAI生成結果は返す（ローカルフォールバック）

@@ -6,6 +6,12 @@ import { loadSession } from "@/lib/store";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
 
+const FEEDBACK_OPTIONS = [
+  { value: "効果あり", label: "👍 反応が良かった", color: "bg-green-50 border-green-200 text-green-700 hover:bg-green-100" },
+  { value: "普通", label: "😐 普通だった", color: "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100" },
+  { value: "効果なし", label: "👎 あまり効果がなかった", color: "bg-red-50 border-red-200 text-red-600 hover:bg-red-100" },
+];
+
 function shareToX(text: string) {
   const encoded = encodeURIComponent(text);
   window.open(`https://twitter.com/intent/tweet?text=${encoded}`, "_blank");
@@ -26,10 +32,29 @@ function CompleteContent() {
   const allDone = doneCount === 3;
 
   const [sharedX, setSharedX] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackSending, setFeedbackSending] = useState(false);
 
   const shareText = allDone
     ? `今週の集客、AIにぜんぶ任せました✅\n\nInstagram投稿文・Googleレビュー返信・LINE配信——\n全部AIが考えて、コピーするだけ。\n\n飲食店・サロンのオーナーさんに試してほしいです👇\n${APP_URL}`
     : `マーケのタスク、1つ終わりました✅\nAIが作ったコンテンツをそのままコピーして投稿するだけ。\n\n${APP_URL}`;
+
+  async function submitFeedback(value: string) {
+    if (!session?.id || feedbackSending) return;
+    setFeedbackSending(true);
+    setFeedback(value);
+    try {
+      await fetch("/api/save-result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: session.id, actionIndex, resultMemo: value }),
+      });
+    } catch {
+      // フィードバック保存失敗は無視（UXに影響させない）
+    } finally {
+      setFeedbackSending(false);
+    }
+  }
 
   function handleShareX() {
     shareToX(shareText);
@@ -44,7 +69,7 @@ function CompleteContent() {
     <main className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* Main message */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <div className="text-6xl mb-5">{allDone ? "🏆" : "✅"}</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-3">
             {allDone ? "今週のマーケ、全完了！" : "1つ終わりました"}
@@ -54,6 +79,37 @@ function CompleteContent() {
               ? "AIが作ったコンテンツを使うだけ。\nそれだけでマーケが前進します。"
               : "残りもできたら、またやってみてください 👍"}
           </p>
+        </div>
+
+        {/* Feedback card — この施策どうでしたか？ */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          {feedback ? (
+            <div className="text-center py-2">
+              <p className="text-sm font-semibold text-green-600 mb-1">フィードバックありがとうございます！</p>
+              <p className="text-xs text-gray-400">来週のAI提案に活かします 🎯</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-gray-700 mb-1">
+                {action ? `「${action.title}」` : "この施策"}、実際どうでしたか？
+              </p>
+              <p className="text-xs text-gray-400 mb-3">
+                あなたの回答が来週のAI提案をより的確にします
+              </p>
+              <div className="flex flex-col gap-2">
+                {FEEDBACK_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => submitFeedback(opt.value)}
+                    disabled={feedbackSending}
+                    className={`w-full py-2.5 px-4 rounded-xl border text-sm font-medium transition-all active:scale-95 ${opt.color}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Viral share card */}

@@ -33,6 +33,7 @@ export interface Action {
   content: string;
   content_type: string;
   completed: boolean;
+  result_memo?: string; // ユーザーのフィードバック（効果あり/普通/効果なし）
 }
 
 export interface WeeklySession {

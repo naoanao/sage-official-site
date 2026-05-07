@@ -2,11 +2,24 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { loadSession } from "@/lib/store";
+import { loadSession, loadSessionHistory, SessionSummary } from "@/lib/store";
 import { getUsageData } from "@/components/FreeProgressBar";
 import { Action } from "@/lib/types";
 
 const FREE_LIMIT = 3;
+
+function formatWeekLabel(weekStart: string): string {
+  try {
+    const d = new Date(weekStart);
+    const end = new Date(d);
+    end.setDate(d.getDate() + 6);
+    const fmt = (dt: Date) =>
+      `${dt.getMonth() + 1}/${dt.getDate()}`;
+    return `${fmt(d)}〜${fmt(end)}`;
+  } catch {
+    return weekStart;
+  }
+}
 
 function BlurOverlay() {
   const router = useRouter();
@@ -33,6 +46,7 @@ function BlurOverlay() {
 export default function ReportPage() {
   const router = useRouter();
   const [actions, setActions] = useState<Action[]>([]);
+  const [pastWeeks, setPastWeeks] = useState<SessionSummary[]>([]);
   const usage = typeof window !== "undefined" ? getUsageData() : { count: 0, month: "" };
   const isDevMode = typeof window !== "undefined" && localStorage.getItem("growl_dev") === "true";
   const isFree = isDevMode ? false : usage.count < FREE_LIMIT;
@@ -40,17 +54,22 @@ export default function ReportPage() {
   useEffect(() => {
     const s = loadSession();
     if (s) setActions(s.actions);
+
+    // 過去週の履歴（今週を除いた直近4週分）
+    const history = loadSessionHistory();
+    const currentWeek = s?.week_start;
+    const filtered = history
+      .filter((h) => h.week_start !== currentWeek)
+      .slice(0, 4);
+    setPastWeeks(filtered);
   }, []);
 
   const done = actions.filter((a) => a.completed);
   const completionRate = actions.length > 0 ? Math.round((done.length / actions.length) * 100) : 0;
 
-  const DUMMY_WEEKS = [
-    { week: "4/21〜4/27", done: 3, total: 3 },
-    { week: "4/14〜4/20", done: 2, total: 3 },
-    { week: "4/7〜4/13", done: 3, total: 3 },
-    { week: "3/31〜4/6", done: 1, total: 3 },
-  ];
+  // 累計完了タスク数（今週 + 過去週）
+  const totalDoneAllTime =
+    done.length + pastWeeks.reduce((sum, w) => sum + w.done_count, 0);
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10">
@@ -62,6 +81,17 @@ export default function ReportPage() {
           <h1 className="text-2xl font-bold text-gray-900">今月のマーケ実績</h1>
           <p className="text-sm text-gray-400 mt-1">AIが動かした活動のまとめ</p>
         </div>
+
+        {/* 累計バッジ */}
+        {totalDoneAllTime >= 3 && (
+          <div className="bg-indigo-600 text-white rounded-2xl p-4 mb-4 flex items-center gap-4">
+            <div className="text-3xl">🔥</div>
+            <div>
+              <p className="font-bold text-lg">累計 {totalDoneAllTime} タスク完了</p>
+              <p className="text-xs text-indigo-200 mt-0.5">継続がマーケの最大の武器です</p>
+            </div>
+          </div>
+        )}
 
         {/* This week summary */}
         <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 mb-4">
@@ -84,39 +114,57 @@ export default function ReportPage() {
                   <span>{a.content_type}</span>
                   <span className="text-gray-300">—</span>
                   <span className="text-gray-500 truncate">{a.title}</span>
+                  {a.result_memo && (
+                    <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${
+                      a.result_memo === "効果あり"
+                        ? "bg-green-100 text-green-600"
+                        : a.result_memo === "効果なし"
+                        ? "bg-red-100 text-red-500"
+                        : "bg-gray-100 text-gray-400"
+                    }`}>
+                      {a.result_memo}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Past weeks — blurred for free users */}
+        {/* Past weeks — real data or placeholder */}
         <div className="relative rounded-2xl overflow-hidden">
           <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5">
             <p className="text-sm font-semibold text-gray-600 mb-4">過去4週間の実績</p>
-            <div className="flex flex-col gap-3">
-              {DUMMY_WEEKS.map((w) => (
-                <div key={w.week} className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">{w.week}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      {Array.from({ length: w.total }).map((_, j) => (
-                        <div
-                          key={j}
-                          className={`w-4 h-4 rounded-sm ${j < w.done ? "bg-indigo-400" : "bg-gray-100"}`}
-                        />
-                      ))}
+            {pastWeeks.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {pastWeeks.map((w) => (
+                  <div key={w.week_start} className="flex items-center justify-between">
+                    <p className="text-sm text-gray-600">{formatWeekLabel(w.week_start)}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {Array.from({ length: w.total_count }).map((_, j) => (
+                          <div
+                            key={j}
+                            className={`w-4 h-4 rounded-sm ${j < w.done_count ? "bg-indigo-400" : "bg-gray-100"}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-gray-400">{w.done_count}/{w.total_count}</span>
                     </div>
-                    <span className="text-xs text-gray-400">{w.done}/{w.total}</span>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-gray-400 text-sm">来週以降、ここに実績が積み上がります</p>
+                <p className="text-gray-300 text-xs mt-1">継続するほどAIの提案も精度が上がります 📈</p>
+              </div>
+            )}
           </div>
-          {isFree && <BlurOverlay />}
+          {isFree && pastWeeks.length > 0 && <BlurOverlay />}
         </div>
 
-        {isFree && (
+        {isFree && pastWeeks.length > 0 && (
           <div className="mt-4 bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center">
             <p className="text-sm font-medium text-indigo-700">
               月次レポートの全データはスタンダードプランで
