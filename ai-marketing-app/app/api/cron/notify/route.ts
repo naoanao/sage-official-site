@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendLineMessage, buildWeeklyNotificationText } from "@/lib/line";
-import { getAllUsersForCron, saveWeeklySession } from "@/lib/db";
+import { getAllUsersForCron, saveWeeklySession, getLatestMarketSignal, getPastLearningHistory } from "@/lib/db";
 import { generateWeeklyActions, UserProfile } from "@/lib/gemini";
 
 // Vercel Cron: 毎週月曜8時JST (日曜23:00 UTC)
@@ -26,6 +26,20 @@ export async function GET(req: NextRequest) {
 
   for (const user of users) {
     try {
+      // SNSトレンドシグナルを取得（Sage連携）
+      let market_signal: string | undefined;
+      try {
+        const signal = await getLatestMarketSignal(user.industry);
+        if (signal) market_signal = signal;
+      } catch { /* サイレントに無視 */ }
+
+      // 過去の学習履歴を取得（週を重ねるごとにAIが賢くなる）
+      let learning_history: Array<{ week: string; action: string; result: string }> = [];
+      try {
+        const hist = await getPastLearningHistory(user.id);
+        if (hist.length > 0) learning_history = hist;
+      } catch { /* サイレントに無視 */ }
+
       const profile: UserProfile = {
         industry: user.industry,
         business_desc: user.business_desc,
@@ -33,8 +47,8 @@ export async function GET(req: NextRequest) {
         main_problem: user.main_problem,
         final_goal: user.final_goal,
         booking_url: user.booking_url ?? undefined,
-        learning_history:
-          (user.learning_history as Array<{ week: string; action: string; result: string }>) ?? [],
+        learning_history,
+        market_signal,
       };
 
       const actions = await generateWeeklyActions(profile);

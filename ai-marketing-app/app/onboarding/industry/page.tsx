@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { saveOnboarding, clearOnboarding, setFlowActive } from "@/lib/store";
 import { Industry, INDUSTRY_LABELS, INDUSTRY_ICONS } from "@/lib/types";
 import ProgressBar from "@/components/ProgressBar";
+import { isLimitReached } from "@/components/FreeProgressBar";
 
 const industries: Industry[] = ["restaurant", "salon", "ec", "professional", "construction", "other"];
 
@@ -11,6 +12,11 @@ export default function IndustryPage() {
   const router = useRouter();
 
   function select(industry: Industry) {
+    // フリーミアム上限チェック
+    if (isLimitReached()) {
+      router.push("/upgrade");
+      return;
+    }
     clearOnboarding(); // 前回データ・フローフラグを完全リセット
     saveOnboarding({ industry });
     setFlowActive(); // 新しいフローが開始されたことをマーク

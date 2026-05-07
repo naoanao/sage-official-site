@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveOnboarding, loadOnboarding, saveUserId, saveSession, isFlowActive, clearOnboarding } from "@/lib/store";
+import { incrementUsage } from "@/components/FreeProgressBar";
 import ProgressBar from "@/components/ProgressBar";
 
 const EXAMPLES: Record<string, string> = {
@@ -89,6 +90,7 @@ export default function GoalPage() {
 
       if (json.userId) saveUserId(json.userId as string);
       if (json.session) saveSession(json.session as Parameters<typeof saveSession>[0]);
+      incrementUsage(); // フリーミアム：生成回数をカウント
       clearOnboarding(); // フロー完了 → onboardingデータとフラグをクリア（stale data防止）
       // LINE設定ページへ（スキップ可能）
       router.push("/onboarding/line");
