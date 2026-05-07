@@ -1,10 +1,9 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   eslint: {
     // ESLintエラーがあってもビルドを継続する（react-hooks/set-state-in-effect等）
     ignoreDuringBuilds: true,
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
