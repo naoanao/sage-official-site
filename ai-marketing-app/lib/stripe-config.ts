@@ -7,14 +7,16 @@ export const STRIPE_PLANS = {
     price: "¥3,000/月",
     priceId: "price_1TUa58ILSrv644ukEL1idxgX",
     productId: "prod_UTX9hVKUtxyztQ",
-    paymentLinkBase: "https://buy.stripe.com/dRm8wQ5ocfzL7hBfxA93y0a",
+    // 支払い後に /payment-success?plan=standard にリダイレクト
+    paymentLinkBase: "https://buy.stripe.com/aFa14og2QgDP7hB2KO93y0d",
   },
   pro: {
     name: "プロ",
     price: "¥8,000/月",
     priceId: "price_1TUa5DILSrv644ukNtQyMOUn",
     productId: "prod_UTX9MQ5QxfiMIf",
-    paymentLinkBase: "https://buy.stripe.com/8x29AUaIwbjv6dxbhk93y0b",
+    // 支払い後に /payment-success?plan=pro にリダイレクト
+    paymentLinkBase: "https://buy.stripe.com/dRm4gAdUI73fdFZfxA93y0e",
   },
 } as const;
 
