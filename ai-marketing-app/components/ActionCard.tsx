@@ -8,6 +8,7 @@ interface Props {
   index: number;
   sessionId: string;
   onComplete: (index: number) => void | Promise<void>;
+  completing?: boolean; // 処理中フラグ（二重押し防止・スピナー表示）
 }
 
 const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"];
@@ -33,7 +34,7 @@ function getIcon(contentType: string): string {
   return CONTENT_TYPE_ICONS[contentType] ?? "📝";
 }
 
-export default function ActionCard({ action, index, sessionId, onComplete }: Props) {
+export default function ActionCard({ action, index, sessionId, onComplete, completing = false }: Props) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(true);
 
@@ -73,9 +74,14 @@ export default function ActionCard({ action, index, sessionId, onComplete }: Pro
           </div>
           {action.completed ? (
             <span className="shrink-0 text-green-500 text-xl mt-1">✅</span>
+          ) : completing ? (
+            <span className="shrink-0 flex items-center gap-1.5 bg-indigo-100 text-indigo-400 text-sm font-medium px-4 py-2 rounded-xl">
+              <span className="animate-spin w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full" />
+            </span>
           ) : (
             <button
               onClick={() => onComplete(index)}
+              disabled={completing}
               className="shrink-0 bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all"
             >
               やった！

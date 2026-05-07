@@ -42,7 +42,7 @@ function CompleteContent() {
   async function submitFeedback(value: string) {
     if (!session?.id || feedbackSending) return;
     setFeedbackSending(true);
-    setFeedback(value);
+    // スピナーを見せてからAPIを叩く（「受け取ってくれた感」の演出）
     try {
       await fetch("/api/save-result", {
         method: "POST",
@@ -53,6 +53,7 @@ function CompleteContent() {
       // フィードバック保存失敗は無視（UXに影響させない）
     } finally {
       setFeedbackSending(false);
+      setFeedback(value); // API完了後に切り替え（急な画面変化を防ぐ）
     }
   }
 
@@ -83,12 +84,29 @@ function CompleteContent() {
 
         {/* Feedback card — この施策どうでしたか？ */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-          {feedback ? (
-            <div className="text-center py-2">
-              <p className="text-sm font-semibold text-green-600 mb-1">フィードバックありがとうございます！</p>
-              <p className="text-xs text-gray-400">来週のAI提案に活かします 🎯</p>
+          {feedbackSending ? (
+            /* 送信中スピナー */
+            <div className="flex items-center justify-center gap-2 py-4">
+              <span className="animate-spin w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full" />
+              <span className="text-sm text-gray-400">送信中...</span>
             </div>
+          ) : feedback ? (
+            /* 送信完了 — 値によってメッセージを出し分け */
+            feedback === "効果なし" ? (
+              <div className="text-center py-2">
+                <p className="text-sm font-semibold text-orange-500 mb-1">承知しました！</p>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  来週は媒体やトーンを変えた<br />別のアプローチを提案します 🔄
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-2">
+                <p className="text-sm font-semibold text-green-600 mb-1">フィードバックありがとうございます！</p>
+                <p className="text-xs text-gray-400">来週のAI提案に活かします 🎯</p>
+              </div>
+            )
           ) : (
+            /* 未回答 — ボタン表示 */
             <>
               <p className="text-sm font-semibold text-gray-700 mb-1">
                 {action ? `「${action.title}」` : "この施策"}、実際どうでしたか？

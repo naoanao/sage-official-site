@@ -9,6 +9,7 @@ import FreeProgressBar from "@/components/FreeProgressBar";
 export default function DashboardPage() {
   const router = useRouter();
   const [session, setSession] = useState<StoredSession | null>(null);
+  const [completingIndex, setCompletingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     function reloadSession() {
@@ -31,23 +32,26 @@ export default function DashboardPage() {
 
   async function handleComplete(index: number) {
     const sessionId = session?.id;
-    if (!sessionId) return;
+    if (!sessionId || completingIndex !== null) return; // 二重押し防止
 
+    setCompletingIndex(index);
+
+    // localStorageを即時更新（楽観的UI）
     updateActionComplete(index);
     const updated = loadSession();
     setSession(updated ? { ...updated } : null);
 
-    try {
-      await fetch("/api/complete-action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, actionIndex: index, resultMemo: null }),
-      });
-    } catch (err) {
-      console.error("complete-action failed:", err);
-    }
-
+    // 画面遷移を先に実行 — APIはバックグラウンドで同期
     router.push(`/complete/${sessionId}?action=${index}`);
+
+    // fire-and-forget（遅い回線でも画面遷移を妨げない）
+    fetch("/api/complete-action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, actionIndex: index, resultMemo: null }),
+    }).catch((err) => {
+      console.error("complete-action failed (non-fatal):", err);
+    });
   }
 
   if (!session) {
@@ -105,6 +109,7 @@ export default function DashboardPage() {
               index={i}
               sessionId={session.id}
               onComplete={handleComplete}
+              completing={completingIndex === i}
             />
           ))}
         </div>
