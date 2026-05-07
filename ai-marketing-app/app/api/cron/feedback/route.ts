@@ -60,10 +60,27 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // 一部完了 → 完了したアクションへのフィードバックを求める
-      // まだフィードバックをもらっていないものを探す
-      // feedback_stateがnullの場合のみ送信（フィードバック収集中でないとき）
-      const firstCompletedIndex = actions.findIndex((a) => a.completed);
+      // 一部完了 → フィードバックをまだもらっていないアクションだけに送信
+      // Webアプリ側でフィードバック済み（result_memoあり）のものはスキップ
+      const firstCompletedIndex = actions.findIndex(
+        (a) => a.completed && !(a as Action & { result_memo?: string }).result_memo
+      );
+
+      if (firstCompletedIndex === -1) {
+        // 全完了アクションにフィードバック済み → 称賛メッセージだけ送ってスキップ
+        const doneCount = completedActions.length;
+        await sendLineMessage({
+          to: user.line_user_id,
+          messages: [
+            {
+              type: "text",
+              text: `Growlです🎉\n\n今週は${doneCount}つ全てのアクションを実施＆フィードバックまでありがとうございます！\n\nその情報を活かして、来週さらに良い提案をします✨`,
+            },
+          ],
+        });
+        results.sent++;
+        continue;
+      }
 
       // フィードバック待ち状態にセット
       const completedTitle = actions[firstCompletedIndex]?.title ?? `アクション${firstCompletedIndex + 1}`;

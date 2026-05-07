@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/market-scan",
+      "schedule": "0 22 * * *"
+    },
+    {
       "path": "/api/cron/notify",
       "schedule": "0 23 * * 0"
     },

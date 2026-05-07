@@ -4,8 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   getUserByLineId,
   setFeedbackState,
-  updateCompletionMemo,
-  appendLearningHistory,
+  saveActionResult,
   getLatestSession,
   markActionComplete,
 } from "@/lib/db";
@@ -119,15 +118,8 @@ export async function POST(req: NextRequest) {
         const actionIndex = parseInt(withoutPrefix.slice(colonIdx1 + 1, colonIdx2), 10);
         const actionTitle = withoutPrefix.slice(colonIdx2 + 1);
 
-        await updateCompletionMemo(sessionId, actionIndex, text);
-
-        const weekStr = new Date().toISOString().split("T")[0];
-        await appendLearningHistory(user.id, {
-          week: weekStr,
-          action: actionTitle || `アクション${actionIndex + 1}`,
-          result: text,
-        });
-
+        // saveActionResult は action_completions + weekly_sessions JSON + learning_history を一括更新
+        await saveActionResult(sessionId, actionIndex, text);
         await setFeedbackState(lineUserId, null);
         await replyLine(event.replyToken, randomThanks());
         continue;

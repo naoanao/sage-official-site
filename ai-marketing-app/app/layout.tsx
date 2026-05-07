@@ -25,20 +25,13 @@ export const metadata: Metadata = {
     siteName: "Growl",
     locale: "ja_JP",
     type: "website",
-    images: [
-      {
-        url: `${APP_URL}/og-image.png`,
-        width: 1200,
-        height: 630,
-        alt: "Growl — AIが今週の集客施策を3つ届けます",
-      },
-    ],
+    // opengraph-image.tsx が自動的に /opengraph-image を生成するため静的URLは不要
   },
   twitter: {
     card: "summary_large_image",
     title: "Growl — 今週やること3つ",
     description: "AIが今週の集客施策を3つに絞ってくれる。登録不要・1分で完了。",
-    images: [`${APP_URL}/og-image.png`],
+    // twitter:image も opengraph-image.tsx が自動で差し込まれる
   },
   manifest: "/manifest.json",
   themeColor: "#6366f1",
@@ -47,9 +40,9 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Growl",
   },
+  // icon.tsx / apple-icon.tsx が自動でファビコン・Appleアイコンを生成する
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: "/icon.svg",
   },
 };
 

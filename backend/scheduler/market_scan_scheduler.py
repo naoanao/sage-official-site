@@ -67,6 +67,17 @@ class MarketScanScheduler:
                 f"BlogQueue={notify_results['blog_queue']}"
             )
 
+            # ── 3. Growl連携 — 日本SME向けシグナルをSupabaseに書き込む ──
+            try:
+                from backend.modules.growl_bridge import GrowlBridge
+                bridge = GrowlBridge()
+                bridge_results = bridge.push_signals(result)
+                pushed = sum(1 for v in bridge_results.values() if v)
+                logger.info(f"[MARKET_SCAN] ✅ Growl bridge: {pushed}/6 industries updated in Supabase.")
+            except Exception as e:
+                # Growl連携失敗はSage本体の動作に影響しない
+                logger.warning(f"[MARKET_SCAN] Growl bridge failed (non-fatal): {e}")
+
         except Exception as e:
             logger.error(f"[MARKET_SCAN] run_once() failed: {e}")
 

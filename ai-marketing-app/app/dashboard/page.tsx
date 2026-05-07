@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [session, setSession] = useState<StoredSession | null>(null);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     function reloadSession() {
@@ -145,13 +146,49 @@ export default function DashboardPage() {
           </button>
           <button
             type="button"
-            onClick={() => { clearOnboarding(); clearSession(); router.push("/onboarding/industry"); }}
-            className="text-sm text-gray-400 hover:text-indigo-500 transition-colors"
+            onClick={() => setShowResetConfirm(true)}
+            className="text-sm text-gray-400 hover:text-red-400 transition-colors"
           >
             最初からやり直す
           </button>
         </div>
       </div>
+
+      {/* Reset confirmation modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <div className="text-3xl text-center mb-3">⚠️</div>
+            <h2 className="text-lg font-bold text-gray-900 text-center mb-2">
+              本当にやり直しますか？
+            </h2>
+            <p className="text-sm text-gray-500 text-center leading-relaxed mb-6">
+              今週の施策・入力内容がすべて消えます。<br />
+              この操作は取り消せません。
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  clearOnboarding();
+                  clearSession();
+                  router.push("/onboarding/industry");
+                }}
+                className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors"
+              >
+                消して最初からやり直す
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -277,6 +277,25 @@ export async function getLatestMarketSignal(industry: string): Promise<string | 
 }
 
 // ─────────────────────────────────────────────
+// Waitlist — 有料プラン先行登録
+// ─────────────────────────────────────────────
+
+export async function saveWaitlistEmail(email: string, planName: string): Promise<void> {
+  const db = getServer();
+  await db
+    .from("waitlist_signups")
+    .upsert(
+      {
+        email,
+        plan_name: planName,
+        signed_up_at: new Date().toISOString(),
+      },
+      { onConflict: "email" }
+    );
+  // テーブルが存在しない場合はエラーを握り潰す（graceful degradation）
+}
+
+// ─────────────────────────────────────────────
 
 export async function getAllUsersForCron() {
   const db = getServer();

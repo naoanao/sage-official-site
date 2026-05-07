@@ -55,16 +55,20 @@ export default function UpgradePage() {
 
   async function handleWaitlist(planName: string) {
     if (!email.trim()) {
-      // メール未入力ならメール欄にフォーカス
       document.getElementById("waitlist-email")?.focus();
       return;
     }
     setSubmitting(true);
     try {
-      // 将来のStripe決済実装まではメールを記録するだけ
-      // （Supabase or Notionに保存するAPIを後で追加）
-      console.log("Waitlist signup:", { email, plan: planName });
-      await new Promise((r) => setTimeout(r, 800)); // UX用ウェイト
+      await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), planName }),
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error("waitlist signup error:", err);
+      // ネットワークエラーでも登録完了として扱う（UX優先）
       setSubmitted(true);
     } finally {
       setSubmitting(false);
