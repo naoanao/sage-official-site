@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { saveOnboarding, clearOnboarding } from "@/lib/store";
+import { saveOnboarding, clearOnboarding, setFlowActive } from "@/lib/store";
 import { Industry, INDUSTRY_LABELS, INDUSTRY_ICONS } from "@/lib/types";
 import ProgressBar from "@/components/ProgressBar";
 
@@ -11,8 +11,9 @@ export default function IndustryPage() {
   const router = useRouter();
 
   function select(industry: Industry) {
-    clearOnboarding(); // 前回データを完全リセットしてから新規保存
+    clearOnboarding(); // 前回データ・フローフラグを完全リセット
     saveOnboarding({ industry });
+    setFlowActive(); // 新しいフローが開始されたことをマーク
     router.push("/onboarding/business");
   }
 

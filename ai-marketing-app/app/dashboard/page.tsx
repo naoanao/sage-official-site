@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadSession, updateActionComplete, StoredSession, clearOnboarding } from "@/lib/store";
+import { loadSession, updateActionComplete, StoredSession, clearOnboarding, clearSession } from "@/lib/store";
 import ActionCard from "@/components/ActionCard";
 import FreeProgressBar from "@/components/FreeProgressBar";
 
@@ -121,7 +121,7 @@ export default function DashboardPage() {
           </button>
           <button
             type="button"
-            onClick={() => { clearOnboarding(); router.push("/onboarding/industry"); }}
+            onClick={() => { clearOnboarding(); clearSession(); router.push("/onboarding/industry"); }}
             className="text-sm text-gray-400 hover:text-indigo-500 transition-colors"
           >
             最初からやり直す

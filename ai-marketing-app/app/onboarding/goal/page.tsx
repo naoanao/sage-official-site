@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { saveOnboarding, loadOnboarding, saveUserId, saveSession } from "@/lib/store";
+import { saveOnboarding, loadOnboarding, saveUserId, saveSession, isFlowActive, clearOnboarding } from "@/lib/store";
 import ProgressBar from "@/components/ProgressBar";
 
 const EXAMPLES: Record<string, string> = {
@@ -32,7 +32,7 @@ export default function GoalPage() {
 
   useEffect(() => {
     const data = loadOnboarding();
-    if (!data.industry) {
+    if (!isFlowActive() || !data.industry) {
       router.replace("/onboarding/industry");
       return;
     }
@@ -69,6 +69,7 @@ export default function GoalPage() {
       if (!res.ok) throw new Error(json.error || "生成に失敗しました");
       if (json.userId) saveUserId(json.userId);
       if (json.session) saveSession(json.session);
+      clearOnboarding(); // フロー完了 → onboardingデータとフラグをクリア（stale data防止）
       // LINE設定ページへ（スキップ可能）
       router.push("/onboarding/line");
     } catch (e) {

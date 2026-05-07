@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { saveOnboarding, loadOnboarding } from "@/lib/store";
+import { saveOnboarding, loadOnboarding, isFlowActive } from "@/lib/store";
 import ProgressBar from "@/components/ProgressBar";
 
 const EXAMPLES: Record<string, string> = {
@@ -22,7 +22,7 @@ export default function CustomerPage() {
 
   useEffect(() => {
     const data = loadOnboarding();
-    if (!data.industry) {
+    if (!isFlowActive() || !data.industry) {
       router.replace("/onboarding/industry");
       return;
     }
