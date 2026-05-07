@@ -8,12 +8,20 @@ export default function NotFound() {
       <p className="text-gray-500 text-sm mb-8 leading-relaxed">
         お探しのページは存在しないか、<br />移動した可能性があります。
       </p>
-      <Link
-        href="/"
-        className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-6 py-3 rounded-2xl transition-colors"
-      >
-        ホームに戻る
-      </Link>
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        <Link
+          href="/dashboard"
+          className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-6 py-3 rounded-2xl transition-colors"
+        >
+          ダッシュボードへ
+        </Link>
+        <Link
+          href="/"
+          className="bg-white border border-gray-200 text-gray-600 font-semibold px-6 py-3 rounded-2xl transition-colors hover:bg-gray-50"
+        >
+          トップページへ
+        </Link>
+      </div>
     </main>
   );
 }

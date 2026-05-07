@@ -71,14 +71,23 @@ export default function DashboardPage() {
       <div className="max-w-lg mx-auto">
 
         {/* Header */}
-        <div className="mb-6">
-          <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-1">
-            Growlからの指示
-          </p>
-          <h1 className="text-2xl font-bold text-gray-900">今週やること 3つ</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            各コンテンツをコピーして、そのまま投稿・送信するだけです
-          </p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-1">
+              Growlからの指示
+            </p>
+            <h1 className="text-2xl font-bold text-gray-900">今週やること 3つ</h1>
+            <p className="text-sm text-gray-400 mt-1">
+              各コンテンツをコピーして、そのまま投稿・送信するだけです
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-xs text-gray-300 hover:text-indigo-400 transition-colors font-medium"
+          >
+            Growl
+          </button>
         </div>
 
         {/* Free usage progress */}
