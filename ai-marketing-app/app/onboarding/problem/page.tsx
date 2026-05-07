@@ -18,11 +18,16 @@ export default function ProblemPage() {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [example, setExample] = useState("新規のお客さんが全然来ない");
+  const [inputError, setInputError] = useState("");
 
   useEffect(() => {
     const data = loadOnboarding();
     if (!data.industry) {
       router.replace("/onboarding/industry");
+      return;
+    }
+    if (!data.customer_desc) {
+      router.replace("/onboarding/customer");
       return;
     }
     if (EXAMPLES[data.industry]) {
@@ -31,7 +36,11 @@ export default function ProblemPage() {
   }, [router]);
 
   function next() {
-    if (!value.trim()) return;
+    if (!value.trim()) {
+      setInputError("困っていることを入力してください");
+      return;
+    }
+    setInputError("");
     saveOnboarding({ main_problem: value.trim() });
     router.push("/onboarding/goal");
   }
@@ -47,12 +56,14 @@ export default function ProblemPage() {
           rows={4}
           placeholder="自由に書いてください"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => { setValue(e.target.value); setInputError(""); }}
         />
+        {inputError && (
+          <p className="mt-2 text-red-500 text-sm">{inputError}</p>
+        )}
         <button
           onClick={next}
-          disabled={!value.trim()}
-          className="mt-6 w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-4 rounded-2xl transition-colors text-base"
+          className="mt-6 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl transition-colors text-base"
         >
           次へ
         </button>

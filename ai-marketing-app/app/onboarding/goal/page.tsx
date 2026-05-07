@@ -36,13 +36,20 @@ export default function GoalPage() {
       router.replace("/onboarding/industry");
       return;
     }
+    if (!data.main_problem) {
+      router.replace("/onboarding/problem");
+      return;
+    }
     if (EXAMPLES[data.industry]) {
       setExample(EXAMPLES[data.industry as keyof typeof EXAMPLES]);
     }
   }, [router]);
 
   async function finish() {
-    if (!value.trim()) return;
+    if (!value.trim()) {
+      setError("理想の未来を入力してください");
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -86,7 +93,7 @@ export default function GoalPage() {
           rows={5}
           placeholder="理想の未来を教えてください"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => { setValue(e.target.value); setError(""); }}
         />
         {error && (
           <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl">

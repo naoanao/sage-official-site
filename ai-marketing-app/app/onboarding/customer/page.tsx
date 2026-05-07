@@ -18,11 +18,16 @@ export default function CustomerPage() {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [example, setExample] = useState("近くに住む30〜50代の主婦の方が多いです");
+  const [inputError, setInputError] = useState("");
 
   useEffect(() => {
     const data = loadOnboarding();
     if (!data.industry) {
       router.replace("/onboarding/industry");
+      return;
+    }
+    if (!data.business_desc) {
+      router.replace("/onboarding/business");
       return;
     }
     if (EXAMPLES[data.industry]) {
@@ -31,7 +36,11 @@ export default function CustomerPage() {
   }, [router]);
 
   function next() {
-    if (!value.trim()) return;
+    if (!value.trim()) {
+      setInputError("お客さんの情報を入力してください");
+      return;
+    }
+    setInputError("");
     saveOnboarding({ customer_desc: value.trim() });
     router.push("/onboarding/problem");
   }
@@ -47,12 +56,14 @@ export default function CustomerPage() {
           rows={4}
           placeholder="自由に書いてください"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => { setValue(e.target.value); setInputError(""); }}
         />
+        {inputError && (
+          <p className="mt-2 text-red-500 text-sm">{inputError}</p>
+        )}
         <button
           onClick={next}
-          disabled={!value.trim()}
-          className="mt-6 w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-4 rounded-2xl transition-colors text-base"
+          className="mt-6 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl transition-colors text-base"
         >
           次へ
         </button>

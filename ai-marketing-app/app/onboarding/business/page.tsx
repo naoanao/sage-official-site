@@ -19,6 +19,7 @@ export default function BusinessPage() {
   const [value, setValue] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
   const [example, setExample] = useState("地元の定食屋を一人で切り盛りしています");
+  const [inputError, setInputError] = useState("");
 
   useEffect(() => {
     const data = loadOnboarding();
@@ -32,7 +33,11 @@ export default function BusinessPage() {
   }, [router]);
 
   function next() {
-    if (!value.trim()) return;
+    if (!value.trim()) {
+      setInputError("仕事の内容を入力してください");
+      return;
+    }
+    setInputError("");
     saveOnboarding({ business_desc: value.trim(), booking_url: bookingUrl.trim() || undefined });
     router.push("/onboarding/customer");
   }
@@ -48,8 +53,11 @@ export default function BusinessPage() {
           rows={4}
           placeholder="自由に書いてください"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => { setValue(e.target.value); setInputError(""); }}
         />
+        {inputError && (
+          <p className="mt-2 text-red-500 text-sm">{inputError}</p>
+        )}
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-600 mb-1">
             予約・問い合わせURL <span className="text-gray-400 font-normal">（任意）</span>
@@ -65,8 +73,7 @@ export default function BusinessPage() {
         </div>
         <button
           onClick={next}
-          disabled={!value.trim()}
-          className="mt-6 w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-4 rounded-2xl transition-colors text-base"
+          className="mt-6 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl transition-colors text-base"
         >
           次へ
         </button>

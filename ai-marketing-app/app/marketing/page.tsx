@@ -81,20 +81,22 @@ export default function MarketingPage() {
   const situation = SITUATIONS.find((s) => s.id === selectedSituation);
 
   function isValidInput(str: string): boolean {
-    const trimmed = str.trim();
-    if (trimmed.length < 2) return false;
-    if (/^[\d\s\W]+$/.test(trimmed)) return false;
-    return true;
+    return str.trim().length >= 2;
+  }
+
+  function scrollTop() {
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "instant" });
   }
 
   // ── Step1 → Step2
   function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidInput(name) || !isValidInput(product) || !isValidInput(target)) {
-      setFormError("会社名・商品・ターゲット顧客は2文字以上の具体的な内容を入力してください");
+      setFormError("会社名・商品・ターゲット顧客は2文字以上入力してください");
       return;
     }
     setFormError(null);
+    scrollTop();
     setStep("situation");
   }
 
@@ -120,7 +122,7 @@ export default function MarketingPage() {
   }
 
   // ── コピー
-  function handleCopy() {
+  async function handleCopy() {
     if (!result) return;
     const text = [
       `■ ${result.framework}`,
@@ -131,10 +133,21 @@ export default function MarketingPage() {
       `【インサイト】\n${result.insight}`,
       `【今週のアクション】\n${result.actions.map((a, i) => `${i + 1}. ${a}`).join("\n")}`,
     ].join("\n\n");
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   // ────────────────────────────────────────────
@@ -159,7 +172,7 @@ export default function MarketingPage() {
         <div className="max-w-lg mx-auto">
           {/* ヘッダー */}
           <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => { setStep("situation"); setResult(null); }} className="text-gray-400 text-sm hover:text-gray-600">← 戻る</button>
+            <button onClick={() => { setStep("situation"); setResult(null); scrollTop(); }} className="text-gray-400 text-sm hover:text-gray-600">← 戻る</button>
             <h1 className="text-xl font-bold text-gray-900">{result.framework}</h1>
           </div>
 
@@ -232,7 +245,7 @@ export default function MarketingPage() {
               {copied ? "✅ コピーしました" : "📋 分析結果をコピー"}
             </button>
             <button
-              onClick={() => { setStep("situation"); setSelectedFw(null); setResult(null); }}
+              onClick={() => { setSelectedSituation(null); setSelectedFw(null); setResult(null); setStep("situation"); scrollTop(); }}
               className="w-full border border-gray-200 text-gray-600 font-medium py-3 rounded-2xl hover:bg-gray-50 transition-colors"
             >
               別のフレームワークを分析する
@@ -254,7 +267,7 @@ export default function MarketingPage() {
     return (
       <main className="min-h-screen bg-gray-50 px-4 py-10">
         <div className="max-w-lg mx-auto">
-          <button onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); }} className="text-gray-400 text-sm mb-4 hover:text-gray-600">← 自社情報を修正</button>
+          <button onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); scrollTop(); }} className="text-gray-400 text-sm mb-4 hover:text-gray-600">← 自社情報を修正</button>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">どの分析をしますか？</h1>
           <p className="text-gray-500 text-sm mb-6">{name} · {product}</p>
 
@@ -356,14 +369,7 @@ export default function MarketingPage() {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={(e) => {
-                if (!e.target.value.trim()) {
-                  e.target.classList.add("border-red-300");
-                } else {
-                  e.target.classList.remove("border-red-300");
-                }
-              }}
+              onChange={(e) => { setName(e.target.value); setFormError(null); }}
               placeholder="例: 田中カフェ / 株式会社〇〇"
               required
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
@@ -376,14 +382,7 @@ export default function MarketingPage() {
             </label>
             <textarea
               value={product}
-              onChange={(e) => setProduct(e.target.value)}
-              onBlur={(e) => {
-                if (!e.target.value.trim()) {
-                  e.target.classList.add("border-red-300");
-                } else {
-                  e.target.classList.remove("border-red-300");
-                }
-              }}
+              onChange={(e) => { setProduct(e.target.value); setFormError(null); }}
               placeholder="例: 地元野菜を使ったランチカフェ。テイクアウトも対応。"
               required
               rows={2}
@@ -398,14 +397,7 @@ export default function MarketingPage() {
             <input
               type="text"
               value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              onBlur={(e) => {
-                if (!e.target.value.trim()) {
-                  e.target.classList.add("border-red-300");
-                } else {
-                  e.target.classList.remove("border-red-300");
-                }
-              }}
+              onChange={(e) => { setTarget(e.target.value); setFormError(null); }}
               placeholder="例: 30〜50代の会社員、ランチに健康的な食事を求める人"
               required
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
