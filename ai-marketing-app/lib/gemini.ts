@@ -14,6 +14,7 @@ export interface UserProfile {
   final_goal: string;
   booking_url?: string;
   learning_history?: Array<{ week: string; action: string; result: string }>;
+  market_signal?: string; // Sage統合Phase1: 今週のSNSトレンド
 }
 
 const CHANNEL_HINTS: Record<string, string> = {
@@ -52,12 +53,18 @@ function buildPrompt(user: UserProfile): string {
 
   const learningSection = buildLearningSection(user.learning_history);
 
+  // Sage統合Phase1: 今週のトレンドシグナルがあれば注入
+  const marketSection = user.market_signal
+    ? `\n\n【今週のSNSトレンド（AI分析）】\n${user.market_signal}\n- 上記のトレンドを踏まえて、アクションのテーマ・文体・切り口を調整すること`
+    : "";
+
   return `あなたは優秀なマーケティング部長です。以下のユーザー情報をもとに、「今週やること」をちょうど3つ生成してください。
 
 【絶対ルール】
 - Markdown記号（**、##、___、\`など）は一切使わない。プレーンテキストのみで出力すること
 - アクションの数は必ずちょうど3つ。4つ以上も2つ以下もNG
 - フレームワーク名（3C・STP・4Pなど）は絶対に使わない。専門用語も禁止
+- 標準的な日本語・丁寧語を使うこと。方言・話し言葉・崩した表現（「〜や」「〜やで」「〜ねん」「〜やん」など関西弁・口語表現）は絶対に使わない
 - titleは「〜する」形式の短いアクション名（15文字以内）
 - detailはそのアクションの目的・使い方を説明する一文（60文字以内）
 - content_typeは業種・目的に合ったものを選ぶ。選択肢：Instagram投稿文、LINE配信文、Googleレビュー返信文、ブログ記事冒頭、メール文、告知文、チラシ文
@@ -77,7 +84,7 @@ function buildPrompt(user: UserProfile): string {
 仕事の内容: ${user.business_desc}
 お客さんの特徴: ${user.customer_desc}
 今一番困っていること: ${user.main_problem}
-このアプリが完璧に機能したとき、どう変わりたいか: ${user.final_goal}${learningSection}
+このアプリが完璧に機能したとき、どう変わりたいか: ${user.final_goal}${learningSection}${marketSection}
 
 【出力形式（JSONのみ、コードブロック不要、actionsは必ず3要素）】
 {"actions":[{"title":"〜する形式15文字以内","detail":"目的説明60文字以内","content_type":"Instagram投稿文","content":"お客さんに届けるコピペ用の完成文章"},{"title":"...","detail":"...","content_type":"...","content":"..."},{"title":"...","detail":"...","content_type":"...","content":"..."}]}`;

@@ -27,6 +27,7 @@ export default function GoalPage() {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState("");
   const [example, setExample] = useState("集客を気にせず、料理だけに集中できている");
 
@@ -45,36 +46,52 @@ export default function GoalPage() {
     }
   }, [router]);
 
+  async function callGenerateActions(payload: object): Promise<{ userId?: string; session?: unknown }> {
+    const res = await fetch("/api/generate-actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "生成に失敗しました");
+    return json;
+  }
+
   async function finish() {
     if (!value.trim()) {
       setError("理想の未来を入力してください");
       return;
     }
     setLoading(true);
+    setRetrying(false);
     setError("");
 
     const data = { ...loadOnboarding(), final_goal: value.trim() };
     saveOnboarding({ final_goal: value.trim() });
 
     const device_id = getOrCreateDeviceId();
+    const payload = { ...data, device_id };
 
     try {
-      const res = await fetch("/api/generate-actions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, device_id }),
-      });
+      let json: { userId?: string; session?: unknown };
+      try {
+        json = await callGenerateActions(payload);
+      } catch {
+        // 1回目失敗 → 3秒待ってから自動リトライ
+        setRetrying(true);
+        await new Promise((r) => setTimeout(r, 3000));
+        json = await callGenerateActions(payload);
+      }
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "生成に失敗しました");
-      if (json.userId) saveUserId(json.userId);
-      if (json.session) saveSession(json.session);
+      if (json.userId) saveUserId(json.userId as string);
+      if (json.session) saveSession(json.session as Parameters<typeof saveSession>[0]);
       clearOnboarding(); // フロー完了 → onboardingデータとフラグをクリア（stale data防止）
       // LINE設定ページへ（スキップ可能）
       router.push("/onboarding/line");
     } catch (e) {
       setError("少し混み合っています。もう一度お試しください。");
       setLoading(false);
+      setRetrying(false);
     }
   }
 
@@ -110,7 +127,7 @@ export default function GoalPage() {
           {loading ? (
             <>
               <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-              AIが考えています...
+              {retrying ? "再試行中..." : "AIが考えています..."}
             </>
           ) : (
             "今週やること3つを出す"
