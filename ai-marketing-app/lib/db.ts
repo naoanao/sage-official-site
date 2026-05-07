@@ -277,6 +277,44 @@ export async function getLatestMarketSignal(industry: string): Promise<string | 
 }
 
 // ─────────────────────────────────────────────
+// Plan Management — Stripe連携
+// ─────────────────────────────────────────────
+
+export async function updateUserPlan(
+  deviceId: string | null,
+  plan: "free" | "standard" | "pro",
+  email?: string | null,
+  stripeCustomerId?: string | null
+): Promise<void> {
+  const db = getServer();
+
+  const updateData: Record<string, unknown> = {
+    plan,
+    plan_updated_at: new Date().toISOString(),
+  };
+  if (email) updateData.email = email;
+  if (stripeCustomerId) updateData.stripe_customer_id = stripeCustomerId;
+
+  if (deviceId) {
+    await db.from("users").update(updateData).eq("device_id", deviceId);
+  } else if (email) {
+    await db.from("users").update(updateData).eq("email", email);
+  } else if (stripeCustomerId) {
+    await db.from("users").update(updateData).eq("stripe_customer_id", stripeCustomerId);
+  }
+}
+
+export async function getUserPlan(deviceId: string): Promise<"free" | "standard" | "pro"> {
+  const db = getServer();
+  const { data } = await db
+    .from("users")
+    .select("plan")
+    .eq("device_id", deviceId)
+    .single();
+  return (data?.plan as "free" | "standard" | "pro") ?? "free";
+}
+
+// ─────────────────────────────────────────────
 // Waitlist — 有料プラン先行登録
 // ─────────────────────────────────────────────
 

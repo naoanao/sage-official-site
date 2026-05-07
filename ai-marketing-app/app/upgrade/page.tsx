@@ -1,20 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { buildPaymentUrl } from "@/lib/stripe-config";
+import { loadDeviceId } from "@/lib/store";
 
 const PLANS = [
   {
+    key: "free" as const,
     name: "フリー",
     price: "¥0",
     period: "/月",
     desc: "まずは試してみる",
     features: ["月3回まで生成", "コンテンツコピー機能", "基本的な業種対応"],
     cta: "現在のプラン",
-    current: true,
     highlight: false,
   },
   {
+    key: "standard" as const,
     name: "スタンダード",
     price: "¥3,000",
     period: "/月",
@@ -26,11 +29,11 @@ const PLANS = [
       "業種別カスタマイズ",
       "無制限生成",
     ],
-    cta: "先行登録する（無料）",
-    current: false,
+    cta: "今すぐ始める",
     highlight: true,
   },
   {
+    key: "pro" as const,
     name: "プロ",
     price: "¥8,000",
     period: "/月",
@@ -41,38 +44,23 @@ const PLANS = [
       "Googleレビュー自動返信",
       "優先サポート",
     ],
-    cta: "先行登録する（無料）",
-    current: false,
+    cta: "プロで始める",
     highlight: false,
   },
 ];
 
 export default function UpgradePage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [deviceId, setDeviceId] = useState<string>("");
 
-  async function handleWaitlist(planName: string) {
-    if (!email.trim()) {
-      document.getElementById("waitlist-email")?.focus();
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), planName }),
-      });
-      setSubmitted(true);
-    } catch (err) {
-      console.error("waitlist signup error:", err);
-      // ネットワークエラーでも登録完了として扱う（UX優先）
-      setSubmitted(true);
-    } finally {
-      setSubmitting(false);
-    }
+  useEffect(() => {
+    setDeviceId(loadDeviceId());
+  }, []);
+
+  function handlePlanClick(planKey: "free" | "standard" | "pro") {
+    if (planKey === "free") return;
+    const url = buildPaymentUrl(planKey, deviceId);
+    window.open(url, "_blank");
   }
 
   return (
@@ -90,88 +78,75 @@ export default function UpgradePage() {
           </p>
         </div>
 
-        {submitted ? (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center mb-6">
-            <div className="text-4xl mb-3">🎉</div>
-            <h2 className="font-bold text-green-800 text-lg mb-2">先行登録完了！</h2>
-            <p className="text-sm text-green-700 leading-relaxed">
-              有料プランのリリース時に、登録いただいたメールアドレスへご連絡します。<br />
-              引き続き無料プランをお使いください。
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* メール入力（先行登録用） */}
-            <div className="bg-white border border-indigo-100 rounded-2xl p-5 mb-5 shadow-sm">
-              <p className="text-sm font-semibold text-gray-700 mb-1">有料プランの先行登録</p>
-              <p className="text-xs text-gray-400 mb-3">
-                リリース時にメールでご連絡します。登録は無料です。
-              </p>
-              <input
-                id="waitlist-email"
-                type="email"
-                placeholder="メールアドレスを入力"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full border-2 border-gray-200 focus:border-indigo-400 rounded-xl px-4 py-2.5 text-sm outline-none transition-colors"
-              />
-            </div>
+        {/* 安心感 */}
+        <div className="flex justify-center gap-4 mb-6 text-xs text-gray-400">
+          <span>🔒 Stripe決済</span>
+          <span>📅 いつでも解約</span>
+          <span>💳 クレカ / コンビニ対応</span>
+        </div>
 
-            <div className="flex flex-col gap-4">
-              {PLANS.map((plan) => (
-                <div
-                  key={plan.name}
-                  className={`rounded-2xl border p-5 ${
-                    plan.highlight
-                      ? "bg-indigo-600 border-indigo-600 text-white shadow-lg"
-                      : "bg-white border-gray-100 shadow-sm"
-                  }`}
-                >
-                  {plan.highlight && (
-                    <p className="text-xs font-bold text-indigo-200 uppercase tracking-widest mb-3">
-                      ✨ おすすめ
-                    </p>
-                  )}
-                  <div className="flex items-end gap-1 mb-1">
-                    <span className={`text-3xl font-bold ${plan.highlight ? "text-white" : "text-gray-900"}`}>
-                      {plan.price}
-                    </span>
-                    <span className={`text-sm mb-1 ${plan.highlight ? "text-indigo-200" : "text-gray-400"}`}>
-                      {plan.period}
-                    </span>
-                  </div>
-                  <p className={`text-sm font-medium mb-1 ${plan.highlight ? "text-indigo-100" : "text-gray-800"}`}>
-                    {plan.name}
-                  </p>
-                  <p className={`text-xs mb-4 ${plan.highlight ? "text-indigo-200" : "text-gray-400"}`}>
-                    {plan.desc}
-                  </p>
-                  <ul className="flex flex-col gap-1.5 mb-5">
-                    {plan.features.map((f) => (
-                      <li key={f} className={`flex items-start gap-2 text-sm ${plan.highlight ? "text-indigo-100" : "text-gray-600"}`}>
-                        <span className="mt-0.5 shrink-0">✓</span>
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() => plan.current ? null : handleWaitlist(plan.name)}
-                    disabled={submitting || plan.current}
-                    className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
-                      plan.current
-                        ? "bg-gray-100 text-gray-400 cursor-default"
-                        : plan.highlight
-                        ? "bg-white text-indigo-600 hover:bg-indigo-50"
-                        : "bg-indigo-500 text-white hover:bg-indigo-600"
+        <div className="flex flex-col gap-4">
+          {PLANS.map((plan) => (
+            <div
+              key={plan.name}
+              className={`rounded-2xl border p-5 ${
+                plan.highlight
+                  ? "bg-indigo-600 border-indigo-600 text-white shadow-lg"
+                  : "bg-white border-gray-100 shadow-sm"
+              }`}
+            >
+              {plan.highlight && (
+                <p className="text-xs font-bold text-indigo-200 uppercase tracking-widest mb-3">
+                  ✨ おすすめ
+                </p>
+              )}
+              <div className="flex items-end gap-1 mb-1">
+                <span className={`text-3xl font-bold ${plan.highlight ? "text-white" : "text-gray-900"}`}>
+                  {plan.price}
+                </span>
+                <span className={`text-sm mb-1 ${plan.highlight ? "text-indigo-200" : "text-gray-400"}`}>
+                  {plan.period}
+                </span>
+              </div>
+              <p className={`text-sm font-medium mb-1 ${plan.highlight ? "text-indigo-100" : "text-gray-800"}`}>
+                {plan.name}
+              </p>
+              <p className={`text-xs mb-4 ${plan.highlight ? "text-indigo-200" : "text-gray-400"}`}>
+                {plan.desc}
+              </p>
+              <ul className="flex flex-col gap-1.5 mb-5">
+                {plan.features.map((f) => (
+                  <li
+                    key={f}
+                    className={`flex items-start gap-2 text-sm ${
+                      plan.highlight ? "text-indigo-100" : "text-gray-600"
                     }`}
                   >
-                    {submitting ? "登録中..." : plan.cta}
-                  </button>
-                </div>
-              ))}
+                    <span className="mt-0.5 shrink-0">✓</span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => handlePlanClick(plan.key)}
+                disabled={plan.key === "free"}
+                className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
+                  plan.key === "free"
+                    ? "bg-gray-100 text-gray-400 cursor-default"
+                    : plan.highlight
+                    ? "bg-white text-indigo-600 hover:bg-indigo-50"
+                    : "bg-indigo-500 text-white hover:bg-indigo-600"
+                }`}
+              >
+                {plan.cta}
+              </button>
             </div>
-          </>
-        )}
+          ))}
+        </div>
+
+        <p className="text-center text-xs text-gray-300 mt-4">
+          Stripeの安全な決済ページに移動します
+        </p>
 
         <div className="mt-8 text-center">
           <button
