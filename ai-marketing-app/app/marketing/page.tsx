@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { loadOnboarding } from "@/lib/store";
 
 // ────────────────────────────────────────────
 // 定数
@@ -49,6 +50,16 @@ const SITUATIONS = [
   },
 ];
 
+const CONTENT_TYPE_ICONS: Record<string, string> = {
+  "Instagram投稿文": "📸",
+  "Googleレビュー返信文": "⭐",
+  "LINE配信文": "💬",
+  "ブログ記事冒頭": "✍️",
+  "メール文": "📧",
+  "告知文": "📢",
+  "チラシ文": "📄",
+};
+
 // ────────────────────────────────────────────
 // 型
 // ────────────────────────────────────────────
@@ -60,7 +71,30 @@ interface AnalysisResult {
   actions: string[];
 }
 
+interface PostResult {
+  platform: string;
+  content: string;
+  hook: string;
+}
+
 type Step = "form" | "situation" | "loading" | "result";
+
+// ────────────────────────────────────────────
+// ユーティリティ
+// ────────────────────────────────────────────
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/_{1,2}(.+?)_{1,2}/g, "$1")
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/`(.+?)`/g, "$1")
+    .trim();
+}
+
+function getContentIcon(platform: string): string {
+  return CONTENT_TYPE_ICONS[platform] ?? "📝";
+}
 
 // ────────────────────────────────────────────
 // コンポーネント
@@ -71,6 +105,8 @@ export default function MarketingPage() {
   const [product, setProduct] = useState("");
   const [target, setTarget] = useState("");
   const [url, setUrl] = useState("");
+  const [price, setPrice] = useState("");
+  const [industry, setIndustry] = useState("");
   const [selectedSituation, setSelectedSituation] = useState<string | null>(null);
   const [selectedFw, setSelectedFw] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -78,7 +114,18 @@ export default function MarketingPage() {
   const [copied, setCopied] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // 投稿文生成
+  const [posts, setPosts] = useState<PostResult[] | null>(null);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsCopied, setPostsCopied] = useState<Record<number, boolean>>({});
+
   const situation = SITUATIONS.find((s) => s.id === selectedSituation);
+
+  // オンボーディングデータがあれば業種を自動取得
+  useEffect(() => {
+    const data = loadOnboarding();
+    if (data.industry) setIndustry(data.industry);
+  }, []);
 
   function isValidInput(str: string): boolean {
     return str.trim().length >= 2;
@@ -105,38 +152,76 @@ export default function MarketingPage() {
     if (!selectedFw) return;
     setStep("loading");
     setError(null);
+    setPosts(null);
     try {
       const res = await fetch("/api/marketing/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, product, target, url: url || undefined, framework: selectedFw }),
+        body: JSON.stringify({
+          name,
+          product,
+          target,
+          url: url || undefined,
+          framework: selectedFw,
+          industry: industry || undefined,
+          price: price || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "エラーが発生しました");
       setResult(data.result);
       setStep("result");
+      scrollTop();
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
       setStep("situation");
     }
   }
 
-  // ── コピー
+  // ── 投稿文生成
+  async function handleGeneratePosts() {
+    if (!result) return;
+    setPostsLoading(true);
+    setPostsCopied({});
+    try {
+      const res = await fetch("/api/marketing/generate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          framework: result.framework,
+          insight: result.insight,
+          name,
+          product,
+          target,
+          industry: industry || undefined,
+          price: price || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "エラーが発生しました");
+      setPosts(data.posts);
+    } catch {
+      // エラーは無視してUIに戻る
+    } finally {
+      setPostsLoading(false);
+    }
+  }
+
+  // ── 分析結果コピー
   async function handleCopy() {
     if (!result) return;
     const text = [
       `■ ${result.framework}`,
-      `【なぜ重要か】\n${result.why}`,
+      `【なぜ重要か】\n${stripMarkdown(result.why)}`,
       ...Object.entries(result.items).map(
-        ([k, vs]) => `【${k}】\n${vs.map((v) => `・${v}`).join("\n")}`
+        ([k, vs]) => `【${k}】\n${vs.map((v) => `・${stripMarkdown(v)}`).join("\n")}`
       ),
-      `【インサイト】\n${result.insight}`,
-      `【今週のアクション】\n${result.actions.map((a, i) => `${i + 1}. ${a}`).join("\n")}`,
+      `【インサイト】\n${stripMarkdown(result.insight)}`,
+      `【今週のアクション】\n${result.actions.map((a, i) => `${i + 1}. ${stripMarkdown(a)}`).join("\n")}`,
     ].join("\n\n");
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      // fallback
       const ta = document.createElement("textarea");
       ta.value = text;
       ta.style.position = "fixed";
@@ -150,6 +235,25 @@ export default function MarketingPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  // ── 投稿文コピー
+  async function handleCopyPost(index: number, content: string) {
+    const text = `${content}\n\n📊 Growlで作成`;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setPostsCopied((prev) => ({ ...prev, [index]: true }));
+    setTimeout(() => setPostsCopied((prev) => ({ ...prev, [index]: false })), 2000);
+  }
+
   // ────────────────────────────────────────────
   // RENDER
   // ────────────────────────────────────────────
@@ -160,7 +264,9 @@ export default function MarketingPage() {
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
         <div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full mb-6" />
         <p className="text-gray-600 font-medium text-lg">AIが分析中です…</p>
-        <p className="text-gray-400 text-sm mt-2">Gemini / Groqが{situation?.frameworks.find(f=>f.id===selectedFw)?.name ?? "フレームワーク"}を生成しています</p>
+        <p className="text-gray-400 text-sm mt-2">
+          {situation?.frameworks.find((f) => f.id === selectedFw)?.name ?? "フレームワーク"}を生成しています
+        </p>
       </main>
     );
   }
@@ -172,14 +278,19 @@ export default function MarketingPage() {
         <div className="max-w-lg mx-auto">
           {/* ヘッダー */}
           <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => { setStep("situation"); setResult(null); scrollTop(); }} className="text-gray-400 text-sm hover:text-gray-600">← 戻る</button>
+            <button
+              onClick={() => { setStep("situation"); setResult(null); setPosts(null); scrollTop(); }}
+              className="text-gray-400 text-sm hover:text-gray-600"
+            >
+              ← 戻る
+            </button>
             <h1 className="text-xl font-bold text-gray-900">{result.framework}</h1>
           </div>
 
           {/* なぜ重要か */}
           <div className="bg-indigo-50 rounded-2xl px-4 py-3 mb-5">
             <p className="text-xs text-indigo-400 font-medium mb-1">なぜこの分析が重要か</p>
-            <p className="text-indigo-800 text-sm leading-relaxed">{result.why}</p>
+            <p className="text-indigo-800 text-sm leading-relaxed">{stripMarkdown(result.why)}</p>
           </div>
 
           {/* フレームワーク本体 */}
@@ -191,7 +302,7 @@ export default function MarketingPage() {
                   {items.map((item, i) => (
                     <li key={i} className="flex gap-2 text-sm text-gray-700">
                       <span className="text-indigo-400 mt-0.5 flex-shrink-0">•</span>
-                      <span>{item}</span>
+                      <span>{stripMarkdown(item)}</span>
                     </li>
                   ))}
                 </ul>
@@ -202,36 +313,114 @@ export default function MarketingPage() {
           {/* インサイト */}
           <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-4 mb-5">
             <p className="text-xs font-semibold text-amber-500 mb-1">💡 インサイト</p>
-            <p className="text-amber-900 text-sm leading-relaxed">{result.insight}</p>
+            <p className="text-amber-900 text-sm leading-relaxed">{stripMarkdown(result.insight)}</p>
           </div>
 
           {/* 今週のアクション */}
           <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
-            <p className="text-xs font-semibold text-gray-500 mb-3">今週できるアクション</p>
+            <p className="text-xs font-semibold text-gray-500 mb-3">今週できるアクション（30分以内・費用ゼロ）</p>
             <ol className="flex flex-col gap-3">
               {result.actions.map((action, i) => (
                 <li key={i} className="flex gap-3">
-                  <span className="w-6 h-6 bg-indigo-500 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                  <p className="text-sm text-gray-700">{action}</p>
+                  <span className="w-6 h-6 bg-indigo-500 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm text-gray-700">{stripMarkdown(action)}</p>
                 </li>
               ))}
             </ol>
           </div>
 
           {/* 免責注記 */}
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4">
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-5">
             <p className="text-xs text-amber-700 leading-relaxed">
               ⚠️ この分析はAIが生成した「たたき台」です。最新の法規制・市場データは必ずご自身で確認の上、意思決定にご活用ください。経営判断の最終責任はご自身にあります。
             </p>
             {selectedFw === "pest" && (
               <div className="mt-2 pt-2 border-t border-amber-200">
-                <p className="text-xs text-amber-700 font-medium mb-1">📌 PEST分析は特に最新情報の確認が重要です</p>
-                <p className="text-xs text-amber-600 leading-relaxed mb-1">P（政治・法規制）とE（経済）の項目はAIの学習データと現在の状況がずれている可能性があります。以下で最新情報をご確認ください：</p>
+                <p className="text-xs text-amber-700 font-medium mb-1">
+                  📌 PEST分析は2025年5月時点のAI学習データに基づいています
+                </p>
+                <p className="text-xs text-amber-600 leading-relaxed mb-1">
+                  P（政治・法規制）とE（経済）は特に最新情報の確認が必要です。以下で確認してください：
+                </p>
                 <div className="flex flex-col gap-1 mt-1">
-                  <a href="https://elaws.e-gov.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・e-Gov法令検索（最新の法律・規制）</a>
-                  <a href="https://www.chusho.meti.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・中小企業庁（補助金・政策情報）</a>
-                  <a href="https://www.meti.go.jp/statistics/index.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・経済産業省 統計（市場動向データ）</a>
+                  <a href="https://elaws.e-gov.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">
+                    ・e-Gov法令検索（最新の法律・規制）
+                  </a>
+                  <a href="https://www.chusho.meti.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">
+                    ・中小企業庁（補助金・政策情報）
+                  </a>
+                  <a href="https://www.meti.go.jp/statistics/index.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">
+                    ・経済産業省 統計（市場動向データ）
+                  </a>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* ─── 投稿文生成セクション ─── */}
+          <div className="mb-6">
+            {!posts && !postsLoading && (
+              <button
+                onClick={handleGeneratePosts}
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-4 rounded-2xl transition-all active:scale-95 shadow-lg shadow-indigo-100"
+              >
+                📱 この分析から投稿文を3本作る →
+              </button>
+            )}
+
+            {postsLoading && (
+              <div className="w-full flex flex-col items-center justify-center py-8 bg-white rounded-2xl border border-gray-100">
+                <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mb-3" />
+                <p className="text-gray-500 text-sm">投稿文を生成中…</p>
+              </div>
+            )}
+
+            {posts && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-bold text-gray-800">📱 今日使える投稿文</span>
+                  <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">そのままコピペOK</span>
+                </div>
+                {posts.map((post, i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-indigo-50 border-b border-indigo-100">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{getContentIcon(post.platform)}</span>
+                        <span className="text-xs font-semibold text-indigo-700">{post.platform}</span>
+                      </div>
+                      {post.hook && (
+                        <span className="text-xs text-indigo-500 bg-white px-2 py-0.5 rounded-full border border-indigo-100">
+                          {post.hook}
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-4 py-3">
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        {post.content}
+                      </p>
+                    </div>
+                    <div className="px-4 pb-3 flex justify-end">
+                      <button
+                        onClick={() => handleCopyPost(i, post.content)}
+                        className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl transition-all active:scale-95 ${
+                          postsCopied[i]
+                            ? "bg-green-100 text-green-700 border border-green-200"
+                            : "bg-indigo-500 hover:bg-indigo-600 text-white"
+                        }`}
+                      >
+                        {postsCopied[i] ? "✓ コピーしました" : "📋 コピーする"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => { setPosts(null); handleGeneratePosts(); }}
+                  className="text-xs text-center text-gray-400 hover:text-indigo-500 py-2"
+                >
+                  🔄 別のパターンで再生成する
+                </button>
               </div>
             )}
           </div>
@@ -245,7 +434,14 @@ export default function MarketingPage() {
               {copied ? "✅ コピーしました" : "📋 分析結果をコピー"}
             </button>
             <button
-              onClick={() => { setSelectedSituation(null); setSelectedFw(null); setResult(null); setStep("situation"); scrollTop(); }}
+              onClick={() => {
+                setSelectedSituation(null);
+                setSelectedFw(null);
+                setResult(null);
+                setPosts(null);
+                setStep("situation");
+                scrollTop();
+              }}
               className="w-full border border-gray-200 text-gray-600 font-medium py-3 rounded-2xl hover:bg-gray-50 transition-colors"
             >
               別のフレームワークを分析する
@@ -267,7 +463,12 @@ export default function MarketingPage() {
     return (
       <main className="min-h-screen bg-gray-50 px-4 py-10">
         <div className="max-w-lg mx-auto">
-          <button onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); scrollTop(); }} className="text-gray-400 text-sm mb-4 hover:text-gray-600">← 自社情報を修正</button>
+          <button
+            onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); scrollTop(); }}
+            className="text-gray-400 text-sm mb-4 hover:text-gray-600"
+          >
+            ← 自社情報を修正
+          </button>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">どの分析をしますか？</h1>
           <p className="text-gray-500 text-sm mb-6">{name} · {product}</p>
 
@@ -280,7 +481,6 @@ export default function MarketingPage() {
           <div className="flex flex-col gap-4 mb-6">
             {SITUATIONS.map((sit) => (
               <div key={sit.id}>
-                {/* シチュエーションヘッダー */}
                 <button
                   onClick={() => setSelectedSituation(sit.id === selectedSituation ? null : sit.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border text-left transition-colors ${
@@ -297,7 +497,6 @@ export default function MarketingPage() {
                   <span className="text-gray-300 text-lg">{selectedSituation === sit.id ? "▲" : "▼"}</span>
                 </button>
 
-                {/* フレームワーク一覧 */}
                 {selectedSituation === sit.id && (
                   <div className="mt-2 flex flex-col gap-2 pl-2">
                     {sit.frameworks.map((fw) => (
@@ -311,10 +510,16 @@ export default function MarketingPage() {
                         }`}
                       >
                         <div className="flex-1">
-                          <p className={`font-semibold text-sm ${selectedFw === fw.id ? "text-white" : "text-gray-800"}`}>{fw.name}</p>
-                          <p className={`text-xs mt-0.5 leading-relaxed break-words ${selectedFw === fw.id ? "text-indigo-100" : "text-gray-400"}`}>{fw.desc}</p>
+                          <p className={`font-semibold text-sm ${selectedFw === fw.id ? "text-white" : "text-gray-800"}`}>
+                            {fw.name}
+                          </p>
+                          <p className={`text-xs mt-0.5 leading-relaxed break-words ${selectedFw === fw.id ? "text-indigo-100" : "text-gray-400"}`}>
+                            {fw.desc}
+                          </p>
                         </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${selectedFw === fw.id ? "bg-indigo-400 text-white" : "bg-gray-100 text-gray-400"}`}>{fw.time}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${selectedFw === fw.id ? "bg-indigo-400 text-white" : "bg-gray-100 text-gray-400"}`}>
+                          {fw.time}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -333,7 +538,7 @@ export default function MarketingPage() {
             }`}
           >
             {selectedFw
-              ? `${SITUATIONS.flatMap(s => s.frameworks).find(f => f.id === selectedFw)?.name ?? ""}を分析する →`
+              ? `${SITUATIONS.flatMap((s) => s.frameworks).find((f) => f.id === selectedFw)?.name ?? ""}を分析する →`
               : "フレームワークを選んでください"}
           </button>
         </div>
@@ -341,7 +546,7 @@ export default function MarketingPage() {
     );
   }
 
-  // ── Step1: 自社情報フォーム（デフォルト）
+  // ── Step1: 自社情報フォーム
   return (
     <main className="min-h-screen bg-white flex flex-col">
       <section className="flex-1 px-6 py-12 max-w-lg mx-auto w-full">
@@ -406,6 +611,20 @@ export default function MarketingPage() {
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              価格帯・客単価 <span className="text-gray-400 font-normal">（任意）</span>
+            </label>
+            <input
+              type="text"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="例: 客単価1,200円 / 月額5万円 / 初期費用80万円"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
+            />
+            <p className="text-xs text-gray-400 mt-1">入力すると価格帯に合った戦略・競合分析が出ます</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Webサイト URL <span className="text-gray-400 font-normal">（任意）</span>
             </label>
             <input
@@ -422,6 +641,7 @@ export default function MarketingPage() {
               {formError}
             </div>
           )}
+
           <button
             type="submit"
             disabled={!name.trim() || !product.trim() || !target.trim()}
