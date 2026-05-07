@@ -205,8 +205,6 @@ export default function MarketingPage() {
             </ol>
           </div>
 
-<<<<<<< Updated upstream
-=======
           {/* 免責注記 */}
           <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4">
             <p className="text-xs text-amber-700 leading-relaxed">
@@ -225,7 +223,6 @@ export default function MarketingPage() {
             )}
           </div>
 
->>>>>>> Stashed changes
           {/* ボタン群 */}
           <div className="flex flex-col gap-3">
             <button
