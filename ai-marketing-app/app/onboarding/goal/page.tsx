@@ -62,6 +62,10 @@ export default function GoalPage() {
       setError("理想の未来を入力してください");
       return;
     }
+    if (value.trim().length < 5) {
+      setError("もう少し詳しく教えてください（5文字以上）");
+      return;
+    }
     setLoading(true);
     setRetrying(false);
     setError("");
@@ -98,6 +102,16 @@ export default function GoalPage() {
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-12">
       <div className="w-full max-w-md">
+        <div className="flex items-center mb-2">
+          <button
+            type="button"
+            onClick={() => router.push("/onboarding/problem")}
+            className="text-gray-400 hover:text-indigo-500 transition-colors p-1 -ml-1 mr-2"
+            aria-label="前のステップに戻る"
+          >
+            ← 戻る
+          </button>
+        </div>
         <ProgressBar current={5} total={5} />
         <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 mb-6">
           <p className="text-indigo-600 text-xs font-medium">最後の1問です ✨</p>

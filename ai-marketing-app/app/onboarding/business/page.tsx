@@ -37,6 +37,10 @@ export default function BusinessPage() {
       setInputError("仕事の内容を入力してください");
       return;
     }
+    if (value.trim().length < 5) {
+      setInputError("もう少し詳しく教えてください（5文字以上）");
+      return;
+    }
     setInputError("");
     saveOnboarding({ business_desc: value.trim(), booking_url: bookingUrl.trim() || undefined });
     router.push("/onboarding/customer");
@@ -45,6 +49,16 @@ export default function BusinessPage() {
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-12">
       <div className="w-full max-w-md">
+        <div className="flex items-center mb-2">
+          <button
+            type="button"
+            onClick={() => router.push("/onboarding/industry")}
+            className="text-gray-400 hover:text-indigo-500 transition-colors p-1 -ml-1 mr-2"
+            aria-label="前のステップに戻る"
+          >
+            ← 戻る
+          </button>
+        </div>
         <ProgressBar current={2} total={5} />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">あなたの仕事を一言で</h1>
         <p className="text-gray-500 text-sm mb-8">例：「{example}」</p>

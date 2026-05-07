@@ -40,6 +40,10 @@ export default function CustomerPage() {
       setInputError("お客さんの情報を入力してください");
       return;
     }
+    if (value.trim().length < 5) {
+      setInputError("もう少し詳しく教えてください（5文字以上）");
+      return;
+    }
     setInputError("");
     saveOnboarding({ customer_desc: value.trim() });
     router.push("/onboarding/problem");
@@ -48,6 +52,16 @@ export default function CustomerPage() {
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-12">
       <div className="w-full max-w-md">
+        <div className="flex items-center mb-2">
+          <button
+            type="button"
+            onClick={() => router.push("/onboarding/business")}
+            className="text-gray-400 hover:text-indigo-500 transition-colors p-1 -ml-1 mr-2"
+            aria-label="前のステップに戻る"
+          >
+            ← 戻る
+          </button>
+        </div>
         <ProgressBar current={3} total={5} />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">お客さんはどんな人が多いですか？</h1>
         <p className="text-gray-500 text-sm mb-8">例：「{example}」</p>

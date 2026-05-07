@@ -40,6 +40,10 @@ export default function ProblemPage() {
       setInputError("困っていることを入力してください");
       return;
     }
+    if (value.trim().length < 5) {
+      setInputError("もう少し詳しく教えてください（5文字以上）");
+      return;
+    }
     setInputError("");
     saveOnboarding({ main_problem: value.trim() });
     router.push("/onboarding/goal");
@@ -48,6 +52,16 @@ export default function ProblemPage() {
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-12">
       <div className="w-full max-w-md">
+        <div className="flex items-center mb-2">
+          <button
+            type="button"
+            onClick={() => router.push("/onboarding/customer")}
+            className="text-gray-400 hover:text-indigo-500 transition-colors p-1 -ml-1 mr-2"
+            aria-label="前のステップに戻る"
+          >
+            ← 戻る
+          </button>
+        </div>
         <ProgressBar current={4} total={5} />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">今、一番困っていることは？</h1>
         <p className="text-gray-500 text-sm mb-8">例：「{example}」</p>

@@ -11,12 +11,22 @@ export default function DashboardPage() {
   const [session, setSession] = useState<StoredSession | null>(null);
 
   useEffect(() => {
-    const s = loadSession();
-    if (!s) {
-      router.replace("/");
-      return;
+    function reloadSession() {
+      const s = loadSession();
+      if (!s) {
+        router.replace("/");
+        return;
+      }
+      setSession({ ...s });
     }
-    setSession(s);
+    reloadSession();
+    // ブラウザの「戻る」操作でページに戻ってきたときも状態を再読み込みする
+    window.addEventListener("focus", reloadSession);
+    window.addEventListener("pageshow", reloadSession);
+    return () => {
+      window.removeEventListener("focus", reloadSession);
+      window.removeEventListener("pageshow", reloadSession);
+    };
   }, [router]);
 
   async function handleComplete(index: number) {
