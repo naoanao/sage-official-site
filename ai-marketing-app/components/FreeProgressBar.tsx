@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadDeviceId } from "@/lib/store";
+import { loadUserId } from "@/lib/store";
 
 const MONTHLY_LIMIT = 3;
 const STORAGE_KEY = "growl_monthly_usage";
@@ -73,7 +73,7 @@ export default function FreeProgressBar() {
     setPlan(cached);
 
     // Supabaseから最新プランを取得（キャッシュを更新）
-    const deviceId = loadDeviceId();
+    const deviceId = loadUserId();
     if (deviceId) {
       fetch(`/api/my-plan?deviceId=${encodeURIComponent(deviceId)}`)
         .then((r) => r.json())

@@ -121,3 +121,6 @@ export function loadUserId(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(USER_KEY);
 }
+
+// alias for backwards-compatibility
+export const loadDeviceId = loadUserId;

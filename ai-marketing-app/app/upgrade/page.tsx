@@ -54,7 +54,7 @@ export default function UpgradePage() {
   const [deviceId, setDeviceId] = useState<string>("");
 
   useEffect(() => {
-    setDeviceId(loadDeviceId());
+    setDeviceId(loadDeviceId() ?? "");
   }, []);
 
   function handlePlanClick(planKey: "free" | "standard" | "pro") {
