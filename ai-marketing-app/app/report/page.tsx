@@ -6,7 +6,7 @@ import { loadSession, loadSessionHistory, SessionSummary } from "@/lib/store";
 import { getUsageData } from "@/components/FreeProgressBar";
 import { Action } from "@/lib/types";
 
-const FREE_LIMIT = 3;
+const FREE_LIMIT = 5;
 
 function formatWeekLabel(weekStart: string): string {
   try {

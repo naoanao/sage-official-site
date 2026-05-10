@@ -36,13 +36,13 @@ const HOW_IT_WORKS = [
   {
     step: "02",
     title: "AIが分析",
-    desc: "あなたの状況とSNSトレンドを組み合わせて、今週最適な施策を選びます。",
+    desc: "業種・悩み・目標をもとに、今週一番効きそうな施策を3つ選定。SNSトレンドも加味します。",
     icon: "🤖",
   },
   {
     step: "03",
     title: "3つだけやる",
-    desc: "Instagram投稿文・Googleレビュー返信文など、コピーしてすぐ使える完成形で届きます。",
+    desc: "Instagram投稿文・Googleレビュー返信文・LINE配信文を完成形で届けます。あなたはコピペするだけ。",
     icon: "✅",
   },
 ];
@@ -86,11 +86,11 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-gray-500 text-base max-w-sm leading-relaxed mb-3">
-          あなたのビジネスをAIが分析して、今週やるべきことを3つに絞ります。
-          フレームワークも専門用語も一切なし。
+          「今週何を投稿しよう」と悩む時間、ゼロにしませんか。
+          AIがあなたのビジネスを分析して、コピペするだけの完成文を3つ届けます。
         </p>
         <p className="text-gray-400 text-sm mb-10">
-          Instagram投稿文・Googleレビュー返信・LINE配信文を<br />コピーしてそのまま使えます
+          Instagram投稿文・Googleレビュー返信・LINE配信文——<br />全部、明日から使える状態で届きます
         </p>
 
         <Link
@@ -105,13 +105,13 @@ export default function LandingPage() {
         {/* 実績 */}
         <div className="flex gap-6 mt-10 text-center">
           <div>
-            <p className="text-2xl font-bold text-gray-800">3分</p>
-            <p className="text-xs text-gray-400">平均生成時間</p>
+            <p className="text-2xl font-bold text-gray-800">1分</p>
+            <p className="text-xs text-gray-400">入力にかかる時間</p>
           </div>
           <div className="w-px bg-gray-100" />
           <div>
-            <p className="text-2xl font-bold text-gray-800">6業種</p>
-            <p className="text-xs text-gray-400">対応済み</p>
+            <p className="text-2xl font-bold text-gray-800">毎週</p>
+            <p className="text-xs text-gray-400">AIが自動更新</p>
           </div>
           <div className="w-px bg-gray-100" />
           <div>
@@ -150,10 +150,10 @@ export default function LandingPage() {
           <h2 className="text-xl font-bold text-gray-800 text-center mb-8">こんな方に</h2>
           <div className="flex flex-col gap-3">
             {[
-              { icon: "😓", text: "何から手をつければいいかわからない" },
+              { icon: "😓", text: "毎週「今週何を投稿しよう」と悩んでいる" },
               { icon: "💸", text: "マーケ専門家を雇う余裕はない" },
               { icon: "⏰", text: "時間も人手も限られている" },
-              { icon: "📈", text: "結果が出るなら行動できる" },
+              { icon: "📈", text: "やると決めたら動ける。ただ何をやるかが分からない" },
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-4 bg-gray-50 rounded-2xl p-4">
                 <span className="text-2xl">{icon}</span>

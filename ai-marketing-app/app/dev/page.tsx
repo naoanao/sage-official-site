@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+// 本番結果物: NEXT_PUBLIC_DEV_ENABLED=true の場合のみ表示
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_DEV_ENABLED !== "true") {
+  window.location.replace("/");
+}
+
+
 type Action = "pro" | "reset" | "reset-all";
 
 function applyAction(action: Action) {

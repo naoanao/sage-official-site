@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LineOnboardingPage() {
@@ -8,6 +8,8 @@ export default function LineOnboardingPage() {
   const [linkCode, setLinkCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [linked, setLinked] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   const LINE_ADD_URL = process.env.NEXT_PUBLIC_LINE_BOT_URL ?? "https://line.me/R/ti/p/@growl";
 
@@ -25,27 +27,44 @@ export default function LineOnboardingPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  // 20秒おきにリンク完了チェック
-  useEffect(() => {
-    if (!linkCode) return;
-    const interval = setInterval(async () => {
-      const deviceId = localStorage.getItem("growl_device_id");
-      if (!deviceId) return;
-      // ユーザーのline_user_idが設定されたか確認
+  // 5秒ごとに連携完了チェック（20秒から短縮）
+  const checkLinked = useCallback(async () => {
+    const deviceId = localStorage.getItem("growl_device_id");
+    if (!deviceId) return;
+    setChecking(true);
+    try {
       const res = await fetch(`/api/line/status?device_id=${deviceId}`);
       const data = await res.json();
-      if (data.linked) {
-        setLinked(true);
-        clearInterval(interval);
-      }
-    }, 20000);
+      if (data.linked) setLinked(true);
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!linkCode || linked) return;
+    const interval = setInterval(checkLinked, 5000);
     return () => clearInterval(interval);
-  }, [linkCode]);
+  }, [linkCode, linked, checkLinked]);
+
+  async function copyCode() {
+    if (!linkCode) return;
+    try {
+      await navigator.clipboard.writeText(linkCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // フォールバック: 選択状態にする
+    }
+  }
 
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">準備中...</p>
+        <div className="flex items-center gap-2">
+          <span className="animate-spin w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full" />
+          <p className="text-gray-400 text-sm">準備中...</p>
+        </div>
       </main>
     );
   }
@@ -60,8 +79,9 @@ export default function LineOnboardingPage() {
             毎週月曜の朝8時に、今週の3つが届きます。<br />あとは何もしなくて大丈夫です。
           </p>
           <button
+            type="button"
             onClick={() => router.push("/dashboard")}
-            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl"
+            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl transition-colors"
           >
             ダッシュボードへ →
           </button>
@@ -81,8 +101,8 @@ export default function LineOnboardingPage() {
           </p>
         </div>
 
-        {/* ステップ */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 mb-5 space-y-4">
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 mb-5 space-y-5">
+          {/* Step 1 */}
           <div className="flex gap-3 items-start">
             <div className="w-7 h-7 bg-green-500 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">1</div>
             <div>
@@ -92,35 +112,65 @@ export default function LineOnboardingPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block mt-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors"
+                style={{ backgroundColor: "#00B900" }}
               >
                 友達追加する →
               </a>
             </div>
           </div>
 
+          <div className="w-full h-px bg-gray-100" />
+
+          {/* Step 2 */}
           <div className="flex gap-3 items-start">
             <div className="w-7 h-7 bg-indigo-500 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">2</div>
-            <div>
-              <p className="text-sm font-semibold text-gray-800">以下のコードをLINEで送信</p>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-800 mb-2">このコードをLINEに送信</p>
               {linkCode ? (
-                <div className="mt-2 bg-indigo-50 border-2 border-indigo-200 rounded-xl px-6 py-3 text-center">
-                  <p className="text-3xl font-bold text-indigo-600 tracking-widest">{linkCode}</p>
+                <div className="space-y-2">
+                  <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl px-6 py-3 text-center">
+                    <p className="text-3xl font-bold text-indigo-600 tracking-widest">{linkCode}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyCode}
+                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 ${
+                      copied
+                        ? "bg-green-500 text-white"
+                        : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                    }`}
+                  >
+                    {copied ? "✓ コピーしました" : "タップしてコピー"}
+                  </button>
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 mt-1">コード取得中...</p>
+                <p className="text-sm text-gray-400">コード取得中...</p>
               )}
             </div>
           </div>
 
+          <div className="w-full h-px bg-gray-100" />
+
+          {/* Step 3 */}
           <div className="flex gap-3 items-start">
-            <div className="w-7 h-7 bg-gray-300 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">3</div>
+            <div className={`w-7 h-7 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0 ${checking ? "bg-indigo-400" : "bg-gray-200"}`}>
+              {checking ? (
+                <span className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full" />
+              ) : "3"}
+            </div>
             <div>
-              <p className="text-sm font-semibold text-gray-500">連携完了 → 毎週自動で届く</p>
+              <p className={`text-sm font-semibold ${checking ? "text-indigo-600" : "text-gray-400"}`}>
+                {checking ? "連携を確認中..." : "連携完了 → 毎週自動で届く"}
+              </p>
+              {checking && (
+                <p className="text-xs text-gray-400 mt-0.5">LINEでコードを送信しましたか？</p>
+              )}
             </div>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={() => router.push("/dashboard")}
           className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 transition-colors"
         >

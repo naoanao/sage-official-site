@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadUserId } from "@/lib/store";
 
-const MONTHLY_LIMIT = 3;
+const MONTHLY_LIMIT = 5;
 const STORAGE_KEY = "growl_monthly_usage";
 const PLAN_CACHE_KEY = "growl_plan";
 
@@ -16,6 +16,12 @@ interface UsageData {
 function getCurrentMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${d.getMonth() + 1}`;
+}
+
+function getNextMonthLabel(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return `${d.getMonth() + 1}月1日`;
 }
 
 export function getUsageData(): UsageData {
@@ -54,7 +60,7 @@ export function isPaidPlan(): boolean {
 
 export function isLimitReached(): boolean {
   if (typeof window !== "undefined" && localStorage.getItem("growl_dev") === "true") return false;
-  if (isPaidPlan()) return false; // 有料プランは無制限
+  if (isPaidPlan()) return false;
   return getUsageData().count >= MONTHLY_LIMIT;
 }
 
@@ -72,7 +78,6 @@ export default function FreeProgressBar() {
     const cached = getCachedPlan();
     setPlan(cached);
 
-    // Supabaseから最新プランを取得（キャッシュを更新）
     const deviceId = loadUserId();
     if (deviceId) {
       fetch(`/api/my-plan?deviceId=${encodeURIComponent(deviceId)}`)
@@ -82,11 +87,10 @@ export default function FreeProgressBar() {
           setCachedPlan(p);
           setPlan(p);
         })
-        .catch(() => {/* サイレント失敗 */});
+        .catch(() => {});
     }
   }, []);
 
-  // 有料プランならバッジを表示してバーを非表示
   if (plan === "standard" || plan === "pro") {
     return (
       <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5 mb-5">
@@ -102,8 +106,34 @@ export default function FreeProgressBar() {
   const remaining = Math.max(0, MONTHLY_LIMIT - usage.count);
   const pct = Math.min(100, (usage.count / MONTHLY_LIMIT) * 100);
   const isNearLimit = remaining <= 1;
+  const isExhausted = remaining === 0;
 
   if (usage.count === 0) return null;
+
+  if (isExhausted) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 mb-5">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-base">✅</span>
+          <p className="text-sm font-bold text-amber-900">今月の無料枠（5回）を使い切りました</p>
+        </div>
+        <p className="text-xs text-amber-700 mb-3">手応えを感じていますか？毎週自動でLINEに届くようにすると、考える時間がゼロになります。</p>
+        <div className="w-full bg-amber-200 rounded-full h-1.5 mb-4">
+          <div className="h-1.5 rounded-full bg-amber-400 w-full" />
+        </div>
+        <div className="bg-white rounded-xl border border-indigo-100 p-4">
+          <p className="text-xs font-semibold text-indigo-700 mb-1">毎週月曜、LINEで自動受け取りに</p>
+          <p className="text-xs text-gray-500 mb-3">スタンダードプランなら、毎週月曜8時に今週の施策がLINEで届きます。回数制限なし・考える手間ゼロ。</p>
+          <button
+            onClick={() => router.push("/upgrade")}
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-bold py-2.5 rounded-xl transition-all"
+          >
+            LINEで自動受け取りにする（¥3,000/月）→
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -113,18 +143,8 @@ export default function FreeProgressBar() {
     >
       <div className="flex justify-between items-center mb-2">
         <p className={`text-sm font-medium ${isNearLimit ? "text-amber-800" : "text-gray-600"}`}>
-          {remaining > 0
-            ? `今月あと ${remaining} 回 生成できます`
-            : "今月の無料枠が終わりました"}
+          {`今月あと ${remaining} 回 生成できます`}
         </p>
-        {remaining === 0 && (
-          <button
-            onClick={() => router.push("/upgrade")}
-            className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full hover:bg-indigo-100 transition-colors"
-          >
-            続けるには →
-          </button>
-        )}
       </div>
       <div className="w-full bg-gray-100 rounded-full h-1.5">
         <div
@@ -134,14 +154,14 @@ export default function FreeProgressBar() {
           style={{ width: `${pct}%` }}
         />
       </div>
-      {isNearLimit && remaining > 0 && (
+      {isNearLimit && (
         <p className="text-xs text-amber-600 mt-2">
-          あと1回です。{" "}
+          今月あと1回です。毎週自動化するなら{" "}
           <button
             onClick={() => router.push("/upgrade")}
             className="underline font-medium"
           >
-            制限なしにする →
+            スタンダードプランへ →
           </button>
         </p>
       )}

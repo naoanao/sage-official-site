@@ -14,25 +14,37 @@ export interface UserProfile {
   final_goal: string;
   booking_url?: string;
   learning_history?: Array<{ week: string; action: string; result: string }>;
-  market_signal?: string; // Sage統合Phase1: 今週のSNSトレンド
+  market_signal?: string;
+  /** 商品マーケAI: 登録済み商品リスト（ある場合はリピート購入施策を優先） */
+  products?: Array<{
+    name: string;
+    price: number;
+    usp: string;
+    purchase_count?: number;
+    days_since_last?: number;
+  }>;
 }
 
-// 業界別：AIの出力をプロらしくするキーワードヒント
+export interface GenerateResult {
+  actions: Action[];
+  strategy_note: string;
+}
+
 const KEYWORD_HINTS: Record<string, string> = {
-  restaurant: "「季節限定」「数量限定」「シズル感」「こだわり素材」「週替わり」「店主おすすめ」「テイクアウト」「香ばしい」「とろける」「旬の食材」などの食欲をそそる表現を積極的に使う。",
-  salon: "「つや髪」「ダメージレス」「頭皮ケア」「指通り」「ツヤ感」「リラックス」「トリートメント」「カラー持ち」「お客様の声」「ビフォーアフター」などの美容専門用語を自然に組み込む。",
-  ec: "「在庫わずか」「限定品」「ハンドメイド」「1点もの」「送料無料」「プレゼントに」「丁寧な梱包」「職人の手仕事」「数量限定」「再入荷」などの購買意欲を高める表現を使う。",
-  professional: "「安心」「実績」「無料相談」「ご相談ください」「丁寧なサポート」「初回相談無料」「専門家」「実績〇件」「わかりやすく説明」などの信頼感を醸成する表現を使う。",
-  construction: "「地域密着」「施工実績」「アフターフォロー」「無料点検」「地元」「職人の技」「丁寧な仕上がり」「近隣施工例」「保証付き」「現地見積もり無料」などの信頼・実績を強調する表現を使う。",
-  other: "業種に合った専門用語・キーワードを自然に組み込み、プロらしさと親しみやすさを両立させる。",
+  restaurant: "シズル感, こだわり素材, 週替わり, 店主おすすめ, 手作り, この季節にみなぎり",
+  salon: "つや髪, ダメージレス, 頭皮ケア, 指通り, ツヤ感, リラックス, トリートメント, カラー持ち",
+  ec: "在庫わずか, 限定品, ハンドメイド, 1点もの, 送料無料, プレゼントに, 丁寧な梱包",
+  professional: "安心, 実績, 無料相談, 丁寧なサポート, 初回相談無料, 専門家, わかりやすく説明",
+  construction: "地域密着, 施工実績, アフターフォロー, 無料点検, 地元, 職人の技, 丁寧な仕上がり",
+  other: "業種に合った専門用語を自然に組み込み、プロらしさと親しみやすさを両立させる",
 };
 
 const CHANNEL_HINTS: Record<string, string> = {
-  restaurant: "飲食店なので、Instagram投稿文・Googleレビュー返信文・LINE配信文を優先して使うこと。ブログや専門的なメール文は避ける。",
-  salon: "美容サロンなので、Instagram投稿文・LINE配信文・予約促進告知文を優先。写真映えする文体にする。",
-  ec: "EC・通販なので、Instagram投稿文・商品紹介文・プレゼント訴求のSNS文を優先。購入や詳細確認に誘導する文体にする。",
-  professional: "士業・コンサルなので、ブログ記事冒頭・メール文・問い合わせ誘導文を優先。SNS投稿は使わない。丁寧で信頼感のあるトーンにする。",
-  construction: "工務店・建設業なので、チラシ文・Googleレビュー返信文・LINE配信文を優先。地域密着・信頼感・実績を前面に出す文体にする。",
+  restaurant: "Instagram投稿文・Googleレビュー返信文・LINE配信文を優先。ブログや専門的なメール文は避ける。",
+  salon: "Instagram投稿文・LINE配信文・予約促進告知文を優先。写真映えする文体にする。",
+  ec: "Instagram投稿文・商品紹介文・プレゼント訴求のSNS文を優先。購入や詳細確認に誘導する文体にする。",
+  professional: "ブログ記事冒頭・メール文・問い合わせ誘導文を優先。SNS投稿は使わない。丁寧で信頼感のあるトーンにする。",
+  construction: "チラシ文・Googleレビュー返信文・LINE配信文を優先。地域密着・信頼感・実績を前面に出す文体にする。",
   other: "業種に合ったSNS投稿文・LINE配信文・告知文を使う。",
 };
 
@@ -40,70 +52,118 @@ function buildLearningSection(
   history: Array<{ week: string; action: string; result: string }> | undefined
 ): string {
   if (!history || history.length === 0) return "";
-
   const entries = history
     .slice(-5)
-    .map((h) => `  - 週: ${h.week} | アクション: ${h.action} | 結果: ${h.result}`)
+    .map((h) => "  - " + h.week + " | " + h.action + " | " + h.result)
     .join("\n");
-
-  return `
-
-【過去の実績（必ず参考にして提案を最適化すること）】
-${entries}
-- ポジティブな結果（反応良かった・来店につながった）のアクションに近い施策を優先する
-- ネガティブな結果（反応なかった・やりにくかった）のアクションは避けるか別のアプローチにする
-- 同じアクションタイトルを繰り返さず、バリエーションをつける`;
+  return (
+    "\n\n" +
+    "【過去の実績】\n" +
+    entries + "\n" +
+    "- 反応良かったアクションに近い施策を優先する\n" +
+    "- 反応なかったアクションは別のアプローチにする\n" +
+    "- 同じアクションタイトルを繰り返さずバリエーションをつける"
+  );
 }
 
-function buildPrompt(user: UserProfile): string {
+/**
+ * システムメッセージ（モデルへの不変ルール）
+ * Groq: role="system", Gemini: system_instruction として渡す
+ */
+function buildSystemConstraint(user: UserProfile): string {
+  const urlStatus = user.booking_url
+    ? "予約URL: " + user.booking_url + "（このURLのみを使う）"
+    : "予約URL: 未登録（URLを生成・示唆しない。「プロフィールのURL」「リンクから」等も禁止）";
+
+  return [
+    "あなたは優秀なマーケティング部長です。",
+    "",
+    "【最重要原則】",
+    "ユーザーが入力した【ユーザー情報】に書かれていることだけが事実です。",
+    "入力に書かれていない情報はあなたには存在しません。推測・補完・創作は禁止です。",
+    "",
+    "【入力済み・未入力フィールドの確認】",
+    urlStatus,
+    "営業時間・定休日: 未入力（入力にある場合のみ使う。ない場合は絶対に出力しない）",
+    "セール・イベント・キャンペーン情報: 未入力（入力にある場合のみ告知する）",
+    "",
+    "【禁止事項】",
+    "- 入力にない具体的な日付・季節イベント名（母の日・父の日・バレンタイン・クリスマス等）を出力しない。季節感は「この季節」「今の時期」等の汎用表現のみ使う",
+    "- 入力にない営業時間・定休日・ランチ時間を出力しない",
+    "- 入力にないURL・LINE・電話番号・SNSアカウントを出力・示唆しない",
+    "- 入力にない価格・金額を出力しない",
+    "- ツール名・アプリ名・会社名は入力にある場合のみ使う",
+    "",
+    "【出力ルール】",
+    "- Markdownの記号は一切使わない。プレーンテキストのみ",
+    "- アクションはちょうど3つ",
+    "- フレームワーク名（3C・STP・4P等）は使わない",
+    "- 標準的な日本語・丁寧語。関西弁・口語禁止",
+    "- titleは15文字以内の「〜する」形式",
+    "- detailは目的を説明する一文（60文字以内）",
+    "- content_typeの選択肢: Instagram投稿文、LINE配信文、Googleレビュー返信文、ブログ記事冒頭、メール文、告知文、チラシ文",
+    "- contentはお客さんに直接届けるコピペ用の完成文章。ビジネスオーナーへのアドバイスは書かない",
+    "- Instagram投稿文は3〜5文・ハッシュタグ5〜8個",
+    "- Googleレビュー返信文: URLを含めない・感謝と再来店の温かい一文のみ",
+    "- 工務店・建設業のcontentに「ご来店」は使わない。「現地見積もり」「お問い合わせ」を使う",
+  ].join("\n");
+}
+
+/**
+ * ユーザーメッセージ（毎回変わるタスク・ユーザー情報）
+ */
+function buildUserPrompt(user: UserProfile): string {
   const channelHint = CHANNEL_HINTS[user.industry] ?? CHANNEL_HINTS["other"];
   const keywordHint = KEYWORD_HINTS[user.industry] ?? KEYWORD_HINTS["other"];
-  const urlInstruction = user.booking_url
-    ? `予約・購入・問い合わせのURLは必ず「${user.booking_url}」を使う。`
-    : "架空のURL（example.comなど）は絶対に使わない。URLが必要な場合は「予約はDMまたはお電話で承っております」などの代替表現に置き換える。";
-
   const learningSection = buildLearningSection(user.learning_history);
 
-  // Sage統合Phase1: 今週のトレンドシグナルがあれば注入
   const marketSection = user.market_signal
-    ? `\n\n【今週のSNSトレンド（AI分析）】\n${user.market_signal}\n- 上記のトレンドを踏まえて、アクションのテーマ・文体・切り口を調整すること`
+    ? "\n\n【今週のSNSトレンド（AI分析）】\n" + user.market_signal + "\n- 上記のトレンドを踏まえてアクションのテーマ・切り口を調整すること"
     : "";
 
-  return `あなたは優秀なマーケティング部長です。以下のユーザー情報をもとに、「今週やること」をちょうど3つ生成してください。
+  const productSection = (() => {
+    if (!user.products || user.products.length === 0) return "";
+    const lines = user.products.map((prod) => {
+      const count = prod.purchase_count ?? 0;
+      const days = prod.days_since_last ?? 0;
+      let stage = "初回購入済み（2回目購入の橋渡し最優先）";
+      if (count === 0) stage = "未購入（新規獲得施策）";
+      else if (days >= 60) stage = "離脱予備軍（Win-back施策）";
+      else if (count >= 4) stage = "ロイヤルユーザー（VIP化・口コミ促進）";
+      else if (count >= 2) stage = "得意客（アップセル・定期購入誘導）";
+      return `  - 商品名: ${prod.name} / 価格: ${prod.price.toLocaleString()}円 / USP: ${prod.usp} / 顧客ステージ: ${stage}`;
+    });
+    return (
+      "\n\n【登録商品とリピート購入施策（最重要）】\n" +
+      lines.join("\n") +
+      "\n- 3回購入モデルを意識: 初回赤字→2回損益分岐→3回黒字\n" +
+      "- 顧客ステージに応じたリピート施策を今週のアクションに必ず1つ入れること\n" +
+      "- ステップメール・同梱物・限定クーポン・SNS口コミ依頼のいずれかを具体化する"
+    );
+  })();
 
-【絶対ルール】
-- Markdown記号（**、##、___、\`など）は一切使わない。プレーンテキストのみで出力すること
-- アクションの数は必ずちょうど3つ。4つ以上も2つ以下もNG
-- フレームワーク名（3C・STP・4Pなど）は絶対に使わない。専門用語も禁止
-- 標準的な日本語・丁寧語を使うこと。方言・話し言葉・崩した表現（「〜や」「〜やで」「〜ねん」「〜やん」など関西弁・口語表現）は絶対に使わない
-- 日本のビジネス・店舗で使われる自然な接客表現・敬語を使うこと。英語を直訳したような不自然な表現（例：「〜して幸せでした」「〜が嬉しかった」など）は禁止。「誠にありがとうございました」「ぜひまたお越しください」のような、実際の接客現場で使われる自然な日本語表現を使うこと
-- titleは「〜する」形式の短いアクション名（15文字以内）
-- detailはそのアクションの目的・使い方を説明する一文（60文字以内）
-- content_typeは業種・目的に合ったものを選ぶ。選択肢：Instagram投稿文、LINE配信文、Googleレビュー返信文、ブログ記事冒頭、メール文、告知文、チラシ文
-- contentは「お客さんに直接届ける完成した文章」。ビジネスオーナーへのアドバイスや内部メモは絶対に書かない
-- このプロンプト内の文章例を絶対にそのまま出力しないこと。ユーザー情報から完全にオリジナルで生成すること
-- ユーザーが入力した固有名詞（店名・技法名・サービス名・地名など）は必ず日本語のままそのまま使う
-- contentはコピーしてそのまま投稿・送信できる文体にする（絵文字・ハッシュタグも適宜含める）
-- Instagram投稿文は3〜5文・ハッシュタグ5〜8個を目安にする
-- Googleレビュー返信文：URLを含めない・感謝と再来店の温かい一文のみ・宣伝文句も入れない
-- content_typeとcontentの内容は必ず一致させる
-- 工務店・建設業のcontentに「ご来店」は使わない。「現地見積もり」「お問い合わせ」「現場調査」を使う
-- ${urlInstruction}
-- ${channelHint}
-- ${keywordHint}
+  const lines = [
+    "以下のユーザー情報をもとに、「今週やること」をちょうど3つ生成してください。",
+    "",
+    "【チャンネル指定】 " + channelHint,
+    "【キーワード参考（自然に組み込む）】 " + keywordHint,
+    "",
+    "【ユーザー情報】",
+    "業種: " + user.industry,
+    "仕事の内容: " + user.business_desc,
+    "お客さんの特徴: " + user.customer_desc,
+    "今一番困っていること: " + user.main_problem,
+    "このアプリが完璧に機能したとき、どう変わりたいか: " + user.final_goal + learningSection + marketSection + productSection,
+    "",
+    "【出力形式（JSONのみ、コードブロック不要、actionsは必ず3要素）】",
+    "- strategy_noteは今週なぜこの3つを選んだか経営者目線で2文以内で説明。専門用語禁止。",
+    '{"strategy_note":"理由2文以内","actions":[{"title":"15文字以内","detail":"60文字以内","content_type":"Instagram投稿文","content":"コピペ用完成文章"},{"title":"...","detail":"...","content_type":"...","content":"..."},{"title":"...","detail":"...","content_type":"...","content":"..."}]}',
+  ];
 
-【ユーザー情報】
-業種: ${user.industry}
-仕事の内容: ${user.business_desc}
-お客さんの特徴: ${user.customer_desc}
-今一番困っていること: ${user.main_problem}
-このアプリが完璧に機能したとき、どう変わりたいか: ${user.final_goal}${learningSection}${marketSection}
-
-【出力形式（JSONのみ、コードブロック不要、actionsは必ず3要素）】
-{"actions":[{"title":"〜する形式15文字以内","detail":"目的説明60文字以内","content_type":"Instagram投稿文","content":"お客さんに届けるコピペ用の完成文章"},{"title":"...","detail":"...","content_type":"...","content":"..."},{"title":"...","detail":"...","content_type":"...","content":"..."}]}`;
+  return lines.join("\n");
 }
 
-async function callGroq(prompt: string): Promise<string> {
+async function callGroq(systemPrompt: string, userPrompt: string): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("Groq: API key not set");
 
@@ -111,77 +171,133 @@ async function callGroq(prompt: string): Promise<string> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: "Bearer " + apiKey,
     },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.3,
     }),
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Groq ${res.status}: ${body.slice(0, 300)}`);
+    throw new Error("Groq " + res.status + ": " + body.slice(0, 300));
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-async function callGemini(prompt: string): Promise<string> {
+async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Gemini: API key not set");
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.3 },
+      }),
     }
   );
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Gemini ${res.status}: ${body.slice(0, 300)}`);
+    throw new Error("Gemini " + res.status + ": " + body.slice(0, 300));
   }
   const data = await res.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-function sanitizeActions(actions: Action[]): Action[] {
+// ハルシネーション後処理（最後の安全網）
+// 注意: /g フラグはオブジェクト再利用時に lastIndex が残るため使わない
+const HALLUCINATION_EVENT_NAMES = [
+  "母の日", "父の日", "バレンタイン", "ホワイトデー",
+  "クリスマス", "ハロウィン", "お盆", "お正月",
+  "成人の日", "敬老の日", "こどもの日",
+];
+
+const URL_IMPLY_PATTERNS = [
+  /プロフィールのURL[からへ]?[どうぞ\s・。、]*/,
+  /プロフのURL[からへ]?[どうぞ\s・。、]*/,
+  /プロフURL[からへ]?[どうぞ\s・。、]*/,
+  /リンクから[どうぞ\s・。、]*/,
+  /こちらから[どうぞ\s・。、]*/,
+  /URLをご確認[くださいください。\s]*/,
+];
+
+function sanitizeActions(actions: Action[], hasBookingUrl: boolean): Action[] {
   return actions.map((action) => {
+    // Googleレビュー: URL除去
     if (action.content_type === "Googleレビュー返信文") {
       action.content = action.content
         .replace(/https?:\/\/[^\s　、。！？\)）]+/g, "")
         .replace(/\s{2,}/g, " ")
         .trim();
     }
-    action.title = action.title.replace(/して$/, "する").replace(/してください$/, "する");
+
+    // URL未登録ユーザーへのURL示唆表現を除去（/g なし・毎回新規マッチ）
+    if (!hasBookingUrl) {
+      action.content = action.content.replace(/https?:\/\/[^\s　、。！？\)）]+/g, "").trim();
+      for (const pattern of URL_IMPLY_PATTERNS) {
+        action.content = action.content.replace(pattern, "お気軽にDMまたはお電話でお問い合わせください");
+      }
+    }
+
+    // 季節イベント名のハルシネーションを「この季節」に置換
+    for (const name of HALLUCINATION_EVENT_NAMES) {
+      if (action.content.includes(name) || action.detail.includes(name) || action.title.includes(name)) {
+        console.warn("[sanitize] Hallucinated event name:", name);
+        const re = new RegExp(name, "g");
+        action.content = action.content.replace(re, "この季節");
+        action.detail = action.detail.replace(re, "この季節");
+        action.title = action.title.replace(re, "この季節");
+      }
+    }
+
+    action.title = action.title
+      .replace(/して$/, "する")
+      .replace(/してください$/, "する");
     return action;
   });
 }
 
-export async function generateWeeklyActions(user: UserProfile): Promise<Action[]> {
-  const prompt = buildPrompt(user);
+export async function generateWeeklyActions(user: UserProfile): Promise<GenerateResult> {
+  const systemPrompt = buildSystemConstraint(user);
+  const userPrompt = buildUserPrompt(user);
   const errors: string[] = [];
 
-  for (const [name, caller] of [["Groq", callGroq], ["Gemini", callGemini]] as const) {
+  const callers: Array<[string, (s: string, u: string) => Promise<string>]> = [
+    ["Groq", callGroq],
+    ["Gemini", callGemini],
+  ];
+
+  for (const [name, caller] of callers) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const text = await caller(prompt);
+        const text = await caller(systemPrompt, userPrompt);
         const cleaned = text.replace(/```json|```/g, "").trim();
         const match = cleaned.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("JSON not found in response");
         const json = JSON.parse(match[0]);
         if (Array.isArray(json.actions) && json.actions.length > 0) {
-          return sanitizeActions(json.actions);
+          return {
+            actions: sanitizeActions(json.actions, !!user.booking_url),
+            strategy_note: typeof json.strategy_note === "string" ? json.strategy_note.trim() : "",
+          };
         }
         throw new Error("actions array is empty");
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[${name}] attempt ${attempt + 1} failed:`, msg);
-        errors.push(`${name}(${attempt + 1}): ${msg}`);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[" + name + "] attempt " + (attempt + 1) + " failed:", msg);
+        errors.push(name + "(" + (attempt + 1) + "): " + msg);
 
-        const isTransient = msg.includes("503") || msg.includes("500");
+        const isTransient = msg.includes("503") || msg.includes("500") || msg.includes("429");
         if (!isTransient || attempt === 1) break;
 
         await new Promise((r) => setTimeout(r, 2000));
@@ -190,5 +306,5 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Action[]
   }
 
   console.error("All APIs failed:", errors.join(" | "));
-  throw new Error(`生成に失敗しました。詳細: ${errors.join(" | ")}`);
+  throw new Error("生成に失敗しました。詳細: " + errors.join(" | "));
 }

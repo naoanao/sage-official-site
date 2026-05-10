@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buildPaymentUrl } from "@/lib/stripe-config";
 import { loadDeviceId } from "@/lib/store";
+import { isLimitReached } from "@/components/FreeProgressBar";
 
 const PLANS = [
   {
@@ -12,7 +13,7 @@ const PLANS = [
     price: "¥0",
     period: "/月",
     desc: "まずは試してみる",
-    features: ["月3回まで生成", "コンテンツコピー機能", "基本的な業種対応"],
+    features: ["月5回まで生成（お試し）", "コンテンツコピー機能", "6業種対応"],
     cta: "現在のプラン",
     highlight: false,
   },
@@ -21,15 +22,15 @@ const PLANS = [
     name: "スタンダード",
     price: "¥3,000",
     period: "/月",
-    desc: "本気で集客したい方に",
+    desc: "毎週自動でマーケを回したい方に",
     features: [
-      "毎週自動でコンテンツ生成",
-      "月次レポート（全データ）",
-      "LINE通知（毎週月曜8時）",
-      "業種別カスタマイズ",
-      "無制限生成",
+      "毎週月曜8時、今週の施策がLINEで届く",
+      "生成回数は無制限（何度でもやり直せる）",
+      "月次レポートで「何が効いたか」が見える",
+      "業種・地域に合わせた詳細カスタマイズ",
+      "過去の結果をAIが学習して提案精度が上がる",
     ],
-    cta: "今すぐ始める",
+    cta: "LINEで自動受け取りにする",
     highlight: true,
   },
   {
@@ -37,7 +38,7 @@ const PLANS = [
     name: "プロ",
     price: "¥8,000",
     period: "/月",
-    desc: "複数店舗・代理店向け",
+    desc: "複数店舗・マーケ代行業者向け",
     features: [
       "スタンダードの全機能",
       "複数店舗管理（5店舗まで）",
@@ -52,9 +53,11 @@ const PLANS = [
 export default function UpgradePage() {
   const router = useRouter();
   const [deviceId, setDeviceId] = useState<string>("");
+  const [limitReached, setLimitReached] = useState(false);
 
   useEffect(() => {
     setDeviceId(loadDeviceId() ?? "");
+    setLimitReached(isLimitReached());
   }, []);
 
   function handlePlanClick(planKey: "free" | "standard" | "pro") {
@@ -71,13 +74,21 @@ export default function UpgradePage() {
             プランを選ぶ
           </p>
           <h1 className="text-2xl font-bold text-gray-900">
-            毎週、AIがマーケをやってくれる
+            毎週月曜、今週の施策が<br />LINEで届く
           </h1>
           <p className="text-sm text-gray-400 mt-2">
-            プロのマーケ担当を雇う代わりに
+            マーケのことは、AIに任せてください
           </p>
         </div>
 
+        {limitReached && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-xs text-amber-800 text-center">
+            今月の無料分5回を使い切りました。無料プランは毎月1日にリセットされます。
+            <span className="font-bold">
+              それまで使い続けるには下記のプランをご検討ください。
+            </span>
+          </div>
+        )}
         {/* 安心感 */}
         <div className="flex justify-center gap-4 mb-6 text-xs text-gray-400">
           <span>🔒 Stripe決済</span>
