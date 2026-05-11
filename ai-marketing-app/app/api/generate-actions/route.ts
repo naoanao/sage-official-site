@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Step 4: AI生成
-    const actions = await generateWeeklyActions(user);
+    const { actions, strategy_note } = await generateWeeklyActions(user);
     const weekStart = getMondayOfCurrentWeek();
     const actionsWithStatus = actions.map((a) => ({ ...a, completed: false }));
 
@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
       id: sessionId,
       week_start: weekStart,
       actions: actionsWithStatus,
+      strategy_note,
       user_profile: user,
     };
 

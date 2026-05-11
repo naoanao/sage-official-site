@@ -10,6 +10,8 @@ export interface StoredSession {
   id: string;
   week_start: string;
   actions: Action[];
+  strategy_note?: string;
+  user_profile?: { industry?: string; [key: string]: unknown };
 }
 
 export interface SessionSummary {

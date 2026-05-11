@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
         market_signal,
       };
 
-      const actions = await generateWeeklyActions(profile);
+      const { actions } = await generateWeeklyActions(profile);
       const actionsWithStatus = actions.map((a) => ({ ...a, completed: false }));
 
       await saveWeeklySession(user.id, weekStart, actionsWithStatus);
