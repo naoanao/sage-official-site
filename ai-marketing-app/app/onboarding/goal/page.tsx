@@ -95,7 +95,7 @@ export default function GoalPage() {
       // LINE設定ページへ（スキップ可能）
       router.push("/onboarding/line");
     } catch (e) {
-      setError("少し混み合っています。もう一度お試しください。");
+      setError("少し混み合っています。20〜30秒待ってからもう一度お試しください。");
       setLoading(false);
       setRetrying(false);
     }

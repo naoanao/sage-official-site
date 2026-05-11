@@ -133,6 +133,16 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
                 <p className="text-xs text-gray-300 mt-2">{ATTRIBUTION.trim()}</p>
               </div>
 
+              {/* 事実確認バナー（コピー前の注意） */}
+              {!action.completed && (
+                <div className="mx-4 mb-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <span className="text-amber-500 text-xs mt-0.5 shrink-0">⚠️</span>
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    コピー前に確認：存在しない商品名・サービス名・キャンペーンが含まれていないか必ずチェックしてください
+                  </p>
+                </div>
+              )}
+
               {/* Copy button */}
               <div className="px-4 pb-3 flex justify-end">
                 <button

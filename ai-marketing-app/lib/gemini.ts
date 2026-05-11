@@ -95,6 +95,11 @@ function buildSystemConstraint(user: UserProfile): string {
     "- 入力にないURL・LINE・電話番号・SNSアカウントを出力・示唆しない",
     "- 入力にない価格・金額を出力しない",
     "- ツール名・アプリ名・会社名は入力にある場合のみ使う",
+    "【架空情報・ハルシネーション厳禁】",
+    "- 入力にない新商品・新メニュー・新サービス・新キャンペーンを「追加」「開始」「新発売」「スタート」として告知する文章を絶対に生成しない",
+    "- contentに登場する商品名・メニュー名・サービス名・施術名は、必ず【ユーザー情報】に明記されたものだけを使う。入力にない商品を想像・補完・追加してはならない",
+    "- 「〇〇を新たに追加しました」「〇〇サプリ」「〇〇スムージー」「〇〇コース」のように、ユーザーが入力していない具体的な商品・成分・コースを作り出すことを禁止する",
+    "- 違反した場合：ユーザーが存在しない商品・サービスをSNSに告知してしまい、フォロワーとのトラブルやブランド信頼の損失につながる",
     "",
     "【出力ルール】",
     "- Markdownの記号は一切使わない。プレーンテキストのみ",
@@ -235,6 +240,14 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
+// 架空商品・サービス告知パターン（入力にない新商品を生成してしまうケース）
+const NEW_PRODUCT_HALLUCINATION_PATTERNS: RegExp[] = [
+  /新た[にな].*?(を|が)(追加|スタート|開始|リリース|発売)/,
+  /新しい.*?(コース|メニュー|商品|サービス|プラン|スムージー|サプリ|クリーム|ローション|エキス|エッセンス|オイル|セラム)/,
+  /(追加|開始|スタート|新発売|リリース)しました/,
+  /プロバイオティクス|乳酸菌|コラーゲン配合|ヒアルロン酸配合/,
+];
+
 // ハルシネーション後処理（最後の安全網）
 const HALLUCINATION_EVENT_NAMES = [
   "母の日", "父の日", "バレンタイン", "ホワイトデー",
@@ -274,6 +287,16 @@ function sanitizeActions(actions: Action[], hasBookingUrl: boolean): Action[] {
         action.content = action.content.replace(re, "この季節");
         action.detail = action.detail.replace(re, "この季節");
         action.title = action.title.replace(re, "この季節");
+      }
+    }
+
+    // 架空商品・サービス告知パターン検出（警告フラグのみ。削除は意味変容リスクあり）
+    for (const pattern of NEW_PRODUCT_HALLUCINATION_PATTERNS) {
+      if (pattern.test(action.content)) {
+        console.warn("[sanitize] Possible hallucinated new product in content:", action.title);
+        // 架空商品告知は content 冒頭に注意書きを付加（ユーザーが確認できるよう）
+        // 実際の削除は行わず、UI側の確認バナーに委ねる
+        break;
       }
     }
 
