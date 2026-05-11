@@ -116,7 +116,6 @@ export async function POST(req: NextRequest) {
         const colonIdx2 = withoutPrefix.indexOf(":", colonIdx1 + 1);
         const sessionId = withoutPrefix.slice(0, colonIdx1);
         const actionIndex = parseInt(withoutPrefix.slice(colonIdx1 + 1, colonIdx2), 10);
-        const actionTitle = withoutPrefix.slice(colonIdx2 + 1);
 
         // saveActionResult は action_completions + weekly_sessions JSON + learning_history を一括更新
         await saveActionResult(sessionId, actionIndex, text);

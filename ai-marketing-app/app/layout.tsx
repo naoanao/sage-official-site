@@ -1,16 +1,5 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
 
@@ -34,7 +23,6 @@ export const metadata: Metadata = {
     // twitter:image も opengraph-image.tsx が自動で差し込まれる
   },
   manifest: "/manifest.json",
-  themeColor: "#6366f1",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -46,16 +34,17 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#6366f1",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ja"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="ja" className="h-full antialiased">
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

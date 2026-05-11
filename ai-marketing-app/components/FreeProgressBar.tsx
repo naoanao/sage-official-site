@@ -18,12 +18,6 @@ function getCurrentMonth(): string {
   return `${d.getFullYear()}-${d.getMonth() + 1}`;
 }
 
-function getNextMonthLabel(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return `${d.getMonth() + 1}月1日`;
-}
-
 export function getUsageData(): UsageData {
   if (typeof window === "undefined") return { month: getCurrentMonth(), count: 0 };
   try {

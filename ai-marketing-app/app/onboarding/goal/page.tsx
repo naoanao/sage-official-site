@@ -110,7 +110,7 @@ export default function GoalPage() {
       clearOnboarding(); // フロー完了 → onboardingデータとフラグをクリア（stale data防止）
       // LINE設定ページへ（スキップ可能）
       router.push("/onboarding/line");
-    } catch (e) {
+    } catch {
       setError("少し混み合っています。20〜30秒待ってからもう一度お試しください。");
       setLoading(false);
       setRetrying(false);

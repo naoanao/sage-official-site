@@ -128,7 +128,9 @@ export default function MarketingPage() {
   }, []);
 
   function isValidInput(str: string): boolean {
-    return str.trim().length >= 2;
+    const trimmed = str.trim();
+    if (trimmed.length < 2) return false;
+    return !/^[\d\s\W]+$/.test(trimmed);
   }
 
   function scrollTop() {
@@ -139,7 +141,7 @@ export default function MarketingPage() {
   function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidInput(name) || !isValidInput(product) || !isValidInput(target)) {
-      setFormError("会社名・商品・ターゲット顧客は2文字以上入力してください");
+      setFormError("会社名・商品・ターゲット顧客は2文字以上の具体的な内容を入力してください");
       return;
     }
     setFormError(null);
@@ -566,7 +568,7 @@ export default function MarketingPage() {
         </div>
 
         {/* フォーム */}
-        <form onSubmit={handleFormSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleFormSubmit} noValidate className="flex flex-col gap-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               会社名・屋号 <span className="text-red-400">*</span>
@@ -644,11 +646,10 @@ export default function MarketingPage() {
 
           <button
             type="submit"
-            disabled={!name.trim() || !product.trim() || !target.trim()}
             className={`w-full font-semibold text-lg py-4 rounded-2xl transition-colors mt-2 ${
               name.trim() && product.trim() && target.trim()
                 ? "bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-200 active:scale-95"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-gray-200 text-gray-500 hover:bg-gray-300 active:scale-95"
             }`}
           >
             フレームワークを選ぶ →

@@ -41,6 +41,7 @@ function getIcon(contentType: string): string {
 }
 
 export default function ActionCard({ action, index, sessionId, onComplete, completing = false }: Props) {
+  void sessionId;
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(true);
 
