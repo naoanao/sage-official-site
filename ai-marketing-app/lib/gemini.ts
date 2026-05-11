@@ -163,10 +163,7 @@ function buildUserPrompt(user: UserProfile): string {
   return lines.join("\n");
 }
 
-async function callGroq(systemPrompt: string, userPrompt: string): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("Groq: API key not set");
-
+async function callGroqModel(apiKey: string, model: string, systemPrompt: string, userPrompt: string): Promise<string> {
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -174,7 +171,7 @@ async function callGroq(systemPrompt: string, userPrompt: string): Promise<strin
       Authorization: "Bearer " + apiKey,
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -184,10 +181,26 @@ async function callGroq(systemPrompt: string, userPrompt: string): Promise<strin
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error("Groq " + res.status + ": " + body.slice(0, 300));
+    throw new Error("Groq(" + model + ") " + res.status + ": " + body.slice(0, 300));
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? "";
+}
+
+async function callGroq(systemPrompt: string, userPrompt: string): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("Groq: API key not set");
+
+  // 70B優先（高品質）→ 429/503時は8B-instantにフォールバック（RPM 6000と高い）
+  try {
+    return await callGroqModel(apiKey, "llama-3.3-70b-versatile", systemPrompt, userPrompt);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const isRateLimit = msg.includes("429") || msg.includes("503");
+    if (!isRateLimit) throw e;
+    console.warn("[Groq] 70B rate-limited, falling back to 8B-instant");
+    return await callGroqModel(apiKey, "llama-3.1-8b-instant", systemPrompt, userPrompt);
+  }
 }
 
 async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
@@ -300,7 +313,7 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Generate
         const isTransient = msg.includes("503") || msg.includes("500") || msg.includes("429");
         if (!isTransient || attempt === 1) break;
 
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 1000));
       }
     }
   }
