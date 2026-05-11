@@ -450,6 +450,13 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
                       {action.content}
                     </p>
                   </div>
+                  {/* 事実確認バナー */}
+                  <div className="flex items-start gap-2 mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <span className="text-amber-500 text-xs mt-0.5 shrink-0">⚠️</span>
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      コピー前に確認：存在しない商品名・サービス名・キャンペーンが含まれていないか必ずチェックしてください
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

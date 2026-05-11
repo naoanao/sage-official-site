@@ -31,21 +31,37 @@ export default function GoalPage() {
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState("");
   const [example, setExample] = useState("集客を気にせず、料理だけに集中できている");
+  // セッションガード：フォームを表示する前に必要なデータが揃っているか確認
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const data = loadOnboarding();
-    if (!isFlowActive() || !data.industry) {
+    // 全ステップのデータが揃っているかチェック（一部でも欠けたら最初に戻す）
+    const hasAllRequired =
+      isFlowActive() &&
+      !!data.industry &&
+      !!data.business_desc &&
+      !!data.customer_desc &&
+      !!data.main_problem;
+
+    if (!hasAllRequired) {
       router.replace("/onboarding/industry");
-      return;
+      return; // setChecking(false) を呼ばず、リダイレクトに任せる
     }
-    if (!data.main_problem) {
-      router.replace("/onboarding/problem");
-      return;
-    }
-    if (EXAMPLES[data.industry]) {
+    if (EXAMPLES[data.industry!]) {
       setExample(EXAMPLES[data.industry as keyof typeof EXAMPLES]);
     }
+    setChecking(false); // 全データOK → フォームを表示
   }, [router]);
+
+  // チェック中はスピナーのみ表示（空フォームのフラッシュを防ぐ）
+  if (checking) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
+      </main>
+    );
+  }
 
   async function callGenerateActions(payload: object): Promise<{ userId?: string; session?: unknown }> {
     const res = await fetch("/api/generate-actions", {
