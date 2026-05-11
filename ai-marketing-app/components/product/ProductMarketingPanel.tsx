@@ -55,6 +55,10 @@ interface MarketingPlan {
     meta_description: string;
   };
   funnel: {
+    /** AIが競合分析の結果発見した独自の切り口（CoT Step1） */
+    unique_angle?: string;
+    /** 最大の購買障壁と反論コピー（CoT Step2） */
+    objection_rebuttal?: string;
     attention: string;
     interest: string;
     search: string;
@@ -69,10 +73,16 @@ interface MarketingPlan {
     ugc_campaign: string;
   };
   strategy_note: string;
-  week_actions: Array<{ title: string; detail: string; content_type: string; when_where?: string; content: string }>;
+  week_actions: Array<{ title: string; detail: string; content_type: string; role?: string; when_where?: string; content: string }>;
 }
 
 type TabKey = "actions" | "funnel" | "retention" | "aeo";
+
+const ROLE_STYLES: Record<string, { label: string; bg: string; text: string }> = {
+  "共感獲得": { label: "💗 共感獲得", bg: "bg-rose-50",   text: "text-rose-600"   },
+  "行動促進": { label: "⚡ 行動促進", bg: "bg-amber-50", text: "text-amber-600" },
+  "信頼構築": { label: "🛡️ 信頼構築", bg: "bg-sky-50",   text: "text-sky-600"   },
+};
 
 const CATEGORY_LABELS: Record<string, string> = {
   physical: "物販・実物商品",
@@ -354,6 +364,35 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
             <p className="text-sm text-blue-800">{plan.strategy_note}</p>
           </div>
 
+          {/* AI分析の種明かし */}
+          {(plan.funnel.unique_angle || plan.funnel.objection_rebuttal) && (
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4 mb-4">
+              <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">
+                🧠 AIの分析プロセス（種明かし）
+              </p>
+              {plan.funnel.unique_angle && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold text-indigo-500 mb-1">
+                    💡 競合が言っていない独自の切り口
+                  </p>
+                  <p className="text-sm text-indigo-900 bg-white/70 rounded-lg p-3 leading-relaxed">
+                    {plan.funnel.unique_angle}
+                  </p>
+                </div>
+              )}
+              {plan.funnel.objection_rebuttal && (
+                <div>
+                  <p className="text-xs font-semibold text-purple-500 mb-1">
+                    🛡️ 最大の購買障壁と反論コピー
+                  </p>
+                  <p className="text-sm text-purple-900 bg-white/70 rounded-lg p-3 leading-relaxed">
+                    {plan.funnel.objection_rebuttal}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* タブ */}
           <div className="flex border-b border-gray-200 mb-4">
             {TABS.map((tab) => (
@@ -378,9 +417,16 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
                 <div key={i} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <span className="text-xs text-gray-400 font-medium">
-                        {i + 1} / {plan.week_actions.length}
-                      </span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs text-gray-400 font-medium">
+                          {i + 1} / {plan.week_actions.length}
+                        </span>
+                        {action.role && ROLE_STYLES[action.role] && (
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_STYLES[action.role].bg} ${ROLE_STYLES[action.role].text}`}>
+                            {ROLE_STYLES[action.role].label}
+                          </span>
+                        )}
+                      </div>
                       <h3 className="text-sm font-bold text-gray-900 mt-0.5">{action.title}</h3>
                       <p className="text-xs text-gray-500 mt-0.5">{action.detail}</p>
                     </div>
@@ -415,6 +461,30 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
               <p className="text-xs text-gray-500 mb-3">
                 AISAS販売ファネル — 認知から購入・口コミまで一気通貫
               </p>
+
+              {/* CoT分析結果サマリー */}
+              {(plan.funnel.unique_angle || plan.funnel.objection_rebuttal) && (
+                <div className="mb-4 rounded-lg border border-indigo-100 overflow-hidden">
+                  <div className="bg-indigo-600 px-4 py-2">
+                    <p className="text-xs font-bold text-white tracking-widest uppercase">🧠 このコンテンツが生まれた理由</p>
+                  </div>
+                  <div className="bg-indigo-50 p-4 space-y-3">
+                    {plan.funnel.unique_angle && (
+                      <div>
+                        <p className="text-xs font-semibold text-indigo-500 mb-1">💡 攻める角度（競合が言っていないこと）</p>
+                        <p className="text-sm text-indigo-900 leading-relaxed">{plan.funnel.unique_angle}</p>
+                      </div>
+                    )}
+                    {plan.funnel.objection_rebuttal && (
+                      <div>
+                        <p className="text-xs font-semibold text-purple-500 mb-1">🛡️ 購買障壁の論破コピー</p>
+                        <p className="text-sm text-purple-900 leading-relaxed">{plan.funnel.objection_rebuttal}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <ContentCard label="Attention — SNS投稿文（認知）" content={plan.funnel.attention} />
               <ContentCard label="Interest — LP導入・ブログ冒頭（興味）" content={plan.funnel.interest} />
               <ContentCard label="Search — FAQ・比較コンテンツ（検索）" content={plan.funnel.search} />

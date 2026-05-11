@@ -13,6 +13,12 @@ interface Props {
 
 const NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"];
 
+const ROLE_STYLES: Record<string, { label: string; bg: string; text: string }> = {
+  "共感獲得": { label: "💗 共感獲得", bg: "bg-rose-50", text: "text-rose-600" },
+  "行動促進": { label: "⚡ 行動促進", bg: "bg-amber-50", text: "text-amber-600" },
+  "信頼構築": { label: "🛡️ 信頼構築", bg: "bg-sky-50",  text: "text-sky-600"  },
+};
+
 const DIRECTLY_USABLE_TYPES = [
   "Instagram投稿文", "X(Twitter)投稿文", "LINE配信文", "メール文", "告知文", "チラシ文"
 ];
@@ -69,6 +75,11 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
         <div className="flex items-start gap-3">
           <span className="text-2xl mt-0.5 shrink-0">{NUMBER_EMOJIS[index]}</span>
           <div className="flex-1 min-w-0">
+            {action.role && ROLE_STYLES[action.role] && (
+              <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1 ${ROLE_STYLES[action.role].bg} ${ROLE_STYLES[action.role].text}`}>
+                {ROLE_STYLES[action.role].label}
+              </span>
+            )}
             <p className="font-bold text-gray-800 text-base leading-snug">{action.title}</p>
             <p className="text-sm text-gray-500 mt-1 leading-relaxed">{action.detail}</p>
           </div>

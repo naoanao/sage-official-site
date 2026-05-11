@@ -32,6 +32,8 @@ export interface Action {
   detail: string;
   content: string;
   content_type: string;
+  /** 役割タイプ: 共感獲得 | 行動促進 | 信頼構築 */
+  role?: string;
   completed: boolean;
   result_memo?: string; // ユーザーのフィードバック（効果あり/普通/効果なし）
 }
