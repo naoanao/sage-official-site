@@ -3,6 +3,8 @@ export interface Action {
   detail: string;
   content: string;
   content_type: string;
+  /** 役割タイプ: 共感獲得 | 行動促進 | 信頼構築 */
+  role?: string;
   completed?: boolean;
 }
 
@@ -155,9 +157,15 @@ function buildUserPrompt(user: UserProfile): string {
     "今一番困っていること: " + user.main_problem,
     "このアプリが完璧に機能したとき、どう変わりたいか: " + user.final_goal + learningSection + marketSection + productSection,
     "",
+    "【3つのアクションの役割（必ず異なる役割で生成すること）】",
+    "- actions[0] の role: 「共感獲得」— ターゲットが「そうそう、その悩みわかる」と感じる共感型コンテンツ",
+    "- actions[1] の role: 「行動促進」— 今すぐ予約・来店・問い合わせを促すCTA型コンテンツ",
+    "- actions[2] の role: 「信頼構築」— 実績・こだわり・専門性を証拠として示す信頼型コンテンツ",
+    "- 3つが同じトーンや訴求軸にならないよう明確に差別化すること",
+    "",
     "【出力形式（JSONのみ、コードブロック不要、actionsは必ず3要素）】",
     "- strategy_noteは今週なぜこの3つを選んだか経営者目線で2文以内で説明。専門用語禁止。",
-    '{"strategy_note":"理由2文以内","actions":[{"title":"15文字以内","detail":"60文字以内","content_type":"Instagram投稿文","content":"コピペ用完成文章"},{"title":"...","detail":"...","content_type":"...","content":"..."},{"title":"...","detail":"...","content_type":"...","content":"..."}]}',
+    '{"strategy_note":"理由2文以内","actions":[{"role":"共感獲得","title":"15文字以内","detail":"60文字以内","content_type":"Instagram投稿文","content":"コピペ用完成文章"},{"role":"行動促進","title":"...","detail":"...","content_type":"...","content":"..."},{"role":"信頼構築","title":"...","detail":"...","content_type":"...","content":"..."}]}',
   ];
 
   return lines.join("\n");
@@ -228,7 +236,6 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
 }
 
 // ハルシネーション後処理（最後の安全網）
-// 注意: /g フラグはオブジェクト再利用時に lastIndex が残るため使わない
 const HALLUCINATION_EVENT_NAMES = [
   "母の日", "父の日", "バレンタイン", "ホワイトデー",
   "クリスマス", "ハロウィン", "お盆", "お正月",
@@ -246,7 +253,6 @@ const URL_IMPLY_PATTERNS = [
 
 function sanitizeActions(actions: Action[], hasBookingUrl: boolean): Action[] {
   return actions.map((action) => {
-    // Googleレビュー: URL除去
     if (action.content_type === "Googleレビュー返信文") {
       action.content = action.content
         .replace(/https?:\/\/[^\s　、。！？\)）]+/g, "")
@@ -254,7 +260,6 @@ function sanitizeActions(actions: Action[], hasBookingUrl: boolean): Action[] {
         .trim();
     }
 
-    // URL未登録ユーザーへのURL示唆表現を除去（/g なし・毎回新規マッチ）
     if (!hasBookingUrl) {
       action.content = action.content.replace(/https?:\/\/[^\s　、。！？\)）]+/g, "").trim();
       for (const pattern of URL_IMPLY_PATTERNS) {
@@ -262,7 +267,6 @@ function sanitizeActions(actions: Action[], hasBookingUrl: boolean): Action[] {
       }
     }
 
-    // 季節イベント名のハルシネーションを「この季節」に置換
     for (const name of HALLUCINATION_EVENT_NAMES) {
       if (action.content.includes(name) || action.detail.includes(name) || action.title.includes(name)) {
         console.warn("[sanitize] Hallucinated event name:", name);

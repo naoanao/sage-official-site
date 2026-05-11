@@ -152,8 +152,16 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className="mt-8 border-t border-white/10 pt-6">
-          <p className="text-xs text-gray-400 text-center mb-3">商品・サービスの販売とリピート購入を本格的に伸ばすなら</p>
+        <div className="mt-8 border-t border-white/10 pt-6 flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => router.push("/marketing")}
+            className="w-full bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-600 font-semibold py-3 rounded-2xl shadow-sm transition-all text-sm flex items-center justify-center gap-2"
+          >
+            <span>📊</span>
+            <span>PEST・3C・SWOT分析 — 市場を把握する →</span>
+          </button>
+          <p className="text-xs text-gray-400 text-center">商品・サービスの販売とリピート購入を本格的に伸ばすなら</p>
           <button
             type="button"
             onClick={() => router.push("/product")}
