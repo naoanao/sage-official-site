@@ -130,7 +130,8 @@ export default function MarketingPage() {
   function isValidInput(str: string): boolean {
     const trimmed = str.trim();
     if (trimmed.length < 2) return false;
-    return !/^[\d\s\W]+$/.test(trimmed);
+    // \p{L} = Unicode文字（日本語・英語どちらも含む）が1文字以上あるかチェック
+    return /\p{L}/u.test(trimmed);
   }
 
   function scrollTop() {
