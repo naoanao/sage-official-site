@@ -63,12 +63,37 @@ const CONTENT_TYPE_ICONS: Record<string, string> = {
 // ────────────────────────────────────────────
 // 型
 // ────────────────────────────────────────────
+interface PositioningPoint {
+  label: string;
+  x: number;
+  y: number;
+}
+
+interface PositioningMap {
+  x_label_left: string;
+  x_label_right: string;
+  y_label_top: string;
+  y_label_bottom: string;
+  own: PositioningPoint;
+  competitors: PositioningPoint[];
+}
+
+interface StrategySummary {
+  target: string;
+  usp: string;
+  main_channel: string;
+  top_priority: string;
+  winning_message: string;
+}
+
 interface AnalysisResult {
   framework: string;
   why: string;
   items: Record<string, string[]>;
   insight: string;
   actions: string[];
+  positioning?: PositioningMap;
+  strategy_summary?: StrategySummary;
 }
 
 interface PostResult {
@@ -94,6 +119,100 @@ function stripMarkdown(text: string): string {
 
 function getContentIcon(platform: string): string {
   return CONTENT_TYPE_ICONS[platform] ?? "📝";
+}
+
+// ────────────────────────────────────────────
+// STP ポジショニングマップ
+// ────────────────────────────────────────────
+function PositioningMapChart({ data }: { data: PositioningMap }) {
+  // -1〜1 の値を 0〜100% に変換
+  const toPercent = (v: number) => Math.min(Math.max(((v + 1) / 2) * 100, 5), 95);
+
+  const COLORS = ["#a78bfa", "#f472b6", "#34d399", "#fb923c", "#60a5fa"];
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm mb-5">
+      <p className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wide">ポジショニングマップ（競合比較）</p>
+      <div className="relative w-full" style={{ paddingBottom: "100%" }}>
+        <div className="absolute inset-0">
+          {/* 背景グリッド */}
+          <div className="absolute inset-0 border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+            {/* 縦横の軸線 */}
+            <div className="absolute left-1/2 top-0 bottom-0 border-l border-gray-300" style={{ transform: "translateX(-50%)" }} />
+            <div className="absolute top-1/2 left-0 right-0 border-t border-gray-300" style={{ transform: "translateY(-50%)" }} />
+          </div>
+
+          {/* 軸ラベル */}
+          <p className="absolute top-1 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 text-center leading-tight px-1 max-w-[45%]">
+            ▲ {data.y_label_top}
+          </p>
+          <p className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 text-center leading-tight px-1 max-w-[45%]">
+            ▼ {data.y_label_bottom}
+          </p>
+          <p className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 leading-tight max-w-[20%]">
+            ◀ {data.x_label_left}
+          </p>
+          <p className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 text-right leading-tight max-w-[20%]">
+            {data.x_label_right} ▶
+          </p>
+
+          {/* 競合プロット */}
+          {data.competitors.map((c, i) => (
+            <div
+              key={i}
+              className="absolute flex flex-col items-center"
+              style={{
+                left: `${toPercent(c.x)}%`,
+                top: `${100 - toPercent(c.y)}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              <div
+                className="w-3 h-3 rounded-full border-2 border-white shadow"
+                style={{ backgroundColor: COLORS[i % COLORS.length] }}
+              />
+              <span
+                className="text-[9px] font-medium mt-0.5 text-center leading-tight whitespace-nowrap"
+                style={{ color: COLORS[i % COLORS.length], maxWidth: "60px", overflow: "hidden", textOverflow: "ellipsis" }}
+              >
+                {c.label}
+              </span>
+            </div>
+          ))}
+
+          {/* 自社プロット */}
+          <div
+            className="absolute flex flex-col items-center"
+            style={{
+              left: `${toPercent(data.own.x)}%`,
+              top: `${100 - toPercent(data.own.y)}%`,
+              transform: "translate(-50%, -50%)",
+              zIndex: 10,
+            }}
+          >
+            <div className="w-4 h-4 rounded-full bg-indigo-500 border-2 border-white shadow-lg" />
+            <span className="text-[10px] font-bold text-indigo-600 mt-0.5 text-center leading-tight whitespace-nowrap">
+              {data.own.label}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 凡例 */}
+      <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-indigo-500" />
+          <span className="text-[10px] text-gray-600 font-medium">自社</span>
+        </div>
+        {data.competitors.map((c, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+            <span className="text-[10px] text-gray-500">{c.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ────────────────────────────────────────────
@@ -290,6 +409,35 @@ export default function MarketingPage() {
             <h1 className="text-xl font-bold text-gray-900">{result.framework}</h1>
           </div>
 
+          {/* 戦略サマリー */}
+          {result.strategy_summary && (
+            <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl px-4 py-4 mb-5 text-white shadow-lg shadow-indigo-200">
+              <p className="text-xs font-bold text-indigo-200 mb-3 tracking-widest uppercase">📋 戦略サマリー（1枚）</p>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-indigo-300 w-20 flex-shrink-0 pt-0.5">ターゲット</span>
+                  <span className="text-sm font-semibold leading-snug">{result.strategy_summary.target}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-indigo-300 w-20 flex-shrink-0 pt-0.5">USP</span>
+                  <span className="text-sm font-semibold leading-snug">{result.strategy_summary.usp}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-indigo-300 w-20 flex-shrink-0 pt-0.5">主戦場</span>
+                  <span className="text-sm font-semibold leading-snug">{result.strategy_summary.main_channel}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-indigo-300 w-20 flex-shrink-0 pt-0.5">最優先施策</span>
+                  <span className="text-sm font-semibold leading-snug">{result.strategy_summary.top_priority}</span>
+                </div>
+                <div className="mt-1 pt-2.5 border-t border-indigo-500">
+                  <p className="text-xs text-indigo-300 mb-1">刺さるメッセージ</p>
+                  <p className="text-base font-bold leading-snug">{result.strategy_summary.winning_message}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* なぜ重要か */}
           <div className="bg-indigo-50 rounded-2xl px-4 py-3 mb-5">
             <p className="text-xs text-indigo-400 font-medium mb-1">なぜこの分析が重要か</p>
@@ -312,6 +460,11 @@ export default function MarketingPage() {
               </div>
             ))}
           </div>
+
+          {/* STPポジショニングマップ */}
+          {result.positioning && (
+            <PositioningMapChart data={result.positioning} />
+          )}
 
           {/* インサイト */}
           <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-4 mb-5">
@@ -341,22 +494,72 @@ export default function MarketingPage() {
             </p>
             {selectedFw === "pest" && (
               <div className="mt-2 pt-2 border-t border-amber-200">
-                <p className="text-xs text-amber-700 font-medium mb-1">
-                  📌 PEST分析は2025年5月時点のAI学習データに基づいています
-                </p>
-                <p className="text-xs text-amber-600 leading-relaxed mb-1">
-                  P（政治・法規制）とE（経済）は特に最新情報の確認が必要です。以下で確認してください：
-                </p>
+                <p className="text-xs text-amber-700 font-medium mb-1">📌 PEST分析：最新情報の確認先</p>
                 <div className="flex flex-col gap-1 mt-1">
-                  <a href="https://elaws.e-gov.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">
-                    ・e-Gov法令検索（最新の法律・規制）
-                  </a>
-                  <a href="https://www.chusho.meti.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">
-                    ・中小企業庁（補助金・政策情報）
-                  </a>
-                  <a href="https://www.meti.go.jp/statistics/index.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">
-                    ・経済産業省 統計（市場動向データ）
-                  </a>
+                  <a href="https://elaws.e-gov.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・e-Gov法令検索（P：最新の法律・規制）</a>
+                  <a href="https://www.chusho.meti.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・中小企業庁（P：補助金・政策情報）</a>
+                  <a href="https://www.meti.go.jp/statistics/index.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・経済産業省 統計（E：市場動向データ）</a>
+                  <a href="https://www.stat.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・総務省 統計局（S：人口動態・消費データ）</a>
+                </div>
+              </div>
+            )}
+            {selectedFw === "3c" && (
+              <div className="mt-2 pt-2 border-t border-amber-200">
+                <p className="text-xs text-amber-700 font-medium mb-1">📌 3C分析：競合・市場調査の参考先</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <a href="https://trends.google.co.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・Google トレンド（競合の検索需要を確認）</a>
+                  <a href="https://www.j-platpat.inpit.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・J-PlatPat（特許・商標で競合の強みを確認）</a>
+                  <a href="https://www.meti.go.jp/statistics/tyo/syougyo/index.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・経産省 商業動態統計（業界売上データ）</a>
+                </div>
+              </div>
+            )}
+            {selectedFw === "swot" && (
+              <div className="mt-2 pt-2 border-t border-amber-200">
+                <p className="text-xs text-amber-700 font-medium mb-1">📌 SWOT分析：外部環境データの参考先</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <a href="https://www.chusho.meti.go.jp/pamflet/hakusyo/" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・中小企業白書（機会・脅威の業界データ）</a>
+                  <a href="https://www.nri.com/jp/knowledge/report" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・野村総研 レポート（社会トレンドデータ）</a>
+                  <a href="https://www.soumu.go.jp/johotsusintokei/" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・総務省 情報通信白書（T：技術トレンド）</a>
+                </div>
+              </div>
+            )}
+            {selectedFw === "stp" && (
+              <div className="mt-2 pt-2 border-t border-amber-200">
+                <p className="text-xs text-amber-700 font-medium mb-1">📌 STP分析：ターゲット・市場規模の参考先</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <a href="https://www.stat.go.jp/data/shugyou/index.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・総務省 就業構造基本調査（ターゲット人口）</a>
+                  <a href="https://trends.google.co.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・Google トレンド（セグメントの検索需要）</a>
+                  <a href="https://www.yano.co.jp/market_reports/" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・矢野経済研究所（業界市場規模データ）</a>
+                </div>
+              </div>
+            )}
+            {selectedFw === "4p" && (
+              <div className="mt-2 pt-2 border-t border-amber-200">
+                <p className="text-xs text-amber-700 font-medium mb-1">📌 4P/4C分析：価格・流通データの参考先</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <a href="https://www.jftc.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・公正取引委員会（Price：景品・価格表示規制）</a>
+                  <a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/shokuhin/" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・厚生労働省（Product：食品・健康商品規制）</a>
+                  <a href="https://www.caa.go.jp" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・消費者庁（Promotion：広告・表示規制）</a>
+                </div>
+              </div>
+            )}
+            {selectedFw === "aeo" && (
+              <div className="mt-2 pt-2 border-t border-amber-200">
+                <p className="text-xs text-amber-700 font-medium mb-1">📌 AEO戦略：実装・検証の参考先</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・Google Search Console（検索パフォーマンス確認）</a>
+                  <a href="https://developers.google.com/search/docs/appearance/structured-data" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・Google 構造化データガイドライン</a>
+                  <a href="https://schema.org/FAQPage" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・Schema.org FAQPage（Q&A構造化データ仕様）</a>
+                </div>
+              </div>
+            )}
+            {selectedFw === "ulssas" && (
+              <div className="mt-2 pt-2 border-t border-amber-200">
+                <p className="text-xs text-amber-700 font-medium mb-1">📌 ULSSAS分析：SNS・UGCデータの参考先</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <a href="https://business.instagram.com/blog" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・Instagram ビジネスブログ（最新アルゴリズム動向）</a>
+                  <a href="https://www.dentsu.co.jp/news/release/2024/index.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・電通 情報メディア白書（SNS利用データ）</a>
+                  <a href="https://www.soumu.go.jp/johotsusintokei/statistics/statistics05b1.html" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline hover:text-amber-900">・総務省 SNS利用状況調査</a>
                 </div>
               </div>
             )}
