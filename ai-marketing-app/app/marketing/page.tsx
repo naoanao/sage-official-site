@@ -383,7 +383,29 @@ export default function MarketingPage() {
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-bold text-gray-800">📱 今日使える投稿文</span>
-                  <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">そのままコピペOK</span>
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">投稿前に要事実確認</span>
+                </div>
+
+                {/* ── ハルシネーション警告チェックリスト ── */}
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-700 mb-2">⚠️ コピーする前に必ず確認してください</p>
+                  <ul className="flex flex-col gap-1.5">
+                    <li className="flex items-start gap-2 text-xs text-amber-800">
+                      <span className="text-amber-500 mt-0.5 flex-shrink-0">□</span>
+                      <span>実際に存在しない<strong>商品名・メニュー名・サービス名</strong>が含まれていないか？</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-amber-800">
+                      <span className="text-amber-500 mt-0.5 flex-shrink-0">□</span>
+                      <span>架空の<strong>割引率・金額・期間限定特典・キャンペーン</strong>が含まれていないか？</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-amber-800">
+                      <span className="text-amber-500 mt-0.5 flex-shrink-0">□</span>
+                      <span>書かれている内容が<strong>現時点で実際に提供できる</strong>サービス・商品のみか？</span>
+                    </li>
+                  </ul>
+                  <p className="text-xs text-amber-600 mt-2 leading-relaxed">
+                    AIは入力情報をもとに文章を生成しますが、存在しない情報を追加してしまう場合があります。投稿前に必ず内容を読み返してください。
+                  </p>
                 </div>
                 {posts.map((post, i) => (
                   <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
