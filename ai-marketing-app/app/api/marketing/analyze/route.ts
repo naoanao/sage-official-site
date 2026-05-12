@@ -27,6 +27,13 @@ function getPriceContext(price?: string): string {
   return `価格帯・客単価: ${price}（この価格帯を前提に、ターゲット顧客の購買心理・競合との価格戦略・高単価または低単価ならではのリスクと戦略を分析すること）`;
 }
 
+function getSiteContext(siteContent?: string): string {
+  if (!siteContent) return "";
+  return `【Webサイトから読み取った実際の情報（これを最優先で分析に使うこと）】
+${siteContent}
+（上記はWebサイトから自動取得したテキストです。この実際の情報を手がかりに、より具体的・精度の高い分析を行ってください）`;
+}
+
 // ────────────────────────────────────────────
 // 共通ルール（全プロンプト先頭に挿入）
 // ────────────────────────────────────────────
@@ -49,6 +56,49 @@ const COMMON_RULES = `
 `;
 
 // ────────────────────────────────────────────
+// Webサイト内容取得（失敗しても分析は続行）
+// ────────────────────────────────────────────
+async function fetchSiteContent(url: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; GrowlBot/1.0)",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "ja,en;q=0.9",
+      },
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) return "";
+
+    const html = await res.text();
+
+    const stripped = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+      .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+      .replace(/<header[\s\S]*?<\/header>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return stripped.slice(0, 2000);
+  } catch {
+    return "";
+  }
+}
+
+// ────────────────────────────────────────────
 // プロンプト定義
 // ────────────────────────────────────────────
 interface CompanyInfo {
@@ -56,6 +106,7 @@ interface CompanyInfo {
   product: string;
   target: string;
   url?: string;
+  siteContent?: string;
   industry?: string;
   price?: string;
 }
@@ -74,7 +125,7 @@ ${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${c.url ? `Webサイト: ${c.url}` : ""}
+${getSiteContext(c.siteContent)}
 ${getIndustryContext(c.industry)}
 ${getPriceContext(c.price)}
 
@@ -316,7 +367,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "不明なフレームワークです" }, { status: 400 });
     }
 
-    const prompt = promptFn({ name, product, target, url, industry, price });
+    // URLがあれば実際にサイトを取得（失敗しても分析は続行）
+    const siteContent = url ? await fetchSiteContent(url) : "";
+
+    const prompt = promptFn({ name, product, target, url, siteContent, industry, price });
 
     // Gemini → Groq フォールバック
     let raw = await callGemini(prompt);
