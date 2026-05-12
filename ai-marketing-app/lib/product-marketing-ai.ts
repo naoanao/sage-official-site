@@ -100,6 +100,7 @@ async function callGroq(prompt: string): Promise<string> {
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
+      max_tokens: 4000,
     }),
   });
   if (!res.ok) throw new Error(`Groq ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -111,11 +112,14 @@ async function callGemini(prompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Gemini: API key not set");
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 4000, temperature: 0.3 },
+      }),
     }
   );
   if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -136,7 +140,6 @@ async function callAI(prompt: string): Promise<string> {
 // ─────────────────────────────────────────────────────────────
 
 function buildAEOPrompt(p: ProductProfile): string {
-  const urlLine = p.purchase_url ? `購入URL: ${p.purchase_url}` : "";
   return `
 あなたはAEO（Answer Engine Optimization）とGEO（Generative Engine Optimization）の専門家です。
 ChatGPT・Perplexity・Gemini・Google AIオーバービューなどのAI検索で引用・上位表示されるコンテンツを生成してください。
@@ -153,22 +156,17 @@ ChatGPT・Perplexity・Gemini・Google AIオーバービューなどのAI検索�
 ターゲット: ${p.target}
 独自の強み（USP）: ${p.usp}
 ${p.competitor_diff ? `競合との違い: ${p.competitor_diff}` : ""}
-${urlLine}
 
-【AEO/GEO の7大原則を必ず守ること】
+【AEO/GEO の原則を必ず守ること】
 1. 直接回答（Direct Response）: 各答えの冒頭40-60文字で質問に直接答える
 2. 数値データ（Numerical Data）: 具体的な数字・パーセント・期間を含める
-3. 構造化（Extractable Structure）: Q&A形式で情報を整理する
+3. Q&A形式で情報を整理する（箇条書きより自然な一文の回答を優先）
 4. 専門性（Original Expertise）: 一般論ではなくこの商品固有の知識を示す
-5. 引用しやすさ: 箇条書きより自然な一文の回答を優先する
-6. フレッシュネス: 「2026年現在」など時事性を示す表現を入れる
-7. FAQSchema対応: JSON-LD形式でマークアップできる構造にする
-8. 入力情報にない固有情報（住所・距離・営業時間など）は推測しない。商品情報のみから断言する
+5. 「2026年現在」など時事性を示す表現を入れる
+6. 入力情報にない固有情報（住所・距離・営業時間など）は推測しない
 
 【出力形式 — 必ずこのJSONのみ返すこと、コードブロック不要】
 {
-  "faq_schema_jsonld": "<script type=\\"application/ld+json\\">{ \\"@context\\": \\"https://schema.org\\", \\"@type\\": \\"FAQPage\\", \\"mainEntity\\": [{各QAをここに}] }</script>",
-  "product_schema_jsonld": "<script type=\\"application/ld+json\\">{ \\"@context\\": \\"https://schema.org\\", \\"@type\\": \\"Product\\", ...商品情報 }</script>",
   "qa_blocks": [
     { "question": "Q1（購入前の疑問・検索クエリ形式）", "answer": "冒頭40-60文字で直接回答。競合が答えにくい独自情報を含める。" },
     { "question": "Q2（使い方・効果の確認）", "answer": "..." },
@@ -179,6 +177,40 @@ ${urlLine}
   "meta_description": "AI検索エンジンが引用しやすい150文字以内のmeta description（冒頭で直接回答・数値を含む）"
 }
 `.trim();
+}
+
+// AEO: JSON-LDスキーマをコードで生成（LLMに任せると二重エスケープで壊れるため）
+function buildFaqSchemaJsonLd(qaBlocks: AEOBlock[]): string {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: qaBlocks.map((qa) => ({
+      "@type": "Question",
+      name: qa.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: qa.answer,
+      },
+    })),
+  };
+  return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`;
+}
+
+function buildProductSchemaJsonLd(p: ProductProfile): string {
+  const schema: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: p.name,
+    description: p.description,
+    offers: {
+      "@type": "Offer",
+      price: p.price,
+      priceCurrency: "JPY",
+      availability: "https://schema.org/InStock",
+      ...(p.purchase_url ? { url: p.purchase_url } : {}),
+    },
+  };
+  return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -403,11 +435,15 @@ STEP 2 — 購買障壁の特定（今週の背中を押す）
 // JSON パーサー（堅牢版）
 // ─────────────────────────────────────────────────────────────
 
-function parseJSON<T>(text: string): T {
+function parseJSON<T>(text: string, section = "不明"): T {
   const cleaned = text.replace(/```json|```/g, "").trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("JSON not found in response");
-  return JSON.parse(match[0]) as T;
+  if (!match) throw new Error(`AI応答からJSONが見つかりませんでした（${section}）。時間をおいて再試行してください。`);
+  try {
+    return JSON.parse(match[0]) as T;
+  } catch {
+    throw new Error(`AI応答の解析に失敗しました（${section}）。少し時間をおいてから再試行してください。`);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -417,21 +453,33 @@ function parseJSON<T>(text: string): T {
 export async function generateProductMarketingPlan(
   product: ProductProfile
 ): Promise<ProductMarketingPlan> {
-  // 3つのプロンプトを並列実行（速度最適化）
-  const [aeoRaw, funnelRaw, retentionRaw, weekRaw] = await Promise.all([
+  // 4つのプロンプトを並列実行（速度最適化）
+  const [aeoResult, funnelResult, retentionResult, weekResult] = await Promise.allSettled([
     callAI(buildAEOPrompt(product)),
     callAI(buildFunnelPrompt(product)),
     callAI(buildRetentionPrompt(product)),
     callAI(buildWeekActionsPrompt(product)),
   ]);
 
-  // パース
-  const aeoData = parseJSON<{
-    faq_schema_jsonld: string;
-    product_schema_jsonld: string;
+  // 各セクションを個別にパース（1つ失敗しても他は表示できる）
+  const getRaw = (result: PromiseSettledResult<string>, section: string): string => {
+    if (result.status === "rejected") throw new Error(`${section}の生成に失敗しました。時間をおいて再試行してください。`);
+    return result.value;
+  };
+
+  // AEO: qa_blocks + meta_description のみLLMに任せ、JSON-LDはコードで生成
+  const aeoRaw = getRaw(aeoResult, "AI検索対策");
+  const aeoBase = parseJSON<{
     qa_blocks: AEOBlock[];
     meta_description: string;
-  }>(aeoRaw);
+  }>(aeoRaw, "AI検索対策");
+
+  const aeoData = {
+    faq_schema_jsonld: buildFaqSchemaJsonLd(aeoBase.qa_blocks ?? []),
+    product_schema_jsonld: buildProductSchemaJsonLd(product),
+    qa_blocks: aeoBase.qa_blocks ?? [],
+    meta_description: aeoBase.meta_description ?? "",
+  };
 
   const funnelData = parseJSON<{
     unique_angle: string;
@@ -441,7 +489,7 @@ export async function generateProductMarketingPlan(
     search: string;
     action: string;
     share: string;
-  }>(funnelRaw);
+  }>(getRaw(funnelResult, "販売ファネル"), "販売ファネル");
 
   const retentionData = parseJSON<{
     step_emails: StepEmail[];
@@ -449,12 +497,12 @@ export async function generateProductMarketingPlan(
     community_tactics: string[];
     vip_event_idea: string;
     ugc_campaign: string;
-  }>(retentionRaw);
+  }>(getRaw(retentionResult, "リピート施策"), "リピート施策");
 
   const weekData = parseJSON<{
     strategy_note: string;
     actions: Array<{ title: string; detail: string; content_type: string; content: string; when_where?: string }>;
-  }>(weekRaw);
+  }>(getRaw(weekResult, "今週のアクション"), "今週のアクション");
 
   return {
     product,
