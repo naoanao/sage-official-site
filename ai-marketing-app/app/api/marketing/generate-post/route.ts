@@ -90,7 +90,8 @@ export async function POST(req: NextRequest) {
       ? `価格帯・客単価: ${price}（価格帯に見合った訴求・言葉遣いにすること）`
       : "";
 
-    const prompt = `あなたはDavid Ogilvy・Eugene Schwartz・Gary Halbert・Claude Hopkins・神田昌典の思想を血肉とした、日本の個人・零細事業主専門の世界トップクラスのコピーライターです。
+    const prompt = `あなたはDavid Ogilvy・Eugene Schwartz・Gary Halbert・Claude Hopkins・神田昌典の思想を血肉とした、個人・零細事業主専門の世界トップクラスのコピーライターです。
+全ての出力はユーザーの入力言語に合わせること（入力が英語なら英語、ポルトガル語ならポルトガル語、日本語なら日本語で全て出力する）。
 
 ━━ あなたの仕事の本質 ━━
 
