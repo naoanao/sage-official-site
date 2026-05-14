@@ -38,6 +38,8 @@ const KEYWORD_HINTS: Record<string, string> = {
   ec: "在庫わずか, 限定品, ハンドメイド, 1点もの, 送料無料, プレゼントに, 丁寧な梱包",
   professional: "安心, 実績, 無料相談, 丁寧なサポート, 初回相談無料, 専門家, わかりやすく説明",
   construction: "地域密着, 施工実績, アフターフォロー, 無料点検, 地元, 職人の技, 丁寧な仕上がり",
+  health: "根本改善, 姿勢, 体の歪み, 慢性的な痛み, 自律神経, 施術実績, 丁寧な問診, リラックス, 日常が変わる",
+  education: "わかる楽しさ, 自信がつく, 結果が出る, 少人数制, 丁寧な指導, 無料体験, 個別対応, 続けられる",
   other: "業種に合った専門用語を自然に組み込み、プロらしさと親しみやすさを両立させる",
 };
 
@@ -47,6 +49,8 @@ const CHANNEL_HINTS: Record<string, string> = {
   ec: "Instagram投稿文・商品紹介文・プレゼント訴求のSNS文を優先。購入や詳細確認に誘導する文体にする。",
   professional: "ブログ記事冒頭・メール文・問い合わせ誘導文を優先。SNS投稿は使わない。丁寧で信頼感のあるトーンにする。",
   construction: "チラシ文・Googleレビュー返信文・LINE配信文を優先。地域密着・信頼感・実績を前面に出す文体にする。",
+  health: "Instagram投稿文・LINE配信文・Googleレビュー返信文を優先。「体の変化」「施術前後の感想」など体感ベースの言葉を使う文体にする。",
+  education: "Instagram投稿文・LINE配信文・体験授業の告知文を優先。「子どもの変化」「保護者の安心感」を前面に出す文体にする。",
   other: "業種に合ったSNS投稿文・LINE配信文・告知文を使う。",
 };
 
@@ -299,7 +303,7 @@ function sanitizeActions(actions: Action[], hasBookingUrl: boolean): Action[] {
     if (!hasBookingUrl) {
       action.content = action.content.replace(/https?:\/\/[^\s　、。！？\)）]+/g, "").trim();
       for (const pattern of URL_IMPLY_PATTERNS) {
-        action.content = action.content.replace(pattern, "お気軽にDMまたはお電話でお問い合わせください");
+        action.content = action.content.replace(pattern, "お気軽にDMでお問い合わせください");
       }
     }
 

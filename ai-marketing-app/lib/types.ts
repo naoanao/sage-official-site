@@ -1,4 +1,4 @@
-export type Industry = "restaurant" | "salon" | "ec" | "professional" | "construction" | "other";
+export type Industry = "restaurant" | "salon" | "ec" | "professional" | "construction" | "health" | "education" | "other";
 
 export const INDUSTRY_LABELS: Record<Industry, string> = {
   restaurant: "飲食店",
@@ -6,6 +6,8 @@ export const INDUSTRY_LABELS: Record<Industry, string> = {
   ec: "EC・通販",
   professional: "士業・コンサル",
   construction: "工務店・建設",
+  health: "健康・ボディケア",
+  education: "教育・スクール",
   other: "その他",
 };
 
@@ -15,6 +17,8 @@ export const INDUSTRY_ICONS: Record<Industry, string> = {
   ec: "🛒",
   professional: "📋",
   construction: "🏠",
+  health: "💆",
+  education: "📚",
   other: "✨",
 };
 

@@ -6,7 +6,7 @@ import { Industry, INDUSTRY_LABELS, INDUSTRY_ICONS } from "@/lib/types";
 import ProgressBar from "@/components/ProgressBar";
 import { isLimitReached } from "@/components/FreeProgressBar";
 
-const industries: Industry[] = ["restaurant", "salon", "ec", "professional", "construction", "other"];
+const industries: Industry[] = ["restaurant", "salon", "ec", "professional", "construction", "health", "education", "other"];
 
 export default function IndustryPage() {
   const router = useRouter();

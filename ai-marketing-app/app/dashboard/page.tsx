@@ -86,8 +86,6 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <FreeProgressBar />
-
         {session.strategy_note && (
           <div className="mb-5 bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-4">
             <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-1.5">
@@ -127,6 +125,8 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        <FreeProgressBar />
+
         {doneCount === totalCount && (
           <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6 text-center">
             <div className="text-4xl mb-3">🏆</div>
@@ -135,50 +135,48 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="mt-10 border-t border-gray-100 pt-6 flex justify-between items-center">
-          <button
-            type="button"
-            onClick={() => router.push("/report")}
-            className="text-sm text-gray-400 hover:text-indigo-500 transition-colors"
-          >
-            📊 月次レポート
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowResetConfirm(true)}
-            className="text-sm text-gray-400 hover:text-red-400 transition-colors"
-          >
-            最初からやり直す
-          </button>
-        </div>
-
-        <div className="mt-8 border-t border-white/10 pt-6 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/marketing")}
-            className="w-full bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-600 font-semibold py-3 rounded-2xl shadow-sm transition-all text-sm flex items-center justify-center gap-2"
-          >
-            <span>📊</span>
-            <span>PEST・3C・SWOT分析 — 市場を把握する →</span>
-          </button>
-          <p className="text-xs text-gray-400 text-center">商品・サービスの販売とリピート購入を本格的に伸ばすなら</p>
+        <div className="mt-10 border-t border-gray-100 pt-6 flex flex-col gap-3">
           <button
             type="button"
             onClick={() => router.push("/product")}
-            className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 rounded-2xl shadow-sm transition-all text-sm flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3.5 rounded-2xl shadow-sm transition-all text-sm flex items-center justify-center gap-2"
           >
             <span>📈</span>
-            <span>もっと深く分析する — 商品マーケAIへ →</span>
+            <span>販売・リピートを伸ばす — 商品マーケAI →</span>
           </button>
+          <button
+            type="button"
+            onClick={() => router.push("/marketing")}
+            className="w-full bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 font-medium py-3 rounded-2xl shadow-sm transition-all text-sm flex items-center justify-center gap-2"
+          >
+            <span>📊</span>
+            <span>PEST・3C・SWOT — 市場を深く分析する →</span>
+          </button>
+          <div className="flex justify-between items-center pt-1">
+            <a
+              href="/learn"
+              className="text-xs text-gray-300 hover:text-indigo-400 transition-colors"
+            >
+              📚 マーケの基礎を学ぶ →
+            </a>
+            <button
+              type="button"
+              onClick={() => router.push("/report")}
+              className="text-xs text-gray-300 hover:text-indigo-400 transition-colors"
+            >
+              📋 月次レポート →
+            </button>
+          </div>
         </div>
 
-        <div className="mt-4 text-center">
-          <a
-            href="/learn"
-            className="text-xs text-gray-300 hover:text-indigo-400 transition-colors"
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowResetConfirm(true)}
+            className="text-xs text-gray-300 hover:text-red-400 transition-colors"
           >
-            📚 マーケの基礎を学びたい方はこちら →
-          </a>
+            最初からやり直す
+          </button>
         </div>
       </div>
 
