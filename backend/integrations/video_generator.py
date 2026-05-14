@@ -484,13 +484,15 @@ def generate_sns_short_video(
     bgm_niche: str = "",              # BGMスタイル判定用ニッチ
     ken_burns_zoom: float = 1.10,     # ズーム倍率 (1.05〜1.20推奨)
     text_fade_duration: float = 0.6,  # テキストフェードイン秒数
-    # ── v2.1 ナレーション (VOICEVOX) ─────────────────────────────────────
-    enable_narration: bool = False,    # VOICEVOXナレーション (要: VOICEVOX起動)
-    narration_speaker: int = 1,        # スピーカーID (1=ずんだもん, 2=四国めたん)
-    narration_speed: float = 1.1,      # 話速
-    narration_volume: float = 0.9,     # ナレーション音量 (0.0〜1.0)
+    # ── v2.1 ナレーション (VOICEVOX / Edge TTS) ──────────────────────────
+    enable_narration: bool = False,     # ナレーション有効フラグ
+    narration_language: str = "ja",     # "ja" → VOICEVOX / "en" → Edge TTS
+    narration_speaker: int = 1,         # VOICEVOX スピーカーID (日本語時のみ使用)
+    narration_voice: str = "",          # Edge TTS 音声名 (英語時のみ・省略時は自動)
+    narration_speed: float = 1.1,       # 話速
+    narration_volume: float = 0.9,      # ナレーション音量 (0.0〜1.0)
     narration_bgm_volume: float = 0.06, # ナレーション有効時のBGM音量（小さくする）
-    min_slide_duration: float = 2.0,   # ナレーション長さに合わせる最低秒数
+    min_slide_duration: float = 2.0,    # ナレーション長さに合わせる最低秒数
 ) -> Optional[str]:
     """
     SNS用ショート動画（縦型 1080x1920）を生成する。
@@ -553,19 +555,60 @@ def generate_sns_short_video(
         except ImportError:
             from moviepy.editor import AudioFileClip
 
-        try:
-            from backend.integrations.voicevox_agent import (
-                generate_narration, is_voicevox_running
-            )
-        except ImportError:
-            from voicevox_agent import generate_narration, is_voicevox_running
+        # ── TTS エンジンの選択 ─────────────────────────────────────────────
+        tts_ready = False
 
-        if not is_voicevox_running():
-            logger.warning("[Video v2.1] VOICEVOXが起動していません。ナレーションをスキップします。")
-            enable_narration = False
+        if narration_language == "ja":
+            # 日本語: VOICEVOX
+            try:
+                from backend.integrations.voicevox_agent import (
+                    generate_narration as _voicevox_narration, is_voicevox_running
+                )
+            except ImportError:
+                from voicevox_agent import (
+                    generate_narration as _voicevox_narration, is_voicevox_running
+                )
+
+            if not is_voicevox_running():
+                logger.warning("[Video v2.1] VOICEVOXが起動していません。ナレーションをスキップします。")
+                enable_narration = False
+            else:
+                tts_ready = True
+                logger.info(f"[Video v2.1] TTS: VOICEVOX (speaker={narration_speaker})")
+
+            def _tts_generate(text):
+                return _voicevox_narration(
+                    text, speaker_id=narration_speaker, speed=narration_speed
+                )
+
         else:
-            logger.info(f"[Video v2.1] ナレーション生成開始 (speaker={narration_speaker})...")
+            # 英語 (または他言語): Edge TTS
+            try:
+                from backend.integrations.edge_tts_agent import (
+                    generate_narration_en as _edge_narration, is_edge_tts_available
+                )
+            except ImportError:
+                from edge_tts_agent import (
+                    generate_narration_en as _edge_narration, is_edge_tts_available
+                )
 
+            if not is_edge_tts_available():
+                logger.warning("[Video v2.1] edge-tts未インストール。pip install edge-tts を実行してください。")
+                enable_narration = False
+            else:
+                tts_ready = True
+                _voice = narration_voice or None  # 省略時は自動選択
+                logger.info(f"[Video v2.1] TTS: Edge TTS (lang={narration_language}, voice={_voice or 'auto'})")
+
+            def _tts_generate(text):
+                return _edge_narration(
+                    text,
+                    voice=narration_voice or None,
+                    speed=narration_speed,
+                    language=narration_language,
+                )
+
+        if tts_ready:
             # 全スライドのナレーションテキスト (タイトル / コンテンツ / CTA)
             narr_texts = (
                 [title]        # タイトルスライド
@@ -575,21 +618,15 @@ def generate_sns_short_video(
             _buffer = 0.5  # 音声終了後のバッファ秒
 
             for idx, text in enumerate(narr_texts):
-                result = generate_narration(
-                    text,
-                    speaker_id=narration_speaker,
-                    speed=narration_speed,
-                )
+                result = _tts_generate(text)
                 if result["status"] == "success":
                     narration_audios.append(result["local_path"])
-                    # スライド長 = narration秒 + バッファ（最低 min_slide_duration）
                     dur = max(result["duration_sec"] + _buffer, min_slide_duration)
                     slide_durations.append(dur)
                     logger.info(f"[Video v2.1] ナレーション {idx+1}/{len(narr_texts)}: "
                                 f"{dur:.2f}s ({result['local_path']})")
                 else:
                     narration_audios.append(None)
-                    # フォールバック: デフォルト秒数
                     if idx == 0:
                         slide_durations.append(title_duration)
                     elif idx == len(narr_texts) - 1:
