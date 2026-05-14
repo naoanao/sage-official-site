@@ -477,13 +477,20 @@ def generate_sns_short_video(
     subtitle: str = "",
     fps: int = VIDEO_FPS,
     # ── v2 拡張オプション ──────────────────────────────────────────────────
-    enable_bgm: bool = True,          # BGM自動合成 (HF MusicGen)
+    enable_bgm: bool = True,           # BGM自動合成 (HF MusicGen)
     enable_ken_burns: bool = True,     # Kenバーンズ効果
     enable_text_fadein: bool = True,   # テキストフェードイン
     bgm_volume: float = 0.12,         # BGM音量 (0.0〜1.0)
     bgm_niche: str = "",              # BGMスタイル判定用ニッチ
     ken_burns_zoom: float = 1.10,     # ズーム倍率 (1.05〜1.20推奨)
     text_fade_duration: float = 0.6,  # テキストフェードイン秒数
+    # ── v2.1 ナレーション (VOICEVOX) ─────────────────────────────────────
+    enable_narration: bool = False,    # VOICEVOXナレーション (要: VOICEVOX起動)
+    narration_speaker: int = 1,        # スピーカーID (1=ずんだもん, 2=四国めたん)
+    narration_speed: float = 1.1,      # 話速
+    narration_volume: float = 0.9,     # ナレーション音量 (0.0〜1.0)
+    narration_bgm_volume: float = 0.06, # ナレーション有効時のBGM音量（小さくする）
+    min_slide_duration: float = 2.0,   # ナレーション長さに合わせる最低秒数
 ) -> Optional[str]:
     """
     SNS用ショート動画（縦型 1080x1920）を生成する。
@@ -533,54 +540,145 @@ def generate_sns_short_video(
 
     clips = []
     logger.info(f"[Video v2] Generating {len(slides)+2} slides "
-                f"(bgm={enable_bgm}, ken_burns={enable_ken_burns}, fadein={enable_text_fadein})")
+                f"(bgm={enable_bgm}, ken_burns={enable_ken_burns}, fadein={enable_text_fadein}, "
+                f"narration={enable_narration})")
+
+    # ── v2.1: ナレーション音声を事前生成 ────────────────────────────────────
+    narration_audios = []   # [title_audio, slide1_audio, ..., cta_audio]
+    slide_durations = []    # 各スライドの実際の長さ（ナレーション長に合わせる）
+
+    if enable_narration:
+        try:
+            from moviepy import AudioFileClip
+        except ImportError:
+            from moviepy.editor import AudioFileClip
+
+        try:
+            from backend.integrations.voicevox_agent import (
+                generate_narration, is_voicevox_running
+            )
+        except ImportError:
+            from voicevox_agent import generate_narration, is_voicevox_running
+
+        if not is_voicevox_running():
+            logger.warning("[Video v2.1] VOICEVOXが起動していません。ナレーションをスキップします。")
+            enable_narration = False
+        else:
+            logger.info(f"[Video v2.1] ナレーション生成開始 (speaker={narration_speaker})...")
+
+            # 全スライドのナレーションテキスト (タイトル / コンテンツ / CTA)
+            narr_texts = (
+                [title]        # タイトルスライド
+                + slides       # コンテンツスライド
+                + [cta_text]   # CTAスライド
+            )
+            _buffer = 0.5  # 音声終了後のバッファ秒
+
+            for idx, text in enumerate(narr_texts):
+                result = generate_narration(
+                    text,
+                    speaker_id=narration_speaker,
+                    speed=narration_speed,
+                )
+                if result["status"] == "success":
+                    narration_audios.append(result["local_path"])
+                    # スライド長 = narration秒 + バッファ（最低 min_slide_duration）
+                    dur = max(result["duration_sec"] + _buffer, min_slide_duration)
+                    slide_durations.append(dur)
+                    logger.info(f"[Video v2.1] ナレーション {idx+1}/{len(narr_texts)}: "
+                                f"{dur:.2f}s ({result['local_path']})")
+                else:
+                    narration_audios.append(None)
+                    # フォールバック: デフォルト秒数
+                    if idx == 0:
+                        slide_durations.append(title_duration)
+                    elif idx == len(narr_texts) - 1:
+                        slide_durations.append(cta_duration)
+                    else:
+                        slide_durations.append(duration_per_slide)
+
+            # ナレーション有効時は BGM を小さくする
+            if narration_audios and any(a is not None for a in narration_audios):
+                bgm_volume = narration_bgm_volume
+                logger.info(f"[Video v2.1] BGM音量をナレーション用に調整: {bgm_volume}")
+
+    # ── ナレーションなし時のデフォルト秒数設定 ───────────────────────────────
+    if not slide_durations:
+        slide_durations = (
+            [title_duration]
+            + [duration_per_slide] * len(slides)
+            + [cta_duration]
+        )
+
+    def _attach_narration(clip, audio_path: Optional[str], volume: float = 0.9):
+        """クリップにナレーション音声を合成する"""
+        if not audio_path:
+            return clip
+        try:
+            narr_audio = AudioFileClip(audio_path).with_effects(
+                [lambda a: a.with_volume_scaled(volume)]
+            )
+            # クリップ長に合わせてトリム or パディング
+            if narr_audio.duration > clip.duration:
+                narr_audio = narr_audio.subclipped(0, clip.duration)
+            return clip.with_audio(narr_audio)
+        except Exception as e:
+            logger.warning(f"[Video v2.1] ナレーション合成エラー: {e}")
+            return clip
 
     # ── タイトルスライド ─────────────────────────────────────────────────────
+    _title_dur = slide_durations[0]
     title_frame = _create_title_slide(title, subtitle=subtitle, bg_image_path=bg_image_path)
     if enable_ken_burns or enable_text_fadein:
-        # テキストなし背景フレーム（フェードイン用）
         title_bg_frame = _create_title_slide("", subtitle="", bg_image_path=bg_image_path)
-        clip = _make_fadein_clip(title_bg_frame, title_frame, title_duration, fps,
+        clip = _make_fadein_clip(title_bg_frame, title_frame, _title_dur, fps,
                                   fade_duration=text_fade_duration if enable_text_fadein else 0,
                                   use_ken_burns=enable_ken_burns)
     else:
-        clip = ImageClip(title_frame).with_duration(title_duration)
+        clip = ImageClip(title_frame).with_duration(_title_dur)
+    if enable_narration and narration_audios:
+        clip = _attach_narration(clip, narration_audios[0], narration_volume)
     clips.append(clip)
-    logger.info(f"[Video v2] Title slide ready ({title_duration}s)")
+    logger.info(f"[Video v2] Title slide ready ({_title_dur:.1f}s)")
 
     # ── コンテンツスライド ───────────────────────────────────────────────────
     total_content = len(slides)
     for i, slide_text in enumerate(slides):
         accent = accent_colors[i % len(accent_colors)]
         icon = icons[i % len(icons)]
+        _slide_dur = slide_durations[1 + i]
         frame_full = _create_content_slide(slide_text, i + 1, total_content,
                                            accent_color=accent, icon=icon)
         if enable_ken_burns or enable_text_fadein:
-            # テキストなし背景（フェードイン用）
             frame_bg = _create_content_slide("", i + 1, total_content,
                                              accent_color=accent, icon="")
-            clip = _make_fadein_clip(frame_bg, frame_full, duration_per_slide, fps,
+            clip = _make_fadein_clip(frame_bg, frame_full, _slide_dur, fps,
                                       fade_duration=text_fade_duration if enable_text_fadein else 0,
                                       use_ken_burns=enable_ken_burns)
         else:
-            clip = ImageClip(frame_full).with_duration(duration_per_slide)
+            clip = ImageClip(frame_full).with_duration(_slide_dur)
+        if enable_narration and narration_audios and len(narration_audios) > 1 + i:
+            clip = _attach_narration(clip, narration_audios[1 + i], narration_volume)
         clips.append(clip)
-        logger.info(f"[Video v2] Content slide {i+1}/{total_content} ready")
+        logger.info(f"[Video v2] Content slide {i+1}/{total_content} ready ({_slide_dur:.1f}s)")
 
     # ── CTAスライド ──────────────────────────────────────────────────────────
+    _cta_dur = slide_durations[-1]
     cta_frame = _create_cta_slide(cta_text, url=url)
     if enable_ken_burns or enable_text_fadein:
         cta_bg = _create_cta_slide("", url=url)
-        clip = _make_fadein_clip(cta_bg, cta_frame, cta_duration, fps,
+        clip = _make_fadein_clip(cta_bg, cta_frame, _cta_dur, fps,
                                   fade_duration=text_fade_duration if enable_text_fadein else 0,
                                   use_ken_burns=enable_ken_burns)
     else:
-        clip = ImageClip(cta_frame).with_duration(cta_duration)
+        clip = ImageClip(cta_frame).with_duration(_cta_dur)
+    if enable_narration and narration_audios:
+        clip = _attach_narration(clip, narration_audios[-1], narration_volume)
     clips.append(clip)
-    logger.info("[Video v2] CTA slide ready")
+    logger.info(f"[Video v2] CTA slide ready ({_cta_dur:.1f}s)")
 
     # ── 結合 ─────────────────────────────────────────────────────────────────
-    total_duration = title_duration + total_content * duration_per_slide + cta_duration
+    total_duration = sum(slide_durations)
     logger.info(f"[Video v2] Concatenating clips... Total duration: {total_duration:.1f}s")
     final = concatenate_videoclips(clips, method="compose")
 
@@ -594,7 +692,7 @@ def generate_sns_short_video(
 
     # ── 書き出し ──────────────────────────────────────────────────────────────
     logger.info(f"[Video v2] Writing to: {output_path}")
-    has_audio = enable_bgm and final.audio is not None
+    has_audio = (enable_bgm and final.audio is not None) or enable_narration
     final.write_videofile(
         output_path,
         fps=fps,
