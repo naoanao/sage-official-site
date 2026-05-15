@@ -57,7 +57,30 @@ creds = flow.run_local_server(port=8080, prompt="consent", access_type="offline"
 
 print("\n✅ 認証成功！\n")
 print(f"YOUTUBE_REFRESH_TOKEN={creds.refresh_token}")
-print("\n上記の値を .env ファイルに追加してください:")
-print("  YOUTUBE_CLIENT_ID=...")
-print("  YOUTUBE_CLIENT_SECRET=...")
-print(f"  YOUTUBE_REFRESH_TOKEN={creds.refresh_token}")
+
+# Auto-write refresh token to .env
+import re
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+try:
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        if "YOUTUBE_REFRESH_TOKEN=" in content:
+            content = re.sub(
+                r"YOUTUBE_REFRESH_TOKEN=.*",
+                f"YOUTUBE_REFRESH_TOKEN={creds.refresh_token}",
+                content,
+            )
+        else:
+            content += f"\nYOUTUBE_REFRESH_TOKEN={creds.refresh_token}\n"
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"\n✅ .env に自動保存しました: {env_path}")
+    else:
+        print(f"\n⚠️ .env が見つかりません。手動で追加してください:")
+        print(f"  YOUTUBE_REFRESH_TOKEN={creds.refresh_token}")
+except Exception as e:
+    print(f"\n⚠️ .env への書き込みに失敗しました: {e}")
+    print(f"手動で追加してください: YOUTUBE_REFRESH_TOKEN={creds.refresh_token}")
+
+print("\n完了！このウィンドウを閉じてください。")
