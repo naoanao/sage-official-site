@@ -48,6 +48,10 @@ class CloudflareR2Uploader:
             content_type = "image/png"
         elif file_path.lower().endswith(".webp"):
             content_type = "image/webp"
+        elif file_path.lower().endswith(".mp4"):
+            content_type = "video/mp4"
+        elif file_path.lower().endswith(".mov"):
+            content_type = "video/quicktime"
 
         try:
             # R2 doesn't support generic ACLs easily, but standard put works.
