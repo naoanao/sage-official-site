@@ -300,6 +300,121 @@ class InstagramDailyScheduler:
 
         logger.info(f"✅ Instagram Cycle Completed for '{topic}'")
 
+    def run_youtube_shorts_cycle(self, topic: str = "", slides: list = None,
+                                  language: str = "en") -> None:
+        """
+        YouTube Shorts を自動生成して投稿する。
+
+        Args:
+            topic   : 動画のトピック（省略時はNotionから取得）
+            slides  : スライドテキストリスト
+            language: ナレーション言語 "en" | "ja"
+
+        Flow:
+            1. Notionからコンテンツ取得 (topicが空の場合)
+            2. LLMでタイトル・説明文生成
+            3. video_generator.py で動画生成 (縦型 9:16)
+            4. YouTubeUploader.upload_short() で投稿
+        """
+        logger.info("📺 Starting YouTube Shorts cycle...")
+
+        # --- コンテンツ取得 ---
+        if not topic:
+            items = self.notion_pool.get_ready_content(limit=1)
+            if not items:
+                logger.info("📅 No content in Notion. Skipping YouTube cycle.")
+                return
+            item = items[0]
+            topic = item.get("topic", "")
+            content = item.get("content", "")
+            item_id = item.get("id", f"yt_{datetime.utcnow().strftime('%H%M%S')}")
+        else:
+            content = topic
+            item_id = f"yt_manual_{datetime.utcnow().strftime('%H%M%S')}"
+            item = None
+
+        logger.info(f"📂 YouTube topic: {topic}")
+
+        # --- キャプション・タイトル生成 ---
+        seed_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            optimized = self._optimize_content(topic, content, seed_time)
+            caption = optimized.get("caption", content)
+            # タイトルはcaptionの最初の行（100文字以内）
+            title = caption.split("\n")[0][:95].strip()
+            if not title:
+                title = topic[:95]
+        except Exception as e:
+            logger.warning(f"🛡️ Caption generation failed: {e}. Using topic.")
+            caption = content or topic
+            title = topic[:95]
+
+        # --- DRY RUN ---
+        if self.dry_run:
+            logger.info(f"🛠️ [DRY_RUN] YouTube Shorts cycle finished for '{topic}'.")
+            return
+
+        # --- 動画生成 (縦型 9:16) ---
+        try:
+            from backend.integrations.video_generator import generate_sns_short_video
+        except ImportError:
+            from video_generator import generate_sns_short_video
+
+        if not slides:
+            import re
+            sentences = re.split(r'[。！？\.\!\?]\s*', (content or topic).strip())
+            slides = [s.strip() for s in sentences if len(s.strip()) > 5][:5]
+            if not slides:
+                slides = [topic]
+
+        cta_text = "Subscribe for more AI insights!" if language == "en" else "チャンネル登録はプロフから"
+
+        logger.info(f"🎬 Generating Shorts video ({len(slides)} slides, lang={language})...")
+        video_path = generate_sns_short_video(
+            title=topic,
+            slides=slides,
+            cta_text=cta_text,
+            enable_narration=True,
+            narration_language=language,
+            enable_bgm=True,
+            enable_ken_burns=True,
+            enable_text_fadein=True,
+        )
+
+        if not video_path:
+            logger.error("❌ Video generation failed.")
+            return
+
+        logger.info(f"✅ Video generated: {video_path}")
+
+        # --- YouTube Shorts 投稿 ---
+        try:
+            from backend.integrations.youtube_integration import YouTubeUploader
+        except ImportError:
+            from youtube_integration import YouTubeUploader
+
+        yt = YouTubeUploader()
+        tags = ["AItools", "automation", "solopreneur", "Shorts"]
+        if language == "ja":
+            tags += ["AI活用", "自動化", "副業"]
+
+        yt_result = yt.upload_short(
+            video_path=video_path,
+            title=title,
+            description=caption,
+            tags=tags,
+            privacy="public",
+        )
+
+        if yt_result.get("success"):
+            logger.info(f"✅ YouTube Shorts posted! URL: {yt_result.get('url')}")
+            if item and item.get("id"):
+                self.notion_pool.mark_as_posted(item["id"])
+        else:
+            logger.error(f"❌ YouTube upload failed: {yt_result.get('error')}")
+
+        logger.info(f"✅ YouTube Shorts cycle completed for '{topic}'")
+
 
 if __name__ == "__main__":
     import schedule
@@ -310,14 +425,20 @@ if __name__ == "__main__":
     # 画像投稿: JST 12:00 = UTC 03:00
     schedule.every().day.at("03:00").do(scheduler.run_cycle)
 
-    # Reels動画投稿: JST 20:00 = UTC 11:00
+    # Instagram Reels: JST 20:00 = UTC 11:00
     schedule.every().day.at("11:00").do(
         scheduler.run_video_reel_cycle, language="en"
     )
 
+    # YouTube Shorts: JST 18:00 = UTC 09:00
+    schedule.every().day.at("09:00").do(
+        scheduler.run_youtube_shorts_cycle, language="en"
+    )
+
     logger.info("🚀 InstagramDailyScheduler started.")
-    logger.info("   📸 Image post : JST 12:00 daily")
-    logger.info("   🎬 Reel video : JST 20:00 daily")
+    logger.info("   📸 Image post      : JST 12:00 daily")
+    logger.info("   🎬 Instagram Reels : JST 20:00 daily")
+    logger.info("   📺 YouTube Shorts  : JST 18:00 daily")
 
     while True:
         schedule.run_pending()
