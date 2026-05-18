@@ -79,12 +79,18 @@ interface MarketData {
 // ───────────────────────────────────────────────────
 // Gemini + Google Search Grounding
 // ───────────────────────────────────────────────────
-async function searchWithGemini(query: string, systemContext: string): Promise<string> {
+async function searchWithGemini(query: string, systemContext: string, region: Region = "jp"): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return "";
 
   try {
-    const prompt = `${systemContext}\n\n以下について最新のウェブ情報を調べて、日本語で具体的にまとめてください:\n${query}`;
+    const instruction = region === "us"
+      ? `Research the following and summarize in English with specific data points, company names, and source citations:`
+      : region === "global"
+      ? `Research the following and summarize in English (with Japanese where available) including specific data, company names, and source citations:`
+      : `以下について最新のウェブ情報を調べて、具体的な数値・企業名・出典付きで日本語でまとめてください:`;
+
+    const prompt = `${systemContext}\n\n${instruction}\n${query}`;
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
@@ -103,7 +109,6 @@ async function searchWithGemini(query: string, systemContext: string): Promise<s
     );
 
     if (!res.ok) {
-      // Grounding非対応の場合はフォールバック（通常のGemini）
       return await callGeminiFallback(prompt);
     }
 
@@ -194,24 +199,61 @@ function buildSearchQueries(req: ResearchRequest) {
   const loc = location ? ` ${location}` : "";
 
   if (region === "us") {
+    // US market: tap into Reddit communities, industry-specific review platforms,
+    // direct response ad intelligence, and authoritative research sources
+    const industryReviewSite = industry === "ec" ? "site:g2.com OR site:capterra.com OR site:producthunt.com"
+      : industry === "restaurant" ? "site:yelp.com OR site:tripadvisor.com OR site:opentable.com"
+      : industry === "salon" ? "site:yelp.com OR site:vagaro.com OR site:mindbodyonline.com"
+      : industry === "construction" ? "site:angi.com OR site:houzz.com OR site:thumbtack.com OR site:bbb.org"
+      : industry === "health" ? "site:yelp.com OR site:healthgrades.com OR site:zocdoc.com"
+      : industry === "education" ? "site:reddit.com OR site:coursereport.com OR site:niche.com"
+      : "site:g2.com OR site:clutch.co OR site:trustpilot.com";
+
     return {
-      competitor_ranking: `${product} Amazon best seller top brands competitors ranking site:amazon.com OR site:g2.com OR site:capterra.com 2025`,
-      competitor_reviews: `${product} reviews Trustpilot G2 Reddit "love" "hate" "disappointed" "amazing" 2025`,
-      ad_landscape: `${product} Facebook Meta ads Instagram Google ads marketing examples 2025 2026`,
-      market_size: `${industryLabelUS(industry)} market size Statista IBISWorld "Grand View Research" OR "MarketsandMarkets" 2025 2026`,
-      government_stats: `${target} statistics "US Census Bureau" OR "Bureau of Labor Statistics" OR CDC OR FDA 2024 2025${loc}`,
-      ugc_needs: `${product} Reddit TikTok Instagram "tried" "review" "experience" "worth it" 2025`,
+      // Step1: Real competitor intelligence — "best X" searches + alternatives
+      competitor_ranking: `"best ${product}" OR "top ${product}" OR "${product} alternatives" OR "${product} vs" ${industryReviewSite} 2025`,
+
+      // Step2: Voice of customer — Reddit threads are gold in US market
+      // High-rated (what they love) + critical reviews (pain points) + switch triggers
+      competitor_reviews: `site:reddit.com "${product}" OR "${industryLabelUS(industry)}" ("what do you recommend" OR "switched from" OR "disappointed" OR "love" OR "best option" OR "avoid") 2025`,
+
+      // Step3: Ad intelligence — US direct response: hook angle, offer structure, CTA
+      // US ads lead with: pain agitation, social proof, free trial/guarantee, FOMO
+      ad_landscape: `${product} ad copy "free trial" OR "money-back guarantee" OR "as seen on" OR "join 10000" site:facebook.com/ads OR Meta ad library ${industryLabelUS(industry)} marketing strategy 2025`,
+
+      // Step4: Market size — TAM/SAM/SOM + funding signals (Crunchbase shows category health)
+      market_size: `${industryLabelUS(industry)} market size TAM billion Statista OR IBISWorld OR "Grand View Research" OR Crunchbase funding 2025 2026`,
+
+      // Step5: Demographics — Pew Research + Census + BLS + eMarketer for digital behavior
+      government_stats: `${target} demographics income education "Pew Research" OR "US Census" OR "Bureau of Labor Statistics" OR eMarketer 2024 2025${loc}`,
+
+      // Step6: UGC / unmet needs — Reddit "looking for X" reveals jobs-to-be-done
+      ugc_needs: `site:reddit.com "${industryLabelUS(industry)}" ("looking for" OR "wish there was" OR "frustrated" OR "no solution" OR "nobody solves") 2025`,
     };
   }
 
   if (region === "global") {
+    // Global market: identify which regional markets are accessible + platform fragmentation
+    // + localization requirements + universal vs. culture-specific positioning
     return {
-      competitor_ranking: `${product} Amazon best seller competitors ranking 2025 site:amazon.com OR site:amazon.co.jp OR 楽天`,
-      competitor_reviews: `${product} reviews Trustpilot G2 Reddit 口コミ レビュー "love" "hate" 「満足」「残念」 2025`,
-      ad_landscape: `${product} Meta Facebook Instagram Google ads SNS広告 marketing 2025 2026`,
-      market_size: `${industryLabelUS(industry)} ${industryLabelJP(industry)} market size 市場規模 Statista 矢野経済 2025 2026`,
-      government_stats: `${target} statistics census 統計 厚生労働省 総務省 2024 2025${loc}`,
-      ugc_needs: `${product} Reddit TikTok Instagram Twitter X 「使ってみた」 "tried" "review" 体験談 2025`,
+      // Competitor landscape across key markets (US, UK, APAC, LATAM, EMEA)
+      competitor_ranking: `"best ${product}" OR "top ${product}" global market site:g2.com OR site:capterra.com OR site:amazon.com OR 楽天 OR site:trustpilot.com 2025`,
+
+      // Cross-market voice of customer: what works in US vs. JP vs. EU
+      competitor_reviews: `${product} reviews Reddit Trustpilot G2 口コミ "worth it" OR "disappointed" OR "better than" cross-market 2025`,
+
+      // Global ad strategy: what platforms dominate by region
+      // US: Meta/Google/TikTok | EU: Meta/Google | APAC: TikTok/LINE/Kakao | LATAM: WhatsApp/Meta
+      ad_landscape: `${product} ${industryLabelUS(industry)} global marketing strategy "international" OR "expansion" Meta Google TikTok LinkedIn 2025 2026`,
+
+      // Global market size + regional breakdown + growth rates by geography
+      market_size: `${industryLabelUS(industry)} global market size regional breakdown APAC EMEA Americas Statista OR "Grand View Research" 2025 2026`,
+
+      // Demographics by key English + Japanese speaking markets
+      government_stats: `${target} global demographics "US Census" OR "Eurostat" OR OECD OR 総務省 statistics consumer behavior 2024 2025${loc}`,
+
+      // UGC: international communities where target audience discusses problems
+      ugc_needs: `site:reddit.com "${product}" OR "${industryLabelUS(industry)}" international OR global OR "in my country" 2025`,
     };
   }
 
@@ -240,16 +282,15 @@ function buildSynthesisPrompt(req: ResearchRequest, gathered: Record<string, str
     ? "Amazon JP/US, 楽天, G2, Trustpilot, 矢野経済, Statista, 厚労省/総務省, US Census"
     : "Amazon JP, 楽天, 矢野経済, 厚労省, 総務省";
 
-  return `You are Growl's market research AI. Based on the web research data below, output a 3C analysis in JSON format.
-Output language: ${outputLang}. Target market: ${regionLabel}.
+  // ── JP synthesis prompt (unchanged — Growl's core strength)
+  if (region === "jp") {
+    return `あなたはGrowlの市場調査AIです。以下のウェブ調査結果を基に3C分析をJSON形式で出力してください。
 
-[Research Target]
-Product/Service: ${product}
-Target Customer: ${target}
-Industry: ${industry}
-${business_name ? `Business Name: ${business_name}` : ""}
-Region/Market: ${regionLabel}
-Preferred Sources: ${sourceExamples}
+【調査対象】
+商品・サービス: ${product}
+ターゲット顧客: ${target}
+業種: ${industry}
+${business_name ? `店舗・企業名: ${business_name}` : ""}
 
 【収集した実データ】
 ■ 競合・ランキング情報:
@@ -270,17 +311,17 @@ ${gathered.government_stats || "データ未取得"}
 ■ SNS口コミ・潜在ニーズ:
 ${gathered.ugc_needs || "データ未取得"}
 
-[Output Rules]
-- Base analysis ONLY on the collected data above — do not fabricate information
-- Items with no data: write "Requires further research" (or "要調査" for JP output)
-- Include source citations for all statistics (e.g. "Market size $5B (Statista 2025)" or "市場規模1,000億円（矢野経済2025年）")
-- Output JSON only — no code blocks, no explanation
+【出力ルール】
+- 上記の実データのみを根拠に分析すること（AIの想像で補完しない）
+- データがない項目は「要調査」と記載
+- 数値は出典付きで記載（例: 「市場規模1,000億円（矢野経済2025年）」）
+- JSONのみで出力（コードブロック・説明不要）
 
 以下のJSON形式で出力:
 {
   "customer": {
     "purchase_motives": ["★5レビューから抽出した購買動機1", "購買動機2", "購買動機3"],
-    "pain_points": ["★2-3レビューから抽出した離脱理由・不満1", "不満2", "不満3"],
+    "pain_points": ["★2〜3レビューから抽出した離脱理由・不満1", "不満2", "不満3"],
     "latent_needs": ["X・UGCから抽出した潜在ニーズ1", "潜在ニーズ2"],
     "quantitative": ["政府統計等の定量データ1（出典付き）", "定量データ2"]
   },
@@ -306,6 +347,155 @@ ${gathered.ugc_needs || "データ未取得"}
   "usp_candidates": ["この分析から導き出せるUSP候補1", "USP候補2", "USP候補3"],
   "recommended_actions": ["今週実行できる具体的アクション1（スマホ1台・30分以内）", "アクション2", "アクション3"],
   "sources": ["使用した情報源1", "情報源2", "情報源3"]
+}`;
+  }
+
+  // ── US synthesis prompt: American marketing frameworks
+  // ICP, Jobs-to-be-done, Positioning statement, GTM motion, Growth levers
+  if (region === "us") {
+    return `You are a world-class US market strategist (think: top partner at McKinsey / ex-CMO of a SaaS unicorn).
+Analyze the research data below and output a comprehensive market intelligence report in JSON.
+Output language: English.
+
+[Research Target]
+Product/Service: ${product}
+Target Customer: ${target}
+Industry: ${industryLabelUS(industry)}
+${business_name ? `Business Name: ${business_name}` : ""}
+
+[Collected Research Data]
+■ Competitor landscape (review platforms, rankings, alternatives):
+${gathered.competitor_ranking || "No data collected"}
+
+■ Voice of Customer — Reddit threads, reviews (praise + complaints + switch triggers):
+${gathered.competitor_reviews || "No data collected"}
+
+■ Ad intelligence — hooks, offer structures, CTAs, dominant platforms:
+${gathered.ad_landscape || "No data collected"}
+
+■ Market size — TAM/SAM, growth rate, funding signals:
+${gathered.market_size || "No data collected"}
+
+■ Demographics & psychographics (Pew, Census, BLS, eMarketer):
+${gathered.government_stats || "No data collected"}
+
+■ UGC / Jobs-to-be-done — Reddit "looking for", "wish there was", unmet needs:
+${gathered.ugc_needs || "No data collected"}
+
+[Output Rules]
+- Base analysis ONLY on the collected data — do not fabricate figures
+- Cite sources for all statistics (e.g. "TAM $12B (Grand View Research, 2025)")
+- If data is insufficient, write "Requires further research"
+- Output valid JSON only — no markdown, no code blocks
+
+Output this exact JSON structure:
+{
+  "customer": {
+    "purchase_motives": ["Top reason customers buy (from high-rated reviews/Reddit praise)", "reason2", "reason3"],
+    "pain_points": ["Core frustration / reason they quit competitors (from critical reviews/Reddit complaints)", "pain2", "pain3"],
+    "latent_needs": ["Jobs-to-be-done not yet solved (from Reddit 'looking for'/'wish' threads)", "need2"],
+    "quantitative": ["Demographic/behavioral stat with citation (e.g. '73% of US millennials... — Pew 2024')", "stat2"]
+  },
+  "competitor": {
+    "top_competitors": [
+      {"name": "Actual competitor name", "strength": "What they dominate (channels, price, brand)", "weakness": "Where customers complain / switch triggers", "ad_count": "Ad spend signal or platform dominance"},
+      {"name": "Competitor B", "strength": "strength", "weakness": "weakness"},
+      {"name": "Competitor C", "strength": "strength", "weakness": "weakness"}
+    ],
+    "ad_landscape": "Dominant ad hooks and offer structures in this category (e.g. 'free trial dominates; pain-agitation-solution copy pattern; TikTok UGC drives lowest CAC')",
+    "white_space": "The specific gap no competitor owns — the positioning opportunity"
+  },
+  "company_gaps": [
+    {"gap": "Competitor weakness = entry point", "opportunity": "Specific GTM tactic to win this segment"},
+    {"gap": "gap2", "opportunity": "tactic2"},
+    {"gap": "gap3", "opportunity": "tactic3"}
+  ],
+  "market": {
+    "market_size": "TAM/SAM figure with source (e.g. '$8.5B TAM, $1.2B SAM — Statista 2025')",
+    "trend": "Growth trajectory and key driver (e.g. 'Growing 14% CAGR driven by AI adoption')",
+    "key_statistics": ["Key stat with source", "stat2", "stat3"]
+  },
+  "positioning_statement": "For [ICP] who [urgent problem], [Product] is the [category] that [unique differentiator], unlike [key competitor] which [their weakness].",
+  "gtm_motion": "Recommended go-to-market: PLG / sales-led / community-led / content-led — with rationale from data",
+  "growth_levers": ["Top growth lever (e.g. 'Reddit community seeding in r/[subreddit] — highest intent audience')", "lever2", "lever3"],
+  "usp_candidates": ["USP candidate derived from white space 1", "USP2", "USP3"],
+  "recommended_actions": ["Highest-leverage action this week (specific, measurable, free)", "action2", "action3"],
+  "sources": ["source1", "source2", "source3"]
+}`;
+  }
+
+  // ── Global synthesis prompt: market-entry + localization intelligence
+  return `You are a world-class global expansion strategist (think: McKinsey Global Institute / ex-VP of International Growth).
+Analyze the research data and output a global market intelligence report in JSON.
+Output language: English (include Japanese notes where Japan-specific data exists).
+
+[Research Target]
+Product/Service: ${product}
+Target Customer: ${target}
+Industry: ${industryLabelUS(industry)} / ${industryLabelJP(industry)}
+${business_name ? `Business Name: ${business_name}` : ""}
+Target Markets: Global (prioritize US, Japan, and key growth regions)
+
+[Collected Research Data]
+■ Global competitor landscape:
+${gathered.competitor_ranking || "No data collected"}
+
+■ Cross-market voice of customer:
+${gathered.competitor_reviews || "No data collected"}
+
+■ Platform & ad landscape by region:
+${gathered.ad_landscape || "No data collected"}
+
+■ Global market size & regional breakdown:
+${gathered.market_size || "No data collected"}
+
+■ Cross-market demographics:
+${gathered.government_stats || "No data collected"}
+
+■ International community signals (Reddit, UGC):
+${gathered.ugc_needs || "No data collected"}
+
+[Output Rules]
+- Base analysis ONLY on collected data — do not fabricate figures
+- Cite all statistics with source and year
+- Flag which insights are US-specific vs. Japan-specific vs. universal
+- Output valid JSON only
+
+Output this exact JSON structure:
+{
+  "customer": {
+    "purchase_motives": ["Universal buying trigger (works across markets)", "US-specific motive", "JP-specific motive"],
+    "pain_points": ["Universal pain point", "US-market pain", "JP-market pain"],
+    "latent_needs": ["Unmet need that crosses markets", "region-specific need"],
+    "quantitative": ["Global stat with source", "US stat", "JP stat"]
+  },
+  "competitor": {
+    "top_competitors": [
+      {"name": "Global leader", "strength": "What they dominate globally", "weakness": "Where they fail internationally", "ad_count": "Platform presence"},
+      {"name": "US market leader", "strength": "strength", "weakness": "weakness"},
+      {"name": "JP market leader", "strength": "strength", "weakness": "weakness"}
+    ],
+    "ad_landscape": "Platform fragmentation by region: US (Meta/Google/TikTok), JP (Instagram/LINE/TikTok), EU (Meta/Google), LATAM (Meta/WhatsApp). Dominant creative format and offer structure per region.",
+    "white_space": "The positioning gap that exists across multiple markets simultaneously"
+  },
+  "company_gaps": [
+    {"gap": "Global competitor weakness", "opportunity": "Market entry angle that exploits this gap"},
+    {"gap": "gap2", "opportunity": "tactic2"},
+    {"gap": "gap3", "opportunity": "tactic3"}
+  ],
+  "market": {
+    "market_size": "Global TAM with regional breakdown (e.g. 'Global $45B: North America 42%, APAC 31%, EMEA 22% — Statista 2025')",
+    "trend": "Global growth direction + which region is growing fastest and why",
+    "key_statistics": ["Global stat", "US market stat", "JP/APAC stat"]
+  },
+  "localization_gaps": [
+    {"market": "US", "adapt": "What must be localized for US (copy tone, offer structure, platform)", "keep": "What is universal"},
+    {"market": "Japan", "adapt": "What must be localized for JP (relationship-first, LINE, trust signals)", "keep": "What is universal"}
+  ],
+  "beachhead_market": "Recommended first market to enter with rationale — which geography has highest ICP density + lowest competition + strongest product-market fit signal",
+  "usp_candidates": ["Global USP (works across cultures)", "USP2", "USP3"],
+  "recommended_actions": ["Highest-leverage global action this week", "action2", "action3"],
+  "sources": ["source1", "source2", "source3"]
 }`;
 }
 
@@ -341,12 +531,12 @@ export async function POST(req: NextRequest) {
       government_stats,
       ugc_needs,
     ] = await Promise.allSettled([
-      searchWithGemini(queries.competitor_ranking, systemContext),
-      searchWithGemini(queries.competitor_reviews, systemContext),
-      searchWithGemini(queries.ad_landscape, systemContext),
-      searchWithGemini(queries.market_size, systemContext),
-      searchWithGemini(queries.government_stats, systemContext),
-      searchWithGemini(queries.ugc_needs, systemContext),
+      searchWithGemini(queries.competitor_ranking, systemContext, region),
+      searchWithGemini(queries.competitor_reviews, systemContext, region),
+      searchWithGemini(queries.ad_landscape, systemContext, region),
+      searchWithGemini(queries.market_size, systemContext, region),
+      searchWithGemini(queries.government_stats, systemContext, region),
+      searchWithGemini(queries.ugc_needs, systemContext, region),
     ]);
 
     const gathered: Record<string, string> = {
@@ -388,6 +578,13 @@ export async function POST(req: NextRequest) {
         competitor: analysis.competitor ?? { top_competitors: [], ad_landscape: "", white_space: "" },
         company_gaps: analysis.company_gaps ?? [],
         market: analysis.market ?? { market_size: "", trend: "", key_statistics: [] },
+        // US-specific fields
+        ...(analysis.positioning_statement && { positioning_statement: analysis.positioning_statement }),
+        ...(analysis.gtm_motion && { gtm_motion: analysis.gtm_motion }),
+        ...(analysis.growth_levers && { growth_levers: analysis.growth_levers }),
+        // Global-specific fields
+        ...(analysis.localization_gaps && { localization_gaps: analysis.localization_gaps }),
+        ...(analysis.beachhead_market && { beachhead_market: analysis.beachhead_market }),
         usp_candidates: analysis.usp_candidates ?? [],
         recommended_actions: analysis.recommended_actions ?? [],
         sources: analysis.sources ?? [],

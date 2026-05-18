@@ -125,6 +125,13 @@ interface ResearchResult {
     };
     company_gaps: { gap: string; opportunity: string }[];
     market: { market_size: string; trend: string; key_statistics: string[] };
+    // US fields
+    positioning_statement?: string;
+    gtm_motion?: string;
+    growth_levers?: string[];
+    // Global fields
+    localization_gaps?: { market: string; adapt: string; keep: string }[];
+    beachhead_market?: string;
     usp_candidates: string[];
     recommended_actions: string[];
     sources: string[];
@@ -587,6 +594,48 @@ export default function MarketingPage() {
               </ul>
             )}
           </div>
+
+          {/* US専用: ポジショニング文・GTM・成長レバー */}
+          {r.positioning_statement && (
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-4 mb-4">
+              <p className="text-xs font-bold text-blue-600 mb-2">🎯 Positioning Statement</p>
+              <p className="text-sm text-blue-900 italic leading-relaxed">&ldquo;{r.positioning_statement}&rdquo;</p>
+            </div>
+          )}
+          {r.gtm_motion && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+              <p className="text-xs font-bold text-indigo-500 mb-1">🚀 GTM Motion</p>
+              <p className="text-sm text-gray-700">{r.gtm_motion}</p>
+            </div>
+          )}
+          {r.growth_levers && r.growth_levers.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+              <p className="text-xs font-bold text-indigo-500 mb-2">📈 Growth Levers</p>
+              {r.growth_levers.map((g, i) => (
+                <p key={i} className="text-sm text-gray-700 mb-1 flex gap-2"><span className="text-indigo-400 flex-shrink-0">▶</span>{g}</p>
+              ))}
+            </div>
+          )}
+
+          {/* Global専用: ローカライゼーション・参入市場 */}
+          {r.beachhead_market && (
+            <div className="bg-teal-50 border border-teal-100 rounded-2xl px-4 py-4 mb-4">
+              <p className="text-xs font-bold text-teal-600 mb-1">🌍 Beachhead Market (最初に攻める市場)</p>
+              <p className="text-sm text-teal-900">{r.beachhead_market}</p>
+            </div>
+          )}
+          {r.localization_gaps && r.localization_gaps.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+              <p className="text-xs font-bold text-indigo-500 mb-3">🌐 Localization Requirements</p>
+              {r.localization_gaps.map((lg, i) => (
+                <div key={i} className="mb-3 pb-3 border-b border-gray-50 last:border-0 last:mb-0 last:pb-0">
+                  <p className="text-xs font-bold text-gray-700 mb-1">📍 {lg.market}</p>
+                  <p className="text-xs text-gray-600 mb-0.5"><span className="text-red-400 font-semibold">要適応: </span>{lg.adapt}</p>
+                  <p className="text-xs text-gray-600"><span className="text-emerald-500 font-semibold">普遍的: </span>{lg.keep}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* USP候補 */}
           {r.usp_candidates.length > 0 && (
