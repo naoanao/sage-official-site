@@ -419,26 +419,61 @@ class InstagramDailyScheduler:
 if __name__ == "__main__":
     import schedule
     import time
+    import random
+    from datetime import date
 
     scheduler = InstagramDailyScheduler()
 
+    # ── ボット検知対策: 人間らしい投稿パターン ─────────────────────────────────
+    def _get_weekly_off_days() -> set:
+        week_num = date.today().isocalendar()[1]
+        rng = random.Random(week_num * 13337)
+        return set(rng.sample(range(7), 2))
+
+    def _human_wrap(fn, slot_name: str = "", **kwargs):
+        """ジッター + 20%スキップ + 週2日オフ のラッパー"""
+        today_weekday = date.today().weekday()
+        off_days = _get_weekly_off_days()
+        day_names = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+
+        if today_weekday in off_days:
+            logger.info(
+                f"📅 [Human-Pattern] OFF day ({day_names[today_weekday]}). "
+                f"Skipping {slot_name}."
+            )
+            return
+
+        if random.random() < 0.20:
+            logger.info(f"🎲 [Human-Pattern] Random skip for {slot_name}.")
+            return
+
+        jitter = random.randint(2, 35) * 60
+        logger.info(f"⏱️  [Human-Pattern] {slot_name}: waiting {jitter//60} min before posting.")
+        time.sleep(jitter)
+        fn(**kwargs)
+
     # 画像投稿: JST 12:00 = UTC 03:00
-    schedule.every().day.at("03:00").do(scheduler.run_cycle)
+    schedule.every().day.at("03:00").do(
+        _human_wrap, scheduler.run_cycle, slot_name="JST-12:00 Image"
+    )
 
     # Instagram Reels: JST 20:00 = UTC 11:00
     schedule.every().day.at("11:00").do(
-        scheduler.run_video_reel_cycle, language="en"
+        _human_wrap, scheduler.run_video_reel_cycle,
+        slot_name="JST-20:00 Reels", language="en"
     )
 
     # YouTube Shorts: JST 18:00 = UTC 09:00
     schedule.every().day.at("09:00").do(
-        scheduler.run_youtube_shorts_cycle, language="en"
+        _human_wrap, scheduler.run_youtube_shorts_cycle,
+        slot_name="JST-18:00 YTShorts", language="en"
     )
 
     logger.info("🚀 InstagramDailyScheduler started.")
     logger.info("   📸 Image post      : JST 12:00 daily")
     logger.info("   🎬 Instagram Reels : JST 20:00 daily")
     logger.info("   📺 YouTube Shorts  : JST 18:00 daily")
+    logger.info("   🎲 Human-pattern   : Weekly 2-day off | 20% slot skip | 2-35 min jitter")
 
     while True:
         schedule.run_pending()
