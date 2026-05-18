@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { saveOnboarding, loadOnboarding, saveUserId, saveSession, isFlowActive, clearOnboarding } from "@/lib/store";
 import { incrementUsage } from "@/components/FreeProgressBar";
 import ProgressBar from "@/components/ProgressBar";
+import LangToggle from "@/components/LangToggle";
+import { useLang, getLang } from "@/lib/i18n";
 
 const EXAMPLES: Record<string, string> = {
   restaurant: "SNSを気にせず、毎日料理だけに集中できている",
@@ -26,6 +28,7 @@ function getOrCreateDeviceId(): string {
 
 export default function GoalPage() {
   const router = useRouter();
+  const { t } = useLang();
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -91,7 +94,8 @@ export default function GoalPage() {
     saveOnboarding({ final_goal: value.trim() });
 
     const device_id = getOrCreateDeviceId();
-    const payload = { ...data, device_id };
+    const lang = getLang(); // 現在の言語設定をペイロードに含める
+    const payload = { ...data, device_id, lang };
 
     try {
       let json: { userId?: string; session?: unknown };
@@ -127,21 +131,24 @@ export default function GoalPage() {
             className="text-gray-400 hover:text-indigo-500 transition-colors p-1 -ml-1 mr-2"
             aria-label="前のステップに戻る"
           >
-            ← 戻る
+            {t("ob.back")}
           </button>
+          <div className="ml-auto">
+            <LangToggle />
+          </div>
         </div>
         <ProgressBar current={5} total={5} />
         <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 mb-6">
-          <p className="text-indigo-600 text-xs font-medium">最後の1問です ✨</p>
+          <p className="text-indigo-600 text-xs font-medium">{t("ob.goal.title")} ✨</p>
         </div>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          このアプリが完璧に機能したとき、あなたの1日はどう変わっていますか？
+          {t("ob.goal.title")}
         </h1>
-        <p className="text-gray-500 text-sm mb-8">例：「{example}」</p>
+        <p className="text-gray-500 text-sm mb-8">e.g. 「{example}」</p>
         <textarea
           className="w-full border-2 border-gray-200 focus:border-indigo-400 rounded-2xl p-4 text-gray-800 text-base resize-none outline-none transition-colors"
           rows={5}
-          placeholder="理想の未来を教えてください"
+          placeholder={t("ob.goal.placeholder")}
           value={value}
           onChange={(e) => { setValue(e.target.value); setError(""); }}
         />
@@ -159,10 +166,10 @@ export default function GoalPage() {
           {loading ? (
             <>
               <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-              {retrying ? "再試行中..." : "AIが考えています..."}
+              {retrying ? t("ob.next") : t("ob.goal.analyzing")}
             </>
           ) : (
-            "今週やること3つを出す"
+            t("ob.goal.wait")
           )}
         </button>
       </div>

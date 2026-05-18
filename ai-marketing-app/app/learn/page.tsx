@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import LangToggle from "@/components/LangToggle";
+import { useLang } from "@/lib/i18n";
 
 const TOPICS = [
   {
@@ -77,31 +79,34 @@ const TOPICS = [
 
 export default function LearnPage() {
   const router = useRouter();
+  const { t } = useLang();
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-lg mx-auto">
 
+        <div className="flex justify-end mb-2">
+          <LangToggle />
+        </div>
+
         <div className="mb-8">
           <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-1">
-            マーケを学ぶ
+            {t("learn.badge")}
           </p>
-          <h1 className="text-2xl font-bold text-gray-900">LearnAI</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t("learn.title")}</h1>
           <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-            Growlがなぜその施策を選んだかを理解したい方のための学習ツールです。
-            専門用語をわかりやすく解説し、AIと対話しながら学べます。
+            {t("learn.sub")}
           </p>
         </div>
 
         <div className="bg-indigo-600 text-white rounded-2xl p-5 mb-6">
-          <p className="text-sm font-bold mb-1">Growlがやっていることの理由を知る</p>
+          <p className="text-sm font-bold mb-1">{t("learn.banner.title")}</p>
           <p className="text-xs text-indigo-200 leading-relaxed">
-            AIが選んだ施策の背景にある考え方をわかりやすく解説します。
-            知識を深めることで、自分でも判断できるようになります。
+            {t("learn.banner.sub")}
           </p>
         </div>
 
-        <p className="text-sm font-semibold text-gray-600 mb-3">LearnAIで学べること</p>
+        <p className="text-sm font-semibold text-gray-600 mb-3">{t("learn.section")}</p>
         <div className="flex flex-col gap-3 mb-8">
           {TOPICS.map((t) => (
             <div
@@ -118,16 +123,16 @@ export default function LearnPage() {
         </div>
 
         <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-8">
-          <p className="text-xs font-semibold text-gray-500 mb-3">GrowlとLearnAIの使い分け</p>
+          <p className="text-xs font-semibold text-gray-500 mb-3">{t("learn.diff.title")}</p>
           <div className="flex flex-col gap-3 text-sm text-gray-600">
             <div className="flex gap-3 items-start">
-              <span className="font-bold text-indigo-600 shrink-0 pt-0.5">Growl</span>
-              <span>考えずに動く。AIが今週やることを3つ決めてくれる。あなたはコピペするだけ</span>
+              <span className="font-bold text-indigo-600 shrink-0 pt-0.5">{t("learn.growl.label")}</span>
+              <span>{t("learn.growl.desc")}</span>
             </div>
             <div className="w-full h-px bg-gray-100" />
             <div className="flex gap-3 items-start">
-              <span className="font-bold text-gray-700 shrink-0 pt-0.5">LearnAI</span>
-              <span>理由を理解する。なぜその施策が効くのかを学んで、判断力を上げる</span>
+              <span className="font-bold text-gray-700 shrink-0 pt-0.5">{t("learn.learnai.label")}</span>
+              <span>{t("learn.learnai.desc")}</span>
             </div>
           </div>
         </div>
@@ -137,7 +142,7 @@ export default function LearnPage() {
           onClick={() => router.push("/dashboard")}
           className="text-sm text-gray-400 hover:text-indigo-500 transition-colors"
         >
-          ← ダッシュボードに戻る
+          {t("learn.back")}
         </button>
 
       </div>

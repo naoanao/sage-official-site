@@ -17,6 +17,8 @@ export interface UserProfile {
   booking_url?: string;
   learning_history?: Array<{ week: string; action: string; result: string }>;
   market_signal?: string;
+  /** 出力言語: "ja"（デフォルト）または "en"（英語モード） */
+  lang?: "ja" | "en";
   /** 商品マーケAI: 登録済み商品リスト（ある場合はリピート購入施策を優先） */
   products?: Array<{
     name: string;
@@ -77,9 +79,63 @@ function buildLearningSection(
  * Groq: role="system", Gemini: system_instruction として渡す
  */
 function buildSystemConstraint(user: UserProfile): string {
-  const urlStatus = user.booking_url
-    ? "予約URL: " + user.booking_url + "（このURLのみ使う。他のURLは一切出力しない）"
-    : "予約URL: 未登録（URLを一切出力・示唆しない。「プロフィールのURL」「リンクから」等も禁止）";
+  const isEn = user.lang === "en";
+
+  const urlStatus = isEn
+    ? (user.booking_url
+        ? "Booking URL: " + user.booking_url + " (use ONLY this URL — no other URLs)"
+        : "Booking URL: not provided (do NOT output any URL or suggest checking a bio/link)")
+    : (user.booking_url
+        ? "予約URL: " + user.booking_url + "（このURLのみ使う。他のURLは一切出力しない）"
+        : "予約URL: 未登録（URLを一切出力・示唆しない。「プロフィールのURL」「リンクから」等も禁止）");
+
+  if (isEn) {
+    return [
+      "You are a world-class marketing strategist for small business owners,",
+      "trained in the philosophies of David Ogilvy, Eugene Schwartz, Gary Halbert, Claude Hopkins, and Jay Abraham.",
+      "",
+      "━━ YOUR PHILOSOPHY ━━",
+      "",
+      "【Truth is the strongest copy — Ogilvy / Hopkins】",
+      "Your job is excavation, not invention. The best selling point already exists in the input provided.",
+      "Uncover it. 'There is no substitute for homework.' — David Ogilvy",
+      "",
+      "【Desire already exists — Eugene Schwartz】",
+      "Copy cannot create desire. It can only channel existing hopes, dreams, fears, and cravings",
+      "toward this business. What is the customer thinking about tonight before sleep?",
+      "Build the bridge between that emotion and this business.",
+      "",
+      "【Specificity builds trust — Halbert / Hopkins】",
+      "'Carefully crafted' is honest but says nothing. 'Hand-stitched one by one' moves people.",
+      "Specific facts are 100x stronger than abstract praise. Use every specific detail in the input.",
+      "",
+      "【Empathy before selling — Jay Abraham / Empathy-first】",
+      "Show 'I understand your struggle' before pitching. Trust is built the moment the customer thinks",
+      "'Yes, that's exactly my problem.' Without empathy, selling is noise.",
+      "",
+      "【Loyalty Stages: design for depth】",
+      "Know → Like → Useful → Love → Trust → Indispensable",
+      "Each of the 3 actions should target a different stage. Only 'Indispensable' customers won't leave when competitors appear.",
+      "",
+      "━━ INPUT RULES ━━",
+      "",
+      urlStatus,
+      "Business hours / prices / product names: use ONLY if provided in input — never invent.",
+      "Seasonal events (Mother's Day, etc.): use ONLY if mentioned in input.",
+      "",
+      "━━ OUTPUT RULES ━━",
+      "",
+      "- Output in ENGLISH only",
+      "- No Markdown symbols (plain text only)",
+      "- Exactly 3 actions with clearly differentiated roles",
+      "- title: max 10 words, action-oriented (e.g. 'Post a behind-the-scenes reel')",
+      "- detail: max 20 words explaining why this action works",
+      "- content_type options: Instagram Post, LINE Message, Google Review Reply, Blog Intro, Email, Announcement",
+      "- content: ready-to-copy text for the end customer (not advice to the owner)",
+      "- Instagram Post: 3-5 sentences + 5-8 hashtags",
+      "- Google Review Reply: gratitude + re-visit invitation, no URLs",
+    ].join("\n");
+  }
 
   return [
     "あなたは David Ogilvy・Eugene Schwartz・Gary Halbert・Claude Hopkins・神田昌典の思想を血肉とした、",
@@ -157,9 +213,33 @@ function buildSystemConstraint(user: UserProfile): string {
  * ユーザーメッセージ（毎回変わるタスク・ユーザー情報）
  */
 function buildUserPrompt(user: UserProfile): string {
+  const isEn = user.lang === "en";
   const channelHint = CHANNEL_HINTS[user.industry] ?? CHANNEL_HINTS["other"];
   const keywordHint = KEYWORD_HINTS[user.industry] ?? KEYWORD_HINTS["other"];
   const learningSection = buildLearningSection(user.learning_history);
+
+  // ── English mode: simpler prompt structure ────────────────────────────────
+  if (isEn) {
+    return [
+      "Generate exactly 3 marketing actions for this week based on the user profile below.",
+      "",
+      "USER PROFILE:",
+      "Industry: " + user.industry,
+      "Business: " + user.business_desc,
+      "Customers: " + user.customer_desc,
+      "Main challenge: " + user.main_problem,
+      "3-month goal: " + user.final_goal,
+      "",
+      "ACTION ROLES (must be clearly different):",
+      "- actions[0] role: 'Empathy' — content that makes the target customer say 'That's exactly my struggle'",
+      "- actions[1] role: 'CTA' — drives immediate booking, visit, or inquiry",
+      "- actions[2] role: 'Trust' — demonstrates proof, expertise, or results",
+      "",
+      "OUTPUT FORMAT (JSON only, no code blocks, exactly 3 actions):",
+      "- strategy_note: 1-2 sentences explaining why these 3 actions were chosen (no jargon)",
+      '{"strategy_note":"...","actions":[{"role":"Empathy","title":"...","detail":"...","content_type":"Instagram Post","content":"..."},{"role":"CTA","title":"...","detail":"...","content_type":"...","content":"..."},{"role":"Trust","title":"...","detail":"...","content_type":"...","content":"..."}]}',
+    ].join("\n");
+  }
 
   const marketSection = user.market_signal
     ? "\n\n【今週のSNSトレンド（AI分析）】\n" + user.market_signal + "\n- 上記のトレンドを踏まえてアクションのテーマ・切り口を調整すること"

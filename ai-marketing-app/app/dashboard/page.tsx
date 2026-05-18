@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { loadSession, updateActionComplete, StoredSession, clearOnboarding, clearSession } from "@/lib/store";
 import ActionCard from "@/components/ActionCard";
 import FreeProgressBar from "@/components/FreeProgressBar";
+import LangToggle from "@/components/LangToggle";
+import { useLang } from "@/lib/i18n";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { t } = useLang();
   const [session, setSession] = useState<StoredSession | null>(null);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -92,19 +95,22 @@ export default function DashboardPage() {
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-500 transition-colors font-medium py-1"
           >
             <span>←</span>
-            <span>ホームへ</span>
+            <span>{t("nav.home")}</span>
           </button>
-          <span className="text-sm font-bold text-indigo-500 tracking-wide">Growl</span>
+          <div className="flex items-center gap-2">
+            <LangToggle />
+            <span className="text-sm font-bold text-indigo-500 tracking-wide">Growl</span>
+          </div>
         </div>
 
         <div className="flex items-start justify-between mb-6">
           <div>
             <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-1">
-              今週のマーケプラン
+              {t("dash.badge")}
             </p>
-            <h1 className="text-2xl font-bold text-gray-900">今週やること 3つ</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("dash.title")}</h1>
             <p className="text-sm text-gray-400 mt-1">
-              コピーして投稿・送信するだけ。それだけでマーケが動きます
+              {t("dash.sub")}
             </p>
           </div>
         </div>
@@ -112,7 +118,7 @@ export default function DashboardPage() {
         {session.strategy_note && (
           <div className="mb-5 bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-4">
             <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-1.5">
-              🧠 今週の戦略
+              {t("dash.strategy")}
             </p>
             <p className="text-sm text-indigo-800 leading-relaxed">
               {session.strategy_note}
@@ -123,7 +129,7 @@ export default function DashboardPage() {
         {doneCount > 0 && (
           <div className="mb-6 bg-white rounded-2xl border border-gray-100 px-5 py-4 shadow-sm">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">今週の進捗</span>
+              <span className="text-sm font-medium text-gray-600">{t("dash.progress_label")}</span>
               <span className="text-sm font-bold text-indigo-600">{doneCount}/{totalCount}</span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -156,10 +162,11 @@ export default function DashboardPage() {
             <div className="px-5 py-4 flex items-start gap-3">
               <div className="text-3xl shrink-0">💬</div>
               <div className="flex-1">
-                <p className="font-bold text-white text-sm mb-0.5">毎週月曜8時に自動で届く</p>
+                <p className="font-bold text-white text-sm mb-0.5">{t("dash.line_banner.title")}</p>
                 <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.85)" }}>
-                  LINEを連携すると今週の3つが月曜朝に届きます。<br />
-                  アプリを開かなくてもコピペするだけ。
+                  {t("dash.line_banner.sub").split("\n").map((line, i) => (
+                    <span key={i}>{line}{i === 0 && <br />}</span>
+                  ))}
                 </p>
                 <button
                   type="button"
@@ -167,7 +174,7 @@ export default function DashboardPage() {
                   className="bg-white font-bold text-sm px-4 py-2 rounded-xl transition-all active:scale-95"
                   style={{ color: "#00B900" }}
                 >
-                  LINEを連携する →
+                  {t("dash.line_banner.cta")}
                 </button>
               </div>
             </div>
@@ -177,8 +184,8 @@ export default function DashboardPage() {
         {doneCount === totalCount && (
           <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6 text-center">
             <div className="text-4xl mb-3">🏆</div>
-            <p className="font-bold text-indigo-800 text-lg">今週のマーケ、完了！</p>
-            <p className="text-sm text-indigo-600 mt-1">来週もAIが新しいコンテンツを用意します。</p>
+            <p className="font-bold text-indigo-800 text-lg">{t("dash.all_done.title")}</p>
+            <p className="text-sm text-indigo-600 mt-1">{t("dash.all_done.sub")}</p>
           </div>
         )}
 
@@ -188,30 +195,28 @@ export default function DashboardPage() {
             onClick={() => router.push("/product")}
             className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3.5 rounded-2xl shadow-sm transition-all text-sm flex items-center justify-center gap-2"
           >
-            <span>📈</span>
-            <span>販売・リピートを伸ばす — 商品マーケAI →</span>
+            <span>{t("dash.btn_product")}</span>
           </button>
           <button
             type="button"
             onClick={() => router.push("/marketing")}
             className="w-full bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 font-medium py-3 rounded-2xl shadow-sm transition-all text-sm flex items-center justify-center gap-2"
           >
-            <span>📊</span>
-            <span>PEST・3C・SWOT — 市場を深く分析する →</span>
+            <span>{t("dash.btn_marketing")}</span>
           </button>
           <div className="flex justify-between items-center pt-1">
             <a
               href="/learn"
               className="text-xs text-gray-300 hover:text-indigo-400 transition-colors"
             >
-              📚 マーケの基礎を学ぶ →
+              {t("dash.btn_learn")}
             </a>
             <button
               type="button"
               onClick={() => router.push("/report")}
               className="text-xs text-gray-300 hover:text-indigo-400 transition-colors"
             >
-              📋 月次レポート →
+              {t("dash.btn_report")}
             </button>
           </div>
         </div>
@@ -222,7 +227,7 @@ export default function DashboardPage() {
             onClick={() => setShowResetConfirm(true)}
             className="text-xs text-gray-300 hover:text-red-400 transition-colors"
           >
-            最初からやり直す
+            {t("dash.reset")}
           </button>
         </div>
       </div>
@@ -232,11 +237,12 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
             <div className="text-3xl text-center mb-3">⚠️</div>
             <h2 className="text-lg font-bold text-gray-900 text-center mb-2">
-              本当にやり直しますか？
+              {t("dash.reset.title")}
             </h2>
             <p className="text-sm text-gray-500 text-center leading-relaxed mb-6">
-              今週の施策・入力内容がすべて消えます。<br />
-              この操作は取り消せません。
+              {t("dash.reset.sub").split("\n").map((line, i) => (
+                <span key={i}>{line}{i === 0 && <br />}</span>
+              ))}
             </p>
             <div className="flex flex-col gap-3">
               <button
@@ -248,14 +254,14 @@ export default function DashboardPage() {
                 }}
                 className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors"
               >
-                消して最初からやり直す
+                {t("dash.reset.confirm")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
                 className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
               >
-                キャンセル
+                {t("dash.reset.cancel")}
               </button>
             </div>
           </div>
