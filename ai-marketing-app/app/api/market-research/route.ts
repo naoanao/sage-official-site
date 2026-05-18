@@ -498,6 +498,105 @@ Output this exact JSON structure:
 } // end buildSynthesisPrompt
 
 // ───────────────────────────────────────────────────
+// 楽天・Amazon JPから実際の競合ブランドを取得
+// ───────────────────────────────────────────────────
+async function fetchRealCompetitorsJP(product: string): Promise<string> {
+  const encoded = encodeURIComponent(product);
+
+  // 楽天市場: レビュー件数順で検索（売れているブランドが上に来る）
+  const rakutenUrl = `https://search.rakuten.co.jp/search/mall/${encoded}/?s=6&p=1`;
+
+  try {
+    const res = await fetch(rakutenUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "ja-JP,ja;q=0.9",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[fetchRealCompetitorsJP] Rakuten status ${res.status}`);
+    } else {
+      const html = await res.text();
+
+      // 商品タイトルを抽出（楽天HTML: h2タグ内のアンカーテキストが商品名）
+      // bash検証済み: <h2[\s\S]*?<a[^>]*>([^<]{4,80})</a> で45件マッチ確認
+      const h2Matches = [...html.matchAll(/<h2[^>]*>[\s\S]*?<a[^>]*>([^<]{4,80})<\/a>/g)]
+        .map(m => m[1].replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim())
+        .filter(t => t.length > 4 && /[぀-鿿]/.test(t)); // 日本語テキストのみ
+      const titleMatches = h2Matches.length > 0 ? h2Matches : [
+        // fallback: class属性ベースのパターン（h2マッチが0件の場合）
+        ...html.matchAll(/class="[^"]*title[^"]*"[^>]*>[\s\S]*?<a[^>]*>([^<]{4,80})<\/a>/g),
+        ...html.matchAll(/itemprop="name"[^>]*>([^<]{4,60})<\/span>/g),
+      ].map(m => m[1].replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim()).filter(t => t.length > 4);
+
+      if (titleMatches.length >= 3) {
+        console.log(`[fetchRealCompetitorsJP] Got ${titleMatches.length} titles from Rakuten`);
+        // Groqにタイトル群からブランド名を抽出させる
+        const extractPrompt = `以下は楽天市場で「${product}」を検索した商品タイトル一覧です。
+この中に含まれるブランド名・メーカー名を最大5社抽出し、カンマ区切りで出力してください。
+商品説明や数値は除外し、固有のブランド・企業名のみ。
+
+商品タイトル（上位${Math.min(titleMatches.length, 15)}件）:
+${titleMatches.slice(0, 15).join("\n")}
+
+ブランド名（カンマ区切り）:`;
+        const brands = await callGroqFallback(extractPrompt, 150);
+        if (brands && brands.trim().length > 2) {
+          console.log("[fetchRealCompetitorsJP] Extracted brands:", brands.slice(0, 100));
+          return brands.trim();
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[fetchRealCompetitorsJP] Rakuten fetch error:", e);
+  }
+
+  // 楽天がダメならAmazon JP検索（ベストセラー順）
+  const amazonUrl = `https://www.amazon.co.jp/s?k=${encoded}&s=review-rank`;
+  try {
+    const res = await fetch(amazonUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "Accept-Language": "ja-JP,ja;q=0.9",
+        "Accept": "text/html",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (res.ok) {
+      const html = await res.text();
+      // Amazon: 商品タイトルはh2内spanまたはa-text-normal span
+      const amzTitles = [
+        ...[...html.matchAll(/<h2[^>]*>[\s\S]*?<span[^>]*>([^<]{4,80})<\/span>/g)],
+        ...[...html.matchAll(/class="[^"]*a-text-normal[^"]*">([^<]{4,80})<\/span>/g)],
+      ].map(m => m[1].trim())
+        .filter(t => t.length > 4 && /[぀-鿿]/.test(t)) // 日本語テキストのみ
+        .slice(0, 15);
+
+      if (amzTitles.length >= 3) {
+        console.log(`[fetchRealCompetitorsJP] Got ${amzTitles.length} titles from Amazon JP`);
+        const extractPrompt = `以下はAmazon JPで「${product}」を検索した商品タイトル一覧です。
+含まれるブランド名・メーカー名を最大5社、カンマ区切りで出力してください（ブランド名のみ）。
+
+${amzTitles.join("\n")}
+
+ブランド名:`;
+        const brands = await callGroqFallback(extractPrompt, 150);
+        if (brands && brands.trim().length > 2) return brands.trim();
+      }
+    }
+  } catch (e) {
+    console.warn("[fetchRealCompetitorsJP] Amazon fetch error:", e);
+  }
+
+  console.warn("[fetchRealCompetitorsJP] Both sources failed, returning empty");
+  return "";
+}
+
+// ───────────────────────────────────────────────────
 // ハンドラ
 // ───────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
@@ -515,21 +614,20 @@ export async function POST(req: NextRequest) {
     const region = body.region ?? "jp";
     const queries = buildSearchQueries(body);
 
-    // ── Step 0: 商品カテゴリに特化した競合ブランドを事前に特定（TPM節約: 300トークン）
-    // これにより synthesis が「業界大手」ではなく「この商品を売っているブランド」を返す
+    // ── Step 0: 楽天・Amazon JP から実際の競合ブランドを取得（JPのみ）
+    // LLMの学習データに頼らず、リアルタイムのランキングデータを使う
     let specificCompetitors = "";
     if (region === "jp") {
-      const competitorLookupPrompt = `日本市場で「${product}」を販売している主要ブランドを5社以内で挙げてください。
-条件：
-・「${product}」という商品（同じカテゴリ・同じ形態）を専門的に扱っているブランドのみ
-・業界全体の大手企業ではなく、この商品カテゴリで直接競合するブランド
-・ブランド名・会社名のみを列挙（説明不要）
+      // まず楽天・Amazon JPから実データを取得
+      specificCompetitors = await fetchRealCompetitorsJP(product);
+      console.log("[POST] Real competitors from e-commerce:", specificCompetitors.slice(0, 150));
 
-例：「青汁サプリ」なら → DHC、キューサイ、ファンケル、えがお、サントリー健康食品 など（飲料メーカーではなくサプリブランド）
-
-「${product}」の直接競合ブランド：`;
-      specificCompetitors = await callGroqFallback(competitorLookupPrompt, 250);
-      console.log("[POST] Specific competitors found:", specificCompetitors.slice(0, 150));
+      // 取得できなかった場合のみGroqフォールバック（Groqは最後の手段）
+      if (!specificCompetitors || specificCompetitors.trim().length < 3) {
+        console.warn("[POST] E-commerce scraping failed, falling back to Groq");
+        const fallbackPrompt = `日本市場で「${product}」を販売しているブランドを5社、カンマ区切りで列挙してください。同じ商品形態・カテゴリの専門ブランドのみ（ブランド名のみ出力）:`;
+        specificCompetitors = await callGroqFallback(fallbackPrompt, 150);
+      }
     } else if (region === "us") {
       const competitorLookupPrompt = `List the top 5 US brands that directly sell "${product}" as their product. Only brands in this specific product category — not parent companies or unrelated industry leaders. Brand names only, comma-separated.`;
       specificCompetitors = await callGroqFallback(competitorLookupPrompt, 150);
