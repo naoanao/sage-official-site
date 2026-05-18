@@ -243,19 +243,33 @@ const translations = {
 type TranslationKey = keyof typeof translations.ja;
 
 // ── useLang フック ─────────────────────────────────────────────────────────────
+// カスタムイベントで同一ページ内の全インスタンスに言語変更を通知する
+
+const LANG_EVENT = "growl:lang-change";
 
 export function useLang() {
   const [lang, setLang] = useState<Lang>("ja");
 
   useEffect(() => {
+    // 初期ロード: localStorage から言語を読む
     const saved = localStorage.getItem("growl_lang") as Lang | null;
     if (saved === "en" || saved === "ja") setLang(saved);
+
+    // 他のコンポーネントの toggleLang() が発火したときに同期する
+    function onLangChange(e: Event) {
+      const next = (e as CustomEvent<Lang>).detail;
+      setLang(next);
+    }
+    window.addEventListener(LANG_EVENT, onLangChange);
+    return () => window.removeEventListener(LANG_EVENT, onLangChange);
   }, []);
 
   function toggleLang() {
     const next: Lang = lang === "ja" ? "en" : "ja";
     setLang(next);
     localStorage.setItem("growl_lang", next);
+    // 同一ページ内の全 useLang インスタンスに変更を通知
+    window.dispatchEvent(new CustomEvent<Lang>(LANG_EVENT, { detail: next }));
   }
 
   function t(key: TranslationKey): string {

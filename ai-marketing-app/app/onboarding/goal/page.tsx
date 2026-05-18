@@ -8,13 +8,22 @@ import ProgressBar from "@/components/ProgressBar";
 import LangToggle from "@/components/LangToggle";
 import { useLang, getLang } from "@/lib/i18n";
 
-const EXAMPLES: Record<string, string> = {
+const EXAMPLES_JA: Record<string, string> = {
   restaurant: "SNSを気にせず、毎日料理だけに集中できている",
   salon: "予約が常に埋まっていて、新規集客を考えなくていい状態",
   ec: "注文が毎日安定して入り、制作に専念できている",
   professional: "紹介がなくてもネットから新規が継続して来る状態",
   construction: "見積もり依頼が月に10件以上安定して来ている",
   other: "生徒が自然と集まり、募集に時間をかけなくていい",
+};
+
+const EXAMPLES_EN: Record<string, string> = {
+  restaurant: "I can focus on cooking every day without worrying about social media",
+  salon: "My bookings are always full and I don't need to think about new client acquisition",
+  ec: "Orders come in steadily every day and I can focus on creating",
+  professional: "New clients keep coming online without relying on referrals",
+  construction: "Getting 10+ quote requests per month consistently",
+  other: "Students naturally find me and I don't spend time on recruitment",
 };
 
 function getOrCreateDeviceId(): string {
@@ -28,7 +37,7 @@ function getOrCreateDeviceId(): string {
 
 export default function GoalPage() {
   const router = useRouter();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -51,11 +60,10 @@ export default function GoalPage() {
       router.replace("/onboarding/industry");
       return; // setChecking(false) を呼ばず、リダイレクトに任せる
     }
-    if (EXAMPLES[data.industry!]) {
-      setExample(EXAMPLES[data.industry as keyof typeof EXAMPLES]);
-    }
+    const examples = lang === "en" ? EXAMPLES_EN : EXAMPLES_JA;
+    setExample(examples[data.industry!] ?? examples["other"] ?? "");
     setChecking(false); // 全データOK → フォームを表示
-  }, [router]);
+  }, [router, lang]);
 
   // チェック中はスピナーのみ表示（空フォームのフラッシュを防ぐ）
   if (checking) {
@@ -79,11 +87,11 @@ export default function GoalPage() {
 
   async function finish() {
     if (!value.trim()) {
-      setError("理想の未来を入力してください");
+      setError(lang === "en" ? "Please describe your ideal future" : "理想の未来を入力してください");
       return;
     }
     if (value.trim().length < 5) {
-      setError("もう少し詳しく教えてください（5文字以上）");
+      setError(lang === "en" ? "Please give a bit more detail" : "もう少し詳しく教えてください（5文字以上）");
       return;
     }
     setLoading(true);
@@ -115,7 +123,9 @@ export default function GoalPage() {
       // LINE設定ページへ（スキップ可能）
       router.push("/onboarding/line");
     } catch {
-      setError("少し混み合っています。20〜30秒待ってからもう一度お試しください。");
+      setError(lang === "en"
+        ? "The server is busy. Please wait 20–30 seconds and try again."
+        : "少し混み合っています。20〜30秒待ってからもう一度お試しください。");
       setLoading(false);
       setRetrying(false);
     }
