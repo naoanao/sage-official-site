@@ -1,21 +1,14 @@
 /**
  * /api/market-research
  *
- * Growl 3C自動市場調査API
+ * Growl 3C自動市場調査API（JP / US / Global 対応）
  *
- * Notionの「3C分析 10ステップ調査手順」をAIで自動化。
  * Gemini 2.0 Flash + Google Search Grounding を使い、
- * リアルタイムのウェブ情報（競合LP・レビュー・広告・業界紙・政府統計）を
- * 収集して3C分析に整理する。
+ * リアルタイムのウェブ情報を収集して3C分析に整理する。
  *
- * 情報収集ステップ（Notionの手順に準拠）:
- *   Step3: Amazon・楽天ランキング → 競合特定
- *   Step4: 競合レビュー（★5 / ★2〜3）→ 強み・弱み抽出
- *   Step5: Meta広告ライブラリ → クリエイティブの型
- *   Step6: Google広告 → 出稿キーワード・コピー傾向
- *   Step7: 業界紙・矢野経済 → 市場規模・トレンド
- *   Step8: 厚労省・総務省 → 顧客の定量データ
- *   Step9: X・Amazon口コミ → 潜在ニーズ
+ * region = "jp":    Amazon JP・楽天・矢野経済・厚労省・総務省
+ * region = "us":    Amazon.com・G2・Trustpilot・Statista・IBISWorld・US Census
+ * region = "global": JP + US 両方のソースをカバー
  */
 
 export const maxDuration = 60;
@@ -25,13 +18,16 @@ import { NextRequest, NextResponse } from "next/server";
 // ───────────────────────────────────────────────────
 // 型定義
 // ───────────────────────────────────────────────────
+type Region = "jp" | "us" | "global";
+
 interface ResearchRequest {
   industry: string;       // "restaurant" | "salon" | "ec" | "construction" | "health" | "education" | "professional"
-  product: string;        // 商品・サービス名（例: "青汁サプリ"）
-  target: string;         // ターゲット顧客（例: "40〜60代女性・健康意識高め"）
+  product: string;        // 商品・サービス名
+  target: string;         // ターゲット顧客
   business_name?: string; // 店舗・企業名（オプション）
-  location?: string;      // 所在地域（例: "東京都渋谷区"）
+  location?: string;      // 所在地域
   keywords?: string[];    // 追加の検索キーワード（オプション）
+  region?: Region;        // "jp" | "us" | "global"（デフォルト: "jp"）
 }
 
 interface ResearchResult {
@@ -162,29 +158,70 @@ async function callGroqFallback(prompt: string): Promise<string> {
 }
 
 // ───────────────────────────────────────────────────
-// 3C分析 各ステップの検索クエリ設計
+// 業種ラベル（JP / US）
+// ───────────────────────────────────────────────────
+function industryLabelJP(industry: string): string {
+  const map: Record<string, string> = {
+    restaurant: "飲食店 外食",
+    salon: "美容サロン 美容院",
+    ec: "EC 通販 ネットショップ",
+    construction: "工務店 リフォーム 建設",
+    health: "整体 鍼灸 マッサージ",
+    education: "塾 学習塾 教育",
+    professional: "士業 コンサル",
+  };
+  return map[industry] ?? industry;
+}
+
+function industryLabelUS(industry: string): string {
+  const map: Record<string, string> = {
+    restaurant: "restaurant food service",
+    salon: "beauty salon hair",
+    ec: "e-commerce online store",
+    construction: "construction remodeling contractor",
+    health: "health wellness massage chiropractic",
+    education: "tutoring education learning",
+    professional: "consulting professional services",
+  };
+  return map[industry] ?? industry;
+}
+
+// ───────────────────────────────────────────────────
+// 3C分析 各ステップの検索クエリ設計（JP / US / Global）
 // ───────────────────────────────────────────────────
 function buildSearchQueries(req: ResearchRequest) {
-  const { product, target, industry, location } = req;
+  const { product, target, industry, location, region = "jp" } = req;
   const loc = location ? ` ${location}` : "";
 
+  if (region === "us") {
+    return {
+      competitor_ranking: `${product} Amazon best seller top brands competitors ranking site:amazon.com OR site:g2.com OR site:capterra.com 2025`,
+      competitor_reviews: `${product} reviews Trustpilot G2 Reddit "love" "hate" "disappointed" "amazing" 2025`,
+      ad_landscape: `${product} Facebook Meta ads Instagram Google ads marketing examples 2025 2026`,
+      market_size: `${industryLabelUS(industry)} market size Statista IBISWorld "Grand View Research" OR "MarketsandMarkets" 2025 2026`,
+      government_stats: `${target} statistics "US Census Bureau" OR "Bureau of Labor Statistics" OR CDC OR FDA 2024 2025${loc}`,
+      ugc_needs: `${product} Reddit TikTok Instagram "tried" "review" "experience" "worth it" 2025`,
+    };
+  }
+
+  if (region === "global") {
+    return {
+      competitor_ranking: `${product} Amazon best seller competitors ranking 2025 site:amazon.com OR site:amazon.co.jp OR 楽天`,
+      competitor_reviews: `${product} reviews Trustpilot G2 Reddit 口コミ レビュー "love" "hate" 「満足」「残念」 2025`,
+      ad_landscape: `${product} Meta Facebook Instagram Google ads SNS広告 marketing 2025 2026`,
+      market_size: `${industryLabelUS(industry)} ${industryLabelJP(industry)} market size 市場規模 Statista 矢野経済 2025 2026`,
+      government_stats: `${target} statistics census 統計 厚生労働省 総務省 2024 2025${loc}`,
+      ugc_needs: `${product} Reddit TikTok Instagram Twitter X 「使ってみた」 "tried" "review" 体験談 2025`,
+    };
+  }
+
+  // Default: JP
   return {
-    // Step3: 競合特定（Amazon・楽天ランキング）
     competitor_ranking: `${product} Amazon 楽天 ランキング 人気 競合 2025 2026`,
-
-    // Step4: 競合レビュー分析
     competitor_reviews: `${product} 口コミ レビュー 「満足」 「残念」 比較 Amazon 楽天 2025`,
-
-    // Step5+6: 広告傾向
     ad_landscape: `${product} Instagram Meta広告 Google広告 SNSマーケティング 事例 2025 2026`,
-
-    // Step7: 市場規模・業界トレンド
-    market_size: `${industry === "restaurant" ? "飲食店 外食" : industry === "salon" ? "美容サロン 美容院" : industry === "ec" ? "EC 通販 ネットショップ" : industry === "construction" ? "工務店 リフォーム 建設" : industry === "health" ? "整体 鍼灸 マッサージ" : industry === "education" ? "塾 学習塾 教育" : "士業 コンサル"} 市場規模 矢野経済 2025 2026`,
-
-    // Step8: 政府統計
+    market_size: `${industryLabelJP(industry)} 市場規模 矢野経済 2025 2026`,
     government_stats: `${target} 統計 調査 厚生労働省 総務省 国土交通省 2024 2025${loc}`,
-
-    // Step9: SNS口コミ・潜在ニーズ
     ugc_needs: `${product} Twitter X Instagram 「使ってみた」 「試してみた」 体験談 感想 2025`,
   };
 }
@@ -193,15 +230,26 @@ function buildSearchQueries(req: ResearchRequest) {
 // 総合3C分析プロンプト
 // ───────────────────────────────────────────────────
 function buildSynthesisPrompt(req: ResearchRequest, gathered: Record<string, string>): string {
-  const { product, target, industry, business_name } = req;
+  const { product, target, industry, business_name, region = "jp" } = req;
 
-  return `あなたはGrowlの市場調査AIです。以下のウェブ調査結果を基に3C分析をJSON形式で出力してください。
+  const regionLabel = region === "us" ? "US / English-speaking markets" : region === "global" ? "Global (JP + US)" : "日本市場";
+  const outputLang = region === "us" ? "English" : "日本語";
+  const sourceExamples = region === "us"
+    ? "Amazon.com, G2, Trustpilot, Statista, IBISWorld, US Census Bureau, BLS"
+    : region === "global"
+    ? "Amazon JP/US, 楽天, G2, Trustpilot, 矢野経済, Statista, 厚労省/総務省, US Census"
+    : "Amazon JP, 楽天, 矢野経済, 厚労省, 総務省";
 
-【調査対象】
-商品・サービス: ${product}
-ターゲット顧客: ${target}
-業種: ${industry}
-${business_name ? `店舗・企業名: ${business_name}` : ""}
+  return `You are Growl's market research AI. Based on the web research data below, output a 3C analysis in JSON format.
+Output language: ${outputLang}. Target market: ${regionLabel}.
+
+[Research Target]
+Product/Service: ${product}
+Target Customer: ${target}
+Industry: ${industry}
+${business_name ? `Business Name: ${business_name}` : ""}
+Region/Market: ${regionLabel}
+Preferred Sources: ${sourceExamples}
 
 【収集した実データ】
 ■ 競合・ランキング情報:
@@ -222,11 +270,11 @@ ${gathered.government_stats || "データ未取得"}
 ■ SNS口コミ・潜在ニーズ:
 ${gathered.ugc_needs || "データ未取得"}
 
-【出力ルール】
-- 上記の実データのみを根拠に分析すること（AIの想像で補完しない）
-- データがない項目は「要調査」と記載
-- 数値は出典付きで記載（例: 「市場規模1,000億円（健康産業新聞2025年）」）
-- JSONのみで出力（コードブロック・説明不要）
+[Output Rules]
+- Base analysis ONLY on the collected data above — do not fabricate information
+- Items with no data: write "Requires further research" (or "要調査" for JP output)
+- Include source citations for all statistics (e.g. "Market size $5B (Statista 2025)" or "市場規模1,000億円（矢野経済2025年）")
+- Output JSON only — no code blocks, no explanation
 
 以下のJSON形式で出力:
 {
@@ -276,8 +324,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const region = body.region ?? "jp";
     const queries = buildSearchQueries(body);
-    const systemContext = `あなたは日本市場の${industry}業界に精通したマーケティングリサーチャーです。${product}の市場を調査しています。`;
+    const systemContext = region === "us"
+      ? `You are an expert market researcher specializing in the ${industry} industry in English-speaking markets. You are researching the market for: ${product}.`
+      : region === "global"
+      ? `You are an expert global market researcher covering both Japanese and English-speaking markets in the ${industry} industry. Research target: ${product}.`
+      : `あなたは日本市場の${industry}業界に精通したマーケティングリサーチャーです。${product}の市場を調査しています。`;
 
     // 並列で各ステップのウェブ検索を実行
     const [
@@ -339,7 +392,9 @@ export async function POST(req: NextRequest) {
         recommended_actions: analysis.recommended_actions ?? [],
         sources: analysis.sources ?? [],
       },
-      summary: `${product}の3C分析が完了しました。競合${analysis.competitor?.top_competitors?.length ?? 0}社を特定し、${analysis.company_gaps?.length ?? 0}個の差別化機会を発見しました。`,
+      summary: region === "us"
+        ? `3C analysis for "${product}" complete. Identified ${analysis.competitor?.top_competitors?.length ?? 0} competitors and ${analysis.company_gaps?.length ?? 0} differentiation opportunities.`
+        : `${product}の3C分析が完了しました。競合${analysis.competitor?.top_competitors?.length ?? 0}社を特定し、${analysis.company_gaps?.length ?? 0}個の差別化機会を発見しました。`,
       generated_at: new Date().toISOString(),
     };
 
@@ -361,6 +416,7 @@ export async function GET() {
       business_name: "string? - 店舗・企業名（オプション）",
       location: "string? - 所在地域（オプション）",
       keywords: "string[]? - 追加キーワード（オプション）",
+      region: "string? - 'jp' | 'us' | 'global' (default: 'jp')",
     },
     note: "Gemini 2.0 Flash + Google Search Grounding でリアルタイム情報収集。所要時間: 30〜60秒",
   });

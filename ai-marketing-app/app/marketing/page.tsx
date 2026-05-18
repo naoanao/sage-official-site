@@ -267,6 +267,7 @@ export default function MarketingPage() {
   // AI市場調査
   const [researchResult, setResearchResult] = useState<ResearchResult | null>(null);
   const [researchError, setResearchError] = useState<string | null>(null);
+  const [researchRegion, setResearchRegion] = useState<"jp" | "us" | "global">("jp");
 
   // 投稿文生成
   const [posts, setPosts] = useState<PostResult[] | null>(null);
@@ -348,6 +349,7 @@ export default function MarketingPage() {
           product,
           target,
           business_name: name || undefined,
+          region: researchRegion,
         }),
       });
       const data = await res.json();
@@ -471,7 +473,12 @@ export default function MarketingPage() {
 
           {/* サマリーバッジ */}
           <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl px-4 py-4 mb-5 text-white shadow-lg">
-            <p className="text-xs font-bold text-emerald-100 mb-1 tracking-widest uppercase">調査完了</p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-xs font-bold text-emerald-100 tracking-widest uppercase">調査完了</p>
+              <span className="text-xs bg-emerald-400 bg-opacity-50 px-2 py-0.5 rounded-full">
+                {researchRegion === "jp" ? "🇯🇵 JP市場" : researchRegion === "us" ? "🇺🇸 US / English" : "🌐 Global"}
+              </span>
+            </div>
             <p className="text-sm font-semibold leading-snug">{researchResult.summary}</p>
             <p className="text-xs text-emerald-200 mt-2">Gemini 2.0 + Google Search リアルタイム調査</p>
           </div>
@@ -971,9 +978,30 @@ export default function MarketingPage() {
               <span className="text-2xl">🔍</span>
               <div>
                 <p className="font-bold text-gray-900 text-sm">AIリアルタイム市場調査</p>
-                <p className="text-xs text-gray-500 mt-0.5">Amazon・楽天ランキング、レビュー、Meta/Google広告、矢野経済、政府統計をAIが自動収集して3C分析を生成</p>
+                <p className="text-xs text-gray-500 mt-0.5">ランキング・レビュー・広告・市場規模・政府統計をAIが自動収集して3C分析を生成</p>
               </div>
             </div>
+            {/* 地域選択 */}
+            <div className="flex gap-2 mb-3">
+              {(["jp", "us", "global"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setResearchRegion(r)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                    researchRegion === r
+                      ? "bg-emerald-500 text-white border-emerald-500"
+                      : "bg-white text-gray-500 border-gray-200 hover:border-emerald-300"
+                  }`}
+                >
+                  {r === "jp" ? "🇯🇵 日本" : r === "us" ? "🇺🇸 US / 英語圏" : "🌐 Global"}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              {researchRegion === "jp" && "Amazon JP・楽天・矢野経済・厚労省/総務省"}
+              {researchRegion === "us" && "Amazon.com・G2・Trustpilot・Statista・IBISWorld・US Census"}
+              {researchRegion === "global" && "JP + US 両方のソースをカバー"}
+            </p>
             <button
               onClick={handleResearch}
               className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-semibold py-3 rounded-xl transition-all text-sm shadow-sm"
