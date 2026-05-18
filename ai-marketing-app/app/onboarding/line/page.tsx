@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useLang } from "@/lib/i18n";
 
 export default function LineOnboardingPage() {
   const router = useRouter();
+  const { lang } = useLang();
+  const isEn = lang === "en";
+
   const [linkCode, setLinkCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [linked, setLinked] = useState(false);
@@ -27,7 +31,6 @@ export default function LineOnboardingPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  // 5秒ごとに連携完了チェック（20秒から短縮）
   const checkLinked = useCallback(async () => {
     const deviceId = localStorage.getItem("growl_device_id");
     if (!deviceId) return;
@@ -54,7 +57,7 @@ export default function LineOnboardingPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // フォールバック: 選択状態にする
+      // fallback
     }
   }
 
@@ -63,7 +66,7 @@ export default function LineOnboardingPage() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-2">
           <span className="animate-spin w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full" />
-          <p className="text-gray-400 text-sm">準備中...</p>
+          <p className="text-gray-400 text-sm">{isEn ? "Loading..." : "準備中..."}</p>
         </div>
       </main>
     );
@@ -74,16 +77,20 @@ export default function LineOnboardingPage() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
           <div className="text-6xl mb-5">🎉</div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">LINE連携完了！</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
+            {isEn ? "LINE connected!" : "LINE連携完了！"}
+          </h1>
           <p className="text-sm text-gray-500 mb-8">
-            毎週月曜の朝8時に、今週の3つが届きます。<br />あとは何もしなくて大丈夫です。
+            {isEn
+              ? <>Your 3 weekly actions will arrive every Monday at 8am.<br />Nothing else to do!</>
+              : <>毎週月曜の朝8時に、今週の3つが届きます。<br />あとは何もしなくて大丈夫です。</>}
           </p>
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
             className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl transition-colors"
           >
-            ダッシュボードへ →
+            {isEn ? "Go to Dashboard →" : "ダッシュボードへ →"}
           </button>
         </div>
       </main>
@@ -95,9 +102,13 @@ export default function LineOnboardingPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-5xl mb-4">💬</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">LINEと連携する</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {isEn ? "Connect LINE" : "LINEと連携する"}
+          </h1>
           <p className="text-sm text-gray-500 leading-relaxed">
-            毎週月曜の朝8時に、今週やること3つを<br />LINEで自動でお届けします
+            {isEn
+              ? <>Get your 3 weekly actions delivered automatically<br />every Monday at 8am via LINE</>
+              : <>毎週月曜の朝8時に、今週やること3つを<br />LINEで自動でお届けします</>}
           </p>
         </div>
 
@@ -106,15 +117,17 @@ export default function LineOnboardingPage() {
           <div className="flex gap-3 items-start">
             <div className="w-7 h-7 bg-green-500 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">1</div>
             <div>
-              <p className="text-sm font-semibold text-gray-800">GrowlのLINEを友達追加</p>
+              <p className="text-sm font-semibold text-gray-800">
+                {isEn ? "Add Growl on LINE" : "GrowlのLINEを友達追加"}
+              </p>
               <a
                 href={LINE_ADD_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block mt-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors"
+                className="inline-block mt-2 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors"
                 style={{ backgroundColor: "#00B900" }}
               >
-                友達追加する →
+                {isEn ? "Add as friend →" : "友達追加する →"}
               </a>
             </div>
           </div>
@@ -125,7 +138,9 @@ export default function LineOnboardingPage() {
           <div className="flex gap-3 items-start">
             <div className="w-7 h-7 bg-indigo-500 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">2</div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-800 mb-2">このコードをLINEに送信</p>
+              <p className="text-sm font-semibold text-gray-800 mb-2">
+                {isEn ? "Send this code on LINE" : "このコードをLINEに送信"}
+              </p>
               {linkCode ? (
                 <div className="space-y-2">
                   <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl px-6 py-3 text-center">
@@ -140,11 +155,15 @@ export default function LineOnboardingPage() {
                         : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
                     }`}
                   >
-                    {copied ? "✓ コピーしました" : "タップしてコピー"}
+                    {copied
+                      ? (isEn ? "✓ Copied!" : "✓ コピーしました")
+                      : (isEn ? "Tap to copy" : "タップしてコピー")}
                   </button>
                 </div>
               ) : (
-                <p className="text-sm text-gray-400">コード取得中...</p>
+                <p className="text-sm text-gray-400">
+                  {isEn ? "Getting code..." : "コード取得中..."}
+                </p>
               )}
             </div>
           </div>
@@ -160,10 +179,14 @@ export default function LineOnboardingPage() {
             </div>
             <div>
               <p className={`text-sm font-semibold ${checking ? "text-indigo-600" : "text-gray-400"}`}>
-                {checking ? "連携を確認中..." : "連携完了 → 毎週自動で届く"}
+                {checking
+                  ? (isEn ? "Verifying connection..." : "連携を確認中...")
+                  : (isEn ? "Connected → Weekly delivery starts" : "連携完了 → 毎週自動で届く")}
               </p>
               {checking && (
-                <p className="text-xs text-gray-400 mt-0.5">LINEでコードを送信しましたか？</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {isEn ? "Did you send the code on LINE?" : "LINEでコードを送信しましたか？"}
+                </p>
               )}
             </div>
           </div>
@@ -174,7 +197,7 @@ export default function LineOnboardingPage() {
           onClick={() => router.push("/dashboard")}
           className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 transition-colors"
         >
-          スキップする（後で設定できます）
+          {isEn ? "Skip (you can set this up later)" : "スキップする（後で設定できます）"}
         </button>
       </div>
     </main>
