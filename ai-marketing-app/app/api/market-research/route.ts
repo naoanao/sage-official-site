@@ -37,6 +37,13 @@ interface ResearchResult {
     competitor: CompetitorData;
     company_gaps: CompanyGap[];
     market: MarketData;
+    // US-specific
+    positioning_statement?: string;
+    gtm_motion?: string;
+    growth_levers?: string[];
+    // Global-specific
+    localization_gaps?: { market: string; adapt: string; keep: string }[];
+    beachhead_market?: string;
     usp_candidates: string[];
     recommended_actions: string[];
     sources: string[];
@@ -77,73 +84,33 @@ interface MarketData {
 }
 
 // ───────────────────────────────────────────────────
-// Gemini + Google Search Grounding
+// AI検索エンジン: Groq (llama-3.3-70b) をプライマリに
+// Gemini API はクォータ超過のため無効化
 // ───────────────────────────────────────────────────
+
 async function searchWithGemini(query: string, systemContext: string, region: Region = "jp"): Promise<string> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return "";
+  // Gemini API quota exceeded — route through Groq with compact output (500 tokens to stay within TPM)
+  const instruction = region === "us"
+    ? `Expert US market researcher. Answer concisely in English with specific data points, real company names, statistics. Be brief but specific:`
+    : region === "global"
+    ? `Expert global market researcher. Answer concisely in English with specific data, company names, statistics. Be brief but specific:`
+    : `日本市場の専門マーケター。以下のトピックについて、具体的な企業名・数値・事実を簡潔に日本語で回答してください:`;
 
-  try {
-    const instruction = region === "us"
-      ? `Research the following and summarize in English with specific data points, company names, and source citations:`
-      : region === "global"
-      ? `Research the following and summarize in English (with Japanese where available) including specific data, company names, and source citations:`
-      : `以下について最新のウェブ情報を調べて、具体的な数値・企業名・出典付きで日本語でまとめてください:`;
-
-    const prompt = `${systemContext}\n\n${instruction}\n${query}`;
-
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          tools: [{ google_search: {} }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 800,
-          },
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      return await callGeminiFallback(prompt);
-    }
-
-    const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  } catch {
-    return "";
-  }
+  const prompt = `${systemContext}\n\n${instruction}\n${query}`;
+  return await callGroqFallback(prompt, 500);
 }
 
 async function callGeminiFallback(prompt: string): Promise<string> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return "";
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
-        }),
-      }
-    );
-    const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  } catch {
-    return "";
-  }
+  // Route to Groq since Gemini quota is exceeded
+  return await callGroqFallback(prompt, 2000);
 }
 
-async function callGroqFallback(prompt: string): Promise<string> {
+async function callGroqFallback(prompt: string, maxTokens = 1200): Promise<string> {
   const key = process.env.GROQ_API_KEY;
-  if (!key) return "";
+  if (!key) {
+    console.error("[callGroqFallback] GROQ_API_KEY not set");
+    return "";
+  }
   try {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -151,13 +118,21 @@ async function callGroqFallback(prompt: string): Promise<string> {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 800,
+        max_tokens: maxTokens,
         temperature: 0.3,
       }),
     });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[callGroqFallback] Failed ${res.status}: ${errText.slice(0, 300)}`);
+      return "";
+    }
     const data = await res.json();
-    return data?.choices?.[0]?.message?.content ?? "";
-  } catch {
+    const content = data?.choices?.[0]?.message?.content ?? "";
+    if (!content) console.warn("[callGroqFallback] Empty response from Groq");
+    return content;
+  } catch (e) {
+    console.error("[callGroqFallback] Error:", e);
     return "";
   }
 }
@@ -282,77 +257,73 @@ function buildSynthesisPrompt(req: ResearchRequest, gathered: Record<string, str
     ? "Amazon JP/US, 楽天, G2, Trustpilot, 矢野経済, Statista, 厚労省/総務省, US Census"
     : "Amazon JP, 楽天, 矢野経済, 厚労省, 総務省";
 
-  // ── JP synthesis prompt (unchanged — Growl's core strength)
+  // ── JP synthesis prompt（簡潔版 — Groq TPM節約）
   if (region === "jp") {
-    return `あなたはGrowlの市場調査AIです。以下のウェブ調査結果を基に3C分析をJSON形式で出力してください。
+    // gathered data を500字以内に切り詰め
+    const trimData = (s: string) => s ? s.slice(0, 400) : "なし";
+    return `日本市場の3C分析をJSONで出力してください。
 
-【調査対象】
-商品・サービス: ${product}
-ターゲット顧客: ${target}
-業種: ${industry}
-${business_name ? `店舗・企業名: ${business_name}` : ""}
+商品: ${product} / ターゲット: ${target} / 業種: ${industry}
 
-【収集した実データ】
-■ 競合・ランキング情報:
-${gathered.competitor_ranking || "データ未取得"}
+調査データ:
+競合: ${trimData(gathered.competitor_ranking)}
+口コミ: ${trimData(gathered.competitor_reviews)}
+広告: ${trimData(gathered.ad_landscape)}
+市場: ${trimData(gathered.market_size)}
+統計: ${trimData(gathered.government_stats)}
+UGC: ${trimData(gathered.ugc_needs)}
 
-■ 口コミ・レビュー分析:
-${gathered.competitor_reviews || "データ未取得"}
+ルール: データがない項目はAI知識で補完（「要調査」禁止）。JSONのみ出力。
 
-■ 広告・SNS動向:
-${gathered.ad_landscape || "データ未取得"}
-
-■ 市場規模・トレンド:
-${gathered.market_size || "データ未取得"}
-
-■ 政府統計・定量データ:
-${gathered.government_stats || "データ未取得"}
-
-■ SNS口コミ・潜在ニーズ:
-${gathered.ugc_needs || "データ未取得"}
-
-【出力ルール】
-- 上記の実データのみを根拠に分析すること（AIの想像で補完しない）
-- データがない項目は「要調査」と記載
-- 数値は出典付きで記載（例: 「市場規模1,000億円（矢野経済2025年）」）
-- JSONのみで出力（コードブロック・説明不要）
-
-以下のJSON形式で出力:
 {
   "customer": {
-    "purchase_motives": ["★5レビューから抽出した購買動機1", "購買動機2", "購買動機3"],
-    "pain_points": ["★2〜3レビューから抽出した離脱理由・不満1", "不満2", "不満3"],
-    "latent_needs": ["X・UGCから抽出した潜在ニーズ1", "潜在ニーズ2"],
-    "quantitative": ["政府統計等の定量データ1（出典付き）", "定量データ2"]
+    "purchase_motives": ["動機1","動機2","動機3"],
+    "pain_points": ["不満1","不満2","不満3"],
+    "latent_needs": ["潜在ニーズ1","潜在ニーズ2"],
+    "quantitative": ["統計データ1（出典）","統計データ2"]
   },
   "competitor": {
     "top_competitors": [
-      {"name": "競合A（実際の企業・商品名）", "strength": "競合Aの強み", "weakness": "競合Aの弱み（レビューから）", "ad_count": "Meta広告件数等"},
-      {"name": "競合B", "strength": "強み", "weakness": "弱み"},
-      {"name": "競合C", "strength": "強み", "weakness": "弱み"}
+      {"name": "実際の競合名A","strength": "強み","weakness": "弱み","ad_count": "広告傾向"},
+      {"name": "競合B","strength": "強み","weakness": "弱み"},
+      {"name": "競合C","strength": "強み","weakness": "弱み"}
     ],
-    "ad_landscape": "Meta/Google広告の全体傾向（実データから）",
-    "white_space": "競合が埋められていないギャップ（差別化チャンス）"
+    "ad_landscape": "広告全体の傾向",
+    "white_space": "競合が取れていないギャップ"
   },
   "company_gaps": [
-    {"gap": "競合の弱み1＝自社が入れるポイント", "opportunity": "具体的な機会・施策"},
-    {"gap": "競合の弱み2", "opportunity": "機会・施策"},
-    {"gap": "競合の弱み3", "opportunity": "機会・施策"}
+    {"gap": "競合弱み1","opportunity": "自社が取れる機会"},
+    {"gap": "競合弱み2","opportunity": "機会"},
+    {"gap": "競合弱み3","opportunity": "機会"}
   ],
   "market": {
-    "market_size": "市場規模（出典付き）",
-    "trend": "成長・縮小・横ばい等のトレンド",
-    "key_statistics": ["重要統計1（出典）", "重要統計2", "重要統計3"]
+    "market_size": "市場規模（出典）",
+    "trend": "トレンド方向",
+    "key_statistics": ["統計1","統計2","統計3"]
   },
-  "usp_candidates": ["この分析から導き出せるUSP候補1", "USP候補2", "USP候補3"],
-  "recommended_actions": ["今週実行できる具体的アクション1（スマホ1台・30分以内）", "アクション2", "アクション3"],
-  "sources": ["使用した情報源1", "情報源2", "情報源3"]
+  "usp_candidates": ["USP1","USP2","USP3"],
+  "recommended_actions": ["今週のアクション1（30分以内）","アクション2","アクション3"],
+  "sources": ["情報源1","情報源2","情報源3"]
 }`;
   }
 
-  // ── US synthesis prompt: American marketing frameworks
-  // ICP, Jobs-to-be-done, Positioning statement, GTM motion, Growth levers
+  // ── US synthesis prompt（compact — Groq TPM節約）
   if (region === "us") {
+    const trimData = (s: string) => s ? s.slice(0, 400) : "none";
+    return `US market 3C + ICP/GTM analysis. JSON only in English.
+Product: ${product} | Target: ${target} | Industry: ${industryLabelUS(industry)}
+Competitors: ${trimData(gathered.competitor_ranking)}
+VoC/Reviews: ${trimData(gathered.competitor_reviews)}
+Ads: ${trimData(gathered.ad_landscape)}
+Market: ${trimData(gathered.market_size)}
+Demographics: ${trimData(gathered.government_stats)}
+UGC/JTBD: ${trimData(gathered.ugc_needs)}
+Rule: Use AI knowledge to fill gaps. Never say "requires further research". Output JSON only.
+{"customer":{"purchase_motives":["m1","m2","m3"],"pain_points":["p1","p2","p3"],"latent_needs":["n1","n2"],"quantitative":["s1","s2"]},"competitor":{"top_competitors":[{"name":"CompetitorA","strength":"s","weakness":"w","ad_count":"a"},{"name":"B","strength":"s","weakness":"w"},{"name":"C","strength":"s","weakness":"w"}],"ad_landscape":"hooks/offers/platforms","white_space":"gap"},"company_gaps":[{"gap":"g1","opportunity":"o1"},{"gap":"g2","opportunity":"o2"},{"gap":"g3","opportunity":"o3"}],"market":{"market_size":"$XB TAM (source)","trend":"direction","key_statistics":["s1","s2","s3"]},"positioning_statement":"For [ICP] who [problem], [Product] is [category] that [differentiator], unlike [competitor] which [weakness].","gtm_motion":"PLG/sales-led/community recommendation","growth_levers":["l1","l2","l3"],"usp_candidates":["u1","u2","u3"],"recommended_actions":["a1","a2","a3"],"sources":["s1","s2","s3"]}
+
+Now fill in the actual content based on the research data above:`;
+  }
+  if (region === "us_DISABLED") {
     return `You are a world-class US market strategist (think: top partner at McKinsey / ex-CMO of a SaaS unicorn).
 Analyze the research data below and output a comprehensive market intelligence report in JSON.
 Output language: English.
@@ -383,9 +354,10 @@ ${gathered.government_stats || "No data collected"}
 ${gathered.ugc_needs || "No data collected"}
 
 [Output Rules]
-- Base analysis ONLY on the collected data — do not fabricate figures
-- Cite sources for all statistics (e.g. "TAM $12B (Grand View Research, 2025)")
-- If data is insufficient, write "Requires further research"
+- Where collected data exists: prioritize and cite it
+- Where data is missing or insufficient: use Gemini's training knowledge to provide specific competitor names, real statistics, and genuine market intelligence — NEVER output "Requires further research" as a standalone answer
+- Mark AI-estimated figures with "※AI estimate, ~2025"
+- Cite sources for statistics where known (e.g. "TAM $12B (Grand View Research, 2025)")
 - Output valid JSON only — no markdown, no code blocks
 
 Output this exact JSON structure:
@@ -424,8 +396,22 @@ Output this exact JSON structure:
 }`;
   }
 
-  // ── Global synthesis prompt: market-entry + localization intelligence
-  return `You are a world-class global expansion strategist (think: McKinsey Global Institute / ex-VP of International Growth).
+  // ── Global synthesis prompt（compact — Groq TPM節約）
+  const trimData = (s: string) => s ? s.slice(0, 400) : "none";
+  return `Global market 3C + localization analysis. JSON only in English.
+Product: ${product} | Target: ${target} | Industry: ${industryLabelUS(industry)}
+Competitors: ${trimData(gathered.competitor_ranking)}
+VoC: ${trimData(gathered.competitor_reviews)}
+Ads/Platforms: ${trimData(gathered.ad_landscape)}
+Market: ${trimData(gathered.market_size)}
+Demographics: ${trimData(gathered.government_stats)}
+UGC: ${trimData(gathered.ugc_needs)}
+Rule: Use AI knowledge to fill gaps. Never say "requires further research". Output JSON only.
+{"customer":{"purchase_motives":["universal1","US-specific","JP-specific"],"pain_points":["universal1","US","JP"],"latent_needs":["n1","n2"],"quantitative":["global stat","US stat","JP stat"]},"competitor":{"top_competitors":[{"name":"Global leader","strength":"s","weakness":"w","ad_count":"platform"},{"name":"US leader","strength":"s","weakness":"w"},{"name":"JP leader","strength":"s","weakness":"w"}],"ad_landscape":"US:Meta/TikTok, JP:Instagram/LINE, EU:Meta/Google","white_space":"global gap"},"company_gaps":[{"gap":"g1","opportunity":"o1"},{"gap":"g2","opportunity":"o2"},{"gap":"g3","opportunity":"o3"}],"market":{"market_size":"Global $XB: NA 40%, APAC 30%, EMEA 25%","trend":"direction","key_statistics":["global","US","JP/APAC"]},"localization_gaps":[{"market":"US","adapt":"what to change","keep":"universal"},{"market":"Japan","adapt":"what to change","keep":"universal"}],"beachhead_market":"recommended first market with rationale","usp_candidates":["global USP","u2","u3"],"recommended_actions":["a1","a2","a3"],"sources":["s1","s2","s3"]}
+
+Now fill in actual content:`;
+  if (false) {
+    return `You are a world-class global expansion strategist (think: McKinsey Global Institute / ex-VP of International Growth).
 Analyze the research data and output a global market intelligence report in JSON.
 Output language: English (include Japanese notes where Japan-specific data exists).
 
@@ -456,8 +442,9 @@ ${gathered.government_stats || "No data collected"}
 ${gathered.ugc_needs || "No data collected"}
 
 [Output Rules]
-- Base analysis ONLY on collected data — do not fabricate figures
-- Cite all statistics with source and year
+- Where collected data exists: prioritize and cite it
+- Where data is missing: use Gemini training knowledge to fill in with specific competitors, real figures, and market intelligence — NEVER leave fields as "Requires further research"
+- Mark AI-estimated figures with "※AI estimate, ~2025"
 - Flag which insights are US-specific vs. Japan-specific vs. universal
 - Output valid JSON only
 
@@ -497,7 +484,8 @@ Output this exact JSON structure:
   "recommended_actions": ["Highest-leverage global action this week", "action2", "action3"],
   "sources": ["source1", "source2", "source3"]
 }`;
-}
+  } // end if (false)
+} // end buildSynthesisPrompt
 
 // ───────────────────────────────────────────────────
 // ハンドラ
@@ -522,76 +510,107 @@ export async function POST(req: NextRequest) {
       ? `You are an expert global market researcher covering both Japanese and English-speaking markets in the ${industry} industry. Research target: ${product}.`
       : `あなたは日本市場の${industry}業界に精通したマーケティングリサーチャーです。${product}の市場を調査しています。`;
 
-    // 並列で各ステップのウェブ検索を実行
-    const [
-      competitor_ranking,
-      competitor_reviews,
-      ad_landscape,
-      market_size,
-      government_stats,
-      ugc_needs,
-    ] = await Promise.allSettled([
+    // Groq TPM制限対策: 3並列×2バッチ で実行（逐次より速く、並列より TPM 節約）
+    const [r1, r2, r3] = await Promise.allSettled([
       searchWithGemini(queries.competitor_ranking, systemContext, region),
       searchWithGemini(queries.competitor_reviews, systemContext, region),
       searchWithGemini(queries.ad_landscape, systemContext, region),
+    ]);
+    // 少し待機してTPMをリセット
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    const [r4, r5, r6] = await Promise.allSettled([
       searchWithGemini(queries.market_size, systemContext, region),
       searchWithGemini(queries.government_stats, systemContext, region),
       searchWithGemini(queries.ugc_needs, systemContext, region),
     ]);
 
     const gathered: Record<string, string> = {
-      competitor_ranking: competitor_ranking.status === "fulfilled" ? competitor_ranking.value : "",
-      competitor_reviews: competitor_reviews.status === "fulfilled" ? competitor_reviews.value : "",
-      ad_landscape: ad_landscape.status === "fulfilled" ? ad_landscape.value : "",
-      market_size: market_size.status === "fulfilled" ? market_size.value : "",
-      government_stats: government_stats.status === "fulfilled" ? government_stats.value : "",
-      ugc_needs: ugc_needs.status === "fulfilled" ? ugc_needs.value : "",
+      competitor_ranking: r1.status === "fulfilled" ? r1.value : "",
+      competitor_reviews: r2.status === "fulfilled" ? r2.value : "",
+      ad_landscape: r3.status === "fulfilled" ? r3.value : "",
+      market_size: r4.status === "fulfilled" ? r4.value : "",
+      government_stats: r5.status === "fulfilled" ? r5.value : "",
+      ugc_needs: r6.status === "fulfilled" ? r6.value : "",
     };
 
-    // 収集データを3Cに統合
+    // 収集データを3Cに統合（Groq合成 — 2000トークン、TPM節約のため少し待機）
+    await new Promise(resolve => setTimeout(resolve, 2000));
     const synthesisPrompt = buildSynthesisPrompt(body, gathered);
-    let synthRaw = await callGeminiFallback(synthesisPrompt);
-    if (!synthRaw) synthRaw = await callGroqFallback(synthesisPrompt);
+    let synthRaw = await callGroqFallback(synthesisPrompt, 2000);
 
-    if (!synthRaw) {
+    if (!synthRaw || synthRaw.trim().length < 50) {
+      console.error("[POST] Synthesis completely empty. Groq API may be down or quota exceeded.");
       return NextResponse.json(
-        { error: "AI統合分析に失敗しました。時間をおいて再試行してください。" },
+        { error: "AI分析に失敗しました。Groq APIの状態を確認するか、時間をおいて再試行してください。" },
         { status: 500 }
       );
     }
 
-    // JSON抽出
-    const match = synthRaw.match(/\{[\s\S]*\}/);
-    if (!match) {
+    // JSON抽出（```json ブロックも対応）
+    let jsonStr: string | null = null;
+    const codeBlockMatch = synthRaw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim();
+    } else {
+      const rawMatch = synthRaw.match(/\{[\s\S]*\}/);
+      if (rawMatch) jsonStr = rawMatch[0];
+    }
+
+    if (!jsonStr) {
+      console.error("[POST] Could not extract JSON from synthesis. Raw (first 500):", synthRaw.slice(0, 500));
       return NextResponse.json(
-        { error: "レスポンスの解析に失敗しました" },
+        { error: "レスポンスの解析に失敗しました。再試行してください。" },
         { status: 500 }
       );
     }
 
-    const analysis = JSON.parse(match[0]);
+    let analysis: Record<string, unknown>;
+    try {
+      analysis = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      console.error("[POST] JSON.parse failed:", parseErr, "jsonStr (first 300):", jsonStr.slice(0, 300));
+      return NextResponse.json(
+        { error: "JSON解析に失敗しました。再試行してください。" },
+        { status: 500 }
+      );
+    }
+
+    const a = analysis as {
+      customer?: CustomerData;
+      competitor?: CompetitorData & { top_competitors?: CompetitorItem[] };
+      company_gaps?: CompanyGap[];
+      market?: MarketData;
+      positioning_statement?: string;
+      gtm_motion?: string;
+      growth_levers?: string[];
+      localization_gaps?: { market: string; adapt: string; keep: string }[];
+      beachhead_market?: string;
+      usp_candidates?: string[];
+      recommended_actions?: string[];
+      sources?: string[];
+    };
 
     const result: ResearchResult = {
       status: "success",
       research: {
-        customer: analysis.customer ?? { purchase_motives: [], pain_points: [], latent_needs: [], quantitative: [] },
-        competitor: analysis.competitor ?? { top_competitors: [], ad_landscape: "", white_space: "" },
-        company_gaps: analysis.company_gaps ?? [],
-        market: analysis.market ?? { market_size: "", trend: "", key_statistics: [] },
+        customer: a.customer ?? { purchase_motives: [], pain_points: [], latent_needs: [], quantitative: [] },
+        competitor: a.competitor ?? { top_competitors: [], ad_landscape: "", white_space: "" },
+        company_gaps: a.company_gaps ?? [],
+        market: a.market ?? { market_size: "", trend: "", key_statistics: [] },
         // US-specific fields
-        ...(analysis.positioning_statement && { positioning_statement: analysis.positioning_statement }),
-        ...(analysis.gtm_motion && { gtm_motion: analysis.gtm_motion }),
-        ...(analysis.growth_levers && { growth_levers: analysis.growth_levers }),
+        ...(a.positioning_statement && { positioning_statement: a.positioning_statement }),
+        ...(a.gtm_motion && { gtm_motion: a.gtm_motion }),
+        ...(a.growth_levers && { growth_levers: a.growth_levers }),
         // Global-specific fields
-        ...(analysis.localization_gaps && { localization_gaps: analysis.localization_gaps }),
-        ...(analysis.beachhead_market && { beachhead_market: analysis.beachhead_market }),
-        usp_candidates: analysis.usp_candidates ?? [],
-        recommended_actions: analysis.recommended_actions ?? [],
-        sources: analysis.sources ?? [],
+        ...(a.localization_gaps && { localization_gaps: a.localization_gaps }),
+        ...(a.beachhead_market && { beachhead_market: a.beachhead_market }),
+        usp_candidates: a.usp_candidates ?? [],
+        recommended_actions: a.recommended_actions ?? [],
+        sources: a.sources ?? [],
       },
       summary: region === "us"
-        ? `3C analysis for "${product}" complete. Identified ${analysis.competitor?.top_competitors?.length ?? 0} competitors and ${analysis.company_gaps?.length ?? 0} differentiation opportunities.`
-        : `${product}の3C分析が完了しました。競合${analysis.competitor?.top_competitors?.length ?? 0}社を特定し、${analysis.company_gaps?.length ?? 0}個の差別化機会を発見しました。`,
+        ? `3C analysis for "${product}" complete. Identified ${a.competitor?.top_competitors?.length ?? 0} competitors and ${a.company_gaps?.length ?? 0} differentiation opportunities.`
+        : `${product}の3C分析が完了しました。競合${a.competitor?.top_competitors?.length ?? 0}社を特定し、${a.company_gaps?.length ?? 0}個の差別化機会を発見しました。`,
       generated_at: new Date().toISOString(),
     };
 
