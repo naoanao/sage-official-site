@@ -232,21 +232,24 @@ function buildSearchQueries(req: ResearchRequest) {
     };
   }
 
-  // Default: JP
+  // Default: JP — 商品カテゴリに特化した競合を特定するクエリ
   return {
-    competitor_ranking: `${product} Amazon 楽天 ランキング 人気 競合 2025 2026`,
-    competitor_reviews: `${product} 口コミ レビュー 「満足」 「残念」 比較 Amazon 楽天 2025`,
-    ad_landscape: `${product} Instagram Meta広告 Google広告 SNSマーケティング 事例 2025 2026`,
+    // 商品名で直接検索し、そのカテゴリで競合するブランドを特定
+    competitor_ranking: `「${product}」 ブランド 比較 おすすめ ランキング メーカー 市場シェア Amazon 楽天 2025`,
+    // 口コミは商品カテゴリに絞り、実際の購入者の声を取得
+    competitor_reviews: `「${product}」 口コミ レビュー 比較 「どれがいい」 「おすすめ」 Amazon 楽天 X Twitter 2025`,
+    // 広告傾向も商品カテゴリで検索
+    ad_landscape: `「${product}」 広告 Instagram Meta Google SNS マーケティング 訴求 2025 2026`,
     market_size: `${industryLabelJP(industry)} 市場規模 矢野経済 2025 2026`,
     government_stats: `${target} 統計 調査 厚生労働省 総務省 国土交通省 2024 2025${loc}`,
-    ugc_needs: `${product} Twitter X Instagram 「使ってみた」 「試してみた」 体験談 感想 2025`,
+    ugc_needs: `「${product}」 Twitter X Instagram 「使ってみた」 「試してみた」 体験談 感想 2025`,
   };
 }
 
 // ───────────────────────────────────────────────────
 // 総合3C分析プロンプト
 // ───────────────────────────────────────────────────
-function buildSynthesisPrompt(req: ResearchRequest, gathered: Record<string, string>): string {
+function buildSynthesisPrompt(req: ResearchRequest, gathered: Record<string, string>, specificCompetitors = ""): string {
   const { product, target, industry, business_name, region = "jp" } = req;
 
   const regionLabel = region === "us" ? "US / English-speaking markets" : region === "global" ? "Global (JP + US)" : "日本市場";
@@ -261,9 +264,12 @@ function buildSynthesisPrompt(req: ResearchRequest, gathered: Record<string, str
   if (region === "jp") {
     // gathered data を500字以内に切り詰め
     const trimData = (s: string) => s ? s.slice(0, 400) : "なし";
+    const competitorHint = specificCompetitors
+      ? `\n特定済み競合ブランド（必ずこの中から選ぶこと）: ${specificCompetitors.slice(0, 200)}`
+      : "";
     return `日本市場の3C分析をJSONで出力してください。
 
-商品: ${product} / ターゲット: ${target} / 業種: ${industry}
+商品: ${product} / ターゲット: ${target} / 業種: ${industry}${competitorHint}
 
 調査データ:
 競合: ${trimData(gathered.competitor_ranking)}
@@ -273,7 +279,10 @@ function buildSynthesisPrompt(req: ResearchRequest, gathered: Record<string, str
 統計: ${trimData(gathered.government_stats)}
 UGC: ${trimData(gathered.ugc_needs)}
 
-ルール: データがない項目はAI知識で補完（「要調査」禁止）。JSONのみ出力。
+ルール:
+- データがない項目はAI知識で補完（「要調査」禁止）
+- top_competitorsは必ず「${product}」という商品を直接販売しているブランド名を記入（業界の親会社・大手企業一般は不可。この商品カテゴリで実際に競合するブランドのみ）
+- JSONのみ出力
 
 {
   "customer": {
@@ -284,9 +293,9 @@ UGC: ${trimData(gathered.ugc_needs)}
   },
   "competitor": {
     "top_competitors": [
-      {"name": "実際の競合名A","strength": "強み","weakness": "弱み","ad_count": "広告傾向"},
-      {"name": "競合B","strength": "強み","weakness": "弱み"},
-      {"name": "競合C","strength": "強み","weakness": "弱み"}
+      {"name": "${product}を販売している競合ブランドA","strength": "強み","weakness": "弱み","ad_count": "広告傾向"},
+      {"name": "競合ブランドB","strength": "強み","weakness": "弱み"},
+      {"name": "競合ブランドC","strength": "強み","weakness": "弱み"}
     ],
     "ad_landscape": "広告全体の傾向",
     "white_space": "競合が取れていないギャップ"
@@ -310,16 +319,17 @@ UGC: ${trimData(gathered.ugc_needs)}
   // ── US synthesis prompt（compact — Groq TPM節約）
   if (region === "us") {
     const trimData = (s: string) => s ? s.slice(0, 400) : "none";
+    const competitorHintUS = specificCompetitors ? `\nKnown direct competitors (use these): ${specificCompetitors.slice(0, 150)}` : "";
     return `US market 3C + ICP/GTM analysis. JSON only in English.
-Product: ${product} | Target: ${target} | Industry: ${industryLabelUS(industry)}
+Product: ${product} | Target: ${target} | Industry: ${industryLabelUS(industry)}${competitorHintUS}
 Competitors: ${trimData(gathered.competitor_ranking)}
 VoC/Reviews: ${trimData(gathered.competitor_reviews)}
 Ads: ${trimData(gathered.ad_landscape)}
 Market: ${trimData(gathered.market_size)}
 Demographics: ${trimData(gathered.government_stats)}
 UGC/JTBD: ${trimData(gathered.ugc_needs)}
-Rule: Use AI knowledge to fill gaps. Never say "requires further research". Output JSON only.
-{"customer":{"purchase_motives":["m1","m2","m3"],"pain_points":["p1","p2","p3"],"latent_needs":["n1","n2"],"quantitative":["s1","s2"]},"competitor":{"top_competitors":[{"name":"CompetitorA","strength":"s","weakness":"w","ad_count":"a"},{"name":"B","strength":"s","weakness":"w"},{"name":"C","strength":"s","weakness":"w"}],"ad_landscape":"hooks/offers/platforms","white_space":"gap"},"company_gaps":[{"gap":"g1","opportunity":"o1"},{"gap":"g2","opportunity":"o2"},{"gap":"g3","opportunity":"o3"}],"market":{"market_size":"$XB TAM (source)","trend":"direction","key_statistics":["s1","s2","s3"]},"positioning_statement":"For [ICP] who [problem], [Product] is [category] that [differentiator], unlike [competitor] which [weakness].","gtm_motion":"PLG/sales-led/community recommendation","growth_levers":["l1","l2","l3"],"usp_candidates":["u1","u2","u3"],"recommended_actions":["a1","a2","a3"],"sources":["s1","s2","s3"]}
+Rules: Use AI knowledge to fill gaps. Never say "requires further research". top_competitors MUST be brands that directly sell "${product}" as their product — NOT parent conglomerates or broad industry players. Output JSON only.
+{"customer":{"purchase_motives":["m1","m2","m3"],"pain_points":["p1","p2","p3"],"latent_needs":["n1","n2"],"quantitative":["s1","s2"]},"competitor":{"top_competitors":[{"name":"BrandA that sells ${product}","strength":"s","weakness":"w","ad_count":"a"},{"name":"BrandB","strength":"s","weakness":"w"},{"name":"BrandC","strength":"s","weakness":"w"}],"ad_landscape":"hooks/offers/platforms","white_space":"gap"},"company_gaps":[{"gap":"g1","opportunity":"o1"},{"gap":"g2","opportunity":"o2"},{"gap":"g3","opportunity":"o3"}],"market":{"market_size":"$XB TAM (source)","trend":"direction","key_statistics":["s1","s2","s3"]},"positioning_statement":"For [ICP] who [problem], [Product] is [category] that [differentiator], unlike [competitor] which [weakness].","gtm_motion":"PLG/sales-led/community recommendation","growth_levers":["l1","l2","l3"],"usp_candidates":["u1","u2","u3"],"recommended_actions":["a1","a2","a3"],"sources":["s1","s2","s3"]}
 
 Now fill in the actual content based on the research data above:`;
   }
@@ -406,8 +416,8 @@ Ads/Platforms: ${trimData(gathered.ad_landscape)}
 Market: ${trimData(gathered.market_size)}
 Demographics: ${trimData(gathered.government_stats)}
 UGC: ${trimData(gathered.ugc_needs)}
-Rule: Use AI knowledge to fill gaps. Never say "requires further research". Output JSON only.
-{"customer":{"purchase_motives":["universal1","US-specific","JP-specific"],"pain_points":["universal1","US","JP"],"latent_needs":["n1","n2"],"quantitative":["global stat","US stat","JP stat"]},"competitor":{"top_competitors":[{"name":"Global leader","strength":"s","weakness":"w","ad_count":"platform"},{"name":"US leader","strength":"s","weakness":"w"},{"name":"JP leader","strength":"s","weakness":"w"}],"ad_landscape":"US:Meta/TikTok, JP:Instagram/LINE, EU:Meta/Google","white_space":"global gap"},"company_gaps":[{"gap":"g1","opportunity":"o1"},{"gap":"g2","opportunity":"o2"},{"gap":"g3","opportunity":"o3"}],"market":{"market_size":"Global $XB: NA 40%, APAC 30%, EMEA 25%","trend":"direction","key_statistics":["global","US","JP/APAC"]},"localization_gaps":[{"market":"US","adapt":"what to change","keep":"universal"},{"market":"Japan","adapt":"what to change","keep":"universal"}],"beachhead_market":"recommended first market with rationale","usp_candidates":["global USP","u2","u3"],"recommended_actions":["a1","a2","a3"],"sources":["s1","s2","s3"]}
+Rules: Use AI knowledge to fill gaps. Never say "requires further research". top_competitors MUST be specific brands that directly sell "${product}" — global, US, and JP leaders in THIS product category. Output JSON only.
+{"customer":{"purchase_motives":["universal1","US-specific","JP-specific"],"pain_points":["universal1","US","JP"],"latent_needs":["n1","n2"],"quantitative":["global stat","US stat","JP stat"]},"competitor":{"top_competitors":[{"name":"Global brand selling ${product}","strength":"s","weakness":"w","ad_count":"platform"},{"name":"US brand","strength":"s","weakness":"w"},{"name":"JP brand","strength":"s","weakness":"w"}],"ad_landscape":"US:Meta/TikTok, JP:Instagram/LINE, EU:Meta/Google","white_space":"global gap"},"company_gaps":[{"gap":"g1","opportunity":"o1"},{"gap":"g2","opportunity":"o2"},{"gap":"g3","opportunity":"o3"}],"market":{"market_size":"Global $XB: NA 40%, APAC 30%, EMEA 25%","trend":"direction","key_statistics":["global","US","JP/APAC"]},"localization_gaps":[{"market":"US","adapt":"what to change","keep":"universal"},{"market":"Japan","adapt":"what to change","keep":"universal"}],"beachhead_market":"recommended first market with rationale","usp_candidates":["global USP","u2","u3"],"recommended_actions":["a1","a2","a3"],"sources":["s1","s2","s3"]}
 
 Now fill in actual content:`;
   if (false) {
@@ -504,11 +514,35 @@ export async function POST(req: NextRequest) {
 
     const region = body.region ?? "jp";
     const queries = buildSearchQueries(body);
+
+    // ── Step 0: 商品カテゴリに特化した競合ブランドを事前に特定（TPM節約: 300トークン）
+    // これにより synthesis が「業界大手」ではなく「この商品を売っているブランド」を返す
+    let specificCompetitors = "";
+    if (region === "jp") {
+      const competitorLookupPrompt = `日本市場で「${product}」を販売している主要ブランドを5社以内で挙げてください。
+条件：
+・「${product}」という商品（同じカテゴリ・同じ形態）を専門的に扱っているブランドのみ
+・業界全体の大手企業ではなく、この商品カテゴリで直接競合するブランド
+・ブランド名・会社名のみを列挙（説明不要）
+
+例：「青汁サプリ」なら → DHC、キューサイ、ファンケル、えがお、サントリー健康食品 など（飲料メーカーではなくサプリブランド）
+
+「${product}」の直接競合ブランド：`;
+      specificCompetitors = await callGroqFallback(competitorLookupPrompt, 250);
+      console.log("[POST] Specific competitors found:", specificCompetitors.slice(0, 150));
+    } else if (region === "us") {
+      const competitorLookupPrompt = `List the top 5 US brands that directly sell "${product}" as their product. Only brands in this specific product category — not parent companies or unrelated industry leaders. Brand names only, comma-separated.`;
+      specificCompetitors = await callGroqFallback(competitorLookupPrompt, 150);
+    } else {
+      const competitorLookupPrompt = `List top global, US, and JP brands that directly sell "${product}". Only brands in this exact product category. 5 brands max, names only.`;
+      specificCompetitors = await callGroqFallback(competitorLookupPrompt, 150);
+    }
+
     const systemContext = region === "us"
-      ? `You are an expert market researcher specializing in the ${industry} industry in English-speaking markets. You are researching the market for: ${product}.`
+      ? `You are an expert market researcher specializing in "${product}" as a specific product category within the ${industry} industry. Known direct competitors: ${specificCompetitors || "identify from research"}. Focus ONLY on brands that directly sell "${product}".`
       : region === "global"
-      ? `You are an expert global market researcher covering both Japanese and English-speaking markets in the ${industry} industry. Research target: ${product}.`
-      : `あなたは日本市場の${industry}業界に精通したマーケティングリサーチャーです。${product}の市場を調査しています。`;
+      ? `You are an expert global market researcher focusing on "${product}" as a specific product category. Known direct competitors: ${specificCompetitors || "identify from research"}. Only include brands that directly sell "${product}".`
+      : `あなたは日本市場の専門マーケターです。「${product}」を直接販売している競合ブランドの分析をしています。この商品の直接競合として特定済みのブランド: ${specificCompetitors || "リサーチから特定"}。この商品カテゴリで直接競合するブランドのみ回答してください。`;
 
     // Groq TPM制限対策: 3並列×2バッチ で実行（逐次より速く、並列より TPM 節約）
     const [r1, r2, r3] = await Promise.allSettled([
@@ -535,7 +569,7 @@ export async function POST(req: NextRequest) {
 
     // 収集データを3Cに統合（Groq合成 — 2000トークン、TPM節約のため少し待機）
     await new Promise(resolve => setTimeout(resolve, 2000));
-    const synthesisPrompt = buildSynthesisPrompt(body, gathered);
+    const synthesisPrompt = buildSynthesisPrompt(body, gathered, specificCompetitors);
     let synthRaw = await callGroqFallback(synthesisPrompt, 2000);
 
     if (!synthRaw || synthRaw.trim().length < 50) {
