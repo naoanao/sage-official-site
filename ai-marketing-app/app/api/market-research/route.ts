@@ -138,6 +138,79 @@ async function callGroqFallback(prompt: string, maxTokens = 1200): Promise<strin
 }
 
 // ───────────────────────────────────────────────────
+// Tavily Search API — リアルタイムウェブ検索
+// ───────────────────────────────────────────────────
+async function searchWithTavily(query: string, options?: {
+  maxResults?: number;
+  includeDomains?: string[];
+  searchDepth?: "basic" | "advanced";
+}): Promise<{ title: string; content: string; url: string }[]> {
+  const key = process.env.TAVILY_API_KEY;
+  if (!key) {
+    console.warn("[Tavily] TAVILY_API_KEY not set, skipping");
+    return [];
+  }
+  try {
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: key,
+        query,
+        search_depth: options?.searchDepth ?? "basic",
+        max_results: options?.maxResults ?? 5,
+        include_domains: options?.includeDomains,
+        include_answer: false,
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) {
+      console.warn(`[Tavily] ${res.status}: ${await res.text().then(t => t.slice(0, 200))}`);
+      return [];
+    }
+    const data = await res.json();
+    return (data.results ?? []) as { title: string; content: string; url: string }[];
+  } catch (e) {
+    console.warn("[Tavily] Error:", e);
+    return [];
+  }
+}
+
+// Tavily で楽天・Amazon JPから競合ブランドを検索
+async function fetchCompetitorsViaTavily(product: string): Promise<string> {
+  const query = `${product} ブランド ランキング おすすめ 比較 site:search.rakuten.co.jp OR site:amazon.co.jp`;
+  const results = await searchWithTavily(query, {
+    maxResults: 5,
+    includeDomains: ["search.rakuten.co.jp", "amazon.co.jp", "kakaku.com", "cosme.net"],
+    searchDepth: "basic",
+  });
+
+  if (results.length === 0) {
+    // 楽天・Amazonに絞らずブランド比較ページを検索
+    const fallbackResults = await searchWithTavily(
+      `${product} おすすめ ブランド 比較 ランキング 日本`,
+      { maxResults: 5, searchDepth: "basic" }
+    );
+    results.push(...fallbackResults);
+  }
+
+  if (results.length === 0) return "";
+
+  const snippets = results.map(r => `${r.title}\n${r.content.slice(0, 300)}`).join("\n---\n");
+  const extractPrompt = `以下は「${product}」に関する検索結果です。
+この中から、この商品を直接販売している日本のブランド・メーカー名を最大5社抽出してください。
+親会社・大企業ではなく、この商品カテゴリで直接競合するブランド名のみ、カンマ区切りで出力。
+
+検索結果:
+${snippets.slice(0, 1500)}
+
+ブランド名（カンマ区切りのみ）:`;
+
+  const brands = await callGroqFallback(extractPrompt, 150);
+  return brands?.trim() ?? "";
+}
+
+// ───────────────────────────────────────────────────
 // 業種ラベル（JP / US）
 // ───────────────────────────────────────────────────
 function industryLabelJP(industry: string): string {
@@ -614,26 +687,57 @@ export async function POST(req: NextRequest) {
     const region = body.region ?? "jp";
     const queries = buildSearchQueries(body);
 
-    // ── Step 0: 楽天・Amazon JP から実際の競合ブランドを取得（JPのみ）
-    // LLMの学習データに頼らず、リアルタイムのランキングデータを使う
+    // ── Step 0: リアルタイム競合ブランド取得（JPのみ）
+    // 優先順位: Tavily検索 → 楽天直接スクレイピング → Groqフォールバック
     let specificCompetitors = "";
     if (region === "jp") {
-      // まず楽天・Amazon JPから実データを取得
-      specificCompetitors = await fetchRealCompetitorsJP(product);
-      console.log("[POST] Real competitors from e-commerce:", specificCompetitors.slice(0, 150));
+      // 1st: Tavily APIで楽天・Amazon・価格比較サイトから検索
+      specificCompetitors = await fetchCompetitorsViaTavily(product);
+      console.log("[POST] Tavily competitors:", specificCompetitors.slice(0, 150));
 
-      // 取得できなかった場合のみGroqフォールバック（Groqは最後の手段）
+      // 2nd: Tavilyが失敗 → 楽天直接スクレイピング
       if (!specificCompetitors || specificCompetitors.trim().length < 3) {
-        console.warn("[POST] E-commerce scraping failed, falling back to Groq");
+        console.warn("[POST] Tavily failed, trying direct Rakuten scraping");
+        specificCompetitors = await fetchRealCompetitorsJP(product);
+        console.log("[POST] Rakuten scraping competitors:", specificCompetitors.slice(0, 150));
+      }
+
+      // 3rd: 両方失敗 → Groqフォールバック（最終手段）
+      if (!specificCompetitors || specificCompetitors.trim().length < 3) {
+        console.warn("[POST] All real-data sources failed, falling back to Groq knowledge");
         const fallbackPrompt = `日本市場で「${product}」を販売しているブランドを5社、カンマ区切りで列挙してください。同じ商品形態・カテゴリの専門ブランドのみ（ブランド名のみ出力）:`;
         specificCompetitors = await callGroqFallback(fallbackPrompt, 150);
       }
     } else if (region === "us") {
-      const competitorLookupPrompt = `List the top 5 US brands that directly sell "${product}" as their product. Only brands in this specific product category — not parent companies or unrelated industry leaders. Brand names only, comma-separated.`;
-      specificCompetitors = await callGroqFallback(competitorLookupPrompt, 150);
+      // US: Tavily でAmazon.com・G2・Redditから競合検索
+      const tavilyResults = await searchWithTavily(
+        `${product} brands comparison best top ranked site:amazon.com OR site:g2.com OR site:reddit.com`,
+        { maxResults: 5, searchDepth: "basic" }
+      );
+      if (tavilyResults.length > 0) {
+        const snippets = tavilyResults.map(r => `${r.title}\n${r.content.slice(0, 300)}`).join("\n---\n");
+        const extractPrompt = `From these search results about "${product}", extract up to 5 US brand names that directly sell "${product}". Only specific brands in this product category — not parent conglomerates. Output brand names only, comma-separated.\n\n${snippets.slice(0, 1500)}\n\nBrands:`;
+        specificCompetitors = await callGroqFallback(extractPrompt, 150);
+      }
+      if (!specificCompetitors || specificCompetitors.trim().length < 3) {
+        const competitorLookupPrompt = `List the top 5 US brands that directly sell "${product}" as their product. Only brands in this specific product category — not parent companies or unrelated industry leaders. Brand names only, comma-separated.`;
+        specificCompetitors = await callGroqFallback(competitorLookupPrompt, 150);
+      }
     } else {
-      const competitorLookupPrompt = `List top global, US, and JP brands that directly sell "${product}". Only brands in this exact product category. 5 brands max, names only.`;
-      specificCompetitors = await callGroqFallback(competitorLookupPrompt, 150);
+      // Global: Tavily でグローバル比較検索
+      const tavilyResults = await searchWithTavily(
+        `${product} best brands global comparison top brands`,
+        { maxResults: 5, searchDepth: "basic" }
+      );
+      if (tavilyResults.length > 0) {
+        const snippets = tavilyResults.map(r => `${r.title}\n${r.content.slice(0, 300)}`).join("\n---\n");
+        const extractPrompt = `From these search results about "${product}", extract up to 5 global brand names that directly sell "${product}". Output brand names only, comma-separated.\n\n${snippets.slice(0, 1500)}\n\nBrands:`;
+        specificCompetitors = await callGroqFallback(extractPrompt, 150);
+      }
+      if (!specificCompetitors || specificCompetitors.trim().length < 3) {
+        const competitorLookupPrompt = `List top global, US, and JP brands that directly sell "${product}". Only brands in this exact product category. 5 brands max, names only.`;
+        specificCompetitors = await callGroqFallback(competitorLookupPrompt, 150);
+      }
     }
 
     const systemContext = region === "us"
