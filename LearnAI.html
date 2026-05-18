@@ -5295,6 +5295,26 @@ function doFileSelect(event) {
   Array.from(files).forEach(f => addImg(f));
   event.target.value = ''; // 同じファイルを再選択可能に
 }
+function doDragOver(e) { e.preventDefault(); document.getElementById('dropZone')?.classList.add('over'); }
+function doDragLeave(e) { document.getElementById('dropZone')?.classList.remove('over'); }
+function doDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone')?.classList.remove('over');
+  const files = e.dataTransfer?.files;
+  if (files) Array.from(files).forEach(f => addImg(f));
+}
+// Ctrl+V でクリップボードから画像貼り付け
+document.addEventListener('paste', function(e) {
+  if (document.getElementById('sub-manual')?.style.display === 'none') return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  Array.from(items).forEach(function(item) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) addImg(file);
+    }
+  });
+});
 function addImg(file) {
   if (!file || !file.type.startsWith('image/')) return;
   const reader = new FileReader();
@@ -5313,6 +5333,9 @@ function renderPreviews() {
       <img src="${img.url}" alt="img${i}" style="width:100%;height:100%;object-fit:cover">
       <button class="img-del" onclick="pendImgs.splice(${i},1);renderPreviews()">✕</button>
     </div>`).join('');
+  // 画像が1枚以上あるとき実行ボタンを表示、0枚で非表示
+  const actions = document.getElementById('manualActions');
+  if (actions) actions.style.display = pendImgs.length > 0 ? 'block' : 'none';
 }
 
 async function doA2Manual() {
@@ -5703,7 +5726,11 @@ function renderAccum() {
 }
 
 // Recents（過去セッション）セクションを描画
-function renderRecentsSection() {
+let _recentsShowAll = false;
+const RECENTS_INITIAL_LIMIT = 5;
+
+function renderRecentsSection(showAll) {
+  if (showAll !== undefined) _recentsShowAll = showAll;
   const sec = document.getElementById('recentsSection');
   if (!sec) return;
   const sessions = _loadSessions();
@@ -5713,9 +5740,9 @@ function renderRecentsSection() {
     return;
   }
 
-  // 日付でグループ化
-  const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
-  const yday  = new Date(Date.now() - 86400000).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+  // 最新5件のみ表示（「もっと見る」で全件展開）
+  const visiblePast = _recentsShowAll ? past : past.slice(0, RECENTS_INITIAL_LIMIT);
+  const hiddenCount = past.length - RECENTS_INITIAL_LIMIT;
 
   function dayLabel(isoStr) {
     const d = new Date(isoStr);
@@ -5728,11 +5755,21 @@ function renderRecentsSection() {
   }
 
   const groups = {};
-  past.forEach(s => {
+  visiblePast.forEach(s => {
     const label = dayLabel(s.updatedAt || s.id);
     if (!groups[label]) groups[label] = [];
     groups[label].push(s);
   });
+
+  const moreBtn = (!_recentsShowAll && hiddenCount > 0)
+    ? `<button onclick="renderRecentsSection(true)" style="display:block;width:calc(100% - 40px);margin:6px 20px 10px;padding:8px;background:none;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+        📂 他 ${hiddenCount}件を表示
+      </button>`
+    : (_recentsShowAll && past.length > RECENTS_INITIAL_LIMIT
+      ? `<button onclick="renderRecentsSection(false)" style="display:block;width:calc(100% - 40px);margin:6px 20px 10px;padding:8px;background:none;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+        ▲ 折りたたむ
+      </button>`
+      : '');
 
   sec.innerHTML = `
     <hr class="accum-divider">
@@ -5760,6 +5797,7 @@ function renderRecentsSection() {
         }).join('')}
       </div>
     `).join('')}
+    ${moreBtn}
   `;
 }
 
