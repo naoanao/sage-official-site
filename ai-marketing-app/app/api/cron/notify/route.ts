@@ -51,13 +51,13 @@ export async function GET(req: NextRequest) {
         market_signal,
       };
 
-      const { actions } = await generateWeeklyActions(profile);
+      const { actions, strategy_note } = await generateWeeklyActions(profile);
       const actionsWithStatus = actions.map((a) => ({ ...a, completed: false }));
 
       await saveWeeklySession(user.id, weekStart, actionsWithStatus);
 
       if (user.line_user_id) {
-        const text = buildWeeklyNotificationText(user.business_desc, actions);
+        const text = buildWeeklyNotificationText(user.business_desc, actions, strategy_note);
         await sendLineMessage({
           to: user.line_user_id,
           messages: [{ type: "text", text }],

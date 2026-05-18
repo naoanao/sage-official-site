@@ -28,20 +28,62 @@ export async function sendLineMessage(payload: LineMessagePayload): Promise<bool
   return true;
 }
 
+/**
+ * 週次LINE通知テキストを生成する。
+ * action[0]の完成文（コピペ可）を直接含めることで、
+ * アプリを開かなくても月曜朝すぐに行動できる設計。
+ */
 export function buildWeeklyNotificationText(
   businessName: string,
-  actions: { title: string; content_type: string }[]
+  actions: { title: string; content_type: string; content?: string }[],
+  strategyNote?: string,
 ): string {
-  const lines = [
-    `🌟 おはようございます、${businessName}さん！`,
+  // action[0]の本文（最大280文字でトリム。Instagramハッシュタグ込みでも収まる長さ）
+  const MAX_CONTENT_LEN = 280;
+  const first = actions[0];
+  const firstContent = first?.content
+    ? first.content.length > MAX_CONTENT_LEN
+      ? first.content.slice(0, MAX_CONTENT_LEN) + "…"
+      : first.content
+    : null;
+
+  const lines: string[] = [
+    `🌱 月曜おはようございます！`,
     ``,
-    `今週のマーケタスクをGrowlが用意しました👇`,
-    ``,
-    ...actions.map((a, i) => `${i + 1}. ${a.content_type}「${a.title}」`),
-    ``,
-    `コピーして投稿するだけ。今週も一緒に頑張りましょう！`,
-    ``,
-    `▶ 開く: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://growl.app"}`,
+    `${businessName}さんの今週の施策が届きました。`,
   ];
+
+  // 今週の方針（AI が選んだ理由を 2 文で伝える）
+  if (strategyNote) {
+    lines.push(``, `━━ 今週の方針 ━━`, strategyNote);
+  }
+
+  // action[0]: 完成文をそのまま掲載（コピーして即使える）
+  lines.push(
+    ``,
+    `━━ ①今すぐ使える完成文（コピーOK）━━`,
+    firstContent ?? `${first?.content_type ?? ""}「${first?.title ?? ""}」`,
+  );
+
+  // action[1] と [2]: タイトルのみ（全文はアプリで確認）
+  const rest = actions.slice(1);
+  if (rest.length > 0) {
+    lines.push(``, `━━ 残り${rest.length}つ ━━`);
+    rest.forEach((a, i) => {
+      lines.push(`${i + 2}. ${a.content_type}「${a.title}」`);
+    });
+    lines.push(
+      ``,
+      `全文はアプリで確認 →`,
+      `${process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app"}`,
+    );
+  }
+
+  lines.push(
+    ``,
+    `✅ 完了したら「完了」と返信してください`,
+    `Growlはあなたの反応を学んで来週さらに良くなります 📊`,
+  );
+
   return lines.join("\n");
 }

@@ -11,6 +11,8 @@ export default function DashboardPage() {
   const [session, setSession] = useState<StoredSession | null>(null);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  // LINE連携状態（null=チェック中 / true=連携済み / false=未連携）
+  const [lineLinked, setLineLinked] = useState<boolean | null>(null);
 
   useEffect(() => {
     function reloadSession() {
@@ -29,6 +31,21 @@ export default function DashboardPage() {
       window.removeEventListener("pageshow", reloadSession);
     };
   }, [router]);
+
+  // LINE連携状態を非同期チェック（未連携ならバナー表示）
+  useEffect(() => {
+    const deviceId = typeof window !== "undefined"
+      ? localStorage.getItem("growl_device_id")
+      : null;
+    if (!deviceId) {
+      setLineLinked(false);
+      return;
+    }
+    fetch(`/api/line/status?device_id=${encodeURIComponent(deviceId)}`)
+      .then((r) => r.json())
+      .then((d) => setLineLinked(!!d.linked))
+      .catch(() => setLineLinked(false));
+  }, []);
 
   async function handleComplete(index: number) {
     const sessionId = session?.id;
@@ -67,7 +84,20 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-lg mx-auto">
 
-        <div className="flex items-center justify-between mb-6">
+        {/* ナビゲーションヘッダー */}
+        <div className="flex items-center justify-between mb-2">
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-500 transition-colors font-medium py-1"
+          >
+            <span>←</span>
+            <span>ホームへ</span>
+          </button>
+          <span className="text-sm font-bold text-indigo-500 tracking-wide">Growl</span>
+        </div>
+
+        <div className="flex items-start justify-between mb-6">
           <div>
             <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-1">
               今週のマーケプラン
@@ -77,13 +107,6 @@ export default function DashboardPage() {
               コピーして投稿・送信するだけ。それだけでマーケが動きます
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => router.push("/")}
-            className="text-xs text-gray-300 hover:text-indigo-400 transition-colors font-medium"
-          >
-            Growl
-          </button>
         </div>
 
         {session.strategy_note && (
@@ -126,6 +149,30 @@ export default function DashboardPage() {
         </div>
 
         <FreeProgressBar />
+
+        {/* LINE未連携バナー: アプリを開かなくても毎週月曜に自動で届く価値を伝える */}
+        {lineLinked === false && (
+          <div className="mt-6 rounded-2xl overflow-hidden shadow-md" style={{ background: "linear-gradient(135deg, #00B900 0%, #00D900 100%)" }}>
+            <div className="px-5 py-4 flex items-start gap-3">
+              <div className="text-3xl shrink-0">💬</div>
+              <div className="flex-1">
+                <p className="font-bold text-white text-sm mb-0.5">毎週月曜8時に自動で届く</p>
+                <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.85)" }}>
+                  LINEを連携すると今週の3つが月曜朝に届きます。<br />
+                  アプリを開かなくてもコピペするだけ。
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/onboarding/line")}
+                  className="bg-white font-bold text-sm px-4 py-2 rounded-xl transition-all active:scale-95"
+                  style={{ color: "#00B900" }}
+                >
+                  LINEを連携する →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {doneCount === totalCount && (
           <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6 text-center">

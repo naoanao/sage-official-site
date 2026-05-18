@@ -34,9 +34,33 @@ function CompleteContent() {
   const [sharedX, setSharedX] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackSending, setFeedbackSending] = useState(false);
+  // LINE連携状態（全完了時のバナー表示用）
+  const [lineLinked, setLineLinked] = useState<boolean | null>(null);
+
+  // 全完了時のみLINE連携状態をチェック（パフォーマンス考慮）
+  useState(() => {
+    if (!allDone) return;
+    const deviceId = typeof window !== "undefined"
+      ? localStorage.getItem("growl_device_id")
+      : null;
+    if (!deviceId) { setLineLinked(false); return; }
+    fetch(`/api/line/status?device_id=${encodeURIComponent(deviceId)}`)
+      .then((r) => r.json())
+      .then((d) => setLineLinked(!!d.linked))
+      .catch(() => setLineLinked(false));
+  });
+
+  // 業種に応じたシェア文（飲食・サロン限定にしない）
+  const businessType = session?.user_profile?.industry ?? "";
+  const industryLabel: Record<string, string> = {
+    restaurant: "飲食店オーナー", salon: "サロンオーナー", ec: "EC・通販オーナー",
+    professional: "士業・コンサルの方", construction: "工務店オーナー",
+    health: "整体・エステオーナー", education: "教室・スクールオーナー",
+  };
+  const targetLabel = industryLabel[businessType] ?? "個人事業主・店舗オーナー";
 
   const shareText = allDone
-    ? `今週の集客、AIにぜんぶ任せました✅\n\nInstagram投稿文・Googleレビュー返信・LINE配信——\n全部AIが考えて、コピーするだけ。\n\n飲食店・サロンのオーナーさんに試してほしいです👇\n${APP_URL}`
+    ? `今週のマーケ、AIにぜんぶ任せました✅\n\nInstagram投稿文・Googleレビュー返信・LINE配信——\n全部AIが考えて、コピーするだけ。\n\n${targetLabel}さんに試してほしいです👇\n${APP_URL}`
     : `マーケのタスク、1つ終わりました✅\nAIが作ったコンテンツをそのままコピーして投稿するだけ。\n\n${APP_URL}`;
 
   async function submitFeedback(value: string) {
@@ -129,6 +153,39 @@ function CompleteContent() {
             </>
           )}
         </div>
+
+        {/* 全完了時: 来週の予告 + LINE未連携バナー */}
+        {allDone && (
+          <div className="mb-4">
+            {lineLinked === false ? (
+              <div className="rounded-2xl overflow-hidden shadow-md" style={{ background: "linear-gradient(135deg, #00B900 0%, #00D900 100%)" }}>
+                <div className="px-5 py-4">
+                  <p className="font-bold text-white text-sm mb-1">📲 来週も自動で届く仕組みを作ろう</p>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.9)" }}>
+                    LINEを連携すると、来週月曜8時に新しい施策が届きます。<br />
+                    Growlがあなたのフィードバックを学習して、さらに精度を上げます。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/onboarding/line")}
+                    className="bg-white font-bold text-sm px-4 py-2 rounded-xl"
+                    style={{ color: "#00B900" }}
+                  >
+                    LINEを連携する →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-4">
+                <p className="text-sm font-semibold text-indigo-700 mb-1">🧠 AIが学習しています</p>
+                <p className="text-xs text-indigo-500 leading-relaxed">
+                  今週のフィードバックをもとに、来週月曜8時のLINE通知では<br />
+                  さらにあなたのお店に合った施策を届けます。
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Viral share card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
