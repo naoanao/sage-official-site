@@ -1777,21 +1777,42 @@ def api_pilot_chat():
 
         from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
+        # --- Growlマーケティング知識をナレッジベースからロード ---
+        _marketing_kb = ""
+        try:
+            _kb_path = pathlib.Path(os.path.dirname(__file__)) / "sage_knowledge_base" / "MARKETING_GROWL_METHOD.md"
+            if _kb_path.exists():
+                _marketing_kb = _kb_path.read_text(encoding="utf-8")
+        except Exception as _kb_err:
+            logger.warning(f"[KB] Marketing knowledge load failed: {_kb_err}")
+
         # 指示文(ツールが無くても通常回答, 必要時だけ商品化提案)
         if uilang == "en":
             sysdirective = (
-                "You are Sage Pilot. Answer the user's question directly first.\n"
+                "You are Sage Pilot — an AI business and marketing strategist. Answer the user's question directly first.\n"
+                "You have deep expertise in marketing frameworks: 3C analysis, SWOT, 4P, STP, customer journey, value proposition, PDCA.\n"
+                "You know the 10-step 3C research process: LP analysis, Amazon/Rakuten ranking for competitor identification, "
+                "review mining (★5 and ★2-3), Meta Ad Library, Google Ads keyword research, industry reports (Yano Research), "
+                "government stats (MHLW, MIC), and UGC analysis.\n"
+                "When answering marketing questions, apply these frameworks concretely with real data sources.\n"
                 "If the user asks to research/search, do it and include sources if possible.\n"
                 "Only if the user clearly wants to build/productize something, propose a concrete next step.\n"
                 "Do not repeat boilerplate like 'Since no tools were executed...'.\n"
             )
         else:
             sysdirective = (
-                "あなたは「Sage Pilot」です。まずユーザーの質問に正面から答えてください。\n"
+                "あなたは「Sage Pilot」— AIビジネス＆マーケティングストラテジストです。まずユーザーの質問に正面から答えてください。\n"
+                "マーケティングフレームワーク（3C分析・SWOT・4P・STP・カスタマージャーニー・バリュープロポジション・PDCA）の深い専門知識があります。\n"
+                "3C分析の10ステップ調査手順（LP分析・Amazon/楽天ランキングで競合特定・★5/★2〜3レビュー分析・"
+                "Meta広告ライブラリ・Google広告キーワード調査・矢野経済研究所・厚労省/総務省統計・UGC分析）を熟知しています。\n"
+                "マーケティングの質問には必ずこれらのフレームワークと具体的なデータソースを使って回答してください。\n"
                 "「調べて／検索／出典」等があれば可能なら調査し, 要点と出典を示してください。\n"
                 "「作って／作りたい／商品化したい」等が明確なときだけ, 商品化の次の一手を提案してください。\n"
                 "「ツール未実行のため…」の定型文を繰り返さないでください。\n"
             )
+        # ナレッジベースの内容を補足コンテキストとして追加
+        if _marketing_kb:
+            sysdirective += f"\n\n[マーケティング知識ベース]\n{_marketing_kb[:3000]}"
 
         # --- 履歴注入(/api/chat相当の形に寄せる)---
         historymsgs = []
@@ -2260,12 +2281,19 @@ def chat_endpoint():
                 "あなたはSage Pilotです。ユーザーのビジネス・コンテンツの質問に具体的かつ丁寧に日本語で答えてください。"
                 "Sageの対応機能: ブログ記事の自動生成・公開、Bluesky/Instagramへの自動投稿、"
                 "市場トレンドリサーチ、デジタルコース制作、Gumroad/Stripeによる販売自動化。"
-                "対応していない機能: Twitter/X、LinkedIn、Facebook、TikTokへの投稿。"
+                "対応していない機能: Twitter/X、LinkedIn、Facebook、TikTokへの投稿。\n"
+                "マーケティング専門知識: 3C分析（10ステップ調査手順: LP・Amazon/楽天ランキング・競合レビュー・Meta広告ライブラリ・Google広告・矢野経済・厚労省統計・UGC分析）、"
+                "SWOT・4P・STP・カスタマージャーニー・バリュープロポジション・PDCAサイクルを熟知しています。"
+                "マーケ質問には必ずフレームワークと具体的なデータソースを使って回答してください。"
                 if _lang == "ja" else
                 "You are Sage Pilot, the AI assistant for the Sage AI platform. Answer questions helpfully and concisely.\n"
                 "Sage's actual capabilities: auto-generate & publish blog posts, auto-post to Bluesky and Instagram, "
                 "market trend research, digital course production, sales automation via Gumroad/Stripe.\n"
                 "Platforms NOT supported: Twitter/X, LinkedIn, Facebook, TikTok.\n"
+                "Marketing expertise: You know the 10-step 3C analysis research process (LP analysis, Amazon/Rakuten ranking, "
+                "competitor review mining ★5/★2-3, Meta Ad Library, Google Ads, Yano Research, MHLW stats, UGC). "
+                "You also know SWOT, 4P, STP, customer journey, value proposition, PDCA. "
+                "Apply these frameworks with concrete data sources when answering marketing questions.\n"
                 "Do not claim Sage supports platforms it does not actually support."
             )
             _full_prompt = f"{_sys_prompt}\n\nUser: {user_message}\nSage:"
@@ -3545,6 +3573,126 @@ def api_sns_performance_summary():
     except Exception as e:
         logger.error(f"[SNS_TRACKER] summary error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+
+@app.route('/api/pdf/product', methods=['POST'])
+def api_pdf_product():
+    """
+    商品PDFを生成して返す。
+    Body: { "title": str, "sections": [{"heading": str, "body": str}],
+            "tagline": str, "price": str, "url": str }
+    """
+    try:
+        from backend.integrations.pdf_generator import generate_product_pdf
+        data = request.get_json(silent=True) or {}
+        title = data.get("title", "").strip()
+        if not title:
+            return jsonify({"error": "title required"}), 400
+        sections = data.get("sections", [{"heading": "内容", "body": data.get("body", "")}])
+        path = generate_product_pdf(
+            title=title,
+            content_sections=sections,
+            tagline=data.get("tagline", ""),
+            price_str=data.get("price", ""),
+            product_url=data.get("url", "sage-official-site.pages.dev"),
+        )
+        if path:
+            filename = os.path.basename(path)
+            return jsonify({"status": "ok", "path": path, "filename": filename}), 200
+        return jsonify({"status": "error", "message": "PDF generation failed"}), 500
+    except Exception as e:
+        logger.error(f"[PDF] product endpoint error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/pdf/sns-report', methods=['GET'])
+def api_pdf_sns_report():
+    """週次SNSレポートPDFを生成して返す。Query: ?days=7"""
+    try:
+        from backend.integrations.pdf_generator import generate_sns_report_pdf
+        days = int(request.args.get("days", 7))
+        path = generate_sns_report_pdf(days=days)
+        if path:
+            filename = os.path.basename(path)
+            return jsonify({"status": "ok", "path": path, "filename": filename}), 200
+        return jsonify({"status": "error", "message": "Report generation failed"}), 500
+    except Exception as e:
+        logger.error(f"[PDF] sns-report endpoint error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/pdf/download/<filename>', methods=['GET'])
+def api_pdf_download(filename: str):
+    """生成済みPDFをダウンロード。"""
+    import re
+    from flask import send_from_directory
+    if not re.match(r'^[\w\-\.]+\.pdf$', filename):
+        return jsonify({"error": "invalid filename"}), 400
+    pdf_dir = os.path.join(os.path.dirname(__file__), "data", "pdfs")
+    return send_from_directory(pdf_dir, filename, as_attachment=True)
+
+
+@app.route('/api/video/generate', methods=['POST'])
+def api_video_generate():
+    """
+    SNSショート動画を生成する（バックグラウンド実行）。
+    Body: { "title": str, "slides": [str, ...], "cta_text": str,
+            "subtitle": str, "duration_per_slide": float }
+    """
+    try:
+        import threading
+        from backend.integrations.video_generator import generate_sns_short_video
+        data = request.get_json(silent=True) or {}
+        title = data.get("title", "").strip()
+        slides = data.get("slides", [])
+        if not title or not slides:
+            return jsonify({"error": "title and slides required"}), 400
+
+        # バックグラウンド実行
+        def _bg():
+            try:
+                path = generate_sns_short_video(
+                    title=title,
+                    slides=slides,
+                    cta_text=data.get("cta_text", "詳しくはプロフから"),
+                    subtitle=data.get("subtitle", ""),
+                    duration_per_slide=float(data.get("duration_per_slide", 3.5)),
+                )
+                logger.info(f"[Video] Background generation done: {path}")
+            except Exception as e:
+                logger.error(f"[Video] Background generation error: {e}", exc_info=True)
+
+        t = threading.Thread(target=_bg, name="VideoGen-API", daemon=True)
+        t.start()
+        return jsonify({"status": "started", "message": "動画生成を開始しました（バックグラウンド実行）"}), 202
+    except Exception as e:
+        logger.error(f"[Video] endpoint error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/video/list', methods=['GET'])
+def api_video_list():
+    """生成済み動画ファイルのリストを返す。"""
+    try:
+        video_dir = os.path.join(os.path.dirname(__file__), "data", "videos")
+        if not os.path.exists(video_dir):
+            return jsonify({"status": "ok", "videos": []}), 200
+        files = []
+        for f in sorted(os.listdir(video_dir), reverse=True):
+            if f.endswith(".mp4"):
+                fpath = os.path.join(video_dir, f)
+                files.append({
+                    "filename": f,
+                    "size_mb": round(os.path.getsize(fpath) / 1024 / 1024, 2),
+                    "created_at": datetime.fromtimestamp(
+                        os.path.getctime(fpath)).isoformat(),
+                })
+        return jsonify({"status": "ok", "videos": files}), 200
+    except Exception as e:
+        logger.error(f"[Video] list endpoint error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
 @app.route('/api/research/run', methods=['POST'])

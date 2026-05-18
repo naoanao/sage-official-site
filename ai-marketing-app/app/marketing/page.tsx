@@ -102,7 +102,38 @@ interface PostResult {
   hook: string;
 }
 
-type Step = "form" | "situation" | "loading" | "result";
+// AI市場調査結果の型
+interface CompetitorItem {
+  name: string;
+  strength: string;
+  weakness: string;
+  ad_count?: string;
+}
+interface ResearchResult {
+  status: string;
+  research: {
+    customer: {
+      purchase_motives: string[];
+      pain_points: string[];
+      latent_needs: string[];
+      quantitative: string[];
+    };
+    competitor: {
+      top_competitors: CompetitorItem[];
+      ad_landscape: string;
+      white_space: string;
+    };
+    company_gaps: { gap: string; opportunity: string }[];
+    market: { market_size: string; trend: string; key_statistics: string[] };
+    usp_candidates: string[];
+    recommended_actions: string[];
+    sources: string[];
+  };
+  summary: string;
+  generated_at: string;
+}
+
+type Step = "form" | "situation" | "loading" | "result" | "research-loading" | "research-result";
 
 // ────────────────────────────────────────────
 // ユーティリティ
@@ -233,6 +264,10 @@ export default function MarketingPage() {
   const [copied, setCopied] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // AI市場調査
+  const [researchResult, setResearchResult] = useState<ResearchResult | null>(null);
+  const [researchError, setResearchError] = useState<string | null>(null);
+
   // 投稿文生成
   const [posts, setPosts] = useState<PostResult[] | null>(null);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -296,6 +331,32 @@ export default function MarketingPage() {
       scrollTop();
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
+      setStep("situation");
+    }
+  }
+
+  // ── AI市場調査（リアルタイムWeb検索 + 3C統合）
+  async function handleResearch() {
+    setStep("research-loading");
+    setResearchError(null);
+    try {
+      const res = await fetch("/api/market-research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          industry: industry || "professional",
+          product,
+          target,
+          business_name: name || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "エラーが発生しました");
+      setResearchResult(data);
+      setStep("research-result");
+      scrollTop();
+    } catch (err) {
+      setResearchError(err instanceof Error ? err.message : "エラーが発生しました");
       setStep("situation");
     }
   }
@@ -379,6 +440,198 @@ export default function MarketingPage() {
   // ────────────────────────────────────────────
   // RENDER
   // ────────────────────────────────────────────
+
+  // ── リサーチローディング
+  if (step === "research-loading") {
+    return (
+      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+        <div className="animate-spin w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full mb-6" />
+        <p className="text-gray-600 font-medium text-lg">AIがウェブ市場調査中です…</p>
+        <p className="text-gray-400 text-sm mt-2 text-center">競合・レビュー・広告・市場規模・政府統計を並列検索中</p>
+        <p className="text-gray-300 text-xs mt-1">（30〜60秒かかります）</p>
+      </main>
+    );
+  }
+
+  // ── AI市場調査結果
+  if (step === "research-result" && researchResult) {
+    const r = researchResult.research;
+    return (
+      <main className="min-h-screen bg-gray-50 px-4 py-10">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={() => { setStep("situation"); setResearchResult(null); scrollTop(); }}
+              className="text-gray-400 text-sm hover:text-gray-600"
+            >
+              ← 戻る
+            </button>
+            <h1 className="text-xl font-bold text-gray-900">🔍 AI市場調査レポート</h1>
+          </div>
+
+          {/* サマリーバッジ */}
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl px-4 py-4 mb-5 text-white shadow-lg">
+            <p className="text-xs font-bold text-emerald-100 mb-1 tracking-widest uppercase">調査完了</p>
+            <p className="text-sm font-semibold leading-snug">{researchResult.summary}</p>
+            <p className="text-xs text-emerald-200 mt-2">Gemini 2.0 + Google Search リアルタイム調査</p>
+          </div>
+
+          {/* 顧客分析 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">👤 Customer（顧客）</p>
+            {r.customer.purchase_motives.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">購買動機（★5レビューから）</p>
+                <ul className="flex flex-col gap-1">
+                  {r.customer.purchase_motives.map((m, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-gray-700"><span className="text-emerald-400 flex-shrink-0">✓</span>{m}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {r.customer.pain_points.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">離脱理由・不満（★2〜3レビューから）</p>
+                <ul className="flex flex-col gap-1">
+                  {r.customer.pain_points.map((p, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-gray-700"><span className="text-red-400 flex-shrink-0">✗</span>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {r.customer.latent_needs.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">潜在ニーズ（SNS・UGCから）</p>
+                <ul className="flex flex-col gap-1">
+                  {r.customer.latent_needs.map((n, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-gray-700"><span className="text-amber-400 flex-shrink-0">💬</span>{n}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {r.customer.quantitative.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">定量データ（政府統計）</p>
+                <ul className="flex flex-col gap-1">
+                  {r.customer.quantitative.map((q, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-gray-700"><span className="text-blue-400 flex-shrink-0">📊</span>{q}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* 競合分析 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">⚔️ Competitor（競合）</p>
+            {r.competitor.top_competitors.map((c, i) => (
+              <div key={i} className="mb-3 pb-3 border-b border-gray-50 last:border-0 last:mb-0 last:pb-0">
+                <p className="text-sm font-bold text-gray-800 mb-1">{c.name}</p>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-0.5">強み</p>
+                    <p className="text-xs text-gray-700">{c.strength}</p>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-0.5">弱み（チャンス）</p>
+                    <p className="text-xs text-emerald-700">{c.weakness}</p>
+                  </div>
+                </div>
+                {c.ad_count && <p className="text-xs text-gray-400 mt-1">広告: {c.ad_count}</p>}
+              </div>
+            ))}
+            {r.competitor.ad_landscape && (
+              <div className="mt-2 pt-2 border-t border-gray-50">
+                <p className="text-xs font-semibold text-gray-500 mb-1">広告動向</p>
+                <p className="text-sm text-gray-700">{r.competitor.ad_landscape}</p>
+              </div>
+            )}
+            {r.competitor.white_space && (
+              <div className="mt-2 pt-2 border-t border-gray-50">
+                <p className="text-xs font-semibold text-emerald-600 mb-1">🎯 競合の手が届いていないギャップ</p>
+                <p className="text-sm text-emerald-800 font-medium">{r.competitor.white_space}</p>
+              </div>
+            )}
+          </div>
+
+          {/* 自社の機会 */}
+          {r.company_gaps.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+              <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">🏢 Company 差別化チャンス</p>
+              {r.company_gaps.map((g, i) => (
+                <div key={i} className="mb-3 pb-3 border-b border-gray-50 last:border-0 last:mb-0 last:pb-0">
+                  <p className="text-xs font-semibold text-gray-700 mb-0.5">ポイント: {g.gap}</p>
+                  <p className="text-sm text-indigo-700">→ {g.opportunity}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 市場データ */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">📈 Market（市場）</p>
+            {r.market.market_size && <p className="text-sm text-gray-700 mb-1"><span className="text-xs text-gray-400">市場規模: </span>{r.market.market_size}</p>}
+            {r.market.trend && <p className="text-sm text-gray-700 mb-2"><span className="text-xs text-gray-400">トレンド: </span>{r.market.trend}</p>}
+            {r.market.key_statistics.length > 0 && (
+              <ul className="flex flex-col gap-1">
+                {r.market.key_statistics.map((s, i) => (
+                  <li key={i} className="text-xs text-gray-600 flex gap-1.5"><span className="text-blue-300">・</span>{s}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* USP候補 */}
+          {r.usp_candidates.length > 0 && (
+            <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-4 mb-4">
+              <p className="text-xs font-semibold text-amber-600 mb-2">💡 USP（差別化）候補</p>
+              {r.usp_candidates.map((u, i) => (
+                <p key={i} className="text-sm text-amber-900 mb-1">✦ {u}</p>
+              ))}
+            </div>
+          )}
+
+          {/* 今週のアクション */}
+          {r.recommended_actions.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+              <p className="text-xs font-semibold text-gray-500 mb-3">今週できるアクション（スマホ1台・30分以内）</p>
+              <ol className="flex flex-col gap-3">
+                {r.recommended_actions.map((action, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="w-6 h-6 bg-emerald-500 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                    <p className="text-sm text-gray-700">{action}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* 情報源 */}
+          {r.sources.length > 0 && (
+            <div className="bg-gray-50 rounded-2xl px-4 py-3 mb-6">
+              <p className="text-xs text-gray-400 font-semibold mb-1">📚 情報源</p>
+              {r.sources.map((s, i) => <p key={i} className="text-xs text-gray-500">・{s}</p>)}
+            </div>
+          )}
+
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-6">
+            <p className="text-xs text-amber-700 leading-relaxed">
+              ⚠️ この調査はAI＋ウェブ検索による自動収集です。数値・競合情報は必ずご自身で一次情報を確認の上、意思決定にご活用ください。
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => { setStep("situation"); setResearchResult(null); scrollTop(); }}
+              className="w-full border border-gray-200 text-gray-600 font-medium py-3 rounded-2xl hover:bg-gray-50 transition-colors"
+            >
+              フレームワーク分析に戻る
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   // ── ローディング
   if (step === "loading") {
@@ -705,6 +958,32 @@ export default function MarketingPage() {
               {error}
             </div>
           )}
+
+          {researchError && (
+            <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl px-4 py-3 mb-4">
+              {researchError}
+            </div>
+          )}
+
+          {/* AI リアルタイム市場調査バナー */}
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 mb-6">
+            <div className="flex items-start gap-3 mb-3">
+              <span className="text-2xl">🔍</span>
+              <div>
+                <p className="font-bold text-gray-900 text-sm">AIリアルタイム市場調査</p>
+                <p className="text-xs text-gray-500 mt-0.5">Amazon・楽天ランキング、レビュー、Meta/Google広告、矢野経済、政府統計をAIが自動収集して3C分析を生成</p>
+              </div>
+            </div>
+            <button
+              onClick={handleResearch}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-semibold py-3 rounded-xl transition-all text-sm shadow-sm"
+            >
+              🌐 ウェブ情報をAIで自動収集して3C分析 →
+            </button>
+            <p className="text-xs text-center text-gray-400 mt-2">所要時間: 30〜60秒</p>
+          </div>
+
+          <p className="text-xs text-gray-400 font-semibold mb-3">または：フレームワークを選んで即時AI分析</p>
 
           <div className="flex flex-col gap-4 mb-6">
             {SITUATIONS.map((sit) => (
