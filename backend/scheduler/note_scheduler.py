@@ -242,10 +242,19 @@ def generate_note_draft(project_day: int) -> dict:
         "- 正直な数字を必ず入れる（小さくてもOK）\n"
         "- 「学んでいます」禁止。「やってみたら〜だった」という経験ベースで書く\n"
         "- 長い文（1文30字超え）は避ける\n\n"
-        "【記事構成（800〜1000文字）】\n"
-        "1. タイトル：テーマに合った具体的なタイトル（Day番号不要）\n"
-        "2. 書き出し（2〜3文）：今日の状況・テーマへの入り方\n"
-        "3. 本文（600〜800文字）：上記の構成に従って\n"
+        "【タイトルの作り方（重要）】\n"
+        "note.comで高スキを取るタイトルには「体験×検証型」が最も有効。\n"
+        "パターン1（体験×検証型）：「〜を〜した。正直、〜だった」\n"
+        "  例：「3C分析をバーガー屋に当てはめてみた。正直、びっくりした。」\n"
+        "パターン2（疑問型）：「〜を〜したら、何が起こるのか」\n"
+        "  例：「AIに2ヶ月、割と本気で任せたら何が起こるのか」\n"
+        "パターン3（結論先出し）：「〜を諦めた。理由は〜だった」\n"
+        "  例：「STPをスキップしていた。バーガー屋がそれで失敗した話」\n"
+        "⚠️ 禁止タイトル：「〜のすすめ」「〜完全ガイド」「〜5選」などのハウツー系\n\n"
+        "【記事構成（1500〜2500文字）】\n"
+        "1. タイトル：上記パターンのどれかを使う（Day番号不要）\n"
+        "2. 書き出し（3〜5文）：今日の現場の一幕から入る（バーガーを焼いていた、作業中に気づいた等）\n"
+        "3. 本文（1200〜2000文字）：上記の構成に従って。読者が「自分のことだ」と感じる一次体験を軸に書く\n"
         "4. 締め（さりげないCTA）：\n"
         "   売り込まず、存在を伝える程度に。\n"
         f"   例：GrowlとSage AIのブループリントはGumroadで公開中。$49。→ {GUMROAD_URL}\n\n"
@@ -264,7 +273,7 @@ def generate_note_draft(project_day: int) -> dict:
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.75,
-        max_tokens=2000,
+        max_tokens=3000,
     )
 
     content = response.choices[0].message.content.strip()
@@ -481,29 +490,4 @@ class SageNoteScheduler:
 
 
 # -----------------------------------------------------------------------
-# Standalone test
-# -----------------------------------------------------------------------
-
-if __name__ == "__main__":
-    import sys
-    from dotenv import load_dotenv
-    load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
-    logging.basicConfig(level=logging.INFO)
-
-    print(f"=== Note Scheduler Test — Day {get_project_day()} ===")
-
-    if "--theme" in sys.argv:
-        print(f"\nTotal themes: {len(ALL_THEMES)}")
-        for i in range(7):
-            t = _pick_theme(get_project_day() + i)
-            print(f"  Day+{i}: [{t['category']}] {t['hook']}")
-    elif "--dry-run" in sys.argv:
-        print("Generating draft (dry run)...")
-        content = generate_note_draft(get_project_day())
-        print(f"\nTitle: {content['title']}")
-        print(f"Category: {content.get('category', '')}")
-        print(f"\nBody preview:\n{content['body'][:500]}...")
-    else:
-        print("Running full draft flow...")
-        result = run_note_draft()
-        print(f"Result: {result}")
+# Standa
