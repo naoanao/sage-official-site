@@ -17,43 +17,62 @@ logger = logging.getLogger("SNS_Daily_Scheduler")
 CATEGORY_CONFIGS = {
     "build_in_public": {
         "instruction": (
-            "Write a raw BUILD-IN-PUBLIC post about a specific real moment building an AI automation system. "
-            "Share a concrete win, struggle, or learning. Sound like a real developer, NOT ad copy. "
-            "No CTAs, no product pitches. Max 240 chars."
+            "Write a BUILD-IN-PUBLIC post grounded in a SPECIFIC, real-feeling moment from building Sage AI — "
+            "an automated content system that posts to Bluesky and Instagram daily. "
+            "Use concrete details: a bug you fixed, a metric (even small), a decision you made and why. "
+            "Voice: honest solo builder, not a marketer. Never use 'client', 'deployed for someone', "
+            "or vague claims. NO generic productivity stats like 'saves 10 hours/week'. "
+            "Good examples: 'Rate limit hit at 3am. Switched to batch mode. Zero failures since.' "
+            "or 'Day 61: 31 followers. Consistency > virality is what I keep telling myself.' "
+            "Max 240 chars. No CTAs."
         ),
-        "hashtags": "#BuildInPublic #ShipIt #IndieHacker",
+        "hashtags": "#BuildInPublic #IndieHacker #SoloFounder",
         "include_url": False,
     },
     "insight": {
         "instruction": (
-            "Share ONE concrete insight about AI automation or solopreneurship. "
-            "Be specific and direct — lead with the insight itself, not a headline. "
-            "Educational tone, not promotional. Max 240 chars."
+            "Share ONE specific, actionable insight about AI automation or solopreneurship. "
+            "Lead with the insight itself — no preamble like 'I realized' or 'I learned'. "
+            "Make it something the reader can think about or act on TODAY. "
+            "Avoid vague generalities. Bad: 'AI can save you time.' "
+            "Good: 'Scheduling posts at 8am/1pm/8pm beats random posting — even with identical content.' "
+            "Max 240 chars. No promotional language."
         ),
         "hashtags": "#AIAutomation #Solopreneur #BuildInPublic",
         "include_url": False,
     },
     "marketing_lesson": {
         "instruction": (
-            "Share ONE practical marketing lesson (e.g. STP, 3C, PEST, customer psychology, positioning). "
-            "Frame it as something you're currently studying. Educational and honest. Max 240 chars."
+            "Deliver ONE concrete marketing principle with a SPECIFIC real-world example or application. "
+            "NEVER say 'currently studying', 'I am learning', or 'I just realized' — "
+            "deliver the lesson directly as someone who has applied it. "
+            "Bad: 'Currently studying STP framework.' "
+            "Good: 'STP in practice: targeting ALL solopreneurs failed. Narrowing to Japanese devs who want passive income tripled engagement.' "
+            "Make it immediately useful to the reader. Max 240 chars."
         ),
-        "hashtags": "#MarketingTips #GrowthHacking #MadeInJapan",
+        "hashtags": "#MarketingStrategy #GrowthHacking #SoloFounder",
         "include_url": False,
     },
     "question": {
         "instruction": (
-            "Ask your audience ONE genuine, specific question about AI, automation, or solopreneurship. "
-            "Make it easy to answer in 1-2 sentences. MUST end with a question mark. Max 240 chars."
+            "Ask ONE genuinely curious question that sparks real conversation. "
+            "Avoid questions with obvious answers or that feel like engagement bait. "
+            "Bad: 'What task do you wish you could automate?' (too broad, everyone has a different answer) "
+            "Good: 'If your content posted itself every day for 6 months, what would you actually do with that time?' "
+            "Make it specific enough that someone can answer in 2 sentences. MUST end with ?. Max 240 chars."
         ),
         "hashtags": "#Solopreneur #IndieHacker #AITools",
         "include_url": False,
     },
     "soft_cta": {
         "instruction": (
-            "Write a value-first post: lead with a real benefit or story in 2-3 sentences, "
-            "then add ONE gentle CTA at the very end. "
-            "The URL must appear at the end only: → sage-official-site.pages.dev . Max 240 chars total."
+            "Write a value-first post: open with a SPECIFIC problem or result (not a generic claim), "
+            "then in the final sentence, mention Sage AI as the tool behind it. "
+            "The URL appears last. Never open with the product name. "
+            "Bad: 'Sage AI automates your posts. Try it.' "
+            "Good: 'I haven't manually written a social post in 60 days. "
+            "Sage AI does it — Bluesky + Instagram, daily, while I sleep. → sage-official-site.pages.dev' "
+            "Max 240 chars total."
         ),
         "hashtags": "#AITools #Automation #Solopreneur",
         "include_url": True,
@@ -61,10 +80,14 @@ CATEGORY_CONFIGS = {
     },
     "growl_cta": {
         "instruction": (
-            "Write a value-first post about a SPECIFIC pain point for small business owners or solopreneurs "
-            "(e.g. 'not knowing what to post', 'spending hours on marketing with zero results', "
-            "'posting but getting no customers'). Then gently introduce Growl as the solution in 1 sentence. "
-            "End with the URL. Conversational, NOT salesy. Max 240 chars total."
+            "Open with a SPECIFIC, relatable pain point that small business owners feel — "
+            "something that makes them think 'that's exactly me'. "
+            "Then in ONE sentence, show how Growl (AI market research tool) addresses it. "
+            "End with the URL. Never use buzzwords like 'revolutionize' or 'supercharge'. "
+            "Bad: 'Struggling with marketing? Growl can help!' "
+            "Good: 'You posted 3 times this week and got zero inquiries. "
+            "Growl shows you exactly what your competitors are doing that you're not. → growl-app.vercel.app' "
+            "Max 240 chars total. Conversational, honest."
         ),
         "hashtags": "#SmallBusiness #MarketingAI #AITools",
         "include_url": True,
@@ -201,26 +224,44 @@ class SNSDailyScheduler:
             if cat_cfg.get("include_url") else ""
         )
 
+        # アカウント別ペルソナ（声のトーンを差別化）
+        handle = getattr(self.bluesky, "username", "") or ""
+        if "kanagawatable" in handle:
+            persona = (
+                "Voice: Solo builder sharing the real, unfiltered journey of building Sage AI in Japan. "
+                "First-person, honest, occasionally vulnerable. Focus on the PROCESS, not the outcome. "
+                "Readers follow for authenticity — they can smell a press release from a mile away."
+            )
+        elif "kanagawajapan" in handle:
+            persona = (
+                "Voice: Sage AI product account — show concrete USE CASES and RESULTS, not feature lists. "
+                "Lead with what the reader gets, not what the product does. "
+                "Think: 'Here's what happened when someone automated X' not 'Our product does X'."
+            )
+        else:
+            persona = f"Voice: {tone}. Audience: {target}."
+
         prompt = (
-            f"You are the {brand} Marketing AI. Generate high-performing content for BOTH Instagram and Bluesky.\n"
+            f"You are the {brand} content writer. Generate content for BOTH Instagram and Bluesky.\n"
             f"Brand niche: {niche}\n"
-            f"Target audience: {target}\n"
-            f"Tone: {tone}\n\n"
-            f"[RAW CONTENT]\nTopic: {topic}\nDetail: {content}\nDirection: {motif}\n[/RAW CONTENT]\n\n"
+            f"Persona: {persona}\n\n"
+            f"[TOPIC]\nTopic: {topic}\nContext: {content[:400]}\n[/TOPIC]\n\n"
             "### TASK:\n"
-            "1. INSTAGRAM CAPTION: Professional, save-rate optimized, with hashtags.\n"
-            "   - End EVERY caption with a link-in-bio CTA, e.g.: '👉 Link in bio to automate yours'\n"
-            f"2. BLUESKY SKEET [{bs_category.upper()}]: {bs_instruction}\n"
+            "1. INSTAGRAM CAPTION: High save-rate, opens with a hook (not the brand name), ends with '👉 Link in bio'.\n"
+            f"2. BLUESKY POST [{bs_category.upper()}]: {bs_instruction}\n"
             f"   - Append these hashtags at the end: {bs_hashtags}\n"
             + bs_url_line
-            + f"3. UNIFIED IMAGE PROMPT: Unique visual for Stable Diffusion reflecting '{motif}' motif.\n\n"
-            "ACCURACY RULES (strictly enforced):\n"
-            "- Do NOT invent income figures. Never write specific amounts like ¥500,000/月 or $10,000/mo.\n"
-            "- Use only factual, verifiable claims.\n"
-            "- Never mix currencies in the same post.\n"
-            "- Never mention AutoPilot AI Pro, SelfThinking AI Pro, or $20/month subscription.\n\n"
-            'Output strictly in JSON format:\n'
-            '{\n    "ig_caption": "...",\n    "bs_text": "...",\n    "image_prompt": "..."\n}'
+            + f"3. IMAGE PROMPT: Stable Diffusion prompt, clean minimal visual for '{motif}'.\n\n"
+            "STRICT RULES — any violation means the post is rejected:\n"
+            "- NEVER say 'currently studying', 'I am learning', 'I just realized', 'I've been thinking about'\n"
+            "- NEVER use the phrase '10 hours/week' or any fixed productivity claim\n"
+            "- NEVER invent income figures or specific monetary amounts\n"
+            "- NEVER use: 'supercharge', 'revolutionize', 'game-changer', 'unlock', 'skyrocket'\n"
+            "- NEVER open the Bluesky post with the brand name or a product pitch\n"
+            "- Every post must deliver standalone value — if someone reads it and learns nothing, rewrites it\n"
+            "- Never mix currencies. Never mention AutoPilot AI Pro or SelfThinking AI Pro.\n\n"
+            'Output strictly as JSON (no code fences, no extra text):\n'
+            '{"ig_caption": "...", "bs_text": "...", "image_prompt": "..."}'
         )
         logger.info(f"🤖 Generating optimized SNS content using motif: {motif}")
         client = self._load_groq_client()
@@ -503,70 +544,4 @@ if __name__ == "__main__":
     acc1_handle   = os.getenv("BLUESKY_HANDLE")
     acc1_password = os.getenv("BLUESKY_PASSWORD") or os.getenv("BLUESKY_APP_PASSWORD")
 
-    # アカウント2: @kanagawajapan (復活アカウント, Bluesky のみ)
-    acc2_handle   = os.getenv("BLUESKY_HANDLE_2")
-    acc2_password = os.getenv("BLUESKY_PASSWORD_2")
-
-    sched1 = SNSDailyScheduler(
-        account_handle=acc1_handle,
-        account_password=acc1_password,
-        rotation_key="",          # post_rotation_state.json
-        post_instagram=True,
-    )
-
-    # ── アカウント2は設定がある場合のみ起動 ──────────────────────────────────
-    sched2 = None
-    if acc2_handle and acc2_password:
-        sched2 = SNSDailyScheduler(
-            account_handle=acc2_handle,
-            account_password=acc2_password,
-            rotation_key="_2",        # post_rotation_state_2.json (独立ローテーション)
-            post_instagram=False,     # Bluesky のみ
-        )
-    else:
-        logger.info("ℹ️  BLUESKY_HANDLE_2 / BLUESKY_PASSWORD_2 not set — single account mode.")
-
-    # ── スケジューラー設定（アカウントごとに独立した schedule.Scheduler） ──────
-    s1 = _schedule_lib.Scheduler()
-    # Account 1 — JST 08:00 / 13:00 / 20:00 (UTC 23:00 / 04:00 / 11:00)
-    s1.every().day.at("23:00").do(_human_run, sched1, "acc1-JST08", 31337)
-    s1.every().day.at("04:00").do(_human_run, sched1, "acc1-JST13", 31337)
-    s1.every().day.at("11:00").do(_human_run, sched1, "acc1-JST20", 31337)
-
-    s2 = None
-    if sched2:
-        s2 = _schedule_lib.Scheduler()
-        # Account 2 — JST 09:30 / 15:00 / 21:30 (UTC 00:30 / 06:00 / 12:30)
-        # Account 1 とずらすことで同時投稿を防ぎ、人間らしさを演出
-        s2.every().day.at("00:30").do(_human_run, sched2, "acc2-JST09:30", 99991)
-        s2.every().day.at("06:00").do(_human_run, sched2, "acc2-JST15:00", 99991)
-        s2.every().day.at("12:30").do(_human_run, sched2, "acc2-JST21:30", 99991)
-
-    logger.info("=" * 60)
-    logger.info("SNSDailyScheduler started (dual-account mode)")
-    logger.info(f"  Account 1 (@{acc1_handle}) : JST 08:00 / 13:00 / 20:00")
-    if sched2:
-        logger.info(f"  Account 2 (@{acc2_handle}) : JST 09:30 / 15:00 / 21:30")
-    logger.info("  Human-pattern : Weekly 2-day off | 20% slot skip | 2-40 min jitter")
-    logger.info("  Content       : Independent Groq generation per account (always different)")
-    logger.info("=" * 60)
-
-    def _run_scheduler(s: _schedule_lib.Scheduler, name: str) -> None:
-        logger.info(f"[Thread] {name} started.")
-        while True:
-            s.run_pending()
-            time.sleep(60)
-
-    t1 = threading.Thread(target=_run_scheduler, args=(s1, "Scheduler-Acc1"), daemon=True)
-    t1.start()
-
-    if s2:
-        t2 = threading.Thread(target=_run_scheduler, args=(s2, "Scheduler-Acc2"), daemon=True)
-        t2.start()
-
-    # メインスレッドはブロックし続ける（daemon スレッドを生かすため）
-    try:
-        while True:
-            time.sleep(3600)
-    except KeyboardInterrupt:
-        logger.info("SNSDailyScheduler stopped by user.")
+    # アカウント2: @
