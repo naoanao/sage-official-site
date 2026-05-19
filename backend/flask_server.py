@@ -1477,6 +1477,19 @@ def init_brain():
                                 except Exception as e:
                                     logger.error(f"[ERROR] Dream Scheduler Thread Error: {e}", exc_info=True)
 
+                            # Note.com Scheduler (10:00 JST daily)
+                            def run_note_scheduler():
+                                try:
+                                    from backend.scheduler.note_scheduler import SageNoteScheduler
+                                    note_sched = SageNoteScheduler()
+                                    note_sched.start()
+                                    # Keep thread alive while scheduler runs
+                                    while note_sched.running:
+                                        import time as _time
+                                        _time.sleep(60)
+                                except Exception as e:
+                                    logger.error(f"[ERROR] Note Scheduler Thread Error: {e}", exc_info=True)
+
                             # Initialize events (IDはUIのautomation IDと一致させる)
                             for auto in ['bluesky', 'blog', 'gumroad', 'notion_sync', 'engagement', 'market_scan', 'self_test', 'dream_mode']:
                                 if auto not in _automation_stop_events:
@@ -1533,7 +1546,8 @@ def init_brain():
                                     logger.error(f"[ERROR] Self Test Scheduler Thread Error: {e}")
 
                             threading.Thread(target=run_self_test_scheduler, daemon=True, name="SageSelfTestScheduler").start()
-                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot + MarketScan + Dream + SelfTest Threads spawned.")
+                            threading.Thread(target=run_note_scheduler, daemon=True, name="SageNoteScheduler").start()
+                            logger.info("[SUCCESS] SNS + Blog + Gumroad + Notion + EngagementBot + MarketScan + Dream + SelfTest + Note Threads spawned.")
 
                         run_sns_loops()
                         
@@ -4849,30 +4863,3 @@ if __name__ == '__main__':
     atexit.register(cleanup_pid)
     
     # Try importing psutil, safe fallback if missing
-    try:
-        import psutil
-        handle_pid_lock()
-    except ImportError:
-        print("⚠️ 'psutil' not found. Skipping robust PID check (Zombie killer disabled).")
-        # Still write PID for manual checks
-        with open(PID_FILE, 'w') as f:
-            f.write(str(os.getpid()))
-
-    # Initialize Brain AFTER securing the lock
-    init_brain()
-
-    # Register AI Support Bot endpoints
-    try:
-        from backend.modules.support_bot import register_support_endpoints
-        register_support_endpoints(app)
-        logger.info("✅ SupportBot endpoints registered")
-    except Exception as _e:
-        logger.warning(f"SupportBot registration skipped: {_e}")
-
-    try:
-        app.run(host='0.0.0.0', port=port, debug=debug_mode, use_reloader=False)
-    except KeyboardInterrupt:
-        print("\n[STOP] Shutting down gracefully...")
-        shutdown_autonomous()
-    finally:
-        shutdown_autonomous()
