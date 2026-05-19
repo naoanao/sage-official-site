@@ -79,16 +79,17 @@ CATEGORY_CONFIGS = {
     "soft_cta": {
         "instruction": (
             "Write a value-first post: open with a SPECIFIC problem or result (not a generic claim), "
-            "then in the final sentence, mention Sage AI as the tool behind it. "
-            "The URL appears last. Never open with the product name. "
+            "then in the final sentence, show how Sage AI solved it — and invite the reader to get the blueprint. "
+            "The URL appears last. Never open with the product name or a product pitch. "
             "Bad: 'Sage AI automates your posts. Try it.' "
             "Good: 'I haven't manually written a social post in 60 days. "
-            "Sage AI does it — Bluesky + Instagram, daily, while I sleep. → sage-official-site.pages.dev' "
+            "Built Sage AI to do it — Bluesky + Instagram, daily, while I sleep. "
+            "Blueprint: → naofumi3.gumroad.com/l/apvbzh' "
             "Max 240 chars total."
         ),
-        "hashtags": "#AITools #Automation #Solopreneur",
+        "hashtags": "#AITools #BuildInPublic #SoloDev",
         "include_url": True,
-        "url": "→ sage-official-site.pages.dev",
+        "url": "→ naofumi3.gumroad.com/l/apvbzh",
     },
     "growl_cta": {
         "instruction": (
