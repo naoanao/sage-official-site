@@ -243,23 +243,29 @@ class SNSDailyScheduler:
 
         if "kanagawatable" in handle:
             persona = (
-                f"You are Nao — a solo developer in Kanagawa, Japan. Day {project_day} of building Sage AI. "
-                "No team. No funding. You run a burger restaurant (Uncle Sam) and build this alone in the gaps. "
-                "You post about the real, unfiltered journey: bugs at 3am, small wins, hard decisions, "
-                "what broke yesterday and how you fixed it. Readers follow for radical honesty, not inspiration porn. "
-                "The BUILD_IN_PUBLIC posts MUST start with 'Day {project_day}.' — this is non-negotiable. "
-                "Other categories (insight, marketing_lesson, question) don't need the day prefix."
+                f"You are Nao — a solo developer in Kanagawa, Japan. Day {project_day} of building in public. "
+                "Your backstory: you ran a burger shop and had zero marketing knowledge. "
+                "That problem pushed you to build Growl — a market research tool that automates 3C analysis and competitor mapping. "
+                "Then you built Sage AI — an AI system that runs your entire content marketing while you're cooking burgers. "
+                "No team. No funding. 3 hours a day. "
+                "You post the REAL journey: bugs at 3am, small wins, honest numbers (small follower counts, $0 days), "
+                "what broke yesterday, what you learned, what you're testing next. "
+                "Readers follow you for radical honesty — not 'how I make $10k/month' bravado. "
+                "The BUILD_IN_PUBLIC posts MUST start with 'Day {project_day}.' — non-negotiable. "
+                "Other categories (insight, marketing_lesson, question) don't need the day prefix. "
+                "NEVER say 'Uncle Sam'. Say 'burger shop' or 'the restaurant'. "
+                "NEVER claim income you haven't earned. Show process, not results you don't have yet."
             ).replace("{project_day}", str(project_day))
         elif "kanagawajapan" in handle:
             persona = (
                 "Voice: Growl + LearnAI product account — built by a solo developer in Japan "
                 "for small and medium businesses who struggle with marketing. "
-                "Growl automates competitive research (3C analysis, STP, competitor mapping). "
-                "LearnAI is a marketing education companion for SMB owners. "
+                "Origin story: the builder ran a burger shop with no marketing skills. "
+                "That real pain became Growl — it automates 3C analysis, STP, and competitor research. "
                 "Show concrete USE CASES and RESULTS for small business owners, not feature lists. "
                 "Lead with a relatable SMB pain point, then show what changed. "
-                "Think: 'Burger shop spent 3 hours on competitor research. Growl does it in 2 minutes.' "
-                "not 'Our product does X'. Make it feel like a real case study from a real business owner. "
+                "Example angle: 'A burger shop owner spent 3 hours/week on competitor research. Growl does it in 2 minutes.' "
+                "Make it feel like a real case study — never mention the shop by name. "
                 "Rotate naturally between Growl (market research) and LearnAI (marketing education). "
                 "URLs: Growl → growl-app.vercel.app | Blueprint → naofumi3.gumroad.com/l/apvbzh"
             )
@@ -622,21 +628,4 @@ if __name__ == "__main__":
     logger.info("=" * 60)
 
     def _run_scheduler(s: _schedule_lib.Scheduler, name: str) -> None:
-        logger.info(f"[Thread] {name} started.")
-        while True:
-            s.run_pending()
-            time.sleep(60)
-
-    t1 = threading.Thread(target=_run_scheduler, args=(s1, "Scheduler-Acc1"), daemon=True)
-    t1.start()
-
-    if s2:
-        t2 = threading.Thread(target=_run_scheduler, args=(s2, "Scheduler-Acc2"), daemon=True)
-        t2.start()
-
-    # メインスレッドはブロックし続ける（daemon スレッドを生かすため）
-    try:
-        while True:
-            time.sleep(3600)
-    except KeyboardInterrupt:
-        logger.info("SNSDailyScheduler stopped by user.")
+        logger.info(f"[Thread] {na

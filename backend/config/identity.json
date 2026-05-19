@@ -5,10 +5,10 @@
   "owner": {
     "name": "Nao",
     "location": "Kanagawa, Japan",
-    "background": "Restaurant owner (Uncle Sam burger shop) turned solo AI builder",
+    "background": "Burger shop owner turned solo AI builder — built Growl and Sage AI to solve his own marketing problems",
     "vision_freeman_3year": {
       "year1": "AI income stream: Sage + Growl + LearnAI monetization. 1 day = 3 hours work. Target: ¥10M/year",
-      "year2": "Restaurant expansion (Uncle Sam) + CBD business launch as owner",
+      "year2": "Restaurant expansion + CBD business launch as owner",
       "year3": "Land purchase, local agriculture, social contribution (CSV-based desert reforestation)"
     }
   },
@@ -102,8 +102,4 @@
         "id": "market-001",
         "problem": "JP market research returning generic company names (DHC, キューサイ, ファンケル) for unrelated products",
         "root_cause": "Hardcoded fallback sample data + TypeScript regex not matching multiline Rakuten HTML",
-        "fix": "3-tier pipeline: Tavily API → Rakuten scraping (fixed multiline regex) → Groq fallback. Zero hardcoded brands."
-      }
-    ]
-  }
-}
+        "fix": "3-tier pipeline: Tavily API → Rakuten scraping (fixed multiline regex) → Groq fallback. Zero hardcoded 
