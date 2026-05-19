@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import random
-from datetime import datetime
+from datetime import datetime, date
 from dotenv import load_dotenv
 
 from backend.data.jobs_store import append as _jobs_append
@@ -12,21 +12,33 @@ load_dotenv('.env')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("SNS_Daily_Scheduler")
 
+# ── プロジェクト開始日（Build in Public カウンター用）────────────────────────
+# なおさんがSage AIの開発を始めた日。"Day X" の基準点。
+PROJECT_START_DATE = date(2025, 6, 1)
+
+def get_project_day() -> int:
+    """今日が開発開始から何日目かを返す。"""
+    return (date.today() - PROJECT_START_DATE).days + 1
+
 
 # ── 投稿カテゴリ定義（5種ローテーション）──────────────────────────────────────
 CATEGORY_CONFIGS = {
     "build_in_public": {
         "instruction": (
-            "Write a BUILD-IN-PUBLIC post grounded in a SPECIFIC, real-feeling moment from building Sage AI — "
-            "an automated content system that posts to Bluesky and Instagram daily. "
-            "Use concrete details: a bug you fixed, a metric (even small), a decision you made and why. "
-            "Voice: honest solo builder, not a marketer. Never use 'client', 'deployed for someone', "
-            "or vague claims. NO generic productivity stats like 'saves 10 hours/week'. "
-            "Good examples: 'Rate limit hit at 3am. Switched to batch mode. Zero failures since.' "
-            "or 'Day 61: 31 followers. Consistency > virality is what I keep telling myself.' "
-            "Max 240 chars. No CTAs."
+            "Write a BUILD-IN-PUBLIC post as a real development diary entry. "
+            "You are a solo developer in Japan building a fully autonomous AI agent (Sage AI) "
+            "with no team and no funding — the AI runs the entire business while the creator sleeps. "
+            "ALWAYS open with 'Day {day}.' to anchor it in the ongoing journey. "
+            "Then share ONE specific, real-feeling moment: a bug fixed, a metric (even a small one), "
+            "a surprising result, or a hard decision made and why. "
+            "Voice: honest, direct, builder-to-builder. Never marketer. Never vague. "
+            "Bad: 'Day {day}. Excited to share my progress!' "
+            "Good: 'Day {day}. Rate limit hit at 3am. Switched to batch mode. Zero failures since.' "
+            "Good: 'Day {day}. 31 followers. Consistency > virality is what I keep telling myself.' "
+            "Good: 'Day {day}. Bluesky and Instagram both posted automatically while I was at the restaurant. This is why I built this.' "
+            "Max 240 chars. No CTAs. No hashtags in the text itself."
         ),
-        "hashtags": "#BuildInPublic #IndieHacker #SoloFounder",
+        "hashtags": "#BuildInPublic #IndieHacker #SoloFounder #SoloDev",
         "include_url": False,
     },
     "insight": {
@@ -226,20 +238,29 @@ class SNSDailyScheduler:
 
         # アカウント別ペルソナ（声のトーンを差別化）
         handle = getattr(self.bluesky, "username", "") or ""
+        project_day = get_project_day()
+
         if "kanagawatable" in handle:
             persona = (
-                "Voice: Solo builder sharing the real, unfiltered journey of building Sage AI in Japan. "
-                "First-person, honest, occasionally vulnerable. Focus on the PROCESS, not the outcome. "
-                "Readers follow for authenticity — they can smell a press release from a mile away."
-            )
+                f"You are Nao — a solo developer in Kanagawa, Japan. Day {project_day} of building Sage AI. "
+                "No team. No funding. You run a burger restaurant (Uncle Sam) and build this alone in the gaps. "
+                "You post about the real, unfiltered journey: bugs at 3am, small wins, hard decisions, "
+                "what broke yesterday and how you fixed it. Readers follow for radical honesty, not inspiration porn. "
+                "The BUILD_IN_PUBLIC posts MUST start with 'Day {project_day}.' — this is non-negotiable. "
+                "Other categories (insight, marketing_lesson, question) don't need the day prefix."
+            ).replace("{project_day}", str(project_day))
         elif "kanagawajapan" in handle:
             persona = (
                 "Voice: Sage AI product account — show concrete USE CASES and RESULTS, not feature lists. "
                 "Lead with what the reader gets, not what the product does. "
-                "Think: 'Here's what happened when someone automated X' not 'Our product does X'."
+                "Think: 'Here is what happened when the system ran automatically for 90 days' "
+                "not 'Our product does X'. Make it feel like a case study, not an ad."
             )
         else:
             persona = f"Voice: {tone}. Audience: {target}."
+
+        # Build in Public の instruction に実際の day 数を埋め込む
+        bs_instruction_filled = bs_instruction.replace("{day}", str(project_day))
 
         prompt = (
             f"You are the {brand} content writer. Generate content for BOTH Instagram and Bluesky.\n"
@@ -248,7 +269,7 @@ class SNSDailyScheduler:
             f"[TOPIC]\nTopic: {topic}\nContext: {content[:400]}\n[/TOPIC]\n\n"
             "### TASK:\n"
             "1. INSTAGRAM CAPTION: High save-rate, opens with a hook (not the brand name), ends with '👉 Link in bio'.\n"
-            f"2. BLUESKY POST [{bs_category.upper()}]: {bs_instruction}\n"
+            f"2. BLUESKY POST [{bs_category.upper()}]: {bs_instruction_filled}\n"
             f"   - Append these hashtags at the end: {bs_hashtags}\n"
             + bs_url_line
             + f"3. IMAGE PROMPT: Stable Diffusion prompt, clean minimal visual for '{motif}'.\n\n"
@@ -258,7 +279,8 @@ class SNSDailyScheduler:
             "- NEVER invent income figures or specific monetary amounts\n"
             "- NEVER use: 'supercharge', 'revolutionize', 'game-changer', 'unlock', 'skyrocket'\n"
             "- NEVER open the Bluesky post with the brand name or a product pitch\n"
-            "- Every post must deliver standalone value — if someone reads it and learns nothing, rewrites it\n"
+            f"- For BUILD_IN_PUBLIC posts: MUST start with 'Day {project_day}.' — this is mandatory\n"
+            "- Every post must deliver standalone value — if someone reads it and learns nothing, rewrite it\n"
             "- Never mix currencies. Never mention AutoPilot AI Pro or SelfThinking AI Pro.\n\n"
             'Output strictly as JSON (no code fences, no extra text):\n'
             '{"ig_caption": "...", "bs_text": "...", "image_prompt": "..."}'
@@ -544,4 +566,70 @@ if __name__ == "__main__":
     acc1_handle   = os.getenv("BLUESKY_HANDLE")
     acc1_password = os.getenv("BLUESKY_PASSWORD") or os.getenv("BLUESKY_APP_PASSWORD")
 
-    # アカウント2: @
+    # アカウント2: @kanagawajapan (復活アカウント, Bluesky のみ)
+    acc2_handle   = os.getenv("BLUESKY_HANDLE_2")
+    acc2_password = os.getenv("BLUESKY_PASSWORD_2")
+
+    sched1 = SNSDailyScheduler(
+        account_handle=acc1_handle,
+        account_password=acc1_password,
+        rotation_key="",          # post_rotation_state.json
+        post_instagram=True,
+    )
+
+    # ── アカウント2は設定がある場合のみ起動 ──────────────────────────────────
+    sched2 = None
+    if acc2_handle and acc2_password:
+        sched2 = SNSDailyScheduler(
+            account_handle=acc2_handle,
+            account_password=acc2_password,
+            rotation_key="_2",        # post_rotation_state_2.json (独立ローテーション)
+            post_instagram=False,     # Bluesky のみ
+        )
+    else:
+        logger.info("ℹ️  BLUESKY_HANDLE_2 / BLUESKY_PASSWORD_2 not set — single account mode.")
+
+    # ── スケジューラー設定（アカウントごとに独立した schedule.Scheduler） ──────
+    s1 = _schedule_lib.Scheduler()
+    # Account 1 — JST 08:00 / 13:00 / 20:00 (UTC 23:00 / 04:00 / 11:00)
+    s1.every().day.at("23:00").do(_human_run, sched1, "acc1-JST08", 31337)
+    s1.every().day.at("04:00").do(_human_run, sched1, "acc1-JST13", 31337)
+    s1.every().day.at("11:00").do(_human_run, sched1, "acc1-JST20", 31337)
+
+    s2 = None
+    if sched2:
+        s2 = _schedule_lib.Scheduler()
+        # Account 2 — JST 09:30 / 15:00 / 21:30 (UTC 00:30 / 06:00 / 12:30)
+        # Account 1 とずらすことで同時投稿を防ぎ、人間らしさを演出
+        s2.every().day.at("00:30").do(_human_run, sched2, "acc2-JST09:30", 99991)
+        s2.every().day.at("06:00").do(_human_run, sched2, "acc2-JST15:00", 99991)
+        s2.every().day.at("12:30").do(_human_run, sched2, "acc2-JST21:30", 99991)
+
+    logger.info("=" * 60)
+    logger.info("SNSDailyScheduler started (dual-account mode)")
+    logger.info(f"  Account 1 (@{acc1_handle}) : JST 08:00 / 13:00 / 20:00")
+    if sched2:
+        logger.info(f"  Account 2 (@{acc2_handle}) : JST 09:30 / 15:00 / 21:30")
+    logger.info("  Human-pattern : Weekly 2-day off | 20% slot skip | 2-40 min jitter")
+    logger.info("  Content       : Independent Groq generation per account (always different)")
+    logger.info("=" * 60)
+
+    def _run_scheduler(s: _schedule_lib.Scheduler, name: str) -> None:
+        logger.info(f"[Thread] {name} started.")
+        while True:
+            s.run_pending()
+            time.sleep(60)
+
+    t1 = threading.Thread(target=_run_scheduler, args=(s1, "Scheduler-Acc1"), daemon=True)
+    t1.start()
+
+    if s2:
+        t2 = threading.Thread(target=_run_scheduler, args=(s2, "Scheduler-Acc2"), daemon=True)
+        t2.start()
+
+    # メインスレッドはブロックし続ける（daemon スレッドを生かすため）
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        logger.info("SNSDailyScheduler stopped by user.")

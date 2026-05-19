@@ -709,14 +709,18 @@ export async function POST(req: NextRequest) {
         specificCompetitors = await callGroqFallback(fallbackPrompt, 150);
       }
     } else if (region === "us") {
-      // US: Tavily でAmazon.com・G2・Redditから競合検索
+      // US: Tavily で Amazon.com・Wirecutter・Reddit から実データ取得
       const tavilyResults = await searchWithTavily(
-        `${product} brands comparison best top ranked site:amazon.com OR site:g2.com OR site:reddit.com`,
-        { maxResults: 5, searchDepth: "basic" }
+        `best ${product} brands top rated comparison 2025`,
+        {
+          maxResults: 5,
+          searchDepth: "basic",
+          includeDomains: ["amazon.com", "wirecutter.com", "reddit.com", "g2.com", "trustpilot.com"],
+        }
       );
       if (tavilyResults.length > 0) {
         const snippets = tavilyResults.map(r => `${r.title}\n${r.content.slice(0, 300)}`).join("\n---\n");
-        const extractPrompt = `From these search results about "${product}", extract up to 5 US brand names that directly sell "${product}". Only specific brands in this product category — not parent conglomerates. Output brand names only, comma-separated.\n\n${snippets.slice(0, 1500)}\n\nBrands:`;
+        const extractPrompt = `From these search results about "${product}", extract up to 5 brand names that directly sell "${product}" in the US market. Only specific brands in this product category — not parent conglomerates. Output brand names only, comma-separated.\n\n${snippets.slice(0, 1500)}\n\nBrands:`;
         specificCompetitors = await callGroqFallback(extractPrompt, 150);
       }
       if (!specificCompetitors || specificCompetitors.trim().length < 3) {
@@ -724,14 +728,18 @@ export async function POST(req: NextRequest) {
         specificCompetitors = await callGroqFallback(competitorLookupPrompt, 150);
       }
     } else {
-      // Global: Tavily でグローバル比較検索
+      // Global: Tavily でグローバル比較・レビューサイトから取得
       const tavilyResults = await searchWithTavily(
-        `${product} best brands global comparison top brands`,
-        { maxResults: 5, searchDepth: "basic" }
+        `best ${product} brands worldwide top comparison review 2025`,
+        {
+          maxResults: 5,
+          searchDepth: "basic",
+          includeDomains: ["amazon.com", "amazon.co.jp", "reddit.com", "g2.com", "trustpilot.com", "wirecutter.com"],
+        }
       );
       if (tavilyResults.length > 0) {
         const snippets = tavilyResults.map(r => `${r.title}\n${r.content.slice(0, 300)}`).join("\n---\n");
-        const extractPrompt = `From these search results about "${product}", extract up to 5 global brand names that directly sell "${product}". Output brand names only, comma-separated.\n\n${snippets.slice(0, 1500)}\n\nBrands:`;
+        const extractPrompt = `From these global search results about "${product}", extract up to 5 brand names that directly sell "${product}" worldwide (include US and JP brands). Output brand names only, comma-separated.\n\n${snippets.slice(0, 1500)}\n\nBrands:`;
         specificCompetitors = await callGroqFallback(extractPrompt, 150);
       }
       if (!specificCompetitors || specificCompetitors.trim().length < 3) {
