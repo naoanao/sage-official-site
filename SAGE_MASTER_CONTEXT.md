@@ -3,7 +3,7 @@
 > Sageシステムの全体構造・なおさんのアイデンティティ・既知問題と解決策を含む。  
 > 「2ヶ月に一回同じことを繰り返す」を防ぐためのシステムメモリ。
 
-最終更新: 2026-05-19（Vision Freeman 収益化ロードマップ追記）
+最終更新: 2026-05-20（note戦略強化・SNSプライバシー修正・gitデバッグ解決）
 
 ---
 
@@ -124,6 +124,12 @@ Sage_Final_Unified/
 **根本原因**: `post_rotation_state_2.json` が存在せず、毎起動でローテーションがindex 0にリセット  
 **解決済み**: `backend/data/post_rotation_state_2.json` を作成（2026-05-19）
 
+### git-001: git diff でゼロ行なのに実際はファイルが変更されている
+**根本原因**: Windows NTFS + Linux sandbox マウントのタイムスタンプ非同期でgit indexが破損  
+**症状**: `git status` が変更を検知しない / `git update-index --really-refresh` で大量の "needs update"  
+**解決済み**: `git reset HEAD` → `git add <target_files>` → `git commit` の順で実行（2026-05-20）  
+**注意**: `git update-index --cacheinfo` を使うと index が corrupt になるので使わない
+
 ### sns-002: 「Currently studying STP framework」のようなbot的投稿
 **根本原因**: `CATEGORY_CONFIGS` の `marketing_lesson` インストラクションに「Frame it as something you're currently studying」と書いてあった  
 **解決済み**: 全CATEGORY_CONFIGSを書き直し。Good/Bad例を明示、anti-rulesを追加（2026-05-19）
@@ -164,6 +170,12 @@ Sage_Final_Unified/
 | 2026-05-19 | SICA Loop Gemini→Groq切替 |
 | 2026-05-19 | identity.json なおさんの実アイデンティティで更新 |
 | 2026-05-19 | このファイル（SAGE_MASTER_CONTEXT.md）作成 |
+| 2026-05-20 | note.com戦略を徹底研究。NOTE_RESEARCH_SOURCES.md作成（URL付き検証済みデータ） |
+| 2026-05-20 | note_scheduler.py強化: 1500〜2500字対応・3タイトルパターン（体験×検証型等）・max_tokens=3000 |
+| 2026-05-20 | STORY_BIBLE.md更新: 文字数・タイトルパターン・「今日の注目記事」選出基準を追加 |
+| 2026-05-20 | sns_daily_scheduler.py: Uncle Sam削除（プライバシー）+ STORY_BIBLE 5幕ペルソナ注入 |
+| 2026-05-20 | identity.json: Uncle Sam削除（プライバシー）|
+| 2026-05-20 | git index破損問題を解決（git reset HEAD でindex修復、以降は reset→add→commit の手順で対応）|
 
 ---
 
@@ -208,25 +220,4 @@ Sage_Final_Unified/
 | CBD ECショップ | 未着手 | 1年目の後半に検討 |
 
 #### 収益化のための投稿戦略（Sage自律実行）
-- **build_in_public** (kanagawatable): `Day 353.` で始まるリアルな開発日記 → フォロワー獲得
-- **soft_cta**: Gumroad $49 Blueprint へ誘導 → 収益
-- **growl_cta**: Growl → `growl-app.vercel.app` → 将来の収益導線
-- **insight / marketing_lesson**: 価値提供 → 信頼構築
-- **question**: エンゲージメント → リーチ拡大
-
-#### なおさんがやること（AIにはできないこと）
-1. **Gumroadの不要商品をUnpublish**（`PRODUCT_STRATEGY.md`参照）→ まだ未完了の可能性
-2. **InstagramのbioリンクをGumroadに変更** → 手動作業
-3. **noteでマーケティング習得を発信** → マインドマップに「note?」とある
-
-#### 2年目へのトリガー条件
-- 月収が安定して100万円を超えた時点で2年目フェーズ（Uncle Sam拡張・CBD）に移行
-
-### AIへの指示
-毎セッションで必ず確認：「今日の投稿がVision Freeman 1年目の目標に向いているか？」  
-コンテンツが「AI一般論」に戻っていたら即修正。常に「Day X、日本のソロデベロッパー、リアルな話」に引き戻す。
-
----
-
-*このファイルはSage AIが自律的に更新する（Tier 1アクション）*  
-*新しい問題解決・発見があるたびに該当セクションを更新すること*
+- **build_in_public** (kanagawatable): `Day 353.` で始まるリアルな�
