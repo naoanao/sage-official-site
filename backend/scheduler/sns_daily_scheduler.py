@@ -252,10 +252,16 @@ class SNSDailyScheduler:
             ).replace("{project_day}", str(project_day))
         elif "kanagawajapan" in handle:
             persona = (
-                "Voice: Sage AI product account — show concrete USE CASES and RESULTS, not feature lists. "
-                "Lead with what the reader gets, not what the product does. "
-                "Think: 'Here is what happened when the system ran automatically for 90 days' "
-                "not 'Our product does X'. Make it feel like a case study, not an ad."
+                "Voice: Growl + LearnAI product account — built by a solo developer in Japan "
+                "for small and medium businesses who struggle with marketing. "
+                "Growl automates competitive research (3C analysis, STP, competitor mapping). "
+                "LearnAI is a marketing education companion for SMB owners. "
+                "Show concrete USE CASES and RESULTS for small business owners, not feature lists. "
+                "Lead with a relatable SMB pain point, then show what changed. "
+                "Think: 'Burger shop spent 3 hours on competitor research. Growl does it in 2 minutes.' "
+                "not 'Our product does X'. Make it feel like a real case study from a real business owner. "
+                "Rotate naturally between Growl (market research) and LearnAI (marketing education). "
+                "URLs: Growl → growl-app.vercel.app | Blueprint → naofumi3.gumroad.com/l/apvbzh"
             )
         else:
             persona = f"Voice: {tone}. Audience: {target}."

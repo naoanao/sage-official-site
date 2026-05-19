@@ -32,7 +32,7 @@ def _load_state() -> dict:
             return json.loads(_STATE_FILE.read_text(encoding="utf-8"))
     except Exception:
         pass
-    return {"seen_notifs": [], "replied_comments": []}
+    return {"seen_notifs": [], "replied_comments": [], "liked_comments": []}
 
 
 def _save_state(state: dict):
@@ -41,6 +41,57 @@ def _save_state(state: dict):
         _STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as e:
         logger.warning(f"Failed to save engagement state: {e}")
+
+
+# ── Bot detection ───────────────────────────────────────────────────────────
+
+# Patterns that strongly suggest AI/spam bots
+_BOT_HANDLE_PATTERNS = [
+    "bot", "spam", "promo", "follow4follow", "f4f", "autoliker",
+    "fanbase", "boostgram", "instabot",
+]
+
+_BOT_TEXT_PATTERNS = [
+    "great post", "nice post", "love this post", "awesome post",
+    "check my profile", "check out my page", "follow me back",
+    "dm me", "click the link in my bio", "i followed you",
+    "follow for follow", "like for like", "l4l", "f4f",
+    "earn money from home", "make money online", "passive income system",
+    "congratulations you have been selected",
+]
+
+
+def _is_likely_bot(handle: str, text: str) -> tuple[bool, str]:
+    """
+    Heuristic bot detection. Returns (is_bot, reason).
+    Checks:
+    1. Handle contains known bot keywords
+    2. Text matches generic spam/bot phrases
+    3. Text is suspiciously short and generic (< 10 chars with no punctuation)
+    """
+    handle_lower = handle.lower()
+    text_lower = text.lower().strip()
+
+    # 1. Bot-like handle
+    for kw in _BOT_HANDLE_PATTERNS:
+        if kw in handle_lower:
+            return True, f"handle contains '{kw}'"
+
+    # 2. Known bot phrases in text
+    for phrase in _BOT_TEXT_PATTERNS:
+        if phrase in text_lower:
+            return True, f"text matches bot phrase '{phrase}'"
+
+    # 3. Suspiciously short and non-conversational
+    if len(text_lower) < 8 and not any(c in text_lower for c in "?!.,"):
+        return True, f"text too short and generic: '{text}'"
+
+    # 4. Excessive repetition of emojis only
+    non_emoji_chars = sum(1 for c in text if ord(c) < 0x2600)
+    if len(text) > 5 and non_emoji_chars < 3:
+        return True, "text is emoji-only"
+
+    return False, ""
 
 
 # ── Language helpers ────────────────────────────────────────────────────────
@@ -66,12 +117,21 @@ def _generate_reply(groq_client, text: str, author: str, context: str = "social 
         )
     else:
         system = (
-            "You are the official Sage AI account. "
-            "Reply to user comments and mentions with genuine empathy and warmth. "
-            "Keep it 2-3 sentences max. 1-2 emojis are fine. No sales pitches."
+            "You are the official Sage AI account — an autonomous AI agent built by Nao, "
+            "a solo developer in Japan building in public for 6 months. "
+            "Nao is also studying web marketing (STP, PEST, 3C frameworks) and sharing the journey.\n\n"
+            "Reply rules:\n"
+            "- Keep it under 200 characters\n"
+            "- Sound like a real human solopreneur, not a bot\n"
+            "- Be warm, specific, and add genuine value to the conversation\n"
+            "- If they ask about Sage: briefly explain (AI agent that posts/researches while you sleep)\n"
+            "- If they ask about marketing: share 1 specific insight from your learning\n"
+            "- If they want to connect: be friendly, say you appreciate the support\n"
+            "- Never use generic phrases like 'Great point!' or 'Thanks for sharing!'\n"
+            "- No sales pitches in replies"
         )
         user_prompt = (
-            f"Generate an empathetic, friendly reply to this comment.\n\n"
+            f"Reply to this Bluesky comment naturally and specifically.\n\n"
             f"Comment by @{author}:\n{text}"
         )
 
@@ -134,9 +194,8 @@ def run_bluesky_engagement(bluesky_client, groq_client, state: dict) -> dict:
                 feed = getattr(feed_resp, "feed", [])
                 if feed:
                     post = feed[0].post
-                    bluesky_client.client.app.bsky.feed.like(
-                        {"subject": {"uri": post.uri, "cid": post.cid}}
-                    )
+                    # atproto SDK の正しい like メソッド
+                    bluesky_client.client.like(post.uri, post.cid)
                     logger.info(f"[Bluesky] ❤️  Liked back @{author_handle}'s post")
                 time.sleep(1)  # Polite rate limit
             except Exception as e:
@@ -150,6 +209,12 @@ def run_bluesky_engagement(bluesky_client, groq_client, state: dict) -> dict:
                 if not comment_text:
                     continue
 
+                # Bot detection — skip AI reply for suspected bots/spam
+                is_bot, bot_reason = _is_likely_bot(author_handle, comment_text)
+                if is_bot:
+                    logger.info(f"[Bluesky] 🤖 Skipped reply to @{author_handle} — suspected bot ({bot_reason})")
+                    continue
+
                 reply_text = _generate_reply(groq_client, comment_text, author_handle)
 
                 # Build reply reference
@@ -157,11 +222,16 @@ def run_bluesky_engagement(bluesky_client, groq_client, state: dict) -> dict:
                     "root": {"uri": notif.uri, "cid": notif.cid},
                     "parent": {"uri": notif.uri, "cid": notif.cid},
                 }
-                bluesky_client.client.send_post(text=reply_text, reply_to=reply_ref)
-                logger.info(f"[Bluesky] 💬 Replied to @{author_handle}: {reply_text[:60]}...")
+                post_result = bluesky_client.client.send_post(text=reply_text, reply_to=reply_ref)
+                post_uri = getattr(post_result, "uri", None)
+                if post_uri:
+                    logger.info(f"[Bluesky] 💬 Replied to @{author_handle} ✅ URI={post_uri} | text={reply_text[:60]}...")
+                else:
+                    logger.warning(f"[Bluesky] 💬 Reply sent but no URI returned for @{author_handle} — may have failed silently")
                 time.sleep(2)
             except Exception as e:
-                logger.warning(f"[Bluesky] Reply failed for @{author_handle}: {e}")
+                import traceback
+                logger.error(f"[Bluesky] ❌ Reply FAILED for @{author_handle}: {e}\n{traceback.format_exc()}")
 
     state["seen_notifs"] = list(seen | new_seen)
     # Keep only last 500 to prevent file bloat
@@ -326,7 +396,7 @@ class EngagementBot:
         jst_date = now_utc.strftime("%Y-%m-%d")
         self._last_run_date = f"{jst_date}-{jst_hour:02d}"
 
-        logger.info(f"[EngagementBot] 🤝 Starting engagement cycle (JST {jst_hour:02d}:00)")
+        logger.info(f"[EngagementBot] Starting engagement cycle (JST {jst_hour:02d}:00)")
         state = _load_state()
 
         # Bluesky
@@ -342,4 +412,4 @@ class EngagementBot:
             logger.error(f"[EngagementBot] Instagram cycle error: {e}")
 
         _save_state(state)
-        logger.info("[EngagementBot] ✅ Engagement cycle complete")
+        logger.info("[EngagementBot] Engagement cycle complete")
