@@ -25,22 +25,22 @@ const allPosts = Object.entries(postModules).map(([path, raw]) => {
 }).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
 
 const DEMO_RESULTS = [
-    { icon: '✦', label: 'Blog post generated', detail: '1,200 words · SEO optimized · ready to publish', color: '#059669' },
-    { icon: '✦', label: '5 social captions ready', detail: 'Bluesky · Dev.to · formatted & reviewed', color: '#1A56DB' },
-    { icon: '✦', label: 'Gumroad package ready', detail: 'ZIP bundle · sales copy · ready to upload', color: '#D97706' },
-    { icon: '✦', label: 'Posted to Bluesky', detail: 'Auto-published · Dev.to cross-post ready', color: '#7C3AED' },
+    { icon: '✦', label: 'Official site drafted', detail: 'Landing page · offer · checkout path ready', color: '#059669' },
+    { icon: '✦', label: 'SNS campaign generated', detail: 'Bluesky · Instagram · Dev.to formatted', color: '#1A56DB' },
+    { icon: '✦', label: 'EC product packaged', detail: 'Gumroad/Whop listing · sales copy · ZIP bundle', color: '#D97706' },
+    { icon: '✦', label: 'Revenue loop queued', detail: 'Publish · attract · sell · measure', color: '#7C3AED' },
 ];
 
 const DEMO_INPUTS = [
-    "I want to sell AI tips for solopreneurs",
-    "I'm a fitness coach looking for new clients",
-    "I create digital art and want to monetize it",
+    "Turn this chat into a product and sell it",
+    "Create my HP, SNS posts, and EC shop",
+    "Find customers and monetize my knowledge",
 ];
 
 const HOW_IT_WORKS = [
-    { step: '01', title: 'Define your niche', desc: 'Write your expertise, voice, and goals in SOUL.md. One setup. Sage reads it every time.' },
-    { step: '02', title: 'Sage becomes you', desc: 'Your AI clone generates content in your voice — blog posts, social captions, and products to sell. In 90 seconds.' },
-    { step: '03', title: 'It runs while you sleep', desc: 'Bluesky auto-posts every morning. DreamMode finds new ideas overnight. MarketScan finds what sells.' },
+    { step: '01', title: 'Talk to Sage', desc: 'Just describe your knowledge, product, or goal. The chat becomes your offer, content, and market analysis.' },
+    { step: '02', title: 'Sage builds your assets', desc: 'Landing page, SNS posts, EC product page, sales copy, and announcement content — all from one conversation.' },
+    { step: '03', title: 'Sage runs the revenue loop', desc: 'MarketScan finds demand, auto-posting drives traffic, and Gumroad/Whop/Stripe converts to sales.' },
 ];
 
 const formatDate = (dateStr) => {
@@ -186,7 +186,7 @@ const AutoPublishCard = () => (
                 { name: 'Bluesky', active: true },
                 { name: 'Dev.to', active: true },
                 { name: 'Notion', active: true },
-                { name: 'Gumroad', active: true },
+                { name: 'EC shop', active: true },
                 { name: 'WordPress', active: false },
             ].map((p) => (
                 <div key={p.name} className="flex items-center justify-between py-1.5 px-3 rounded"
@@ -253,12 +253,12 @@ const WhopCard = () => (
             </span>
         </div>
         <p className="font-bold text-sm leading-snug" style={{ color: 'var(--c-text)' }}>
-            One command to publish your product
+            One chat to publish your product
         </p>
         <div className="rounded-lg p-3 flex flex-col gap-2"
             style={{ background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)' }}>
             <div className="text-[10px] font-mono" style={{ color: 'var(--c-muted)' }}>
-                &gt; "Publish my AI tips guide for $29.99"
+                &gt; "Make this chat into a $29 product"
             </div>
             <div className="w-full h-px" style={{ background: 'var(--c-border)' }} />
             <div className="flex items-center justify-between">
@@ -273,7 +273,7 @@ const WhopCard = () => (
             </div>
         </div>
         <p className="text-[10px] font-mono mt-auto" style={{ color: 'var(--c-subtle)' }}>
-            Gumroad · Stripe · PayPal also supported
+            Gumroad · Whop · Stripe · PayPal supported
         </p>
     </div>
 );
@@ -318,8 +318,8 @@ const BuilderCard = () => (
 
 const FAQ_ITEMS = [
     { q: "I'm not technical. Can I actually use this?", a: "Yes. Type what you want in plain English. Sage generates the content. You review and publish. No code, no dashboards, no configuration." },
-    { q: "What exactly gets automated?", a: "Content generation (blog posts, social captions), Bluesky posting, Dev.to cross-posting, and Gumroad package creation — all automated end-to-end." },
-    { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — blog, Bluesky, and Gumroad-ready products — in one workflow. You just review and hit publish." },
+    { q: "What exactly gets automated?", a: "Sage turns a chat into business assets: official site copy, SNS posts, EC product pages, sales copy, publishing tasks, and monetization links." },
+    { q: "How is this different from ChatGPT?", a: "ChatGPT gives you text. Sage connects the pipeline — HP, SNS, EC shop, product packaging, checkout, and growth loops — in one workflow." },
     { q: "What if it doesn't work for me?", a: `30-day money-back guarantee. Email us at ${import.meta.env.VITE_SUPPORT_EMAIL || 'support@sage-ai.app'} within 30 days of purchase and we'll issue a full refund via Stripe — no questions asked.` },
     { q: "Do I need to install anything?", a: "No. Sage runs entirely on Cloudflare's global network — no download, no local setup. Open the dashboard in any browser and start." },
 ];
@@ -417,7 +417,7 @@ const Landing = () => {
                     {/* Status badge */}
                     <div className="inline-flex items-center gap-2 mb-8 sage-badge">
                         <span className="live-dot" />
-                        RUNNING 24/7 · BLUESKY AUTO-PUBLISH · 🇯🇵 YOKOHAMA, JAPAN
+                        24/7 Active · HP + SNS + EC · 🇯🇵 Built in Yokohama, Japan
                     </div>
 
                     {/* Headline */}
@@ -431,20 +431,19 @@ const Landing = () => {
                             backgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                         }}>
-                        Your AI Clone.<br />
-                        Your Business.
+                        Talk. Build. Earn.
                     </h1>
 
-                    {/* Sub */}
+                    {/* Sub — English */}
                     <p className="mb-10 font-light"
                         style={{ fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: 'var(--c-muted)', maxWidth: 580, margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
-                        Write your niche in <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>SOUL.md</span>.{' '}
-                        Sage becomes <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>your AI double</span> — writing your blog,
-                        posting to Bluesky, and building products to sell.{' '}
-                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>24/7. Without you.</span>
+                        Just tell Sage what you want to sell.{' '}
+                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>Landing page · SNS posts · EC product page · sales copy · revenue flow</span>
+                        {' '}generated automatically. Continuously improved by market signals.{' '}
+                        <span style={{ color: 'var(--c-text)', fontWeight: 500 }}>From conversation to revenue loop.</span>
                     </p>
 
-                    {/* CTAs */}
+                    {/* CTAs — English */}
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
                         <Motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                             <Link
@@ -456,7 +455,7 @@ const Landing = () => {
                                     fontSize: '0.95rem',
                                 }}
                             >
-                                Launch Dashboard <FiArrowRight size={16} />
+                                Start with Sage <FiArrowRight size={16} />
                             </Link>
                         </Motion.div>
                         <Motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
@@ -489,7 +488,7 @@ const Landing = () => {
                     {[
                         { value: 'BETA', label: 'Early Access' },
                         { value: 'Feb 2026', label: 'First Release' },
-                        { value: '90s', label: 'Idea to Income' },
+                        { value: 'Chat → HP/SNS/EC', label: 'Creation Flow' },
                         { value: '🇯🇵', label: 'Yokohama, Japan' },
                     ].map((stat, i, arr) => (
                         <React.Fragment key={stat.label}>
@@ -523,7 +522,7 @@ const Landing = () => {
                             Everything included
                         </p>
                         <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.03em', color: '#1A56DB' }}>
-                            The complete autonomous system
+                            Complete Business Generation System
                         </h2>
                     </Motion.div>
 
@@ -556,10 +555,10 @@ const Landing = () => {
                         className="text-center mb-14"
                     >
                         <p style={{ fontSize: '0.7rem', fontFamily: 'Fira Code', color: 'var(--c-muted)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
-                            How it works
+                            How It Works
                         </p>
                         <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', letterSpacing: '-0.03em', color: '#1A56DB' }}>
-                            Three steps to your first AI income
+                            3 Steps to AI Income
                         </h2>
                     </Motion.div>
 
@@ -684,7 +683,7 @@ const Landing = () => {
                             Your first AI income stream
                         </h2>
                         <p className="mt-2 text-sm" style={{ color: 'var(--c-muted)' }}>
-                            The exact system Sage 3.0 uses to automate your content pipeline.
+                            The exact system Sage 3.0 uses to turn chat into HP, SNS, EC products, sales pages, and revenue loops.
                         </p>
                     </Motion.div>
 
@@ -710,7 +709,7 @@ const Landing = () => {
                                 {[
                                     'Unlimited Sage AI dashboard',
                                     'Daily SNS auto-posting',
-                                    'Blog + Gumroad pipeline',
+                                    'HP + SNS + EC product pipeline',
                                     'All future updates',
                                 ].map((f) => (
                                     <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-muted)' }}>
@@ -821,3 +820,4 @@ const Landing = () => {
 };
 
 export default Landing;
+                                                                                                                                                                                               
