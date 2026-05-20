@@ -1,6 +1,0 @@
-node_modules/
-.next/
-sandbox/
-.env.local
-.env*.local
-*.log
