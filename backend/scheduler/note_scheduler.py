@@ -449,15 +449,26 @@ def run_note_draft() -> dict:
 
         logger.info(f"[NoteScheduler] Generated [{category}]: {title[:60]}")
 
-        note_result = save_draft_to_note(title, body)
-        status = note_result["status_code"]
-
-        if status in (200, 201):
-            logger.info(f"[NoteScheduler] Draft saved to note.com")
-        elif status == 0:
-            logger.info(f"[NoteScheduler] note API skipped (no token)")
-        else:
-            logger.warning(f"[NoteScheduler] note API returned {status}")
+        # ── note_publisher経由で自動投稿を試みる ──────────────────────
+        pub_result = None
+        try:
+            from backend.integrations.note_publisher import post_note_draft as _pub
+            pub_result = _pub(title, body, publish=False)
+            if pub_result.get("key"):
+                logger.info(f"[NoteScheduler] ✅ 自動投稿成功: {pub_result.get('url')}")
+                note_result = {"status_code": 201, "response": pub_result}
+                status = 201
+            else:
+                raise RuntimeError(pub_result.get("error", "unknown"))
+        except Exception as pub_err:
+            # fallback: 旧APIまたはpending_reviewとして保存
+            logger.warning(f"[NoteScheduler] note_publisher失敗、fallback: {pub_err}")
+            note_result = save_draft_to_note(title, body)
+            status = note_result["status_code"]
+            if status in (200, 201):
+                logger.info(f"[NoteScheduler] Draft saved to note.com (fallback API)")
+            else:
+                logger.info(f"[NoteScheduler] pending_reviewとして保存 (手動投稿待ち)")
 
         notify_line(title, body, category)
         _save_draft_locally(day, title, body, category, note_result)
@@ -467,6 +478,7 @@ def run_note_draft() -> dict:
             "title": title,
             "category": category,
             "note_status": status,
+            "auto_published": bool(pub_result and pub_result.get("key")),
             "line_notified": bool(LINE_NOTIFY_TOKEN),
         }
 
