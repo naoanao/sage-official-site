@@ -192,15 +192,18 @@ def generate_note_draft(project_day: int) -> dict:
         concept = theme.get("concept", "")
         lecture_ref = theme.get("lecture_ref", "")
         body_instruction = (
-            "カテゴリ：マーケ学習アウトプット\n"
-            f"概念：{concept}\n"
-            f"概念の説明：{lecture_ref}\n\n"
-            "本文の構成：\n"
-            f"1. {concept}という概念がある。（1〜2文で簡潔に説明）\n"
-            "2. 自分の過去の仕事体験に当てはめると、どういうことか。（実体験ベース）\n"
-            "3. GrowlまたはSage AIでどう実装・活用したか\n"
-            "4. やってみて分かったこと・うまくいかなかったこと\n"
-            "5. 次の仮説または今後やること（1〜2文）"
+            f"今日のテーマ（背景知識のみ）：{concept} — {lecture_ref}\n\n"
+            "【絶対に守るルール】\n"
+            f"❌ NG：最初の文を「{concept}とは〜のことで」から始める\n"
+            "❌ NG：教科書・ハウツー・フレームワーク解説記事にする\n"
+            "✅ OK：バーガーショップ／Sage／Growl開発の具体的な一幕から始める\n"
+            "✅ OK：失敗・恥・小さな数字・正直な感情を先に書く\n\n"
+            "【本文の流れ（ストーリー主導）】\n"
+            "1. 書き出し：今日・最近の現場の具体的な一幕（1〜3文でリアルに）\n"
+            "2. そこから気づいたこと・試したこと（マーケ概念は自然に出てくる程度でOK）\n"
+            "3. 正直な数字を必ず1つ以上（フォロワー数・作業時間・売上・失敗コスト）\n"
+            "4. うまくいかなかったこと・まだ分からないこと（正直に）\n"
+            "5. 次にやること（1〜2文）"
         )
     else:
         angle = theme.get("angle", "present")
@@ -269,11 +272,22 @@ def generate_note_draft(project_day: int) -> dict:
         "JSONのみ返答してください。"
     )
 
+    system_msg = (
+        "あなたは日本語のnote.comライター。以下のルールを必ず守る。\n"
+        "絶対禁止：「〜とは〜のことです」「〜には以下の〜があります」から始める教科書的な書き出し。\n"
+        "絶対禁止：マーケ用語の解説記事。読者は説明を求めていない。\n"
+        "必須：バーガーショップ経営者・AI開発者の一人称の体験談として書く。\n"
+        "必須：失敗・小さな数字・正直な感情を含める。\n"
+        "必須：1500〜2500文字。JSONのみ返す。"
+    )
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.75,
-        max_tokens=3000,
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.8,
+        max_tokens=3500,
     )
 
     content = response.choices[0].message.content.strip()
@@ -281,7 +295,14 @@ def generate_note_draft(project_day: int) -> dict:
     end = content.rfind("}") + 1
     if start == -1:
         raise ValueError("JSON not found in Groq response")
-    return json.loads(content[start:end])
+    raw_json = content[start:end]
+    try:
+        return json.loads(raw_json)
+    except json.JSONDecodeError:
+        # Fix unescaped literal newlines inside JSON string values
+        lines = raw_json.split("\n")
+        cleaned = "\\n".join(lines)
+        return json.loads(cleaned)
 
 
 # -----------------------------------------------------------------------
