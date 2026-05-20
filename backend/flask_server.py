@@ -231,6 +231,14 @@ if not FRONTEND_DIST.exists():
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path=None)
 
+# ── note.com uploader blueprint ──────────────────────────────────────────────
+try:
+    from backend.routes.note_routes import note_bp
+    app.register_blueprint(note_bp)
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(f"note_routes not loaded: {_e}")
+
 # ── Background job store (pipeline async jobs) ───────────────────────────────
 _jobs: Dict[str, dict] = {}        # job_id → {status, result, error, created_at}
 _jobs_lock = threading.Lock()
@@ -4850,16 +4858,4 @@ if __name__ == '__main__':
             except Exception as e:
                 print(f"⚠️ PID file check failed: {e}. Proceeding with caution.")
         
-        # Write new PID
-        current_pid = os.getpid()
-        with open(PID_FILE, 'w') as f:
-            f.write(str(current_pid))
-        print(f"🔒 PID Lock established: {current_pid} (PORT: {port})")
-        
-    def cleanup_pid():
-        if PID_FILE.exists():
-            PID_FILE.unlink()
-            
-    atexit.register(cleanup_pid)
-    
-    # Try importing psutil, safe fallback if missing
+       
