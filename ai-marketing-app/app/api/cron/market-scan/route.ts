@@ -1,4 +1,4 @@
-// Vercel Cron: 毎朝7時JST (前日22:00 UTC)
+﻿// Vercel Cron: 毎朝7時JST (前日22:00 UTC)
 // 【フォールバック専用】Sageが起動していない日のバックアップ
 // 通常はSage（backend/scheduler/market_scan_scheduler.py）が
 // market_scan_notifier.py → growl_bridge.py 経由でSupabaseに書き込む。
@@ -19,6 +19,31 @@ const INDUSTRIES = [
   { key: "other",      label: "その他の中小事業者・個人事業主" },
 ];
 
+async function callGroq(prompt: string): Promise<string | null> {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.5,
+        max_tokens: 400,
+      }),
+    });
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Geminiフォールバック（Groq失敗時）
 async function callGemini(prompt: string): Promise<string | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
@@ -76,7 +101,8 @@ export async function GET(req: NextRequest) {
   for (const industry of INDUSTRIES) {
     try {
       const prompt = buildScanPrompt(industry.label, today);
-      const signal = await callGemini(prompt);
+      // Groq優先、失敗時はGeminiにフォールバック
+      const signal = await callGroq(prompt) ?? await callGemini(prompt);
 
       if (signal && signal.trim()) {
         const cleaned = signal.trim().replace(/\*\*/g, "").replace(/##/g, "").trim();
