@@ -360,3 +360,79 @@ export async function getWeeklySessionForUser(userId: string, weekStart: string)
   if (error) return null;
   return data;
 }
+
+// ─────────────────────────────────────────────
+// Revenue Tracking — Sage報告用
+// Supabase テーブル (初回のみ実行):
+//   CREATE TABLE IF NOT EXISTS revenue_events (
+//     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+//     device_id text,
+//     email text,
+//     stripe_session_id text UNIQUE,
+//     plan text NOT NULL,
+//     amount_jpy integer NOT NULL,
+//     created_at timestamptz DEFAULT now()
+//   );
+// ─────────────────────────────────────────────
+
+export async function savePurchaseEvent(params: {
+  deviceId?: string | null;
+  email?: string | null;
+  stripeSessionId?: string | null;
+  plan: "standard" | "pro";
+  amountJpy: number;
+}): Promise<void> {
+  const db = getServer();
+  try {
+    await db.from("revenue_events").upsert(
+      {
+        device_id: params.deviceId ?? null,
+        email: params.email ?? null,
+        stripe_session_id: params.stripeSessionId ?? null,
+        plan: params.plan,
+        amount_jpy: params.amountJpy,
+      },
+      { onConflict: "stripe_session_id" }
+    );
+  } catch (e) {
+    // テーブルが存在しない場合もサイレントに失敗（graceful degradation）
+    console.warn("[savePurchaseEvent] Skipped (table may not exist):", e);
+  }
+}
+
+export interface WeeklyRevenueSummary {
+  total_jpy: number;
+  count: number;
+  by_plan: { standard: number; pro: number };
+  period: { from: string; to: string };
+}
+
+export async function getWeeklyRevenueSummary(): Promise<WeeklyRevenueSummary> {
+  const db = getServer();
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const from = weekAgo.toISOString();
+  const to = now.toISOString();
+
+  try {
+    const { data, error } = await db
+      .from("revenue_events")
+      .select("plan, amount_jpy")
+      .gte("created_at", from)
+      .lte("created_at", to);
+
+    if (error || !data) {
+      return { total_jpy: 0, count: 0, by_plan: { standard: 0, pro: 0 }, period: { from, to } };
+    }
+
+    const total_jpy = data.reduce((sum, r) => sum + (r.amount_jpy ?? 0), 0);
+    const by_plan = {
+      standard: data.filter((r) => r.plan === "standard").length,
+      pro: data.filter((r) => r.plan === "pro").length,
+    };
+
+    return { total_jpy, count: data.length, by_plan, period: { from, to } };
+  } catch {
+    return { total_jpy: 0, count: 0, by_plan: { standard: 0, pro: 0 }, period: { from, to } };
+  }
+}

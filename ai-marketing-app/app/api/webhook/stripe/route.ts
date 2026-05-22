@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserPlan } from "@/lib/db";
+import { updateUserPlan, savePurchaseEvent } from "@/lib/db";
 
 // Stripe署名検証 — Web Crypto API使用（npm不要、Sage実装と同じ方式）
 async function verifyStripeSignature(
@@ -83,6 +83,16 @@ export async function POST(req: NextRequest) {
         await updateUserPlan(null, plan, email);
         console.log(`✅ Growl plan upgraded: email=${email} → ${plan}`);
       }
+
+      // 売上イベントを記録（Sageの週次収益レポート用）
+      await savePurchaseEvent({
+        deviceId: deviceId ?? null,
+        email: email ?? null,
+        stripeSessionId: obj.id as string | null,
+        plan,
+        amountJpy: amountTotal,
+      });
+      console.log(`💰 Revenue recorded: ¥${amountTotal} (${plan})`);
     } else if (
       type === "customer.subscription.deleted" ||
       type === "customer.subscription.paused"
