@@ -144,6 +144,14 @@ interface CompanyInfo {
   siteContent?: string;
   industry?: string;
   price?: string;
+  lang?: string;
+}
+
+function getLangInstruction(lang?: string): string {
+  if (lang === "en") {
+    return `\n⚠️ CRITICAL: You MUST respond ENTIRELY in English. Every JSON value, label, and text must be in English. Do NOT use Japanese or any other language. This is a hard requirement.\n`;
+  }
+  return "";
 }
 
 const FRAMEWORK_PROMPTS: Record<string, (c: CompanyInfo) => string> = {
@@ -254,7 +262,7 @@ ${getPriceContext(c.price)}
 }`,
 
   stp: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSTP分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${COMMON_RULES}
+${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
@@ -403,7 +411,7 @@ ${getPriceContext(c.price)}
 }`,
 
   ulssas: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のULSSAS分析（SNS時代の購買モデル）を行ってください。入力言語に合わせて同じ言語で回答してください。
-${COMMON_RULES}
+${getLangInstruction(c.lang)}${COMMON_RULES}
 ULSSASとは：UGC→Like→Search1（SNS検索）→Search2（指名検索）→Action→Spreadの拡散サイクルです。
 
 会社名: ${c.name}
@@ -490,7 +498,7 @@ async function callGroq(prompt: string): Promise<string | null> {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, product, target, url, framework, industry, price } = body;
+    const { name, product, target, url, framework, industry, price, lang } = body;
 
     if (!name || !product || !target || !framework) {
       return NextResponse.json({ error: "必要な情報が不足しています" }, { status: 400 });
@@ -504,7 +512,7 @@ export async function POST(req: NextRequest) {
     // URLがあれば実際にサイトを取得（失敗しても分析は続行）
     const siteContent = url ? await fetchSiteContent(url) : "";
 
-    const prompt = promptFn({ name, product, target, url, siteContent, industry, price });
+    const prompt = promptFn({ name, product, target, url, siteContent, industry, price, lang });
 
     // Gemini → Groq フォールバック
     let raw = await callGemini(prompt);

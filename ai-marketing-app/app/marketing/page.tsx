@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { loadOnboarding } from "@/lib/store";
+import { getLang } from "@/lib/i18n";
 
 // ────────────────────────────────────────────
 // Constants
@@ -312,6 +313,7 @@ export default function MarketingPage() {
           framework: selectedFw,
           industry: industry || undefined,
           price: price || undefined,
+          lang: getLang(),
         }),
       });
       const data = await res.json();
