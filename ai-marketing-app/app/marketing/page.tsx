@@ -890,12 +890,10 @@ export default function MarketingPage() {
             >
               Analyze with a different framework
             </button>
-            <Link
-              href="/onboarding/industry"
-              className="w-full border border-indigo-100 text-indigo-500 font-medium py-3 rounded-2xl hover:bg-indigo-50 transition-colors text-center"
-            >
-              Create weekly action plan →
-            </Link>
+            <div className="w-full border border-gray-200 text-gray-400 font-medium py-3 rounded-2xl text-center cursor-not-allowed flex items-center justify-center gap-2">
+              <span>Create weekly action plan</span>
+              <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-semibold">Coming Soon</span>
+            </div>
           </div>
         </div>
       </main>
