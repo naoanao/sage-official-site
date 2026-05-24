@@ -149,14 +149,18 @@ interface CompanyInfo {
 
 function getLangInstruction(lang?: string): string {
   if (lang === "en") {
-    return `\n⚠️ CRITICAL: You MUST respond ENTIRELY in English. Every JSON value, label, and text must be in English. Do NOT use Japanese or any other language. This is a hard requirement.\n`;
+    return `\n⚠️ CRITICAL RULES FOR ENGLISH OUTPUT:
+1. Respond ENTIRELY in English. Every JSON value, label, and text must be in English. Do NOT use Japanese or any other language.
+2. Do NOT recommend LINE, WeChat, or any Japan/Asia-specific messaging app. Use Instagram, Google, email, Facebook, TikTok, or other globally available channels instead.
+3. Do NOT invent discounts, limited-time offers, events, or pricing that was not provided in the input. Only use facts from the business description.
+4. Use natural, conversational American English. Avoid literal translations of Japanese marketing phrases.\n`;
   }
   return "";
 }
 
 const FRAMEWORK_PROMPTS: Record<string, (c: CompanyInfo) => string> = {
   pest: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のPEST分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${COMMON_RULES}
+${getLangInstruction(c.lang)}${COMMON_RULES}
 【重要】この分析はAIの学習データ（2025年5月時点）に基づきます。特にP（政治・法規制）とE（経済）の項目は現在の状況と異なる可能性があるため、実務では必ず最新情報を確認すること。
 
 【PEST分類の厳守ルール（混入禁止）】
@@ -187,14 +191,14 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`,
 
   "3c": (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の3C分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${COMMON_RULES}
+${getLangInstruction(c.lang)}${COMMON_RULES}
 
 ━━ この3C分析で必ず答えるべき問い ━━
 Customer: この顧客は今、何に困っていて、それが解決されたら人生がどう変わるのか？
@@ -225,7 +229,7 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
@@ -233,7 +237,7 @@ ${getPriceContext(c.price)}
 
   swot: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSWOT分析を行ってください。入力言語に合わせて同じ言語で回答してください。
 2026年現在の市場環境（AI技術の普及・物価高騰・人口減少・高齢化・Z世代消費行動・SNSマーケティングの変化）を反映してください。
-${COMMON_RULES}
+${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
@@ -255,7 +259,7 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
@@ -284,7 +288,7 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   },
@@ -303,7 +307,7 @@ ${getPriceContext(c.price)}
 }`,
 
   "4p": (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の4P/4C分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${COMMON_RULES}
+${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
@@ -326,14 +330,14 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`,
 
   vrio: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のVRIO分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${COMMON_RULES}
+${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
@@ -356,14 +360,14 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`,
 
   aeo: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。2026年のAI検索時代に対応した、今すぐコピーして使えるコンテンツを生成してください。入力言語に合わせて同じ言語で回答してください。
-${COMMON_RULES}
+${getLangInstruction(c.lang)}${COMMON_RULES}
 
 【絶対禁止】「〜を調べてみてください」「〜を確認してみましょう」「ChatGPTで検索して」などのユーザーへの宿題を一切書かない。全ての項目は「今すぐコピーして使える完成コンテンツ」のみ生成すること。
 
@@ -404,7 +408,7 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
@@ -436,7 +440,7 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }

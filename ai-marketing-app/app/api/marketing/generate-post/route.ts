@@ -108,7 +108,11 @@ export async function POST(req: NextRequest) {
       : "";
 
     const langInstruction = isEn
-      ? `\n⚠️ CRITICAL: You MUST respond ENTIRELY in English. Every JSON value, platform name, content, and hook must be in English. Do NOT use Japanese or any other language. This is a hard requirement.\n`
+      ? `\n⚠️ CRITICAL RULES FOR ENGLISH OUTPUT:
+1. Respond ENTIRELY in English. All JSON values must be in English. No Japanese allowed.
+2. Do NOT invent discounts, sales, events, limited-time offers, or any claim not explicitly stated in the business description. Fabricating urgency destroys trust.
+3. Do NOT recommend LINE or any Japan-specific platform. Use Instagram, Google, Email, Facebook, or TikTok instead.
+4. Write in natural, friendly American English — avoid stiff or translated-sounding phrases.\n`
       : "";
 
     const prompt = `あなたはDavid Ogilvy・Eugene Schwartz・Gary Halbert・Claude Hopkins・神田昌典の思想を血肉とした、個人・零細事業主専門の世界トップクラスのコピーライターです。
