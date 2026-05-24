@@ -469,7 +469,7 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Generate
         const cleaned = text.replace(/```json|```/g, "").trim();
         const match = cleaned.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("JSON not found in response");
-        const json = safeParseJSON(match[0]);
+        const json = safeParseJSON(match[0]) as { actions?: Action[]; strategy_note?: unknown };
         if (Array.isArray(json.actions) && json.actions.length > 0) {
           return {
             actions: sanitizeActions(json.actions, !!user.booking_url),

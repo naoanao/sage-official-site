@@ -406,7 +406,7 @@ Rules: Use AI knowledge to fill gaps. Never say "requires further research". top
 
 Now fill in the actual content based on the research data above:`;
   }
-  if (region === "us_DISABLED") {
+  if (region === ("us_DISABLED" as string)) {
     return `You are a world-class US market strategist (think: top partner at McKinsey / ex-CMO of a SaaS unicorn).
 Analyze the research data below and output a comprehensive market intelligence report in JSON.
 Output language: English.

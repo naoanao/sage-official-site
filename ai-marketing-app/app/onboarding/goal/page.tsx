@@ -102,8 +102,8 @@ export default function GoalPage() {
     saveOnboarding({ final_goal: value.trim() });
 
     const device_id = getOrCreateDeviceId();
-    const lang = getLang(); // 現在の言語設定をペイロードに含める
-    const payload = { ...data, device_id, lang };
+    const currentLang = getLang(); // 現在の言語設定をペイロードに含める
+    const payload = { ...data, device_id, lang: currentLang };
 
     try {
       let json: { userId?: string; session?: unknown };
