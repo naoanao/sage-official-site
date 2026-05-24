@@ -149,35 +149,39 @@ interface CompanyInfo {
 
 function getLangInstruction(lang?: string): string {
   if (lang === "en") {
-    return `\n⚠️ CRITICAL RULES FOR ENGLISH OUTPUT:
-1. Respond ENTIRELY in English. Every JSON value, label, and text must be in English. Do NOT use Japanese or any other language.
-2. Do NOT recommend LINE, WeChat, or any Japan/Asia-specific messaging app. Use Instagram, Google, email, Facebook, TikTok, or other globally available channels instead.
-3. Do NOT invent discounts, limited-time offers, events, or pricing that was not provided in the input. Only use facts from the business description.
-4. Use natural, conversational American English. Avoid literal translations of Japanese marketing phrases.\n`;
+    return `\n⚠️ CRITICAL RULES FOR ENGLISH OUTPUT — MANDATORY, NO EXCEPTIONS:
+1. Respond ENTIRELY in English. Every JSON value, section label, and text must be in English. Output ZERO Japanese characters.
+2. Do NOT recommend LINE, WeChat, or any Japan/Asia-specific platform. Use Instagram, Google, Email, Facebook, YouTube, or other globally available channels ONLY.
+3. Do NOT invent discounts, coupon codes, referral discount programs, limited-time offers, events, or any pricing NOT explicitly stated in the business description. Only use facts from the input data.
+4. Do NOT recommend TikTok or any specific social platform unless it was explicitly mentioned in the business description.
+5. Write in natural, friendly American English — no translated Japanese marketing phrases.
+6. All JSON "framework" values and section key labels must be in English (e.g., "PEST Analysis" not "PEST分析", use English section headers throughout).\n`;
   }
   return "";
 }
 
 const FRAMEWORK_PROMPTS: Record<string, (c: CompanyInfo) => string> = {
-  pest: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のPEST分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${getLangInstruction(c.lang)}${COMMON_RULES}
-【重要】この分析はAIの学習データ（2025年5月時点）に基づきます。特にP（政治・法規制）とE（経済）の項目は現在の状況と異なる可能性があるため、実務では必ず最新情報を確認すること。
-
-【PEST分類の厳守ルール（混入禁止）】
-- P（政治・法規制）: 法律改正・規制強化/緩和・補助金・行政指導・政策・税制のみ。消費者意識・健康トレンド・ライフスタイル変化はPに絶対含めない
-- E（経済・市場動向）: GDP・物価指数・インフレ・金利・為替・賃金動向・業界全体の売上規模（円）・競合の価格戦略のみ。「消費者の需要増加」「ニーズの高まり」「〜への関心の高まり」「〜意識の向上」という表現は全てS（社会）に分類すること。Eは「数値で表せる経済指標」だけに限定する
-- S（社会・消費者トレンド）: 消費者の意識・需要・ニーズの変化、ライフスタイル、人口動態、健康志向、食トレンド、環境意識、社会的価値観はすべてここ。「〜への需要増加」「〜ニーズの高まり」は必ずSに入れる
-- T（技術・AI）: テクノロジー革新・DX・AI・デジタル化・SNSプラットフォームの変化のみ
-
-会社名: ${c.name}
-商品・サービス: ${c.product}
-ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
-
-以下のJSON形式のみで返答してください:
-{
+  pest: (c) => {
+    const isEn = c.lang === "en";
+    const jsonTemplate = isEn ? `{
+  "framework": "PEST Analysis",
+  "why": "Why PEST Analysis matters for this business right now (1 sentence, plain text)",
+  "items": {
+    "P (Political & Regulatory)": ["Specific law, regulation, subsidy, or policy directly affecting this industry in this market 1 — include a real named regulation or program", "same 2", "same 3"],
+    "E (Economic & Market Trends)": ["Economic indicator or market size figure with a source field in parentheses, relevant to this price point and customer base 1 — NOTE: all figures are AI estimates, not verified data; include (estimated) tag", "same 2", "same 3"],
+    "S (Social & Consumer Trends)": ["Consumer behavior, lifestyle shift, or demographic change creating demand for this type of business 1", "same 2", "same 3"],
+    "T (Technology & AI)": ["Specific technology or AI tool this business can use right now to grow 1", "same 2", "same 3"]
+  },
+  "insight": "The single most important move for this business given the PEST landscape (2 sentences, plain text)",
+  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. Only suggest platforms the customer would actually use; do not invent events or promotions", "same 2", "same 3"],
+  "strategy_summary": {
+    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
+    "usp": "Unique strength only this business can honestly claim (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
+    "top_priority": "Single most important action this month (specific, under 20 words)",
+    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+  }
+}` : `{
   "framework": "PEST分析",
   "why": "PEST分析が重要な理由（1文、プレーンテキスト）",
   "items": {
@@ -191,11 +195,31 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
-}`,
+}`;
+    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のPEST分析を行ってください。
+${getLangInstruction(c.lang)}${COMMON_RULES}
+【重要】この分析はAIの学習データ（2025年5月時点）に基づきます。特にP（政治・法規制）とE（経済）の項目は現在の状況と異なる可能性があるため、実務では必ず最新情報を確認すること。
+
+【PEST分類の厳守ルール（混入禁止）】
+- P（政治・法規制）: 法律改正・規制強化/緩和・補助金・行政指導・政策・税制のみ。消費者意識・健康トレンド・ライフスタイル変化はPに絶対含めない
+- E（経済・市場動向）: GDP・物価指数・インフレ・金利・為替・賃金動向・業界全体の売上規模・競合の価格戦略のみ。「消費者の需要増加」「ニーズの高まり」はS（社会）に分類すること
+- S（社会・消費者トレンド）: 消費者の意識・需要・ニーズの変化、ライフスタイル、人口動態、健康志向はすべてここ
+- T（技術・AI）: テクノロジー革新・DX・AI・デジタル化・SNSプラットフォームの変化のみ
+
+会社名: ${c.name}
+商品・サービス: ${c.product}
+ターゲット顧客: ${c.target}
+${getSiteContext(c.siteContent)}
+${getIndustryContext(c.industry)}
+${getPriceContext(c.price)}
+
+以下のJSON形式のみで返答してください:
+${jsonTemplate}`;
+  },
 
   "3c": (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の3C分析を行ってください。入力言語に合わせて同じ言語で回答してください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
@@ -265,17 +289,38 @@ ${getPriceContext(c.price)}
   }
 }`,
 
-  stp: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSTP分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${getLangInstruction(c.lang)}${COMMON_RULES}
-会社名: ${c.name}
-商品・サービス: ${c.product}
-ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
-
-以下のJSON形式のみで返答してください:
-{
+  stp: (c) => {
+    const isEn = c.lang === "en";
+    const jsonTemplate = isEn ? `{
+  "framework": "STP Analysis",
+  "why": "Why STP Analysis matters for this business (1 sentence, plain text)",
+  "items": {
+    "Segmentation (divide by desire)": ["Most promising customer segment defined by the depth of problem they face 1", "Segment defined by their ideal future outcome and high purchase motivation 2", "Underserved niche segment this business could capture that competitors overlook 3"],
+    "Targeting (who deserves your full focus)": ["Top priority segment to focus on right now — explain why (depth of need, buying power, word-of-mouth reach) 1", "Specific pain point this segment is experiencing right now, in vivid detail 2", "How to win against competitors specifically for this segment 3"],
+    "Positioning (your place in their mind)": ["Unique position competitors have NOT claimed that this business can own 1", "One-line positioning direction with an example tagline 2", "Most convincing proof point or fact that backs this position 3"]
+  },
+  "insight": "The core message that will resonate with this target and the first step to deliver it this week (2 sentences, plain text)",
+  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. No invented discounts, coupons, or events", "same 2", "same 3"],
+  "strategy_summary": {
+    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
+    "usp": "Unique strength only this business can honestly claim (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
+    "top_priority": "Single most important action this month (specific, under 20 words)",
+    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+  },
+  "positioning": {
+    "x_label_left": "Left side of horizontal axis — most natural industry contrast (e.g., Budget / Mass-market / Broad)",
+    "x_label_right": "Right side (e.g., Premium / Specialized / Niche)",
+    "y_label_top": "Top of vertical axis (e.g., Emotional / Experiential / Wellness-focused)",
+    "y_label_bottom": "Bottom of vertical axis (e.g., Functional / Practical / Fitness-focused)",
+    "own": {"label": "${c.name}", "x": 0.7, "y": 0.6},
+    "competitors": [
+      {"label": "Budget gym chains", "x": -0.7, "y": -0.5},
+      {"label": "Large yoga studios", "x": 0.1, "y": 0.0},
+      {"label": "Online yoga apps", "x": -0.3, "y": 0.3}
+    ]
+  }
+}` : `{
   "framework": "STP分析",
   "why": "STP分析が重要な理由（1文、プレーンテキスト）",
   "items": {
@@ -288,7 +333,7 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   },
@@ -299,12 +344,24 @@ ${getPriceContext(c.price)}
     "y_label_bottom": "縦軸の下側（例: 機能的価値・スタンダード・実用型など）",
     "own": {"label": "${c.name}", "x": 自社のX軸位置（-1.0〜1.0の数値）, "y": 自社のY軸位置（-1.0〜1.0の数値）},
     "competitors": [
-      {"label": "想定競合A（具体的な競合タイプ名）", "x": -0.5〜0.5の数値, "y": -0.5〜0.5の数値},
-      {"label": "想定競合B", "x": 数値, "y": 数値},
-      {"label": "想定競合C", "x": 数値, "y": 数値}
+      {"label": "想定競合A（具体的な競合タイプ名）", "x": -0.5, "y": -0.5},
+      {"label": "想定競合B", "x": 0.0, "y": 0.0},
+      {"label": "想定競合C", "x": 0.3, "y": -0.3}
     ]
   }
-}`,
+}`;
+    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSTP分析を行ってください。
+${getLangInstruction(c.lang)}${COMMON_RULES}
+会社名: ${c.name}
+商品・サービス: ${c.product}
+ターゲット顧客: ${c.target}
+${getSiteContext(c.siteContent)}
+${getIndustryContext(c.industry)}
+${getPriceContext(c.price)}
+
+以下のJSON形式のみで返答してください:
+${jsonTemplate}`;
+  },
 
   "4p": (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の4P/4C分析を行ってください。入力言語に合わせて同じ言語で回答してください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
@@ -336,17 +393,27 @@ ${getPriceContext(c.price)}
   }
 }`,
 
-  vrio: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のVRIO分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${getLangInstruction(c.lang)}${COMMON_RULES}
-会社名: ${c.name}
-商品・サービス: ${c.product}
-ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
-
-以下のJSON形式のみで返答してください:
-{
+  vrio: (c) => {
+    const isEn = c.lang === "en";
+    const jsonTemplate = isEn ? `{
+  "framework": "VRIO Analysis",
+  "why": "Why VRIO Analysis matters for this business (1 sentence, plain text)",
+  "items": {
+    "Value (impact on customer's life)": ["What customer pain disappears and what life change happens because of this strength 1", "How this value directly translates into revenue, loyalty, and repeat business 2", "Concrete proof or evidence that this value exceeds what competitors deliver 3"],
+    "Rarity (what competitors lack)": ["Specific skill, knowledge, relationship, history, or asset competitors do NOT have 1", "Why this rarity makes customers feel there is no real alternative 2", "How to communicate this rarity in a way that lands with the target customer 3"],
+    "Imitability (why it cannot be copied)": ["Specific barrier preventing competitors from replicating this — name the barrier (time, cost, culture, trust) 1", "Elements built over years that simply cannot be fast-tracked or purchased 2", "How to turn this inimitability into a brand story customers will remember and share 3"],
+    "Organization (systems to maximize this strength)": ["Current practices or systems that effectively deliver this strength to customers 1", "Biggest missed opportunity — where this strength is being underused right now 2", "Highest-ROI improvement available this week with no budget required 3"]
+  },
+  "insight": "The single action this week that best leverages this business's strongest VRIO asset to attract customers (2 sentences, plain text)",
+  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. Only suggest platforms relevant to this business; do NOT invent promotions or events", "same 2", "same 3"],
+  "strategy_summary": {
+    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
+    "usp": "Unique strength only this business can honestly claim (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
+    "top_priority": "Single most important action this month (specific, under 20 words)",
+    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+  }
+}` : `{
   "framework": "VRIO分析",
   "why": "VRIO分析が重要な理由（1文、プレーンテキスト）",
   "items": {
@@ -360,11 +427,23 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
-}`,
+}`;
+    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のVRIO分析を行ってください。
+${getLangInstruction(c.lang)}${COMMON_RULES}
+会社名: ${c.name}
+商品・サービス: ${c.product}
+ターゲット顧客: ${c.target}
+${getSiteContext(c.siteContent)}
+${getIndustryContext(c.industry)}
+${getPriceContext(c.price)}
+
+以下のJSON形式のみで返答してください:
+${jsonTemplate}`;
+  },
 
   aeo: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。2026年のAI検索時代に対応した、今すぐコピーして使えるコンテンツを生成してください。入力言語に合わせて同じ言語で回答してください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
@@ -414,19 +493,27 @@ ${getPriceContext(c.price)}
   }
 }`,
 
-  ulssas: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のULSSAS分析（SNS時代の購買モデル）を行ってください。入力言語に合わせて同じ言語で回答してください。
-${getLangInstruction(c.lang)}${COMMON_RULES}
-ULSSASとは：UGC→Like→Search1（SNS検索）→Search2（指名検索）→Action→Spreadの拡散サイクルです。
-
-会社名: ${c.name}
-商品・サービス: ${c.product}
-ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
-
-以下のJSON形式のみで返答してください:
-{
+  ulssas: (c) => {
+    const isEn = c.lang === "en";
+    const jsonTemplate = isEn ? `{
+  "framework": "ULSSAS Analysis",
+  "why": "Why ULSSAS matters for this business in the social media age (1 sentence, plain text)",
+  "items": {
+    "UGC (moments customers want to share)": ["Specific experience or moment in this business that makes customers want to post immediately 1", "Natural, non-pushy way to encourage customers to share their experience after the service 2", "Real hashtags or search terms this target customer actually uses on social media 3"],
+    "Like & Discovery (shares and SNS search)": ["Type of content this target audience would save or share without being asked — with a specific example 1", "Keyword and hashtag strategy to be found through in-app social search 2", "Post pattern that makes followers want to recommend this business to friends — specific format 3"],
+    "Brand Search & Google Search": ["Intentional tactic to create moments where people search this business by name 1", "How to plant the 'when I think of X, I think of this brand' association in customers' minds 2", "Concrete step to turn word-of-mouth into name-based search volume 3"],
+    "Purchase & Spread Cycle": ["Shortest path from social discovery to booking or purchase — and where people drop off 1", "System or moment that makes paying customers naturally create UGC after their experience 2", "Specific way to turn loyal customers into genuine brand advocates without discounts or referral programs 3"]
+  },
+  "insight": "The experience scenario most likely to go viral for this business, and the first step to start that cycle this week (2 sentences, plain text)",
+  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. Do NOT suggest referral discounts, coupon programs, or events not in the business description", "same 2", "same 3"],
+  "strategy_summary": {
+    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
+    "usp": "Unique strength only this business can honestly claim (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
+    "top_priority": "Single most important action this month (specific, under 20 words)",
+    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+  }
+}` : `{
   "framework": "ULSSAS分析",
   "why": "SNS時代にULSSASが重要な理由（1文、プレーンテキスト）",
   "items": {
@@ -440,11 +527,25 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
-}`
+}`;
+    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のULSSAS分析（SNS時代の購買モデル）を行ってください。
+${getLangInstruction(c.lang)}${COMMON_RULES}
+ULSSASとは：UGC→Like→Search1（SNS検索）→Search2（指名検索）→Action→Spreadの拡散サイクルです。
+
+会社名: ${c.name}
+商品・サービス: ${c.product}
+ターゲット顧客: ${c.target}
+${getSiteContext(c.siteContent)}
+${getIndustryContext(c.industry)}
+${getPriceContext(c.price)}
+
+以下のJSON形式のみで返答してください:
+${jsonTemplate}`;
+  }
 };
 
 // ────────────────────────────────────────────
