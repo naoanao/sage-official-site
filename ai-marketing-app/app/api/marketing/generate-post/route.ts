@@ -19,6 +19,21 @@ const INDUSTRY_POST_HINTS: Record<string, string> = {
     "1本目：Instagram投稿文（サービス・商品の魅力訴求、ハッシュタグ付き）、2本目：LINE配信文（告知・限定特典）、3本目：告知文（イベント・新サービスのお知らせ）",
 };
 
+const INDUSTRY_POST_HINTS_EN: Record<string, string> = {
+  restaurant:
+    "Post 1: Instagram post (today's dish or seasonal menu, with hashtags). Post 2: Email/social announcement (special offer or visit incentive). Post 3: Google review reply (warm thank-you, invite return visit — no URLs, no self-promotion).",
+  salon:
+    "Post 1: Instagram post (before/after or technique showcase, with hashtags). Post 2: Instagram post (client testimonial or signature service highlight, with hashtags). Post 3: Email/social announcement (availability or booking promotion).",
+  ec:
+    "Post 1: Instagram post (product intro or use-case showcase, with hashtags). Post 2: Instagram post (gift angle or lifestyle appeal, with hashtags). Post 3: Email/social announcement (new arrival or limited offer).",
+  professional:
+    "Post 1: Blog intro (educational opener explaining a common problem your clients face). Post 2: Email (lead nurture email guiding prospects toward inquiry). Post 3: Blog intro (FAQ-style intro answering the most common question from your target clients).",
+  construction:
+    "Post 1: Social post (local trust-builder highlighting a real project or customer result). Post 2: Email/flyer copy (seasonal maintenance reminder or inspection offer). Post 3: Google review reply (genuine thanks, community focus — no URLs, no sales pitch).",
+  other:
+    "Post 1: Instagram post (service or product value showcase, with hashtags). Post 2: Email/social announcement (event, launch, or limited offer). Post 3: Social post (behind-the-scenes or story that builds trust with your audience).",
+};
+
 const INDUSTRY_LABELS: Record<string, string> = {
   restaurant: "飲食店",
   salon: "美容サロン",
@@ -77,21 +92,27 @@ async function callGroq(prompt: string): Promise<string | null> {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { framework, insight, name, product, target, industry, price } = body;
+    const { framework, insight, name, product, target, industry, price, lang } = body;
 
     if (!name || !product || !target || !framework || !insight) {
       return NextResponse.json({ error: "必要な情報が不足しています" }, { status: 400 });
     }
 
-    const postHint =
-      INDUSTRY_POST_HINTS[industry] ?? INDUSTRY_POST_HINTS["other"];
+    const isEn = lang === "en";
+    const postHint = isEn
+      ? (INDUSTRY_POST_HINTS_EN[industry] ?? INDUSTRY_POST_HINTS_EN["other"])
+      : (INDUSTRY_POST_HINTS[industry] ?? INDUSTRY_POST_HINTS["other"]);
     const industryLabel = INDUSTRY_LABELS[industry] ?? "ビジネス";
     const priceNote = price
       ? `価格帯・客単価: ${price}（価格帯に見合った訴求・言葉遣いにすること）`
       : "";
 
+    const langInstruction = isEn
+      ? `\n⚠️ CRITICAL: You MUST respond ENTIRELY in English. Every JSON value, platform name, content, and hook must be in English. Do NOT use Japanese or any other language. This is a hard requirement.\n`
+      : "";
+
     const prompt = `あなたはDavid Ogilvy・Eugene Schwartz・Gary Halbert・Claude Hopkins・神田昌典の思想を血肉とした、個人・零細事業主専門の世界トップクラスのコピーライターです。
-全ての出力はユーザーの入力言語に合わせること（入力が英語なら英語、ポルトガル語ならポルトガル語、日本語なら日本語で全て出力する）。
+全ての出力はユーザーの入力言語に合わせること（入力が英語なら英語、ポルトガル語ならポルトガル語、日本語なら日本語で全て出力する）。${langInstruction}
 
 ━━ あなたの仕事の本質 ━━
 
@@ -148,9 +169,9 @@ ${target}が今夜布団の中で何を考えているか。
 
 返答はJSONのみ（コードブロック・説明文不要）:
 {"posts":[
-  {"platform":"（プラットフォーム名）","content":"（投稿本文全文）","hook":"この投稿の狙いを10文字以内で"},
-  {"platform":"（プラットフォーム名）","content":"（投稿本文全文）","hook":"この投稿の狙いを10文字以内で"},
-  {"platform":"（プラットフォーム名）","content":"（投稿本文全文）","hook":"この投稿の狙いを10文字以内で"}
+  {"platform":"${isEn ? "(platform name)" : "（プラットフォーム名）"}","content":"${isEn ? "(full post body)" : "（投稿本文全文）"}","hook":"${isEn ? "goal of this post in 6 words or less" : "この投稿の狙いを10文字以内で"}"},
+  {"platform":"${isEn ? "(platform name)" : "（プラットフォーム名）"}","content":"${isEn ? "(full post body)" : "（投稿本文全文）"}","hook":"${isEn ? "goal of this post in 6 words or less" : "この投稿の狙いを10文字以内で"}"},
+  {"platform":"${isEn ? "(platform name)" : "（プラットフォーム名）"}","content":"${isEn ? "(full post body)" : "（投稿本文全文）"}","hook":"${isEn ? "goal of this post in 6 words or less" : "この投稿の狙いを10文字以内で"}"}
 ]}`;
 
     let raw = await callGemini(prompt);

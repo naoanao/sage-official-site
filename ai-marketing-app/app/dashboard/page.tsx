@@ -10,7 +10,8 @@ import { useLang } from "@/lib/i18n";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const isEn = lang === "en";
   const [session, setSession] = useState<StoredSession | null>(null);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -156,8 +157,8 @@ export default function DashboardPage() {
 
         <FreeProgressBar />
 
-        {/* LINE未連携バナー: アプリを開かなくても毎週月曜に自動で届く価値を伝える */}
-        {lineLinked === false && (
+        {/* LINE未連携バナー (日本語のみ表示) */}
+        {lineLinked === false && !isEn && (
           <div className="mt-6 rounded-2xl overflow-hidden shadow-md" style={{ background: "linear-gradient(135deg, #00B900 0%, #00D900 100%)" }}>
             <div className="px-5 py-4 flex items-start gap-3">
               <div className="text-3xl shrink-0">💬</div>

@@ -369,6 +369,7 @@ export default function MarketingPage() {
           target,
           industry: industry || undefined,
           price: price || undefined,
+          lang: getLang(),
         }),
       });
       const data = await res.json();
