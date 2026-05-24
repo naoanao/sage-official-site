@@ -155,7 +155,8 @@ function getLangInstruction(lang?: string): string {
 3. Do NOT invent discounts, coupon codes, referral discount programs, limited-time offers, events, or any pricing NOT explicitly stated in the business description. Only use facts from the input data.
 4. Do NOT recommend TikTok or any specific social platform unless it was explicitly mentioned in the business description.
 5. Write in natural, friendly American English — no translated Japanese marketing phrases.
-6. All JSON "framework" values and section key labels must be in English (e.g., "PEST Analysis" not "PEST分析", use English section headers throughout).\n`;
+6. All JSON "framework" values and section key labels must be in English (e.g., "PEST Analysis" not "PEST分析", use English section headers throughout).
+7. CRITICAL: Copy the EXACT section key names shown in the JSON template below. Do NOT add Japanese text in parentheses after them. Do NOT rewrite them in Japanese. Output keys verbatim as shown in the template.\n`;
   }
   return "";
 }
@@ -221,26 +222,26 @@ ${getPriceContext(c.price)}
 ${jsonTemplate}`;
   },
 
-  "3c": (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の3C分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${getLangInstruction(c.lang)}${COMMON_RULES}
-
-━━ この3C分析で必ず答えるべき問い ━━
-Customer: この顧客は今、何に困っていて、それが解決されたら人生がどう変わるのか？
-Competitor: 競合は顧客のどの欲求を満たせておらず、そのギャップに何が眠っているか？
-Company: この事業者だけが顧客に届けられる「人生の変化」は何か？
-
-━━ Competitor分析の必須ルール ━━
-競合の実態をAIは直接確認できない。そのため競合分析では「〜が多い傾向がある」「一般的に〜と言われている」「〜と推測される」など推測・傾向を示す表現を必ず使うこと。「競合は〜している」「競合には〜がない」と断定する表現を禁止する。あくまで業界全体の傾向・よくある課題パターンをもとに、この事業者が差別化できる可能性のあるギャップを示すこと。
-
-会社名: ${c.name}
-商品・サービス: ${c.product}
-ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
-
-以下のJSON形式のみで返答してください:
-{
+  "3c": (c) => {
+    const isEn = c.lang === "en";
+    const jsonTemplate = isEn ? `{
+  "framework": "3C Analysis",
+  "why": "Why 3C Analysis matters for this business (1 sentence, plain text)",
+  "items": {
+    "Customer (desires and future)": ["Specific worry or fear this target customer thinks about late at night 1", "How their life changes when this problem is solved — paint the better future 2", "Biggest psychological barrier stopping them from buying, and what breaks through it 3"],
+    "Competitor (gaps they leave unfilled)": ["What competitors tend to focus on and what customer frustration that creates 1", "The deeper customer need competitors seem to miss — the gap this business can own 2", "The unique value this business delivers when it fills that gap 3"],
+    "Company (change only you can deliver)": ["The specific life change or experience only this business can provide 1", "Why competitors cannot copy this — name the real barrier (skill, story, relationship) 2", "A weakness to own honestly, and the one move that still makes this business worth choosing 3"]
+  },
+  "insight": "The life change this business can create for customers, and the first move to communicate it this week (2 sentences, plain text)",
+  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. No invented discounts, coupons, referral programs, or events", "same 2", "same 3"],
+  "strategy_summary": {
+    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
+    "usp": "Unique strength only this business can honestly claim (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
+    "top_priority": "Single most important action this month (specific, under 20 words)",
+    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+  }
+}` : `{
   "framework": "3C分析",
   "why": "3C分析が重要な理由（1文、プレーンテキスト）",
   "items": {
@@ -253,23 +254,47 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
-}`,
-
-  swot: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSWOT分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-2026年現在の市場環境（AI技術の普及・物価高騰・人口減少・高齢化・Z世代消費行動・SNSマーケティングの変化）を反映してください。
+}`;
+    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の3C分析を行ってください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
+競合分析では断定表現を禁止し「〜と推測される」「一般的に〜」など推測表現を使うこと。
+
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
+${getSiteContext(c.siteContent)}
 ${getIndustryContext(c.industry)}
 ${getPriceContext(c.price)}
 
 以下のJSON形式のみで返答してください:
-{
+${jsonTemplate}`;
+  },
+
+  swot: (c) => {
+    const isEn = c.lang === "en";
+    const jsonTemplate = isEn ? `{
+  "framework": "SWOT Analysis",
+  "why": "Why SWOT Analysis matters for this business right now (1 sentence, plain text)",
+  "items": {
+    "Strength (how it changes the customer's life)": ["What customer pain disappears and what positive future this strength creates 1", "Why competitors cannot replicate this — name the real barrier (skill, story, history, system) 2", "Why customers who would love this haven't heard about it yet, and the words to reach them 3"],
+    "Weakness (face it honestly)": ["The real reason customers hesitate to buy — the weakest point in the current offer 1", "What loyal customers and revenue are lost if this weakness is ignored 2", "How to turn this weakness into an honest strength that builds trust 3"],
+    "Opportunity (changes creating new openings)": ["Specific shift in target customer behavior or values in 2026 that benefits this business 1", "A market gap competitors haven't moved into yet — act now to claim it 2", "The one thing only this business can do to capture this opportunity 3"],
+    "Threat (how to survive and flip it)": ["The biggest external change threatening this business — describe its concrete impact 1", "Worst-case scenario if this threat is ignored for 12 months 2", "How to reframe this threat into a competitive advantage 3"]
+  },
+  "insight": "The single strongest move to leverage this business's top SWOT asset for customers this week (2 sentences, plain text)",
+  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. Do NOT suggest discounts, coupons, exclusive deals, referral programs, or events not in the business description", "same 2", "same 3"],
+  "strategy_summary": {
+    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
+    "usp": "Unique strength only this business can honestly claim (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
+    "top_priority": "Single most important action this month (specific, under 20 words)",
+    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+  }
+}` : `{
   "framework": "SWOT分析",
   "why": "SWOT分析が重要な理由（1文、プレーンテキスト）",
   "items": {
@@ -283,11 +308,22 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
-}`,
+}`;
+    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSWOT分析を行ってください。2026年現在の市場環境を反映してください。
+${getLangInstruction(c.lang)}${COMMON_RULES}
+会社名: ${c.name}
+商品・サービス: ${c.product}
+ターゲット顧客: ${c.target}
+${getIndustryContext(c.industry)}
+${getPriceContext(c.price)}
+
+以下のJSON形式のみで返答してください:
+${jsonTemplate}`;
+  },
 
   stp: (c) => {
     const isEn = c.lang === "en";
@@ -363,17 +399,30 @@ ${getPriceContext(c.price)}
 ${jsonTemplate}`;
   },
 
-  "4p": (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の4P/4C分析を行ってください。入力言語に合わせて同じ言語で回答してください。
-${getLangInstruction(c.lang)}${COMMON_RULES}
-会社名: ${c.name}
-商品・サービス: ${c.product}
-ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
-
-以下のJSON形式のみで返答してください:
-{
+  "4p": (c) => {
+    const isEn = c.lang === "en";
+    const priceNote = isEn
+      ? (c.price ? `${c.price} price point — explain what makes customers feel it's worth it, and how to communicate that value` : "the pricing strategy that best fits this business's positioning")
+      : (c.price ? `${c.price}という価格設定が顧客に「高い」と感じさせる心理的原因と解消策` : "この商品の価値に見合った最適な価格設定と根拠");
+    const jsonTemplate = isEn ? `{
+  "framework": "4P / 4C Analysis",
+  "why": "Why 4P/4C Analysis matters for this business (1 sentence, plain text)",
+  "items": {
+    "Product (what customers are really buying)": ["The emotion, experience, or life change customers want — not a feature description 1", "The one thing competitors cannot replicate, and how it solves the customer's real problem 2", "The single sentence customers would say to a friend after using this product or service 3"],
+    "Price (bridging value and cost)": ["${priceNote} 1", "How to reframe price resistance as 'return on investment' in the customer's language 2", "The most effective way to increase perceived value without raising the actual price 3"],
+    "Place (where customers find and buy)": ["The channel where this target customer most naturally discovers this type of business 1", "The fastest path from awareness to purchase — and where people drop off along the way 2", "The most impactful friction point to remove from the buying experience right now 3"],
+    "Promotion (messages that move people)": ["The single highest-priority outreach tactic to start this week, and why it works 1", "A content strategy that starts from the customer's late-night worry — not a product feature 2", "A natural word-of-mouth trigger that doesn't require discounts or referral incentives 3"]
+  },
+  "insight": "The one P to tackle first this week and how fixing it changes the customer's experience (2 sentences, plain text)",
+  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. Do NOT suggest discounts, package deals, coupons, or referral programs not in the business description", "same 2", "same 3"],
+  "strategy_summary": {
+    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
+    "usp": "Unique strength only this business can honestly claim (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
+    "top_priority": "Single most important action this month (specific, under 20 words)",
+    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+  }
+}` : `{
   "framework": "4P / 4C分析",
   "why": "4P/4C分析が重要な理由（1文、プレーンテキスト）",
   "items": {
@@ -387,11 +436,23 @@ ${getPriceContext(c.price)}
   "strategy_summary": {
     "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
     "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）。英語出力時はLINEを使わずInstagram / Google / Email / TikTok等グローバルチャネルを使うこと",
+    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
-}`,
+}`;
+    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の4P/4C分析を行ってください。
+${getLangInstruction(c.lang)}${COMMON_RULES}
+会社名: ${c.name}
+商品・サービス: ${c.product}
+ターゲット顧客: ${c.target}
+${getSiteContext(c.siteContent)}
+${getIndustryContext(c.industry)}
+${getPriceContext(c.price)}
+
+以下のJSON形式のみで返答してください:
+${jsonTemplate}`;
+  },
 
   vrio: (c) => {
     const isEn = c.lang === "en";
