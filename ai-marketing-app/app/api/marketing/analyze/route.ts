@@ -3,7 +3,7 @@ export const maxDuration = 30;
 import { NextRequest, NextResponse } from "next/server";
 
 // ────────────────────────────────────────────
-// 業種別コンテキスト
+// 業種別コンテキスト（日本語・英語）
 // ────────────────────────────────────────────
 const INDUSTRY_CONTEXTS: Record<string, string> = {
   restaurant:
@@ -21,18 +21,37 @@ const INDUSTRY_CONTEXTS: Record<string, string> = {
     "塾・英会話・スポーツ教室など教育・スクール業として分析する。指導実績・合格率・体験授業の設計・保護者への安心感・生徒の変化を伝えるコンテンツ・口コミを重視すること。",
 };
 
-function getIndustryContext(industry?: string): string {
+const INDUSTRY_CONTEXTS_EN: Record<string, string> = {
+  restaurant: "Analyze as a restaurant. Focus on: food cost, average spend, lunch vs dinner traffic differences, social media visual appeal, reviews, and seasonal menu strategy.",
+  salon: "Analyze as a beauty salon. Focus on: skill differentiation, repeat visit rate, booking funnel, Instagram marketing, building regular clients, and before/after content.",
+  ec: "Analyze as an e-commerce business. Focus on: product appeal, purchase funnel, cart abandonment, review strategy, social traffic, gift demand, and seasonal peaks.",
+  professional: "Analyze as a consulting or professional services business. Focus on: expertise visibility, trust building, inquiry funnel, SEO, media presence, and referral systems.",
+  construction: "Analyze as a construction or renovation business. Focus on: local community presence, project portfolio showcase, reviews, renovation demand, seasonal maintenance, and print/flyer effectiveness.",
+  health: "Analyze as a health, wellness, or bodycare business. Focus on: treatment results, evidence-based positioning, repeat rate, Google Maps visibility, reviews, and before/after content.",
+  education: "Analyze as an education or school business. Focus on: teaching results, completion/pass rates, trial lesson design, parent reassurance, student transformation content, and word of mouth.",
+};
+
+function getIndustryContext(industry?: string, lang?: string): string {
   if (!industry) return "";
+  if (lang === "en") return INDUSTRY_CONTEXTS_EN[industry] ?? "";
   return INDUSTRY_CONTEXTS[industry] ?? "";
 }
 
-function getPriceContext(price?: string): string {
+function getPriceContext(price?: string, lang?: string): string {
   if (!price) return "";
+  if (lang === "en") {
+    return `Price point: ${price} — use this as context for pricing psychology, value communication, and competitive positioning throughout your analysis.`;
+  }
   return `価格帯・客単価: ${price}（この価格帯を前提に、ターゲット顧客の購買心理・競合との価格戦略・高単価または低単価ならではのリスクと戦略を分析すること）`;
 }
 
-function getSiteContext(siteContent?: string): string {
+function getSiteContext(siteContent?: string, lang?: string): string {
   if (!siteContent) return "";
+  if (lang === "en") {
+    return `[Website content — use as primary source data for your analysis]:
+${siteContent}
+(Auto-extracted from their website. Prioritize these real facts over assumptions.)`;
+  }
   return `【Webサイトから読み取った実際の情報（これを最優先で分析に使うこと）】
 ${siteContent}
 （上記はWebサイトから自動取得したテキストです。この実際の情報を手がかりに、より具体的・精度の高い分析を行ってください）`;
@@ -156,7 +175,8 @@ function getLangInstruction(lang?: string): string {
 4. Do NOT recommend TikTok or any specific social platform unless it was explicitly mentioned in the business description.
 5. Write in natural, friendly American English — no translated Japanese marketing phrases.
 6. All JSON "framework" values and section key labels must be in English (e.g., "PEST Analysis" not "PEST分析", use English section headers throughout).
-7. CRITICAL: Copy the EXACT section key names shown in the JSON template below. Do NOT add Japanese text in parentheses after them. Do NOT rewrite them in Japanese. Output keys verbatim as shown in the template.\n`;
+7. CRITICAL: Copy the EXACT section key names shown in the JSON template below. Do NOT add Japanese text in parentheses after them. Do NOT rewrite them in Japanese. Output keys verbatim as shown in the template.
+8. NEVER translate, transliterate, or paraphrase any business name, brand name, place name, or proper noun. If the business name is "Solo Yoga Brooklyn", output it as "Solo Yoga Brooklyn" — NOT "ソロヨガブルックリン" or any other form.\n`;
   }
   return "";
 }
@@ -201,7 +221,23 @@ const FRAMEWORK_PROMPTS: Record<string, (c: CompanyInfo) => string> = {
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`;
-    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のPEST分析を行ってください。
+    return isEn ? `You are a world-class marketing strategist. Perform a PEST Analysis for the following business.
+${getLangInstruction(c.lang)}
+NOTE: This analysis is based on AI training data. For P (Political) and E (Economic) items, always recommend verifying with current sources.
+
+PEST CLASSIFICATION RULES (strictly enforce — no cross-contamination):
+- P (Political & Regulatory): laws, regulations, subsidies, government policy, tax changes ONLY. Consumer attitudes and lifestyle changes go in S.
+- E (Economic): GDP, inflation, interest rates, industry revenue size, competitor pricing trends ONLY. "Consumer demand increasing" belongs in S.
+- S (Social): consumer attitudes, demand shifts, lifestyle, demographics, health consciousness — all here.
+- T (Technology): tech innovation, AI, digitalization, platform changes ONLY.
+
+Business Name: ${c.name}
+Product / Service: ${c.product}
+Target Customer: ${c.target}
+${getSiteContext(c.siteContent, c.lang)}${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
+Respond ONLY in the following JSON format:
+${jsonTemplate}` : `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のPEST分析を行ってください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
 【重要】この分析はAIの学習データ（2025年5月時点）に基づきます。特にP（政治・法規制）とE（経済）の項目は現在の状況と異なる可能性があるため、実務では必ず最新情報を確認すること。
 
@@ -214,9 +250,9 @@ ${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
+${getSiteContext(c.siteContent, c.lang)}
+${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
 
 以下のJSON形式のみで返答してください:
 ${jsonTemplate}`;
@@ -259,16 +295,26 @@ ${jsonTemplate}`;
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`;
-    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の3C分析を行ってください。
+    return isEn ? `You are a world-class marketing strategist. Perform a 3C Analysis for the following business.
+${getLangInstruction(c.lang)}
+Avoid definitive claims about competitors — use "typically," "tends to," or "analysis suggests."
+
+Business Name: ${c.name}
+Product / Service: ${c.product}
+Target Customer: ${c.target}
+${getSiteContext(c.siteContent, c.lang)}${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
+Respond ONLY in the following JSON format:
+${jsonTemplate}` : `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の3C分析を行ってください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
 競合分析では断定表現を禁止し「〜と推測される」「一般的に〜」など推測表現を使うこと。
 
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
+${getSiteContext(c.siteContent, c.lang)}
+${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
 
 以下のJSON形式のみで返答してください:
 ${jsonTemplate}`;
@@ -313,13 +359,22 @@ ${jsonTemplate}`;
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`;
-    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSWOT分析を行ってください。2026年現在の市場環境を反映してください。
+    return isEn ? `You are a world-class marketing strategist. Perform a SWOT Analysis for the following business, reflecting the current 2026 market environment.
+${getLangInstruction(c.lang)}
+
+Business Name: ${c.name}
+Product / Service: ${c.product}
+Target Customer: ${c.target}
+${getSiteContext(c.siteContent, c.lang)}${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
+Respond ONLY in the following JSON format:
+${jsonTemplate}` : `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSWOT分析を行ってください。2026年現在の市場環境を反映してください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
+${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
 
 以下のJSON形式のみで返答してください:
 ${jsonTemplate}`;
@@ -386,14 +441,23 @@ ${jsonTemplate}`;
     ]
   }
 }`;
-    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSTP分析を行ってください。
+    return isEn ? `You are a world-class marketing strategist. Perform an STP Analysis for the following business.
+${getLangInstruction(c.lang)}
+
+Business Name: ${c.name}
+Product / Service: ${c.product}
+Target Customer: ${c.target}
+${getSiteContext(c.siteContent, c.lang)}${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
+Respond ONLY in the following JSON format:
+${jsonTemplate}` : `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のSTP分析を行ってください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
+${getSiteContext(c.siteContent, c.lang)}
+${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
 
 以下のJSON形式のみで返答してください:
 ${jsonTemplate}`;
@@ -441,14 +505,23 @@ ${jsonTemplate}`;
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`;
-    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の4P/4C分析を行ってください。
+    return isEn ? `You are a world-class marketing strategist. Perform a 4P / 4C Analysis for the following business.
+${getLangInstruction(c.lang)}
+
+Business Name: ${c.name}
+Product / Service: ${c.product}
+Target Customer: ${c.target}
+${getSiteContext(c.siteContent, c.lang)}${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
+Respond ONLY in the following JSON format:
+${jsonTemplate}` : `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社の4P/4C分析を行ってください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
+${getSiteContext(c.siteContent, c.lang)}
+${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
 
 以下のJSON形式のみで返答してください:
 ${jsonTemplate}`;
@@ -493,20 +566,73 @@ ${jsonTemplate}`;
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`;
-    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のVRIO分析を行ってください。
+    return isEn ? `You are a world-class marketing strategist. Perform a VRIO Analysis for the following business.
+${getLangInstruction(c.lang)}
+
+Business Name: ${c.name}
+Product / Service: ${c.product}
+Target Customer: ${c.target}
+${getSiteContext(c.siteContent, c.lang)}${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
+Respond ONLY in the following JSON format:
+${jsonTemplate}` : `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のVRIO分析を行ってください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
+${getSiteContext(c.siteContent, c.lang)}
+${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
 
 以下のJSON形式のみで返答してください:
 ${jsonTemplate}`;
   },
 
-  aeo: (c) => `あなたは世界トップクラスのマーケティングストラテジストだ。2026年のAI検索時代に対応した、今すぐコピーして使えるコンテンツを生成してください。入力言語に合わせて同じ言語で回答してください。
+  aeo: (c) => {
+    const isEn = c.lang === "en";
+    const aeoPrompt = isEn ? `You are a world-class marketing strategist. Generate AEO (Answer Engine Optimization) content for this business that is ready to copy and use immediately.
+${getLangInstruction(c.lang)}
+AEO = getting your brand cited as the best answer by ChatGPT, Perplexity, and Google AI summaries.
+ABSOLUTE RULE: Never say "check this," "search for," or "ask ChatGPT." Every item must be complete, ready-to-copy content.
+
+Business Name: ${c.name}
+Product / Service: ${c.product}
+Target Customer: ${c.target}
+${getSiteContext(c.siteContent, c.lang)}${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
+Respond ONLY in the following JSON format:
+{
+  "framework": "AEO (Answer Engine Optimization) Strategy",
+  "why": "Why AEO matters for this business in the AI search era of 2026 (1 sentence, plain text)",
+  "items": {
+    "Ready-to-use Q&A content (copy to website / landing page)": [
+      "Q: A specific question ${c.target} would actually type into an AI assistant about ${c.product}\\nA: Direct answer in the first 40 words. Include a unique fact, number, or differentiator that only ${c.name} can claim.",
+      "Q: A question about how to use, expected results, or life change from ${c.product}\\nA: Direct answer in the first 40 words with concrete specifics.",
+      "Q: A question about price, purchase decision, or how ${c.name} differs from alternatives\\nA: Direct answer that makes the case for choosing ${c.name} without invented discounts."
+    ],
+    "Ready-to-paste meta description (copy to HTML head)": [
+      "[COPY TO HTML meta description] A complete 130-150 character description of ${c.name}'s ${c.product}. Lead with direct value, include a specific number or unique differentiator."
+    ],
+    "AI-quotable social posts (copy and post now)": [
+      "[Post 1] A complete social media post with expert authority + specific data + unique insight about ${c.product}. Include 3-5 relevant hashtags.",
+      "[Post 2] A complete post that directly answers a common customer question. Different angle from Post 1. Include 3-5 hashtags."
+    ],
+    "This week's implementation steps (smartphone, 30 min max)": [
+      "Step 1: Exactly which page to update, what to write, and how to publish it — highest priority action",
+      "Step 2: Second priority implementation step with specific location, content, and method",
+      "Step 3: Third step — SNS bio, blog, or profile update with exact content to add"
+    ]
+  },
+  "insight": "The single most important AEO action this business can take in the next 30 days to get cited by AI assistants (2 sentences, plain text)",
+  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. No invented promotions or events", "same 2", "same 3"],
+  "strategy_summary": {
+    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
+    "usp": "Unique strength only this business can honestly claim (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
+    "top_priority": "Single most important action this month (specific, under 20 words)",
+    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+  }
+}` : `あなたは世界トップクラスのマーケティングストラテジストだ。2026年のAI検索時代に対応した、今すぐコピーして使えるコンテンツを生成してください。入力言語に合わせて同じ言語で回答してください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
 
 【絶対禁止】「〜を調べてみてください」「〜を確認してみましょう」「ChatGPTで検索して」などのユーザーへの宿題を一切書かない。全ての項目は「今すぐコピーして使える完成コンテンツ」のみ生成すること。
@@ -516,9 +642,9 @@ AI検索最適化とは：ChatGPT・Perplexity・Google AI概要などに自社�
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
+${getSiteContext(c.siteContent, c.lang)}
+${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
 
 以下のJSON形式のみで返答してください:
 {
@@ -552,7 +678,9 @@ ${getPriceContext(c.price)}
     "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
-}`,
+}`;
+    return aeoPrompt;
+  },
 
   ulssas: (c) => {
     const isEn = c.lang === "en";
@@ -593,16 +721,26 @@ ${getPriceContext(c.price)}
     "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
   }
 }`;
-    return `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のULSSAS分析（SNS時代の購買モデル）を行ってください。
+    return isEn ? `You are a world-class marketing strategist. Perform a ULSSAS Analysis for the following business.
+${getLangInstruction(c.lang)}
+ULSSAS = UGC → Like & Discovery → SNS Search → Brand/Google Search → Action (purchase) → Spread (repeat UGC cycle).
+
+Business Name: ${c.name}
+Product / Service: ${c.product}
+Target Customer: ${c.target}
+${getSiteContext(c.siteContent, c.lang)}${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
+Respond ONLY in the following JSON format:
+${jsonTemplate}` : `あなたは世界トップクラスのマーケティングストラテジストだ。以下の会社のULSSAS分析（SNS時代の購買モデル）を行ってください。
 ${getLangInstruction(c.lang)}${COMMON_RULES}
 ULSSASとは：UGC→Like→Search1（SNS検索）→Search2（指名検索）→Action→Spreadの拡散サイクルです。
 
 会社名: ${c.name}
 商品・サービス: ${c.product}
 ターゲット顧客: ${c.target}
-${getSiteContext(c.siteContent)}
-${getIndustryContext(c.industry)}
-${getPriceContext(c.price)}
+${getSiteContext(c.siteContent, c.lang)}
+${getIndustryContext(c.industry, c.lang)}
+${getPriceContext(c.price, c.lang)}
 
 以下のJSON形式のみで返答してください:
 ${jsonTemplate}`;
