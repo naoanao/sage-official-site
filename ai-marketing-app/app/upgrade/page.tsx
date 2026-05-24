@@ -129,7 +129,7 @@ export default function UpgradePage() {
           </p>
           <h1 className="text-2xl font-bold text-gray-900">
             {isEn
-              ? <>Your 3 weekly actions delivered<br />every Monday via LINE</>
+              ? <>Your 3 personalized marketing actions,<br />delivered fresh every week</>
               : <>毎週月曜、今週の施策が<br />LINEで届く</>}
           </h1>
           <p className="text-sm text-gray-400 mt-2">
@@ -148,7 +148,7 @@ export default function UpgradePage() {
         <div className="flex justify-center gap-4 mb-6 text-xs text-gray-400">
           <span>🔒 {isEn ? "Stripe payment" : "Stripe決済"}</span>
           <span>📅 {isEn ? "Cancel anytime" : "いつでも解約"}</span>
-          <span>💳 {isEn ? "Card / Convenience store" : "クレカ / コンビニ対応"}</span>
+          <span>💳 {isEn ? "Credit / Debit card" : "クレカ / コンビニ対応"}</span>
         </div>
 
         <div className="flex flex-col gap-4">

@@ -75,7 +75,7 @@ export default function CustomerPage() {
         </div>
         <ProgressBar current={3} total={5} />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">{t("ob.customer.title")}</h1>
-        <p className="text-gray-500 text-sm mb-8">e.g. 「{example}」</p>
+        <p className="text-gray-500 text-sm mb-8">{lang === "en" ? `e.g. "${example}"` : `e.g. 「${example}」`}</p>
         <textarea
           className="w-full border-2 border-gray-200 focus:border-indigo-400 rounded-2xl p-4 text-gray-800 text-base resize-none outline-none transition-colors"
           rows={4}

@@ -86,7 +86,7 @@ export default function LandingPage() {
         </p>
         <p className="text-gray-400 text-sm mb-10">
           {isEn ? (
-            <>Instagram posts · Google review replies · LINE messages —<br />all delivered ready to use</>
+            <>Instagram posts · Google review replies · social content —<br />all delivered ready to use</>
           ) : (
             <>Instagram投稿文・Googleレビュー返信・LINE配信文——<br />全部、明日から使える状態で届きます</>
           )}
@@ -176,7 +176,7 @@ export default function LandingPage() {
           <div className="flex flex-col gap-4">
             {TESTIMONIALS.map((item) => (
               <div key={item.name} className="bg-white rounded-2xl p-5 shadow-sm">
-                <p className="text-sm text-gray-700 leading-relaxed mb-4">「{item.text}」</p>
+                <p className="text-sm text-gray-700 leading-relaxed mb-4">{isEn ? `"${item.text}"` : `「${item.text}」`}</p>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center text-lg">
                     {item.icon}

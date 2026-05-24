@@ -176,7 +176,7 @@ const translations = {
     // ── Business ──
     "ob.business.title": "Describe your business",
     "ob.business.sub": "Used by AI to select the best marketing tactics for you",
-    "ob.business.placeholder": "e.g. I run an Italian restaurant in Shibuya, Tokyo. We have lunch and dinner service, and our course menu is popular.",
+    "ob.business.placeholder": "e.g. I run a small Italian restaurant. We offer lunch and dinner, and our pasta dishes are popular with local regulars.",
     "ob.business.hint": "What services or products you offer, location, and any key features",
 
     // ── Customer ──

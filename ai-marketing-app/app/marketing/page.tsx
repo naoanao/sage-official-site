@@ -1063,7 +1063,7 @@ export default function MarketingPage() {
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setFormError(null); }}
-              placeholder="e.g. Tanaka Café / Acme Corp"
+              placeholder="e.g. Main Street Café / Acme Corp"
               required
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
             />

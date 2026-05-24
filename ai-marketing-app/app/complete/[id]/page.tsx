@@ -70,7 +70,7 @@ function CompleteContent() {
 
   const shareText = isEn
     ? allDone
-      ? `I let AI handle all my marketing this week ✅\n\nInstagram posts, Google review replies, LINE messages —\nAI wrote them all. I just copied and pasted.\n\nGreat for ${industryLabelEN[businessType] ?? "small business owners"} 👇\n${APP_URL}`
+      ? `I let AI handle all my marketing this week ✅\n\nInstagram posts, Google review replies, social content —\nAI wrote them all. I just copied and pasted.\n\nGreat for ${industryLabelEN[businessType] ?? "small business owners"} 👇\n${APP_URL}`
       : `Just finished one marketing task with AI ✅\nAI created the content — I just copied and posted.\n\n${APP_URL}`
     : allDone
       ? `今週のマーケ、AIにぜんぶ任せました✅\n\nInstagram投稿文・Googleレビュー返信・LINE配信——\n全部AIが考えて、コピーするだけ。\n\n${industryLabelJA[businessType] ?? "個人事業主・店舗オーナー"}さんに試してほしいです👇\n${APP_URL}`

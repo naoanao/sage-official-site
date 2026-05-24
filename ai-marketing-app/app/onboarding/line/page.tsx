@@ -61,12 +61,35 @@ export default function LineOnboardingPage() {
     }
   }
 
+  // English users: LINE is Japan-only — show a clear "go to dashboard" screen instead
+  if (isEn) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="text-5xl mb-4">🚀</div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">You&apos;re all set!</h1>
+          <p className="text-sm text-gray-500 leading-relaxed mb-8">
+            Your profile is ready. Head to your dashboard to generate<br />
+            AI-powered marketing actions for your business.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl transition-colors"
+          >
+            Go to Dashboard →
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-2">
           <span className="animate-spin w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full" />
-          <p className="text-gray-400 text-sm">{isEn ? "Loading..." : "準備中..."}</p>
+          <p className="text-gray-400 text-sm">準備中...</p>
         </div>
       </main>
     );
