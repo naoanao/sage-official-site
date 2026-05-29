@@ -4,23 +4,23 @@ import "./globals.css";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
 
 export const metadata: Metadata = {
-  title: "Growl — 今週やること3つ",
-  description: "マーケを知らない飲食店・サロンオーナーが、マーケを意識しないまま成長できるAIアプリ。5問答えるだけで今週やるべき集客施策が3つ届きます。",
+  title: "Growl — Just 3 actions this week",
+  description: "AI picks your 3 highest-impact marketing actions every week — with copy already written. No agency, no guesswork. Answer 5 questions and get started free.",
   metadataBase: new URL(APP_URL),
   openGraph: {
-    title: "Growl — 今週やること3つ",
-    description: "AIが今週の集客施策を3つに絞ってくれる。フレームワーク不要・登録不要・1分で完了。飲食店・サロン・EC向け。",
+    title: "Growl — Just 3 actions this week",
+    description: "AI picks your 3 highest-impact marketing actions every week — with copy already written. No signup required. Free to start.",
     url: APP_URL,
     siteName: "Growl",
-    locale: "ja_JP",
+    locale: "en_US",
     type: "website",
-    // opengraph-image.tsx が自動的に /opengraph-image を生成するため静的URLは不要
+    // opengraph-image.tsx generates /opengraph-image automatically
   },
   twitter: {
     card: "summary_large_image",
-    title: "Growl — 今週やること3つ",
-    description: "AIが今週の集客施策を3つに絞ってくれる。登録不要・1分で完了。",
-    // twitter:image も opengraph-image.tsx が自動で差し込まれる
+    title: "Growl — Just 3 actions this week",
+    description: "AI picks your 3 highest-impact marketing actions — with copy already written. Free to start.",
+    // twitter:image is auto-injected from opengraph-image.tsx
   },
   manifest: "/manifest.json",
   appleWebApp: {
@@ -44,8 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
-    </html>
-  );
-}
+    <html lang="en" className="h-full antialiased">
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* Fazier 
