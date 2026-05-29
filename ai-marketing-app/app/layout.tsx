@@ -47,4 +47,15 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         {children}
-        {/* Fazier 
+        {/* Fazier badge */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <div style={{position:'fixed' as const,bottom:'16px',right:'16px',zIndex:9999}}>
+          <a href="https://www.fazier.com" target="_blank" rel="noopener noreferrer">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://www.fazier.com/badges/launched-on-fazier.svg" alt="Launched on Fazier" width={120} height={40} />
+          </a>
+        </div>
+      </body>
+    </html>
+  );
+}
