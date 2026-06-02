@@ -19,17 +19,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install groq atproto requests python-dotenv tweepy notion-client pillow
-      - name: Run SNS cycle
+        run: pip install requests
+      - name: Post to Bluesky
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
-          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
-          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
-          SAGE_ENABLE_BLUESKY: "true"
-          SAGE_ENABLE_INSTAGRAM: "true"
-          SAGE_DRY_RUN: "false"
-          SAGE_QUALITY_GATE_STRICT: "true"
-          PYTHONPATH: ${{ github.workspace }}
-        run: python scripts/run_sns_cycle.py
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python scripts/post_bluesky.py
