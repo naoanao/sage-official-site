@@ -21,11 +21,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install dependencies
         run: |
           pip install groq atproto requests python-dotenv tweepy notion-client pillow
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt || true; fi
 
       - name: Run SNS cycle
         env:
@@ -43,7 +43,4 @@ jobs:
           import os, sys
           sys.path.insert(0, '.')
           from backend.scheduler.sns_daily_scheduler import SNSDailyScheduler
-          s = SNSDailyScheduler()
-          s.run_cycle()
-          print('✅ SNS cycle complete')
-          "
+          s = SNSDailyScheduler(
