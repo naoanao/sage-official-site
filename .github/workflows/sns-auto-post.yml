@@ -31,4 +31,5 @@ jobs:
           SAGE_ENABLE_INSTAGRAM: "true"
           SAGE_DRY_RUN: "false"
           SAGE_QUALITY_GATE_STRICT: "true"
+          PYTHONPATH: ${{ github.workspace }}
         run: python scripts/run_sns_cycle.py
