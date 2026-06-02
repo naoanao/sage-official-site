@@ -16,7 +16,6 @@ export default function DashboardPage() {
   const [session, setSession] = useState<StoredSession | null>(null);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  // LINE連携状態（null=チェック中 / true=連携済み / false=未連携）
   const [lineLinked, setLineLinked] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -37,7 +36,6 @@ export default function DashboardPage() {
     };
   }, [router]);
 
-  // LINE連携状態を非同期チェック（未連携ならバナー表示）
   useEffect(() => {
     const deviceId = typeof window !== "undefined"
       ? localStorage.getItem("growl_device_id")
@@ -89,7 +87,6 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-lg mx-auto">
 
-        {/* ナビゲーションヘッダー */}
         <div className="flex items-center justify-between mb-2">
           <button
             type="button"
@@ -158,7 +155,7 @@ export default function DashboardPage() {
 
         <FreeProgressBar />
 
-        {/* Meta広告出稿カード */}
+        {/* Meta広告全自動化カード */}
         <AdBoostCard
           session={{
             industry: session.user_profile?.industry as string,
@@ -170,7 +167,6 @@ export default function DashboardPage() {
           lang={lang}
         />
 
-        {/* LINE未連携バナー (日本語のみ表示) */}
         {lineLinked === false && !isEn && (
           <div className="mt-6 rounded-2xl overflow-hidden shadow-md" style={{ background: "linear-gradient(135deg, #00B900 0%, #00D900 100%)" }}>
             <div className="px-5 py-4 flex items-start gap-3">
@@ -219,10 +215,7 @@ export default function DashboardPage() {
             <span>{t("dash.btn_marketing")}</span>
           </button>
           <div className="flex justify-between items-center pt-1">
-            <a
-              href="/learn"
-              className="text-xs text-gray-300 hover:text-indigo-400 transition-colors"
-            >
+            <a href="/learn" className="text-xs text-gray-300 hover:text-indigo-400 transition-colors">
               {t("dash.btn_learn")}
             </a>
             <button
@@ -266,4 +259,21 @@ export default function DashboardPage() {
                   clearSession();
                   router.push("/onboarding/industry");
                 }}
-                className="w-full py-3 bg-red-500 hover:bg-red-600 text-
+                className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors"
+              >
+                {t("dash.reset.confirm")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
+              >
+                {t("dash.reset.cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
