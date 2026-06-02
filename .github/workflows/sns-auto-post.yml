@@ -19,10 +19,12 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install requests
-      - name: Post to Bluesky
+        run: pip install groq atproto requests
+      - name: Run SNS post
         env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: python scripts/post_bluesky.py
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+        run: python scripts/post_sns.py
