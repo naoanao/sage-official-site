@@ -1,0 +1,80 @@
+name: Instagram Token Auto-Refresh
+
+on:
+  schedule:
+    - cron: "0 0 1,15 * *"  # 毎月1日と15日に自動更新
+  workflow_dispatch:          # 手動実行も可能
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install PyNaCl requests
+
+      - name: Refresh and Update Token
+        env:
+          INSTAGRAM_APP_ID: ${{ secrets.INSTAGRAM_APP_ID }}
+          INSTAGRAM_APP_SECRET: ${{ secrets.INSTAGRAM_APP_SECRET }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          REFRESH_GITHUB_TOKEN: ${{ secrets.REFRESH_GITHUB_TOKEN }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, urllib.request, requests
+          from base64 import b64encode
+          from nacl import encoding, public
+
+          app_id = os.environ["INSTAGRAM_APP_ID"]
+          app_secret = os.environ["INSTAGRAM_APP_SECRET"]
+          current_token = os.environ["INSTAGRAM_ACCESS_TOKEN"]
+          github_token = os.environ["REFRESH_GITHUB_TOKEN"]
+          repo = "naoanao/sage-official-site"
+
+          # Step 1: トークン更新
+          print("🔄 Refreshing Instagram token...")
+          r = requests.get(
+              "https://graph.facebook.com/v21.0/oauth/access_token",
+              params={
+                  "grant_type": "fb_exchange_token",
+                  "client_id": app_id,
+                  "client_secret": app_secret,
+                  "fb_exchange_token": current_token
+              }
+          )
+          data = r.json()
+          new_token = data.get("access_token")
+          if not new_token:
+              print(f"❌ Failed: {data}")
+              exit(1)
+          expires = data.get("expires_in", "unknown")
+          print(f"✅ Token refreshed. Expires in: {expires} seconds")
+
+          # Step 2: GitHub Secretを更新
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/actions/secrets/public-key",
+              headers={"Authorization": f"token {github_token}", "Accept": "application/vnd.github.v3+json"}
+          )
+          with urllib.request.urlopen(req) as resp:
+              key_data = json.loads(resp.read())
+
+          pk = public.PublicKey(key_data["key"].encode(), encoding.Base64Encoder())
+          box = public.SealedBox(pk)
+          encrypted = b64encode(box.encrypt(new_token.encode())).decode()
+
+          payload = json.dumps({"encrypted_value": encrypted, "key_id": key_data["key_id"]}).encode()
+          req2 = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/actions/secrets/INSTAGRAM_ACCESS_TOKEN",
+              data=payload, method="PUT",
+              headers={"Authorization": f"token {github_token}", "Content-Type": "application/json"}
+          )
+          with urllib.request.urlopen(req2) as resp:
+              print(f"✅ GitHub Secret updated (status: {resp.status})")
+          PYEOF
