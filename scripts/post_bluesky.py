@@ -1,4 +1,8 @@
-import os, json, random, urllib.request, requests
+import os
+import json
+import random
+import urllib.request
+import requests
 from datetime import datetime, date
 
 BLUESKY_HANDLE = os.environ["BLUESKY_HANDLE"]
@@ -6,61 +10,70 @@ BLUESKY_PASSWORD = os.environ["BLUESKY_APP_PASSWORD"]
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 POOL = [
-    {"topic": "AI that runs while you sleep", "cat": "build_in_public"},
+    {"topic": "AI that runs while you sleep", "cat": "build"},
     {"topic": "Stop writing viral posts. Write honest ones.", "cat": "insight"},
     {"topic": "Positioning is not a tagline, it is a filter", "cat": "marketing"},
     {"topic": "Features vs outcomes in marketing copy", "cat": "insight"},
-    {"topic": "Automation without audience is just logging", "cat": "build_in_public"},
+    {"topic": "Automation without audience is just logging", "cat": "build"},
     {"topic": "The question every solopreneur avoids", "cat": "insight"},
     {"topic": "3C analysis changed my restaurant pricing", "cat": "marketing"},
+    {"topic": "What breaks in your system when you are not watching", "cat": "build"},
 ]
 
-def login():
-    r = urllib.request.Request(
+def bluesky_login():
+    data = json.dumps({"identifier": BLUESKY_HANDLE, "password": BLUESKY_PASSWORD}).encode()
+    req = urllib.request.Request(
         "https://bsky.social/xrpc/com.atproto.server.createSession",
-        data=json.dumps({"identifier": BLUESKY_HANDLE, "password": BLUESKY_PASSWORD}).encode(),
+        data=data,
         headers={"Content-Type": "application/json"}
     )
-    with urllib.request.urlopen(r) as resp:
+    with urllib.request.urlopen(req) as resp:
         d = json.loads(resp.read())
     return d["accessJwt"], d["did"]
 
-def gen(topic, cat):
+def generate(topic, cat):
     day = (date.today() - date(2025, 6, 1)).days + 1
     if not GROQ_API_KEY:
-        return f"Day {day}. {topic}"
-    prompts = {
-        "build_in_public": f"Write a BUILD-IN-PUBLIC post. Open with Day {day}. About: {topic}. AI is the hero. Max 220 chars. No hashtags.",
-        "insight": f"Share ONE insight about: {topic}. End with a question. Max 220 chars.",
-        "marketing": f"ONE marketing principle from real experience: {topic}. Max 220 chars.",
-    }
+        return "Day " + str(day) + ". " + topic
+    if cat == "build":
+        prompt = "Write a BUILD-IN-PUBLIC post. Open with 'Day " + str(day) + ".' About: " + topic + ". AI is the hero. Max 220 chars. No hashtags."
+    elif cat == "marketing":
+        prompt = "ONE marketing principle from real experience about: " + topic + ". Max 220 chars."
+    else:
+        prompt = "Share ONE insight about: " + topic + ". End with a question. Max 220 chars."
     r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
-        json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompts.get(cat, prompts["insight"])}], "max_tokens": 120},
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}"}
+        json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "max_tokens": 120},
+        headers={"Authorization": "Bearer " + GROQ_API_KEY}
     )
     return r.json()["choices"][0]["message"]["content"].strip()
 
-def post(token, did, text):
-    full = text + "
-
-#BuildInPublic #SageAI"
+def post_to_bluesky(token, did, text):
+    full = text + "\n\n#BuildInPublic #SageAI"
     if len(full) > 300:
-        full = text[:260] + "...
-#BuildInPublic"
-    r = urllib.request.Request(
+        full = text[:260] + "...\n#BuildInPublic"
+    data = json.dumps({
+        "repo": did,
+        "collection": "app.bsky.feed.post",
+        "record": {
+            "$type": "app.bsky.feed.post",
+            "text": full,
+            "createdAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        }
+    }).encode()
+    req = urllib.request.Request(
         "https://bsky.social/xrpc/com.atproto.repo.createRecord",
-        data=json.dumps({"repo": did, "collection": "app.bsky.feed.post", "record": {"": "app.bsky.feed.post", "text": full, "createdAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")}}).encode(),
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        data=data,
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"}
     )
-    with urllib.request.urlopen(r) as resp:
+    with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read()).get("uri", "")
 
 item = random.choice(POOL)
-print(f"Topic: {item['topic']}")
-text = gen(item["topic"], item["cat"])
-print(f"Text: {text}")
-token, did = login()
-print("Logged in")
-uri = post(token, did, text)
-print(f"Posted: {uri}")
+print("Topic: " + item["topic"])
+text = generate(item["topic"], item["cat"])
+print("Text: " + text)
+token, did = bluesky_login()
+print("Logged in as " + BLUESKY_HANDLE)
+uri = post_to_bluesky(token, did, text)
+print("Posted: " + uri)
