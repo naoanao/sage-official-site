@@ -7,6 +7,7 @@ import ActionCard from "@/components/ActionCard";
 import FreeProgressBar from "@/components/FreeProgressBar";
 import LangToggle from "@/components/LangToggle";
 import dynamic from "next/dynamic";
+import { SafeSection } from "@/components/SafeSection";
 const AdBoostCard = dynamic(() => import("@/components/AdBoostCard"), { ssr: false });
 import { useLang } from "@/lib/i18n";
 
@@ -147,19 +148,34 @@ export default function DashboardPage() {
 
         <div className="flex flex-col gap-4">
           {actions.map((action, i) => (
-            <ActionCard
-              key={i}
-              action={action}
-              index={i}
-              sessionId={session.id}
-              onComplete={handleComplete}
-              completing={completingIndex === i}
-            />
+            <SafeSection key={i}>
+              <ActionCard
+                action={action}
+                index={i}
+                sessionId={session.id}
+                onComplete={handleComplete}
+                completing={completingIndex === i}
+              />
+            </SafeSection>
           ))}
         </div>
 
-        <FreeProgressBar />
-        {/* AdBoostCard disabled */}
+        <SafeSection>
+          <FreeProgressBar />
+        </SafeSection>
+
+        <SafeSection>
+          <AdBoostCard
+            session={{
+              industry: session.user_profile?.industry as string,
+              business_desc: session.user_profile?.business_desc as string,
+              customer_desc: session.user_profile?.customer_desc as string,
+              main_problem: session.user_profile?.main_problem as string,
+              final_goal: session.user_profile?.final_goal as string,
+            }}
+            lang={lang}
+          />
+        </SafeSection>
 
         {lineLinked === false && !isEn && (
           <div className="mt-6 rounded-2xl overflow-hidden shadow-md" style={{ background: "linear-gradient(135deg, #00B900 0%, #00D900 100%)" }}>
