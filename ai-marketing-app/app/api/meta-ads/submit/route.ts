@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
           link: link_url || "https://growl-app.vercel.app",
           name: ad_copy.headline,
           description: ad_copy.description,
+          picture: "https://growl-app.vercel.app/og-ad-image.png",
           call_to_action: {
             type: ad_copy.cta || "LEARN_MORE",
             value: { link: link_url || "https://growl-app.vercel.app" },
