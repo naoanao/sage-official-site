@@ -31,9 +31,10 @@ export async function POST(req: NextRequest) {
     const { ad_copy, link_url, daily_budget = 500, page_id } = body;
 
     const access_token = await getMetaToken();
-    const ad_account_id = process.env.META_AD_ACCOUNT_ID;
+    const rawAccountId = process.env.META_AD_ACCOUNT_ID || "";
+    const ad_account_id = rawAccountId.startsWith("act_") ? rawAccountId : `act_${rawAccountId}`;
 
-    if (!access_token || !ad_account_id) {
+    if (!access_token || !rawAccountId) {
       return NextResponse.json({
         success: false,
         error: "Meta Ads credentials not configured",
