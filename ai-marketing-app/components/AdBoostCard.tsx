@@ -235,8 +235,13 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
             <p className="text-xs text-red-500">
               {(result as any)?.mock
                 ? (isEn ? "Meta Ads not connected yet. Add META_AD_ACCOUNT_ID in Vercel." : "Meta広告未接続。VercelにMETA_AD_ACCOUNT_IDを追加してください。")
-                : (isEn ? "Something went wrong. Please try again." : "エラーが発生しました。もう一度お試しください。")}
+                : (isEn ? "Something went wrong." : "エラーが発生しました。")}
             </p>
+            {result?.error && (
+              <p className="text-xs text-red-400 bg-red-50 rounded-lg px-2 py-1 break-all">
+                {result.error}
+              </p>
+            )}
             <button
               onClick={() => { setStep("idle"); setResult(null); }}
               className="w-full bg-gray-100 text-gray-600 font-medium text-sm py-2 rounded-xl"

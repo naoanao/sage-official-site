@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     });
     const campaign = await campaignRes.json();
     if (!campaign.id) {
-      return NextResponse.json({ success: false, error: campaign }, { status: 400 });
+      return NextResponse.json({ success: false, error: `Campaign creation failed: ${JSON.stringify(campaign)}` }, { status: 400 });
     }
 
     // Step 2: 広告セット作成
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     });
     const adset = await adsetRes.json();
     if (!adset.id) {
-      return NextResponse.json({ success: false, error: adset }, { status: 400 });
+      return NextResponse.json({ success: false, error: `AdSet creation failed: ${JSON.stringify(adset)}` }, { status: 400 });
     }
 
     // Step 3: クリエイティブ作成
