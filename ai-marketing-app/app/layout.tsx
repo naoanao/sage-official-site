@@ -44,8 +44,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" translate="no" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">
+    <html lang="en" translate="no" className="h-full antialiased" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
         {/* Fazier badge */}
         {/* eslint-disable-next-line @next/next/no-img-element */}

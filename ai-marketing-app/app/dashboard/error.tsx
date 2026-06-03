@@ -26,11 +26,10 @@ export default function DashboardError({
         <p className="text-sm text-gray-500 mb-4 leading-relaxed">
           We hit an unexpected error. Sorry about that!
         </p>
-        {process.env.NODE_ENV !== "production" && (
-          <p className="text-xs text-red-400 mb-6 text-left bg-red-50 rounded p-2 break-all">
-            {error.message}
-          </p>
-        )}
+        <p className="text-xs text-red-400 mb-6 text-left bg-red-50 rounded p-2 break-all font-mono">
+          {error.message || "Unknown error"}
+          {error.digest ? ` (digest: ${error.digest})` : ""}
+        </p>
         <div className="flex flex-col gap-3">
           <button
             onClick={reset}
