@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
         objective: "OUTCOME_TRAFFIC",
         status: "PAUSED",
         special_ad_categories: "[]",
+        is_adset_budget_sharing_enabled: "false",
         access_token,
       }),
     });
@@ -69,10 +70,12 @@ export async function POST(req: NextRequest) {
         daily_budget: String(daily_budget * 10), // セント単位
         billing_event: "IMPRESSIONS",
         optimization_goal: "LINK_CLICKS",
+        bid_strategy: "LOWEST_COST_WITHOUT_CAP",
         targeting: JSON.stringify({
           geo_locations: { countries: ["JP"] },
           age_min: 25,
           age_max: 55,
+          targeting_automation: { advantage_audience: 0 },
         }),
         status: "PAUSED",
         access_token,
@@ -87,7 +90,7 @@ export async function POST(req: NextRequest) {
     const creativePayload: Record<string, string> = {
       name: `Growl_Creative_${Date.now()}`,
       object_story_spec: JSON.stringify({
-        page_id: page_id || process.env.META_PAGE_ID || "100969749629377",
+        page_id: page_id || process.env.META_PAGE_ID || "173041465895454",
         link_data: {
           message: ad_copy.primary_text,
           link: link_url || "https://growl-app.vercel.app",
