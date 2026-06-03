@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Sage note.com アップローダー</title>
+<style>
+body{font-family:sans-serif;max-width:700px;margin:40px auto;padding:20px;background:#f9f9f9}
+h1{color:#333;font-size:1.4em}
+.card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:20px;margin:16px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.title{font-weight:bold;font-size:1.1em;margin-bottom:8px}
+.preview{color:#666;font-size:.88em;white-space:pre-wrap;max-height:100px;overflow:hidden;border-left:3px solid #41c9b4;padding-left:10px;margin:8px 0}
+.btn{background:#41c9b4;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.95em;margin-top:10px}
+.btn:hover{background:#2da898}.btn:disabled{background:#aaa;cursor:default}
+.status{margin-top:8px;font-size:.9em}
+.ok{color:#27ae60;font-weight:bold}.err{color:#e74c3c}
+#log{margin-top:20px;background:#fff;border:1px solid #eee;border-radius:6px;padding:12px;font-size:.82em;white-space:pre-wrap;min-height:40px;color:#555}
+</style>
+</head>
+<body>
+<h1>📝 Sage note.com アップローダー</h1>
+<p><strong>note.com にログインしたブラウザ</strong>でこのページを開いてください。ボタン1つで下書きが保存されます。</p>
+<div id="container"><p>読み込み中...</p></div>
+<div id="log">ログ: 待機中</div>
+
+<script>
+const FLASK = 'http://localhost:5000';
+const NOTE_API = 'https://note.com/api/v1/text_notes';
+const logEl = document.getElementById('log');
+const log = msg => { logEl.textContent += '\n' + msg; };
+
+async function load() {
+  try {
+    const res = await fetch(FLASK + '/api/note/pending_drafts');
+    const data = await res.json();
+    const c = document.getElementById('container');
+    if (!data.drafts || data.drafts.length === 0) {
+      c.innerHTML = '<p style="color:#27ae60;font-size:1.1em">✅ アップロード待ちの下書きはありません</p>';
+      return;
+    }
+    c.innerHTML = '';
+    data.drafts.forEach(d => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.id = 'card-' + d.day;
+      div.innerHTML =
+        '<div class="title">Day ' + d.day + ': ' + d.title + '</div>' +
+        '<div class="preview">' + (d.body||'').substring(0,300) + '...</div>' +
+        '<div class="status" id="st-' + d.day + '">待機中</div>' +
+        '<button class="btn" id="btn-' + d.day + '" onclick="upload(' + d.day + ')">note.com に下書き保存</button>';
+      c.appendChild(div);
+    });
+    window._drafts = {};
+    data.drafts.forEach(d => { window._drafts[d.day] = d; });
+  } catch(e) {
+    document.getElementById('container').innerHTML = '<p class="err">Flask未起動？ ' + e.message + '</p>';
+  }
+}
+
+async function upload(day) {
+  const draft = window._drafts[day];
+  const btn = document.getElementById('btn-' + day);
+  const st = document.getElementById('st-' + day);
+  btn.disabled = true;
+  st.innerHTML = '<span>アップロード中...</span>';
+  log('Day ' + day + ': 開始...');
+  try {
+    const res = await fetch(NOTE_API, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'x-requested-with': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({title: draft.title, body: draft.body, publish: false})
+    });
+    const json = await res.json();
+    if (json.data && json.data.key) {
+      const key = json.data.key;
+      const url = 'https://note.com/mute_mint5020/n/' + key;
+      st.innerHTML = '<span class="ok">✅ 成功！ <a href="' + url + '" target="_blank">' + url + '</a></span>';
+      log('Day ' + day + ': 成功 → ' + url);
+      await fetch(FLASK + '/api/note/mark_uploaded', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({day: day, note_key: key, uploaded_at: new Date().toISOString()})
+      });
+    } else {
+      throw new Error(JSON.stringify(json));
+    }
+  } catch(e) {
+    st.innerHTML = '<span class="err">❌ ' + e.message + '</span>';
+    btn.disabled = false;
+    log('Day ' + day + ': エラー → ' + e.message);
+  }
+}
+
+load();
+</script>
+</body>
+</html>

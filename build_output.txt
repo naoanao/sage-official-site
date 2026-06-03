@@ -1,0 +1,181 @@
+=== STDOUT ===
+
+> ai-marketing-app@0.1.0 build
+> next build
+
+[1m[38;2;173;127;168m▲ Next.js 16.2.4[39m[22m (Turbopack)
+- Environments: .env.local
+
+[37m[1m [22m[39m Creating an optimized production build ...
+
+=== STDERR ===
+[33m[1m⚠[22m[39m `eslint` configuration in next.config.js is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[33m[1m⚠[22m[39m Invalid next.config.js options detected: 
+[33m[1m⚠[22m[39m     Unrecognized key(s) in object: 'eslint'
+[33m[1m⚠[22m[39m See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[33m[1m⚠[22m[39m Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\nao\Desktop\Sage_Final_Unified\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\nao\Desktop\Sage_Final_Unified\ai-marketing-app\package-lock.json
+
+
+> Build error occurred
+Error: Turbopack build failed with 6 errors:
+./ai-marketing-app/app/payment-success/page.tsx:6:1
+Export [32mloadDeviceId[39m doesn't exist in target module
+  [90m4 |[0m [36mimport[0m { useSearchParams, useRouter } [36mfrom[0m [32m"next/navigation"[0m;
+  [90m5 |[0m [36mimport[0m { setCachedPlan } [36mfrom[0m [32m"@/components/FreeProgressBar"[0m;
+[31m[1m>[0m [90m6 |[0m [36mimport[0m { loadDeviceId } [36mfrom[0m [32m"@/lib/store"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m
+  [90m8 |[0m [36mfunction[0m [33mPaymentSuccessContent[0m() {
+  [90m9 |[0m   [36mconst[0m params = useSearchParams();
+
+The export [32mloadDeviceId[39m was not found in module [1m[31m[project]/ai-marketing-app/lib/store.ts [app-client] (ecmascript)[39m[22m.
+Did you mean to import [32mloadUserId[39m?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./ai-marketing-app/app/payment-success/page.tsx [Client Component Browser]
+    ./ai-marketing-app/app/payment-success/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./ai-marketing-app/app/payment-success/page.tsx [Client Component SSR]
+    ./ai-marketing-app/app/payment-success/page.tsx [Server Component]
+
+
+./ai-marketing-app/app/payment-success/page.tsx:6:1
+Export [32mloadDeviceId[39m doesn't exist in target module
+  [90m4 |[0m [36mimport[0m { useSearchParams, useRouter } [36mfrom[0m [32m"next/navigation"[0m;
+  [90m5 |[0m [36mimport[0m { setCachedPlan } [36mfrom[0m [32m"@/components/FreeProgressBar"[0m;
+[31m[1m>[0m [90m6 |[0m [36mimport[0m { loadDeviceId } [36mfrom[0m [32m"@/lib/store"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m
+  [90m8 |[0m [36mfunction[0m [33mPaymentSuccessContent[0m() {
+  [90m9 |[0m   [36mconst[0m params = useSearchParams();
+
+The export [32mloadDeviceId[39m was not found in module [1m[31m[project]/ai-marketing-app/lib/store.ts [app-ssr] (ecmascript)[39m[22m.
+Did you mean to import [32mloadUserId[39m?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./ai-marketing-app/app/payment-success/page.tsx [Client Component Browser]
+    ./ai-marketing-app/app/payment-success/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./ai-marketing-app/app/payment-success/page.tsx [Client Component SSR]
+    ./ai-marketing-app/app/payment-success/page.tsx [Server Component]
+
+
+./ai-marketing-app/app/upgrade/page.tsx:6:1
+Export [32mloadDeviceId[39m doesn't exist in target module
+  [90m4 |[0m [36mimport[0m { useEffect, useState } [36mfrom[0m [32m"react"[0m;
+  [90m5 |[0m [36mimport[0m { buildPaymentUrl } [36mfrom[0m [32m"@/lib/stripe-config"[0m;
+[31m[1m>[0m [90m6 |[0m [36mimport[0m { loadDeviceId } [36mfrom[0m [32m"@/lib/store"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m
+  [90m8 |[0m [36mconst[0m [33mPLANS[0m = [
+  [90m9 |[0m   {
+
+The export [32mloadDeviceId[39m was not found in module [1m[31m[project]/ai-marketing-app/lib/store.ts [app-client] (ecmascript)[39m[22m.
+Did you mean to import [32mloadUserId[39m?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./ai-marketing-app/app/upgrade/page.tsx [Client Component Browser]
+    ./ai-marketing-app/app/upgrade/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./ai-marketing-app/app/upgrade/page.tsx [Client Component SSR]
+    ./ai-marketing-app/app/upgrade/page.tsx [Server Component]
+
+
+./ai-marketing-app/app/upgrade/page.tsx:6:1
+Export [32mloadDeviceId[39m doesn't exist in target module
+  [90m4 |[0m [36mimport[0m { useEffect, useState } [36mfrom[0m [32m"react"[0m;
+  [90m5 |[0m [36mimport[0m { buildPaymentUrl } [36mfrom[0m [32m"@/lib/stripe-config"[0m;
+[31m[1m>[0m [90m6 |[0m [36mimport[0m { loadDeviceId } [36mfrom[0m [32m"@/lib/store"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m
+  [90m8 |[0m [36mconst[0m [33mPLANS[0m = [
+  [90m9 |[0m   {
+
+The export [32mloadDeviceId[39m was not found in module [1m[31m[project]/ai-marketing-app/lib/store.ts [app-ssr] (ecmascript)[39m[22m.
+Did you mean to import [32mloadUserId[39m?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./ai-marketing-app/app/upgrade/page.tsx [Client Component Browser]
+    ./ai-marketing-app/app/upgrade/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./ai-marketing-app/app/upgrade/page.tsx [Client Component SSR]
+    ./ai-marketing-app/app/upgrade/page.tsx [Server Component]
+
+
+./ai-marketing-app/components/FreeProgressBar.tsx:5:1
+Export [32mloadDeviceId[39m doesn't exist in target module
+  [90m3 |[0m [36mimport[0m { useEffect, useState } [36mfrom[0m [32m"react"[0m;
+  [90m4 |[0m [36mimport[0m { useRouter } [36mfrom[0m [32m"next/navigation"[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { loadDeviceId } [36mfrom[0m [32m"@/lib/store"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m
+  [90m7 |[0m [36mconst[0m [33mMONTHLY_LIMIT[0m = [35m3[0m;
+  [90m8 |[0m [36mconst[0m [33mSTORAGE_KEY[0m = [32m"growl_monthly_usage"[0m;
+
+The export [32mloadDeviceId[39m was not found in module [1m[31m[project]/ai-marketing-app/lib/store.ts [app-client] (ecmascript)[39m[22m.
+Did you mean to import [32mloadUserId[39m?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./ai-marketing-app/components/FreeProgressBar.tsx [Client Component Browser]
+    ./ai-marketing-app/app/report/page.tsx [Client Component Browser]
+    ./ai-marketing-app/app/report/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./ai-marketing-app/components/FreeProgressBar.tsx [Client Component SSR]
+    ./ai-marketing-app/app/report/page.tsx [Client Component SSR]
+    ./ai-marketing-app/app/report/page.tsx [Server Component]
+
+
+./ai-marketing-app/components/FreeProgressBar.tsx:5:1
+Export [32mloadDeviceId[39m doesn't exist in target module
+  [90m3 |[0m [36mimport[0m { useEffect, useState } [36mfrom[0m [32m"react"[0m;
+  [90m4 |[0m [36mimport[0m { useRouter } [36mfrom[0m [32m"next/navigation"[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { loadDeviceId } [36mfrom[0m [32m"@/lib/store"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m
+  [90m7 |[0m [36mconst[0m [33mMONTHLY_LIMIT[0m = [35m3[0m;
+  [90m8 |[0m [36mconst[0m [33mSTORAGE_KEY[0m = [32m"growl_monthly_usage"[0m;
+
+The export [32mloadDeviceId[39m was not found in module [1m[31m[project]/ai-marketing-app/lib/store.ts [app-ssr] (ecmascript)[39m[22m.
+Did you mean to import [32mloadUserId[39m?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./ai-marketing-app/components/FreeProgressBar.tsx [Client Component Browser]
+    ./ai-marketing-app/app/report/page.tsx [Client Component Browser]
+    ./ai-marketing-app/app/report/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./ai-marketing-app/components/FreeProgressBar.tsx [Client Component SSR]
+    ./ai-marketing-app/app/report/page.tsx [Client Component SSR]
+    ./ai-marketing-app/app/report/page.tsx [Server Component]
+
+
+    at <unknown> (./ai-marketing-app/app/payment-success/page.tsx:6:1)
+    at <unknown> (./ai-marketing-app/app/payment-success/page.tsx:6:1)
+    at <unknown> (./ai-marketing-app/app/upgrade/page.tsx:6:1)
+    at <unknown> (./ai-marketing-app/app/upgrade/page.tsx:6:1)
+    at <unknown> (./ai-marketing-app/components/FreeProgressBar.tsx:5:1)
+    at <unknown> (./ai-marketing-app/components/FreeProgressBar.tsx:5:1)
+
+=== RC: 1 ===

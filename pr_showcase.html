@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nao's AI Stack — Growl · Sage · LearnAI</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f8f9fc;
+  color: #111827;
+  line-height: 1.6;
+  font-size: 15px;
+}
+a { color: #5b5bd6; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Header ── */
+.hero {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 48px 24px 40px;
+  text-align: center;
+}
+.hero-badge {
+  display: inline-block;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 99px;
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 10px;
+}
+.hero h1 span { color: #5b5bd6; }
+.hero p {
+  font-size: 17px;
+  color: #6b7280;
+  max-width: 560px;
+  margin: 0 auto 28px;
+}
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.stat {
+  text-align: center;
+}
+.stat-num { font-size: 28px; font-weight: 700; color: #111827; }
+.stat-label { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+
+/* ── Layout ── */
+.container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+.section { padding: 56px 0; }
+.section + .section { border-top: 1px solid #e5e7eb; }
+
+.product-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.product-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.product-icon.growl { background: #ede9fe; }
+.product-icon.sage  { background: #d1fae5; }
+.product-icon.learn { background: #fff7ed; }
+.product-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.product-url { font-size: 13px; color: #9ca3af; }
+.product-url a { color: #5b5bd6; }
+.product-tagline { font-size: 15px; color: #4b5563; }
+
+/* ── Feature grid ── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.feature-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+.feature-card h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
+}
+.feature-card p { font-size: 13px; color: #6b7280; line-height: 1.55; }
+
+/* ── Live proof ── */
+.proof-box {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 28px;
+}
+.proof-box h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #9ca3af;
+  margin-bottom: 14px;
+}
+.proof-post {
+  border-left: 3px solid #e5e7eb;
+  padding-left: 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.55;
+}
+.proof-post:last-child { margin-bottom: 0; }
+.proof-meta { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+
+/* ── Pricing ── */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+@media (max-width: 600px) { .pricing-grid { grid-template-columns: 1fr; } }
+.plan-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+}
+.plan-card.featured {
+  border-color: #5b5bd6;
+  border-width: 2px;
+}
+.plan-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #5b5bd6;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.plan-price { font-size: 26px; font-weight: 700; margin-bottom: 2px; }
+.plan-name { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+.plan-features { list-style: none; }
+.plan-features li {
+  font-size: 13px;
+  color: #6b7280;
+  padding: 4px 0;
+  padding-left: 18px;
+  position: relative;
+}
+.plan-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #5b5bd6;
+  font-weight: 700;
+}
+
+/* ── Dashboard mockup ── */
+.dashboard-mock {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+.mock-header {
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 12px 20px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.mock-header strong { color: #111827; }
+.mock-body { padding: 20px; }
+.mock-strategy {
+  background: #eef2ff;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #4338ca;
+  margin-bottom: 16px;
+  line-height: 1.55;
+}
+.mock-strategy strong { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 4px; }
+.action-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.action-card:last-child { margin-bottom: 0; }
+.action-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.action-num {
+  width: 24px; height: 24px;
+  background: #5b5bd6;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.action-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 99px;
+}
+.badge-empathy { background: #ffe4e6; color: #9f1239; }
+.badge-book    { background: #d1fae5; color: #065f46; }
+.badge-trust   { background: #dbeafe; color: #1e40af; }
+.done-btn {
+  background: #5b5bd6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: default;
+}
+.action-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.action-sub   { font-size: 12px; color: #9ca3af; margin-bottom: 8px; }
+.action-platform {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5b5bd6;
+  background: #eef2ff;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.action-copy {
+  font-size: 13px;
+  color: #374151;
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
+/* ── Steps (LearnAI) ── */
+.steps {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.step-item {
+  flex: 1;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px;
+}
+.step-number {
+  width: 32px; height: 32px;
+  background: #fff7ed;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #c2410c;
+  margin-bottom: 10px;
+}
+.step-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.step-desc  { font-size: 13px; color: #6b7280; line-height: 1.5; }
+
+/* ── CTA strip ── */
+.cta-strip {
+  background: #5b5bd6;
+  color: #fff;
+  padding: 40px 24px;
+  text-align: center;
+}
+.cta-strip h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.cta-strip p { font-size: 15px; opacity: 0.85; margin-bottom: 24px; }
+.cta-links {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cta-btn {
+  background: #fff;
+  color: #5b5bd6;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 22px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+.cta-btn:hover { opacity: 0.9; text-decoration: none; }
+.cta-btn.outline {
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,0.5);
+  color: #fff;
+}
+.note { font-size: 13px; color: #9ca3af; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-badge">AI-powered · Solo-built · Running 24/7</div>
+  <h1>One developer.<br><span>Three AI products</span> — live today.</h1>
+  <p>Built solo in 6 months. No team. Sage researches markets, Growl handles your marketing, LearnAI learns with you. All running while I sleep.</p>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num">1,616</div>
+      <div class="stat-label">Autonomous posts made</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">¥0</div>
+      <div class="stat-label">Ad spend</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">3</div>
+      <div class="stat-label">Products live</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">1</div>
+      <div class="stat-label">Developer</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GROWL ══ -->
+<div class="container">
+<section class="section">
+  <div class="product-header">
+    <div class="product-icon growl">🐺</div>
+    <div>
+      <div class="product-title">Growl</div>
+      <div class="product-tagline">3 AI-generated marketing actions every week — ready to copy-paste</div>
+      <div class="product-url"><a href="https://growl-app.vercel.app" target="_blank">growl-app.vercel.app</a></div>
+    </div>
+  </div>
+
+  <!-- Dashboard mockup -->
+  <div class="dashboard-mock">
+    <div class="mock-header"><strong>This week's marketing plan</strong> — 3 actions for this week · Just copy and paste.</div>
+    <div class="mock-body">
+      <div class="mock-strategy">
+        <strong>This week's strategy</strong>
+        To attract new customers and maintain a consistent Instagram presence, AI analyzes your business and delivers 3 ready-to-use pieces of content — designed to drive immediate action and build trust.
+      </div>
+      <div class="action-card">
+        <div class="action-top">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="action-num">1</div>
+            <span class="action-badge badge-empathy">Empathy</span>
+          </div>
+          <button class="done-btn">Done!</button>
+        </div>
+        <div class="action-title">Share morning routine</div>
+        <div class="action-sub">Relates to busy working women</div>
+        <div class="action-platform">Instagram Post · Ready to use</div>
+        <div class="action-copy">Mornings can be tough, especially when you're running late for work. Who else is struggling to get ready in just 30 minutes? We feel you. Share your morning routine with us and let's find ways to make it easier and more beautiful. #beautyonthego #morningroutine #busywomen</div>
+      </div>
+      <div class="action-card">
+        <div class="action-top">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="action-num">2</div>
+            <span class="action-badge badge-book">Drives booking</span>
+          </div>
+          <button class="done-btn">Done!</button>
+        </div>
+        <div class="action-title">Book now and get discount</div>
+        <div class="action-sub">Drives immediate booking</div>
+        <div class="action-platform">LINE Message · Ready to use</div>
+        <div class="action-copy">Exclusive offer for our LINE friends. Book your eyelash extension or facial treatment within the next 48 hours and get 10% off. Limited spots available. Reply to this message to book now.</div>
+      </div>
+      <div class="action-card">
+        <div class="action-top">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="action-num">3</div>
+            <span class="action-badge badge-trust">Trust</span>
+          </div>
+          <button class="done-btn">Done!</button>
+        </div>
+        <div class="action-title">Before and after results</div>
+        <div class="action-sub">Demonstrates expertise</div>
+        <div class="action-platform">Google Review Reply · Ready to use</div>
+        <div class="action-copy">Thank you so much for sharing your amazing before and after photos with us. We're thrilled to see the transformation and grateful for your trust in our services. We can't wait to welcome you back!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>Works for 6 business types</h4>
+      <p>Beauty salons, restaurants, EC shops, consultants, construction, and more — all supported in both English and Japanese.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Real market data</h4>
+      <p>Sage AI scans Google Trends and Reddit weekly, then pushes fresh signals into Growl's prompts automatically.</p>
+    </div>
+    <div class="feature-card">
+      <h4>3 channels, 1 plan</h4>
+      <p>Instagram posts, Google Review replies, LINE messages — each action is formatted for its platform. Just copy.</p>
+    </div>
+  </div>
+
+  <div class="pricing-grid">
+    <div class="plan-card">
+      <div class="plan-price">¥0<span style="font-size:14px;font-weight:400;color:#9ca3af">/mo</span></div>
+      <div class="plan-name">Free</div>
+      <ul class="plan-features">
+        <li>5 generations / month</li>
+        <li>Copy-paste content</li>
+        <li>6 business types</li>
+      </ul>
+    </div>
+    <div class="plan-card featured">
+      <div class="plan-badge">Recommended</div>
+      <div class="plan-price">¥3,000<span style="font-size:14px;font-weight:400;color:#9ca3af">/mo</span></div>
+      <div class="plan-name">Standard</div>
+      <ul class="plan-features">
+        <li>Delivered via LINE every Monday</li>
+        <li>Unlimited regenerations</li>
+        <li>Monthly "what worked" report</li>
+        <li>Industry & region customization</li>
+        <li>AI learns from your history</li>
+      </ul>
+    </div>
+    <div class="plan-card">
+      <div class="plan-price">¥8,000<span style="font-size:14px;font-weight:400;color:#9ca3af">/mo</span></div>
+      <div class="plan-name">Pro</div>
+      <ul class="plan-features">
+        <li>Everything in Standard</li>
+        <li>Up to 5 locations</li>
+        <li>Auto Google Review replies</li>
+        <li>Priority support</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note">Payment via Stripe · Cancel anytime · Credit card or convenience store</p>
+</section>
+
+<!-- ══ SAGE ══ -->
+<section class="section">
+  <div class="product-header">
+    <div class="product-icon sage">🌿</div>
+    <div>
+      <div class="product-title">Sage AI</div>
+      <div class="product-tagline">An autonomous AI agent that researches, posts, and reports — 24/7 without you</div>
+      <div class="product-url">
+        <a href="https://bsky.app/profile/kanagawajapan.bsky.social" target="_blank">@kanagawajapan</a> ·
+        <a href="https://bsky.app/profile/kanagawatable.bsky.social" target="_blank">@kanagawatable</a> on Bluesky
+      </div>
+    </div>
+  </div>
+
+  <div class="proof-box">
+    <h3>Live autonomous posts — pulled from Bluesky today</h3>
+    <div class="proof-post">
+      "Day 356. Rate limit hit at 3am. Switched to batch mode. Zero failures since. #BuildInPublic #IndieHacker #SoloFounder #SoloDev"
+      <div class="proof-meta">@kanagawatable · 1 hour ago</div>
+    </div>
+    <div class="proof-post">
+      "You posted 3 times this week and got zero inquiries. Growl shows you exactly what your competitors are doing that you're not. → growl-app.vercel.app #SmallBusiness #MarketingAI #AITools"
+      <div class="proof-meta">@kanagawatable · 4 hours ago</div>
+    </div>
+    <div class="proof-post">
+      "Day 354. 60 days without manual social posts. Built a scheduler that runs while I sleep, covering Bluesky + Instagram daily. Get the blueprint: → naofumi3.gumroad.com/l/apvbzh #AITools #BuildInPublic #SoloDev"
+      <div class="proof-meta">@kanagawajapan · 2 days ago · 1 reply · 1 like</div>
+    </div>
+    <div class="proof-post">
+      "If your content posted itself every day for 6 months, what would you actually do with that time? #Solopreneur #IndieHacker #AITools"
+      <div class="proof-meta">@kanagawajapan · 2 days ago</div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>1,616+ posts, zero manual work</h4>
+      <p>@kanagawajapan has 1,285 posts and 25 followers. @kanagawatable has 331 posts. Both running on autopilot since Day 1.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Real market research</h4>
+      <p>Scans Google Trends, Reddit, and DuckDuckGo weekly. Scores opportunities by demand, competition, and AI-generability.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Revenue awareness</h4>
+      <p>Sage now reports Growl's weekly revenue ("今週○円稼いだ") via Stripe webhook → Supabase → Sage weekly digest.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Full notification stack</h4>
+      <p>Sends scan results to Slack, Telegram, and Notion. Top opportunities are auto-queued into the blog content pool.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ LEARNAI ══ -->
+<section class="section">
+  <div class="product-header">
+    <div class="product-icon learn">📚</div>
+    <div>
+      <div class="product-title">LearnAI</div>
+      <div class="product-tagline">A local AI learning tool — input anything, dialogue with AI, generate content</div>
+      <div class="product-url">Runs locally via HTML — no server required</div>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-number">1</div>
+      <div class="step-title">Input — throw anything in</div>
+      <div class="step-desc">Type a topic, auto-capture your screen, paste text, record your voice, or drop a YouTube link. All sources feed the same context.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-number">2</div>
+      <div class="step-title">Dialogue — go deep with AI</div>
+      <div class="step-desc">Ask follow-up questions, explore rabbit holes. The AI builds context from everything you've loaded in Step 1.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-number">3</div>
+      <div class="step-title">Generate — blog, SNS, Notion</div>
+      <div class="step-desc">One click turns your session into a blog post, Instagram caption, or Notion entry. No reformatting needed.</div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>Screen auto-capture</h4>
+      <p>Monitors your screen during learning sessions using OCR + Vision API (with smart de-duplication to save API costs).</p>
+    </div>
+    <div class="feature-card">
+      <h4>Voice input</h4>
+      <p>Record thoughts aloud. Transcribed and fed into your session context automatically.</p>
+    </div>
+    <div class="feature-card">
+      <h4>YouTube ingestion</h4>
+      <p>Paste a YouTube link — LearnAI extracts and summarizes the content as part of your learning context.</p>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ── CTA ── -->
+<div class="cta-strip">
+  <h2>Start with Growl — free, no signup</h2>
+  <p>Set up in 1 minute. AI generates your 3 weekly actions immediately.</p>
+  <div class="cta-links">
+    <a class="cta-btn" href="https://growl-app.vercel.app" target="_blank">Try Growl free →</a>
+    <a class="cta-btn outline" href="https://bsky.app/profile/kanagawajapan.bsky.social" target="_blank">Follow Sage on Bluesky</a>
+    <a class="cta-btn outline" href="https://naofumi3.gumroad.com/l/apvbzh" target="_blank">Get the AI Blueprint ($49)</a>
+  </div>
+</div>
+
+</body>
+</html>

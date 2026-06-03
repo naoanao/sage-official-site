@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1270px; height: 952px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; }
+
+  .layout { display: flex; height: 100%; }
+
+  /* LEFT PANEL */
+  .left {
+    width: 400px; flex-shrink: 0;
+    background: linear-gradient(160deg, #312e81 0%, #1e1b4b 60%, #0f172a 100%);
+    padding: 60px 40px; display: flex; flex-direction: column; justify-content: center;
+    border-right: 1px solid rgba(255,255,255,.07);
+  }
+  .logo { color: #a5b4fc; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 36px; }
+  .left h1 { color: #fff; font-size: 38px; font-weight: 800; line-height: 1.2; letter-spacing: -1px; margin-bottom: 16px; }
+  .left h1 span { color: #818cf8; }
+  .left p { color: #94a3b8; font-size: 15px; line-height: 1.7; margin-bottom: 32px; }
+
+  .features { display: flex; flex-direction: column; gap: 12px; }
+  .feat { display: flex; align-items: flex-start; gap: 12px; }
+  .feat-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+  .fi1 { background: rgba(99,102,241,.2); }
+  .fi2 { background: rgba(245,158,11,.2); }
+  .fi3 { background: rgba(16,185,129,.2); }
+  .fi4 { background: rgba(239,68,68,.2); }
+  .feat-text { }
+  .feat-title { color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .feat-desc { color: #64748b; font-size: 12px; }
+
+  /* RIGHT PANEL */
+  .right {
+    flex: 1; background: #fff;
+    display: flex; flex-direction: column;
+  }
+
+  .right-header {
+    background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+    padding: 16px 28px; display: flex; gap: 0;
+  }
+  .tab {
+    padding: 8px 20px; font-size: 13px; font-weight: 600; border-radius: 8px;
+    cursor: pointer; color: #94a3b8;
+  }
+  .tab.active { background: #fff; color: #4f46e5; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+  .right-body { flex: 1; overflow: hidden; padding: 24px 28px; display: flex; gap: 24px; }
+
+  /* Form side */
+  .form-col { width: 260px; flex-shrink: 0; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { color: #374151; font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block; }
+  .form-input {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 8px 12px; font-size: 12px; color: #374151;
+    background: #fff; outline: none;
+  }
+  .form-input.filled { border-color: #6366f1; background: #eef2ff; }
+  textarea.form-input { resize: none; height: 60px; }
+  .form-row { display: flex; gap: 8px; }
+  .form-row .form-group { flex: 1; }
+
+  .generate-btn {
+    width: 100%; background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    color: #fff; font-size: 13px; font-weight: 700;
+    padding: 12px; border-radius: 10px; border: none; cursor: pointer;
+    margin-top: 6px;
+  }
+
+  /* Result side */
+  .result-col { flex: 1; }
+
+  .strategy-pill {
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .sp-label { color: #1d4ed8; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; }
+  .sp-text { color: #1e40af; font-size: 12px; line-height: 1.5; }
+
+  .result-tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .rtab {
+    flex: 1; text-align: center; padding: 7px 4px;
+    font-size: 11px; font-weight: 600; border-radius: 7px;
+    background: #f1f5f9; color: #64748b;
+  }
+  .rtab.a { background: #4f46e5; color: #fff; }
+
+  .action-row {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .ar-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .ar-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: #ede9fe; color: #6d28d9; }
+  .ar-type { font-size: 10px; color: #94a3b8; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; }
+  .ar-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+  .ar-content { font-size: 11px; color: #475569; line-height: 1.5; background: #fff; border-radius: 6px; padding: 8px; border: 1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <div class="left">
+    <div class="logo">🌱 Growl</div>
+    <h1>Input your product.<br><span>AI builds</span> your<br>entire funnel.</h1>
+    <p>Sales copy, retention system, FAQ content — all generated from just a product description. No copywriter needed.</p>
+    <div class="features">
+      <div class="feat"><div class="feat-icon fi1">🎯</div><div class="feat-text"><div class="feat-title">This Week's 3 Actions</div><div class="feat-desc">Ready-to-post content for SNS, reviews & LINE</div></div></div>
+      <div class="feat"><div class="feat-icon fi2">🔀</div><div class="feat-text"><div class="feat-title">AISAS Sales Funnel</div><div class="feat-desc">Awareness → Interest → Search → Action → Share</div></div></div>
+      <div class="feat"><div class="feat-icon fi3">🔁</div><div class="feat-text"><div class="feat-title">Retention System</div><div class="feat-desc">4 step emails + loyalty stages (1st order loss → 3rd profit)</div></div></div>
+      <div class="feat"><div class="feat-icon fi4">🤖</div><div class="feat-text"><div class="feat-title">AI Search Optimization</div><div class="feat-desc">JSON-LD structured data · FAQ for ChatGPT/Perplexity</div></div></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="right-header">
+      <div class="tab active">Product Marketing AI</div>
+    </div>
+    <div class="right-body">
+      <div class="form-col">
+        <div class="form-group">
+          <label class="form-label">Product Name *</label>
+          <input class="form-input filled" value="Organic Face Cream 30g" readonly>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select class="form-input filled"><option>Physical Product</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price (¥) *</label>
+            <input class="form-input filled" value="3,980" readonly>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Product Description *</label>
+          <textarea class="form-input filled" readonly>Moisturizer with pesticide-free rosehip oil. No preservatives or synthetic fragrances.</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Customer *</label>
+          <input class="form-input filled" value="Women 30s–40s with sensitive skin" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unique Selling Point *</label>
+          <input class="form-input filled" value="Our own farm rosehip. Zero chemicals." readonly>
+        </div>
+        <button class="generate-btn">✓ Marketing Plan Generated</button>
+      </div>
+
+      <div class="result-col">
+        <div class="strategy-pill">
+          <span style="font-size:18px">🧠</span>
+          <div>
+            <div class="sp-label">AI Strategy Note</div>
+            <div class="sp-text">Your zero-chemical angle resonates strongest with mothers. Lead with "safe for babies" — your competitors don't say that.</div>
+          </div>
+        </div>
+
+        <div class="result-tabs">
+          <div class="rtab a">This Week's Actions</div>
+          <div class="rtab">Sales Content</div>
+          <div class="rtab">Retention</div>
+          <div class="rtab">AI Search</div>
+        </div>
+
+        <div class="action-row">
+          <div class="ar-top">
+            <span class="ar-tag">💗 Empathy</span>
+            <span class="ar-type">📸 Instagram Post</span>
+          </div>
+          <div class="ar-title">Why I stopped buying drugstore creams for my baby</div>
+          <div class="ar-content">"Most moisturizers have 3-5 preservatives. I checked every label and couldn't find one I trusted for my daughter's skin. So we made our own — from rosehips grown on our farm."</div>
+        </div>
+
+        <div class="action-row">
+          <div class="ar-top">
+            <span class="ar-tag">⚡ Action</span>
+            <span class="ar-type">⭐ Google Review Reply</span>
+          </div>
+          <div class="ar-title">Reply template for skin improvement reviews</div>
+          <div class="ar-content">"Thank you [Name]! We're so glad your skin is feeling better. Our rosehip oil is grown without pesticides — pure ingredients really do make a difference. 🌱"</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

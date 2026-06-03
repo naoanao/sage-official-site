@@ -57,7 +57,7 @@ export default function ProblemPage() {
     }
     setInputError("");
     saveOnboarding({ main_problem: value.trim() });
-    router.push("/onboarding/goal");
+    router.push("/onboarding/proof");
   }
 
   return (

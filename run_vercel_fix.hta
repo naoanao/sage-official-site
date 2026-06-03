@@ -1,0 +1,78 @@
+<html>
+<head>
+<title>Vercel Fix</title>
+<HTA:APPLICATION APPLICATIONNAME="VercelFix" BORDER="dialog" SCROLL="no" SINGLEINSTANCE="yes"/>
+<style>
+body { font-family: Consolas, monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; }
+h2 { color: #4ec9b0; }
+#log { background: #252526; border: 1px solid #444; padding: 10px; height: 300px; overflow-y: auto; font-size: 12px; white-space: pre-wrap; }
+button { background: #0e639c; color: white; border: none; padding: 10px 20px; cursor: pointer; margin: 5px; font-size: 14px; }
+</style>
+</head>
+<body>
+<h2>🔧 Vercel デプロイ修正ツール</h2>
+<button onclick="runAll()">▶ 全自動修正 (API + git push)</button>
+<button onclick="testAPI()">Vercel API テスト</button>
+<div id="log">準備完了。ボタンを押してください...</div>
+<script language="VBScript">
+Dim oShell
+Set oShell = CreateObject("WScript.Shell")
+
+Function log(msg)
+    Dim logDiv
+    Set logDiv = document.getElementById("log")
+    logDiv.innerHTML = logDiv.innerHTML & msg & vbCrLf
+    logDiv.scrollTop = logDiv.scrollHeight
+End Function
+
+Function runCmd(cmd)
+    Dim oExec
+    Set oExec = oShell.Exec("cmd /c " & cmd & " 2>&1")
+    Dim output
+    output = ""
+    Do While Not oExec.StdOut.AtEndOfStream
+        output = output & oExec.StdOut.ReadLine() & vbCrLf
+    Loop
+    runCmd = output
+End Function
+
+Sub testAPI()
+    log "=== Vercel API テスト ==="
+    Dim psCmd
+    psCmd = "powershell -ExecutionPolicy Bypass -Command ""$h=@{'Authorization'='Bearer vca_8k7c1ulgwg3KdByCkC5O6ywrdpdt8oLzFhAYv1GagpKdAN9xMP06wgrk'};$r=Invoke-RestMethod -Uri 'https://api.vercel.com/v9/projects?limit=5' -Headers $h;$r.projects|foreach{Write-Host $_.name,$_.rootDirectory}"""
+    log "実行中..."
+    Dim result
+    result = runCmd(psCmd)
+    log result
+End Sub
+
+Sub fixRootDirectory()
+    log "=== rootDirectory修正 ==="
+    Dim psCmd
+    psCmd = "powershell -ExecutionPolicy Bypass -Command ""$h=@{'Authorization'='Bearer vca_8k7c1ulgwg3KdByCkC5O6ywrdpdt8oLzFhAYv1GagpKdAN9xMP06wgrk';'Content-Type'='application/json'};$b='{""rootDirectory"":""ai-marketing-app""}';$r=Invoke-RestMethod -Uri 'https://api.vercel.com/v9/projects/growl-app' -Method Patch -Headers $h -Body $b;Write-Host '修正後 rootDirectory:'$r.rootDirectory"""
+    Dim result
+    result = runCmd(psCmd)
+    log result
+End Sub
+
+Sub gitPush()
+    log "=== git push origin main ==="
+    Dim result
+    result = runCmd("cd /d C:\Users\nao\Desktop\Sage_Final_Unified\ai-marketing-app && git push origin main")
+    log result
+End Sub
+
+Sub runAll()
+    log "========================================="
+    log "全自動修正開始..."
+    log "========================================="
+    Call testAPI()
+    Call fixRootDirectory()
+    Call gitPush()
+    log "========================================="
+    log "完了！Vercelが自動デプロイを開始します。"
+    log "growl-app.vercel.app を確認してください。"
+End Sub
+</script>
+</body>
+</html>

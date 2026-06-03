@@ -3,6 +3,7 @@ import type { OnboardingData, Action } from "./types";
 const KEY = "ai_mkt_onboarding";
 const USER_KEY = "ai_mkt_user_id";
 const SESSION_KEY = "ai_mkt_session";
+const PROOF_KEY = "ai_mkt_proof"; // 広告強化データ（clearOnboardingで消えない永続データ）
 const FLOW_KEY = "ai_mkt_flow_active"; // オンボーディングフローが進行中かのフラグ
 const SESSION_HISTORY_KEY = "ai_mkt_session_history"; // 過去週のサマリー（最大12週）
 
@@ -126,3 +127,25 @@ export function loadUserId(): string | null {
 
 // alias for backwards-compatibility
 export const loadDeviceId = loadUserId;
+
+// ── 広告強化データ（オンボーディング後も永続） ───────────────
+export interface ProofData {
+  proof_numbers?: string;
+  customer_quote?: string;
+  price_or_offer?: string;
+}
+
+export function saveProofData(data: Partial<ProofData>) {
+  if (typeof window === "undefined") return;
+  const prev = loadProofData();
+  localStorage.setItem(PROOF_KEY, JSON.stringify({ ...prev, ...data }));
+}
+
+export function loadProofData(): ProofData {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(PROOF_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}

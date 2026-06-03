@@ -29,6 +29,10 @@ export interface OnboardingData {
   main_problem: string;
   final_goal: string;
   booking_url?: string;
+  // 広告強化フィールド（オンボーディング最終ステップ or AdBoostCardで入力）
+  proof_numbers?: string;    // 実績・数字「300社導入」「平均CVR3倍」等
+  customer_quote?: string;   // 実際のお客様の声
+  price_or_offer?: string;   // 価格・オファー「月額980円」「初月無料」等
 }
 
 export interface Action {

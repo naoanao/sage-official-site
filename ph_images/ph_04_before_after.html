@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1270px; height: 952px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }
+
+  .wrapper { display: flex; height: 100%; }
+
+  /* BEFORE column */
+  .before {
+    flex: 1; background: #1e293b; padding: 56px 48px;
+    display: flex; flex-direction: column;
+    border-right: 3px solid #0f172a;
+    position: relative; overflow: hidden;
+  }
+  .before::after {
+    content: 'BEFORE'; position: absolute; top: 32px; right: -30px;
+    font-size: 13px; font-weight: 800; letter-spacing: .15em; color: #ef4444;
+    background: rgba(239,68,68,.15); padding: 4px 40px; transform: rotate(90deg);
+    border: 1px solid rgba(239,68,68,.3);
+  }
+
+  .before h2 { color: #ef4444; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 20px; }
+  .before h1 { color: #f1f5f9; font-size: 34px; font-weight: 800; line-height: 1.3; margin-bottom: 32px; }
+
+  .pain-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+  .pain-icon { width: 36px; height: 36px; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .pain-text { }
+  .pain-title { color: #fca5a5; font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .pain-desc { color: #64748b; font-size: 12px; line-height: 1.5; }
+
+  .time-box {
+    margin-top: auto; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2);
+    border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 16px;
+  }
+  .time-n { font-size: 42px; font-weight: 900; color: #ef4444; }
+  .time-l { color: #fca5a5; font-size: 13px; line-height: 1.5; }
+
+  /* AFTER column */
+  .after {
+    flex: 1; background: #fff; padding: 56px 48px;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  .after::after {
+    content: 'WITH GROWL'; position: absolute; top: 32px; right: -34px;
+    font-size: 11px; font-weight: 800; letter-spacing: .12em; color: #10b981;
+    background: rgba(16,185,129,.12); padding: 4px 48px; transform: rotate(90deg);
+    border: 1px solid rgba(16,185,129,.25);
+  }
+
+  .after h2 { color: #10b981; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 20px; }
+  .after h1 { color: #0f172a; font-size: 34px; font-weight: 800; line-height: 1.3; margin-bottom: 32px; }
+
+  .win-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+  .win-icon { width: 36px; height: 36px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .win-title { color: #065f46; font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .win-desc { color: #6b7280; font-size: 12px; line-height: 1.5; }
+
+  .time-box-g {
+    margin-top: auto; background: #f0fdf4; border: 1px solid #bbf7d0;
+    border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 16px;
+  }
+  .time-n-g { font-size: 42px; font-weight: 900; color: #10b981; }
+  .time-l-g { color: #065f46; font-size: 13px; line-height: 1.5; }
+
+  /* Center divider */
+  .center-badge {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 60px; height: 60px; background: #fff;
+    border-radius: 50%; border: 3px solid #e2e8f0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,.15);
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="before">
+    <h2>❌ Without Growl</h2>
+    <h1>Every week starts<br>with "What should<br>I post?"</h1>
+
+    <div class="pain-item">
+      <div class="pain-icon">😓</div>
+      <div class="pain-text">
+        <div class="pain-title">Decision fatigue before you even start</div>
+        <div class="pain-desc">Choosing what to post, which platform, what copy — all of it falls on you every single week.</div>
+      </div>
+    </div>
+    <div class="pain-item">
+      <div class="pain-icon">✏️</div>
+      <div class="pain-text">
+        <div class="pain-title">Writing copy from scratch every time</div>
+        <div class="pain-desc">Even small posts take 30–60 minutes when you're unsure of the message and tone.</div>
+      </div>
+    </div>
+    <div class="pain-item">
+      <div class="pain-icon">📉</div>
+      <div class="pain-text">
+        <div class="pain-title">Inconsistent posting → inconsistent results</div>
+        <div class="pain-desc">You start strong, then skip a week, then another. The algorithm punishes the gaps.</div>
+      </div>
+    </div>
+    <div class="pain-item">
+      <div class="pain-icon">💰</div>
+      <div class="pain-text">
+        <div class="pain-title">No budget for a marketing specialist</div>
+        <div class="pain-desc">Agency quotes are ¥50,000–150,000/month. That's not realistic for a small business.</div>
+      </div>
+    </div>
+
+    <div class="time-box">
+      <div class="time-n">3–5h</div>
+      <div class="time-l">wasted every week<br>on marketing decisions<br>that still feel uncertain</div>
+    </div>
+  </div>
+
+  <div class="after">
+    <h2>✅ With Growl</h2>
+    <h1>Monday morning.<br>3 actions waiting.<br>Already written.</h1>
+
+    <div class="win-item">
+      <div class="win-icon">🤖</div>
+      <div class="win-text">
+        <div class="win-title">AI picks the highest-impact actions for this week</div>
+        <div class="win-desc">Based on your industry, goals, and current SNS trends — not generic advice.</div>
+      </div>
+    </div>
+    <div class="win-item">
+      <div class="win-icon">📋</div>
+      <div class="win-text">
+        <div class="win-title">Every post is written and ready to paste</div>
+        <div class="win-desc">Instagram caption, Google review reply, LINE broadcast — all done. Just copy and send.</div>
+      </div>
+    </div>
+    <div class="win-item">
+      <div class="win-icon">📅</div>
+      <div class="win-text">
+        <div class="win-title">Exactly when and where to post — included</div>
+        <div class="win-desc">"Tuesday 11am on Instagram" is part of every action. No more guessing timing.</div>
+      </div>
+    </div>
+    <div class="win-item">
+      <div class="win-icon">🌱</div>
+      <div class="win-text">
+        <div class="win-title">Free to start — no signup needed</div>
+        <div class="win-desc">Answer 5 questions in under 1 minute. Your first 3 actions are free.</div>
+      </div>
+    </div>
+
+    <div class="time-box-g">
+      <div class="time-n-g">10min</div>
+      <div class="time-l-g">per week to execute<br>a full marketing plan<br>built just for your business</div>
+    </div>
+  </div>
+
+  <div class="center-badge">⚡</div>
+</div>
+</body>
+</html>

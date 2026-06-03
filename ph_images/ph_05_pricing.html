@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1270px; height: 952px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 100%); }
+
+  .grid {
+    position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(99,102,241,.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(99,102,241,.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .content { position: relative; z-index: 10; padding: 48px 80px; }
+
+  .top { text-align: center; margin-bottom: 44px; }
+  .badge {
+    display: inline-block; background: rgba(99,102,241,.2); border: 1px solid rgba(99,102,241,.3);
+    color: #a5b4fc; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    padding: 6px 18px; border-radius: 100px; margin-bottom: 20px;
+  }
+  .top h1 { color: #fff; font-size: 48px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 12px; }
+  .top h1 span { color: #818cf8; }
+  .top p { color: #64748b; font-size: 16px; }
+
+  .plans { display: flex; gap: 20px; }
+
+  .plan {
+    flex: 1; border-radius: 20px; padding: 32px 28px;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  .plan.free {
+    background: #1e293b; border: 1px solid rgba(255,255,255,.08);
+  }
+  .plan.standard {
+    background: #1e293b; border: 1px solid rgba(99,102,241,.4);
+    box-shadow: 0 0 0 1px rgba(99,102,241,.15), 0 20px 60px rgba(99,102,241,.15);
+  }
+  .plan.pro {
+    background: linear-gradient(145deg, #312e81, #1e1b4b);
+    border: 1px solid rgba(139,92,246,.5);
+    box-shadow: 0 0 0 1px rgba(139,92,246,.2), 0 20px 60px rgba(139,92,246,.2);
+  }
+
+  .popular-badge {
+    position: absolute; top: 20px; right: -28px;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .08em;
+    padding: 5px 40px; transform: rotate(30deg);
+    text-transform: uppercase;
+  }
+
+  .plan-name { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+  .free .plan-name { color: #64748b; }
+  .standard .plan-name { color: #818cf8; }
+  .pro .plan-name { color: #c4b5fd; }
+
+  .plan-price { margin-bottom: 6px; }
+  .price-n { font-size: 48px; font-weight: 900; line-height: 1; color: #fff; }
+  .price-per { font-size: 14px; color: #64748b; margin-top: 4px; }
+
+  .plan-desc { font-size: 13px; color: #64748b; margin: 16px 0 20px; line-height: 1.6; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+
+  .features { flex: 1; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .feat { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; }
+  .check { color: #10b981; font-size: 14px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .feat-text { }
+  .free .feat-text { color: #94a3b8; }
+  .standard .feat-text { color: #c7d2fe; }
+  .pro .feat-text { color: #ddd6fe; }
+  .feat-text strong { font-weight: 700; }
+  .dim { color: #475569 !important; }
+
+  .plan-btn {
+    width: 100%; padding: 14px; border-radius: 12px;
+    font-size: 14px; font-weight: 700; text-align: center; cursor: pointer;
+    border: none; letter-spacing: .02em;
+  }
+  .free .plan-btn { background: #1e293b; color: #64748b; border: 1px solid rgba(255,255,255,.1); }
+  .standard .plan-btn { background: linear-gradient(90deg, #4f46e5, #6d28d9); color: #fff; }
+  .pro .plan-btn { background: linear-gradient(90deg, #7c3aed, #a21caf); color: #fff; }
+
+  .bottom-note { text-align: center; margin-top: 28px; color: #475569; font-size: 13px; }
+  .bottom-note span { color: #818cf8; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="grid"></div>
+<div class="content">
+
+  <div class="top">
+    <div class="badge">🌱 Simple pricing</div>
+    <h1>Start free. <span>Grow when you're ready.</span></h1>
+    <p>No contracts. No hidden fees. Cancel any time.</p>
+  </div>
+
+  <div class="plans">
+
+    <!-- FREE -->
+    <div class="plan free">
+      <div class="plan-name">Free</div>
+      <div class="plan-price">
+        <div class="price-n">$0</div>
+        <div class="price-per">Forever free</div>
+      </div>
+      <div class="plan-desc">Get a feel for Growl. Perfect for testing or occasional use.</div>
+      <div class="features">
+        <div class="feat"><div class="check">✓</div><div class="feat-text">3 AI action generations / month</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Dashboard with 3 weekly actions</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Copy-ready content (Instagram, Google, LINE)</div></div>
+        <div class="feat"><div class="check dim">—</div><div class="feat-text dim">No LINE auto-delivery</div></div>
+        <div class="feat"><div class="check dim">—</div><div class="feat-text dim">No Product Marketing AI</div></div>
+        <div class="feat"><div class="check dim">—</div><div class="feat-text dim">No deep marketing analysis</div></div>
+      </div>
+      <button class="plan-btn">Start Free — No Signup</button>
+    </div>
+
+    <!-- STANDARD -->
+    <div class="plan standard">
+      <div class="popular-badge">Most Popular</div>
+      <div class="plan-name">Standard</div>
+      <div class="plan-price">
+        <div class="price-n">$19</div>
+        <div class="price-per">per month · cancel any time</div>
+      </div>
+      <div class="plan-desc">For small businesses that want consistent weekly marketing without thinking.</div>
+      <div class="features">
+        <div class="feat"><div class="check">✓</div><div class="feat-text"><strong>Unlimited</strong> AI action generations</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Dashboard + all 3 weekly actions</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">LINE auto-delivery every Monday 8am</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Monthly report (completion rate · 4-week graph)</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Product Marketing AI</div></div>
+        <div class="feat"><div class="check dim">—</div><div class="feat-text dim">No deep market analysis (PEST/3C/SWOT)</div></div>
+      </div>
+      <button class="plan-btn">Start Standard →</button>
+    </div>
+
+    <!-- PRO -->
+    <div class="plan pro">
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">
+        <div class="price-n">$49</div>
+        <div class="price-per">per month · cancel any time</div>
+      </div>
+      <div class="plan-desc">For business owners who want AI-level strategic insights alongside execution.</div>
+      <div class="features">
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Everything in Standard</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text"><strong>Deep market analysis</strong>: PEST · 3C · SWOT · STP · 4P · VRIO</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Real competitor data via Tavily web search</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">AEO / GEO: be cited by ChatGPT & Perplexity</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Priority support</div></div>
+        <div class="feat"><div class="check">✓</div><div class="feat-text">Early access to new features</div></div>
+      </div>
+      <button class="plan-btn">Start Pro →</button>
+    </div>
+
+  </div>
+
+  <div class="bottom-note">
+    🔒 <span>Stripe secure checkout</span> · No credit card required for free plan · Cancel any time
+  </div>
+
+</div>
+</body>
+</html>

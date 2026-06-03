@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { loadProofData, saveProofData, loadUserId } from "@/lib/store";
 
 interface AdCopy {
   headline: string;
   primary_text: string;
+  primary_text_short?: string;
+  primary_text_full?: string;
   description: string;
   cta: string;
   target_audience: string | Record<string, unknown>;
-  image_prompt: string;
+  image_prompt?: string;
+  image_prompt_single?: string;
   framework?: string;
   hook_type?: string;
+  carousel_cards?: Array<{ card_headline: string; card_body: string; card_image_prompt: string }>;
 }
 
 interface AdBoostCardProps {
@@ -33,6 +38,23 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
   const [newToken, setNewToken] = useState("");
   const [tokenSaving, setTokenSaving] = useState(false);
   const [tokenMsg, setTokenMsg] = useState("");
+  // 広告強化データ
+  const [showEnhance, setShowEnhance] = useState(false);
+  const [proofNumbers, setProofNumbers] = useState("");
+  const [customerQuote, setCustomerQuote] = useState("");
+  const [priceOrOffer, setPriceOrOffer] = useState("");
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const proof = loadProofData();
+    if (proof.proof_numbers) setProofNumbers(proof.proof_numbers);
+    if (proof.customer_quote) setCustomerQuote(proof.customer_quote);
+    if (proof.price_or_offer) setPriceOrOffer(proof.price_or_offer);
+    if (proof.proof_numbers || proof.customer_quote || proof.price_or_offer) {
+      setShowEnhance(true);
+    }
+    setDeviceId(loadUserId());
+  }, []);
   const isEn = lang === "en";
 
   async function handleSaveToken() {
@@ -71,6 +93,10 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
           goal: session.final_goal,
           lang,
           locale: locale || (lang === "en" ? "us" : "jp"),
+          // 広告強化データ（入力済みのみ渡す）
+          proof_numbers: proofNumbers.trim() || undefined,
+          customer_quote: customerQuote.trim() || undefined,
+          price_or_offer: priceOrOffer.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -98,6 +124,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
           ad_copy: adCopy,
           link_url: "https://growl-app.vercel.app",
           daily_budget: budget,
+          device_id: deviceId || "global",
         }),
       });
       const data = await res.json();
@@ -139,7 +166,55 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
 
         {/* idle: 生成ボタン */}
         {step === "idle" && (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            {/* 広告強化パネル */}
+            <button
+              onClick={() => setShowEnhance(!showEnhance)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-indigo-50 rounded-xl text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-all"
+            >
+              <span>✨ {isEn ? "Enhance ad quality (optional)" : "広告の質を上げる（任意）"}</span>
+              <span>{showEnhance ? "▲" : "▼"}</span>
+            </button>
+            {showEnhance && (
+              <div className="space-y-2 bg-indigo-50 rounded-xl p-3">
+                <div>
+                  <label className="text-xs font-bold text-indigo-600">
+                    📊 {isEn ? "Proof / Numbers" : "実績・数字"}
+                  </label>
+                  <input
+                    type="text"
+                    value={proofNumbers}
+                    onChange={(e) => { setProofNumbers(e.target.value); saveProofData({ proof_numbers: e.target.value }); }}
+                    placeholder={isEn ? "300+ clients, 3x ROI..." : "300社導入、CVR3倍..."}
+                    className="mt-1 w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-indigo-400 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-indigo-600">
+                    💬 {isEn ? "Customer quote" : "お客様の声"}
+                  </label>
+                  <input
+                    type="text"
+                    value={customerQuote}
+                    onChange={(e) => { setCustomerQuote(e.target.value); saveProofData({ customer_quote: e.target.value }); }}
+                    placeholder={isEn ? "Changed my business in 30 days..." : "30日で売上2倍になりました..."}
+                    className="mt-1 w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-indigo-400 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-indigo-600">
+                    💰 {isEn ? "Price / Offer" : "価格・オファー"}
+                  </label>
+                  <input
+                    type="text"
+                    value={priceOrOffer}
+                    onChange={(e) => { setPriceOrOffer(e.target.value); saveProofData({ price_or_offer: e.target.value }); }}
+                    placeholder={isEn ? "Free first month, from $29/mo..." : "初月無料、月額980円〜..."}
+                    className="mt-1 w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-indigo-400 bg-white"
+                  />
+                </div>
+              </div>
+            )}
             <button
               onClick={handleGenerate}
               className="w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-blue-700 active:scale-95 transition-all"
@@ -147,10 +222,10 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
               {isEn ? "✨ Generate Ad Copy" : "✨ 広告文を生成する"}
             </button>
             <a
-              href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-app.vercel.app/api/meta-ads/oauth-callback")}&scope=ads_management,business_management&response_type=code`}
+              href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-app.vercel.app/api/meta-ads/oauth-callback")}&scope=ads_management,pages_manage_ads,pages_read_engagement&response_type=code&state=${deviceId || "global"}`}
               className="block w-full bg-gray-100 text-gray-600 font-medium text-xs py-2 rounded-xl text-center hover:bg-gray-200 transition-all"
             >
-              🔗 {isEn ? "Reconnect Facebook (if ads fail)" : "Facebook再接続（広告エラー時）"}
+              🔗 {isEn ? "Connect your Facebook account" : "Facebookアカウントを接続"}
             </a>
           </div>
         )}
@@ -176,10 +251,33 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
             </div>
             <div className="bg-white rounded-xl p-3 border border-blue-100">
               <p className="text-xs font-bold text-blue-500 mb-1">
-                {isEn ? "Ad Text" : "広告本文"}
+                {isEn ? "Ad Text (preview)" : "広告本文（プレビュー）"}
               </p>
-              <p className="text-sm text-gray-700">{adCopy.primary_text}</p>
+              <p className="text-sm text-gray-700">{adCopy.primary_text_short || adCopy.primary_text}</p>
+              {adCopy.primary_text_full && (
+                <details className="mt-2">
+                  <summary className="text-xs text-blue-400 cursor-pointer">
+                    {isEn ? "▼ Full story copy" : "▼ フルストーリー本文"}
+                  </summary>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed whitespace-pre-wrap">{adCopy.primary_text_full}</p>
+                </details>
+              )}
             </div>
+            {adCopy.carousel_cards && adCopy.carousel_cards.length > 0 && (
+              <div className="bg-white rounded-xl p-3 border border-blue-100">
+                <p className="text-xs font-bold text-blue-500 mb-2">
+                  {isEn ? "🎠 Carousel Cards" : "🎠 カルーセルカード"}
+                </p>
+                <div className="space-y-1">
+                  {adCopy.carousel_cards.map((card, i) => (
+                    <div key={i} className="bg-blue-50 rounded-lg p-2">
+                      <p className="text-xs font-bold text-gray-800">{card.card_headline}</p>
+                      <p className="text-xs text-gray-600">{card.card_body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {(adCopy.framework || adCopy.hook_type) && (
               <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
                 <p className="text-xs font-bold text-indigo-500 mb-1">
