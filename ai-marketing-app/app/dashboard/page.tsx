@@ -79,8 +79,9 @@ export default function DashboardPage() {
     );
   }
 
-  const doneCount = session.actions.filter((a) => a.completed).length;
-  const totalCount = session.actions.length;
+  const actions = session.actions ?? [];
+  const doneCount = actions.filter((a) => a.completed).length;
+  const totalCount = actions.length;
   const progressPct = Math.round((doneCount / totalCount) * 100);
 
   return (
@@ -141,7 +142,7 @@ export default function DashboardPage() {
         )}
 
         <div className="flex flex-col gap-4">
-          {session.actions.map((action, i) => (
+          {actions.map((action, i) => (
             <ActionCard
               key={i}
               action={action}
@@ -191,7 +192,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {doneCount === totalCount && (
+        {totalCount > 0 && doneCount === totalCount && (
           <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6 text-center">
             <div className="text-4xl mb-3">🏆</div>
             <p className="font-bold text-indigo-800 text-lg">{t("dash.all_done.title")}</p>

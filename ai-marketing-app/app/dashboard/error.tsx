@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function GlobalError({
+export default function DashboardError({
   error,
   reset,
 }: {
@@ -13,7 +13,7 @@ export default function GlobalError({
   const router = useRouter();
 
   useEffect(() => {
-    console.error("Growl error:", error);
+    console.error("Dashboard error:", error.message, error.stack);
   }, [error]);
 
   return (
@@ -23,10 +23,14 @@ export default function GlobalError({
         <h1 className="text-xl font-bold text-gray-800 mb-2">
           Something went wrong
         </h1>
-        <p className="text-sm text-gray-500 mb-8 leading-relaxed">
-          We hit an unexpected error. Sorry about that!<br />
-          Please try again or go back to the dashboard.
+        <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+          We hit an unexpected error. Sorry about that!
         </p>
+        {process.env.NODE_ENV !== "production" && (
+          <p className="text-xs text-red-400 mb-6 text-left bg-red-50 rounded p-2 break-all">
+            {error.message}
+          </p>
+        )}
         <div className="flex flex-col gap-3">
           <button
             onClick={reset}
@@ -35,10 +39,13 @@ export default function GlobalError({
             Try again
           </button>
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={() => {
+              localStorage.removeItem("ai_mkt_session");
+              router.push("/");
+            }}
             className="w-full bg-white border border-gray-200 text-gray-600 font-semibold py-3 rounded-2xl transition-colors hover:bg-gray-50"
           >
-            Back to Dashboard
+            Start over (clear session)
           </button>
         </div>
       </div>
