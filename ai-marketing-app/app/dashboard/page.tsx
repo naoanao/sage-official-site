@@ -6,7 +6,8 @@ import { loadSession, updateActionComplete, StoredSession, clearOnboarding, clea
 import ActionCard from "@/components/ActionCard";
 import FreeProgressBar from "@/components/FreeProgressBar";
 import LangToggle from "@/components/LangToggle";
-import AdBoostCard from "@/components/AdBoostCard";
+import dynamic from "next/dynamic";
+const AdBoostCard = dynamic(() => import("@/components/AdBoostCard"), { ssr: false });
 import { useLang } from "@/lib/i18n";
 
 export default function DashboardPage() {
@@ -157,9 +158,19 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* FreeProgressBar and AdBoostCard temporarily disabled for debugging */}
-        {/* <FreeProgressBar /> */}
-        {/* <AdBoostCard ... /> */}
+        <FreeProgressBar />
+
+        {/* Meta広告全自動化カード — dynamic import (no SSR) to avoid hydration mismatch */}
+        <AdBoostCard
+          session={{
+            industry: session.user_profile?.industry as string,
+            business_desc: session.user_profile?.business_desc as string,
+            customer_desc: session.user_profile?.customer_desc as string,
+            main_problem: session.user_profile?.main_problem as string,
+            final_goal: session.user_profile?.final_goal as string,
+          }}
+          lang={lang}
+        />
 
         {lineLinked === false && !isEn && (
           <div className="mt-6 rounded-2xl overflow-hidden shadow-md" style={{ background: "linear-gradient(135deg, #00B900 0%, #00D900 100%)" }}>
