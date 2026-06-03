@@ -7,8 +7,10 @@ interface AdCopy {
   primary_text: string;
   description: string;
   cta: string;
-  target_audience: string;
+  target_audience: string | Record<string, unknown>;
   image_prompt: string;
+  framework?: string;
+  hook_type?: string;
 }
 
 interface AdBoostCardProps {
@@ -20,9 +22,10 @@ interface AdBoostCardProps {
     final_goal?: string;
   };
   lang?: string;
+  locale?: "us" | "uk" | "au" | "ca" | "jp" | "global";
 }
 
-export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) {
+export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCardProps) {
   const [step, setStep] = useState<"idle" | "generating" | "preview" | "submitting" | "done" | "error" | "update-token">("idle");
   const [adCopy, setAdCopy] = useState<AdCopy | null>(null);
   const [result, setResult] = useState<{ message?: string; manager_url?: string; error?: string } | null>(null);
@@ -67,6 +70,7 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
           main_problem: session.main_problem,
           goal: session.final_goal,
           lang,
+          locale: locale || (lang === "en" ? "us" : "jp"),
         }),
       });
       const data = await res.json();
@@ -176,11 +180,28 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
               </p>
               <p className="text-sm text-gray-700">{adCopy.primary_text}</p>
             </div>
+            {(adCopy.framework || adCopy.hook_type) && (
+              <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
+                <p className="text-xs font-bold text-indigo-500 mb-1">
+                  {isEn ? "🧠 Strategy" : "🧠 戦略"}
+                </p>
+                {adCopy.framework && (
+                  <p className="text-xs text-indigo-700 mb-1">📐 {adCopy.framework}</p>
+                )}
+                {adCopy.hook_type && (
+                  <p className="text-xs text-indigo-600">🪝 {adCopy.hook_type}</p>
+                )}
+              </div>
+            )}
             <div className="bg-white rounded-xl p-3 border border-blue-100">
               <p className="text-xs font-bold text-blue-500 mb-1">
                 {isEn ? "Target Audience" : "ターゲット提案"}
               </p>
-              <p className="text-xs text-gray-600">{adCopy.target_audience}</p>
+              <p className="text-xs text-gray-600">
+                {typeof adCopy.target_audience === "object"
+                  ? JSON.stringify(adCopy.target_audience)
+                  : adCopy.target_audience}
+              </p>
             </div>
 
             {/* 予算設定 */}
@@ -267,16 +288,25 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
           <div className="space-y-2">
             {result?.error?.includes("Session has expired") || result?.error?.includes("OAuthException") || result?.error?.includes("Missing Permissions") || result?.error?.includes("does not exist") ? (
               <div>
-                <p className="text-xs font-bold text-orange-600 mb-2">🔑 {isEn ? "Facebook connection expired." : "Facebook接続が切れています。"}</p>
-                <a
-                  href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-app.vercel.app/api/meta-ads/oauth-callback")}&scope=ads_management,business_management&response_type=code`}
-                  className="block w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-xl text-center hover:bg-blue-700 transition-all"
-                >
-                  🔗 {isEn ? "Reconnect Facebook (1 click)" : "Facebookを再接続（1クリック）"}
-                </a>
-                <p className="text-xs text-gray-400 text-center mt-1">
-                  {isEn ? "You'll see a Facebook permission screen. Click Continue." : "Facebookの許可画面が出ます。「続ける」を押すだけ。"}
+                <p className="text-xs font-bold text-orange-600 mb-1">🔑 {isEn ? "Token expired or missing ads permission." : "トークン期限切れまたは広告権限なし。"}</p>
+                <p className="text-xs text-gray-500 mb-2">
+                  <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline font-bold">Graph API Explorer</a>
+                  {isEn ? " → add ads_management → Generate Access Token → paste below:" : " → ads_management追加 → Generate Access Token → 以下に貼り付け："}
                 </p>
+                <textarea
+                  value={newToken}
+                  onChange={e => setNewToken(e.target.value)}
+                  placeholder="EAAxxxxx..."
+                  className="w-full text-xs border border-gray-200 rounded-lg p-2 h-16 resize-none"
+                />
+                {tokenMsg && <p className="text-xs mt-1">{tokenMsg}</p>}
+                <button
+                  onClick={handleSaveToken}
+                  disabled={tokenSaving || !newToken}
+                  className="w-full bg-blue-600 text-white font-bold text-sm py-2.5 rounded-xl disabled:opacity-50 mt-2"
+                >
+                  {tokenSaving ? "Saving..." : (isEn ? "Save Token (auto 60-day)" : "保存（自動で60日有効に変換）")}
+                </button>
               </div>
             ) : (
               <>
