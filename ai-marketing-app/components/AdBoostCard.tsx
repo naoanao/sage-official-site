@@ -49,7 +49,7 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
         setAdCopy(data.ad_copy);
         setStep("preview");
       } else {
-        setResult({ error: data.error || "Generation failed" });
+        setResult({ error: String(data.error || "Generation failed") });
         setStep("error");
       }
     } catch (e) {
@@ -72,7 +72,15 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
         }),
       });
       const data = await res.json();
-      setResult(data);
+      // Normalize result fields to strings to prevent React Error #31
+      setResult({
+        success: data.success,
+        campaign_id: data.campaign_id,
+        message: data.message ? String(data.message) : undefined,
+        manager_url: data.manager_url ? String(data.manager_url) : undefined,
+        error: data.error !== undefined ? String(data.error) : undefined,
+        mock: data.mock,
+      } as typeof data);
       if (data.mock || (!data.success && !data.campaign_id)) {
         setStep("error");
       } else {
@@ -227,7 +235,7 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
             <p className="text-xs text-red-500">
               {(result as any)?.mock
                 ? (isEn ? "Meta Ads credentials not configured (META_AD_ACCOUNT_ID missing in Vercel)" : "Vercel環境変数 META_AD_ACCOUNT_ID が未設定です")
-                : result?.error}
+                : String(result?.error ?? "")}
             </p>
             <button
               onClick={() => { setStep("idle"); setResult(null); }}
