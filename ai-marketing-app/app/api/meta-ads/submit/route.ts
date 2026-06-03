@@ -1,16 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const maxDuration = 30;
 
 const META_API_VERSION = "v21.0";
 const BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+async function getMetaToken(): Promise<string | null> {
+  // まずSupabaseから取得（リアルタイム更新可能）
+  try {
+    const { data } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "meta_ads_access_token")
+      .single();
+    if (data?.value && data.value !== "PLACEHOLDER") return data.value;
+  } catch {}
+  // フォールバック: 環境変数
+  return process.env.META_ADS_ACCESS_TOKEN || null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { ad_copy, link_url, daily_budget = 500, page_id } = body;
 
-    const access_token = process.env.META_ADS_ACCESS_TOKEN;
+    const access_token = await getMetaToken();
     const ad_account_id = process.env.META_AD_ACCOUNT_ID;
 
     if (!access_token || !ad_account_id) {

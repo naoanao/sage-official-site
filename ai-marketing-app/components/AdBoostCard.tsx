@@ -23,11 +23,36 @@ interface AdBoostCardProps {
 }
 
 export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) {
-  const [step, setStep] = useState<"idle" | "generating" | "preview" | "submitting" | "done" | "error">("idle");
+  const [step, setStep] = useState<"idle" | "generating" | "preview" | "submitting" | "done" | "error" | "update-token">("idle");
   const [adCopy, setAdCopy] = useState<AdCopy | null>(null);
   const [result, setResult] = useState<{ message?: string; manager_url?: string; error?: string } | null>(null);
   const [budget, setBudget] = useState(500);
+  const [newToken, setNewToken] = useState("");
+  const [tokenSaving, setTokenSaving] = useState(false);
+  const [tokenMsg, setTokenMsg] = useState("");
   const isEn = lang === "en";
+
+  async function handleSaveToken() {
+    setTokenSaving(true);
+    setTokenMsg("");
+    try {
+      const res = await fetch("/api/admin/update-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: newToken }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTokenMsg("✅ Token saved! Try again.");
+        setTimeout(() => { setStep("idle"); setNewToken(""); setTokenMsg(""); }, 2000);
+      } else {
+        setTokenMsg("❌ " + (data.error || "Failed"));
+      }
+    } catch (e) {
+      setTokenMsg("❌ " + String(e));
+    }
+    setTokenSaving(false);
+  }
 
   async function handleGenerate() {
     setStep("generating");
@@ -232,15 +257,42 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
         {/* error */}
         {step === "error" && (
           <div className="space-y-2">
-            <p className="text-xs text-red-500">
-              {(result as any)?.mock
-                ? (isEn ? "Meta Ads not connected yet. Add META_AD_ACCOUNT_ID in Vercel." : "Meta広告未接続。VercelにMETA_AD_ACCOUNT_IDを追加してください。")
-                : (isEn ? "Something went wrong." : "エラーが発生しました。")}
-            </p>
-            {result?.error && (
-              <p className="text-xs text-red-400 bg-red-50 rounded-lg px-2 py-1 break-all">
-                {result.error}
-              </p>
+            {result?.error?.includes("Session has expired") || result?.error?.includes("OAuthException") ? (
+              <div>
+                <p className="text-xs font-bold text-orange-600 mb-1">🔑 {isEn ? "Token expired. Paste a new token:" : "トークン期限切れ。新しいトークンを貼ってください："}</p>
+                <p className="text-xs text-gray-500 mb-2">
+                  {isEn ? "Get from: " : "取得先: "}
+                  <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Graph API Explorer</a>
+                  {isEn ? " → Generate Access Token" : " → Generate Access Token"}
+                </p>
+                <textarea
+                  value={newToken}
+                  onChange={e => setNewToken(e.target.value)}
+                  placeholder="EAAxxxxx..."
+                  className="w-full text-xs border border-gray-200 rounded-lg p-2 h-16 resize-none"
+                />
+                {tokenMsg && <p className="text-xs">{tokenMsg}</p>}
+                <button
+                  onClick={handleSaveToken}
+                  disabled={tokenSaving || !newToken}
+                  className="w-full bg-blue-600 text-white font-bold text-sm py-2 rounded-xl disabled:opacity-50 mt-1"
+                >
+                  {tokenSaving ? "Saving..." : (isEn ? "Save Token" : "保存する")}
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-red-500">
+                  {(result as any)?.mock
+                    ? (isEn ? "Meta Ads not connected yet." : "Meta広告未接続。")
+                    : (isEn ? "Something went wrong." : "エラーが発生しました。")}
+                </p>
+                {result?.error && (
+                  <p className="text-xs text-red-400 bg-red-50 rounded-lg px-2 py-1 break-all">
+                    {result.error}
+                  </p>
+                )}
+              </>
             )}
             <button
               onClick={() => { setStep("idle"); setResult(null); }}
