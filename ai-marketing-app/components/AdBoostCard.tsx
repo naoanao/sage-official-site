@@ -73,7 +73,11 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
       });
       const data = await res.json();
       setResult(data);
-      setStep("done");
+      if (data.mock || (!data.success && !data.campaign_id)) {
+        setStep("error");
+      } else {
+        setStep("done");
+      }
     } catch (e) {
       setResult({ error: String(e) });
       setStep("error");
@@ -220,7 +224,11 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
         {/* error */}
         {step === "error" && (
           <div className="space-y-2">
-            <p className="text-xs text-red-500">{result?.error}</p>
+            <p className="text-xs text-red-500">
+              {(result as any)?.mock
+                ? (isEn ? "Meta Ads credentials not configured (META_AD_ACCOUNT_ID missing in Vercel)" : "Vercel環境変数 META_AD_ACCOUNT_ID が未設定です")
+                : result?.error}
+            </p>
             <button
               onClick={() => { setStep("idle"); setResult(null); }}
               className="w-full bg-gray-100 text-gray-600 font-medium text-sm py-2 rounded-xl"
