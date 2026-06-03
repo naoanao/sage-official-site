@@ -154,8 +154,8 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
                 {ROLE_STYLES[action.role].label}
               </span>
             )}
-            <p className="font-bold text-gray-800 text-base leading-snug">{action.title}</p>
-            <p className="text-sm text-gray-500 mt-1 leading-relaxed">{action.detail}</p>
+            <p className="font-bold text-gray-800 text-base leading-snug">{String(action.title ?? "")}</p>
+            <p className="text-sm text-gray-500 mt-1 leading-relaxed">{String(action.detail ?? "")}</p>
           </div>
           {action.completed ? (
             <span className="shrink-0 text-green-500 text-xl mt-1">✅</span>
@@ -202,7 +202,7 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
               {/* Content text */}
               <div className="px-4 py-3">
                 <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {deduplicateContent(action.content ?? "")}
+                  {deduplicateContent(String(action.content ?? ""))}
                 </p>
                 <p className="text-xs text-gray-300 mt-2">{ATTRIBUTION.trim()}</p>
               </div>

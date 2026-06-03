@@ -121,7 +121,7 @@ export default function DashboardPage() {
               {t("dash.strategy")}
             </p>
             <p className="text-sm text-indigo-800 leading-relaxed">
-              {session.strategy_note}
+              {String(session.strategy_note ?? "")}
             </p>
           </div>
         )}
