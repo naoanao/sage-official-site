@@ -88,6 +88,43 @@ debug_*.txt
 all_files.txt
 NUL
 
+# ── ルート直下の不要ファイル（アプリコード以外）────────────────────
+# Pythonスクリプト（ルート直下）
+/*.py
+# 画像ファイル（ルート直下）
+/*.jpg
+/*.jpeg
+/*.png
+/*.gif
+/*.mp4
+/*.mov
+# Officeドキュメント（ルート直下）
+/*.docx
+/*.xlsx
+/*.pptx
+/*.pdf
+# その他ルート直下の作業ファイル
+/*.zip
+/*.html
+/*.bat
+/*.vbs
+/*.js
+*.config.js
+*.config.ts
+vite.config.*
+vitest.config.*
+webmarketing_notes.*
+# Workers（Cloudflare）- 別プロジェクト
+workers/
+# 日本語ファイル名のマークダウン（設計書等）
+/マーケ*.md
+/AIマーケ*.md
+/AIマーケ*.docx
+/Growl_*.docx
+/Growl_*.md
+/Sage_*.docx
+/Sage_AI*.docx
+
 # Markdown docs generated during research sessions
 progress_summary_*.md
 firebase_plan_full.md
