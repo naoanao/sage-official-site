@@ -135,12 +135,20 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
 
         {/* idle: 生成ボタン */}
         {step === "idle" && (
-          <button
-            onClick={handleGenerate}
-            className="w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-blue-700 active:scale-95 transition-all"
-          >
-            {isEn ? "✨ Generate Ad Copy" : "✨ 広告文を生成する"}
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={handleGenerate}
+              className="w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-blue-700 active:scale-95 transition-all"
+            >
+              {isEn ? "✨ Generate Ad Copy" : "✨ 広告文を生成する"}
+            </button>
+            <a
+              href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-app.vercel.app/api/meta-ads/oauth-callback")}&scope=ads_management,business_management&response_type=code`}
+              className="block w-full bg-gray-100 text-gray-600 font-medium text-xs py-2 rounded-xl text-center hover:bg-gray-200 transition-all"
+            >
+              🔗 {isEn ? "Reconnect Facebook (if ads fail)" : "Facebook再接続（広告エラー時）"}
+            </a>
+          </div>
         )}
 
         {/* generating */}
@@ -257,28 +265,18 @@ export default function AdBoostCard({ session, lang = "en" }: AdBoostCardProps) 
         {/* error */}
         {step === "error" && (
           <div className="space-y-2">
-            {result?.error?.includes("Session has expired") || result?.error?.includes("OAuthException") ? (
+            {result?.error?.includes("Session has expired") || result?.error?.includes("OAuthException") || result?.error?.includes("Missing Permissions") || result?.error?.includes("does not exist") ? (
               <div>
-                <p className="text-xs font-bold text-orange-600 mb-1">🔑 {isEn ? "Token expired. Paste a new token:" : "トークン期限切れ。新しいトークンを貼ってください："}</p>
-                <p className="text-xs text-gray-500 mb-2">
-                  {isEn ? "Get from: " : "取得先: "}
-                  <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Graph API Explorer</a>
-                  {isEn ? " → Generate Access Token" : " → Generate Access Token"}
-                </p>
-                <textarea
-                  value={newToken}
-                  onChange={e => setNewToken(e.target.value)}
-                  placeholder="EAAxxxxx..."
-                  className="w-full text-xs border border-gray-200 rounded-lg p-2 h-16 resize-none"
-                />
-                {tokenMsg && <p className="text-xs">{tokenMsg}</p>}
-                <button
-                  onClick={handleSaveToken}
-                  disabled={tokenSaving || !newToken}
-                  className="w-full bg-blue-600 text-white font-bold text-sm py-2 rounded-xl disabled:opacity-50 mt-1"
+                <p className="text-xs font-bold text-orange-600 mb-2">🔑 {isEn ? "Facebook connection expired." : "Facebook接続が切れています。"}</p>
+                <a
+                  href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-app.vercel.app/api/meta-ads/oauth-callback")}&scope=ads_management,business_management&response_type=code`}
+                  className="block w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-xl text-center hover:bg-blue-700 transition-all"
                 >
-                  {tokenSaving ? "Saving..." : (isEn ? "Save Token" : "保存する")}
-                </button>
+                  🔗 {isEn ? "Reconnect Facebook (1 click)" : "Facebookを再接続（1クリック）"}
+                </a>
+                <p className="text-xs text-gray-400 text-center mt-1">
+                  {isEn ? "You'll see a Facebook permission screen. Click Continue." : "Facebookの許可画面が出ます。「続ける」を押すだけ。"}
+                </p>
               </div>
             ) : (
               <>
