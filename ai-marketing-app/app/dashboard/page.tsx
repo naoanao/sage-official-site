@@ -81,10 +81,19 @@ export default function DashboardPage() {
     );
   }
 
-  // Filter out any malformed actions where required fields are objects instead of strings
-  const actions = (session.actions ?? []).filter(
-    (a) => a && typeof a === "object" && "title" in a
-  );
+  // Sanitize all action fields to primitives — prevents React Error #31 from malformed AI data
+  const s = (v: unknown): string => (v === null || v === undefined) ? "" : typeof v === "object" ? "" : String(v);
+  const actions = (session.actions ?? [])
+    .filter((a) => a && typeof a === "object")
+    .map((a) => ({
+      title: s(a.title),
+      detail: s(a.detail),
+      content: s(a.content),
+      content_type: s(a.content_type),
+      role: s(a.role),
+      completed: Boolean(a.completed),
+      result_memo: a.result_memo ? s(a.result_memo) : undefined,
+    }));
   const doneCount = actions.filter((a) => a.completed).length;
   const totalCount = actions.length;
   const progressPct = Math.round((doneCount / totalCount) * 100);
