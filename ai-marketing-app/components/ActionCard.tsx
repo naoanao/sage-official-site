@@ -184,11 +184,11 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
             onClick={() => setExpanded(!expanded)}
           >
             <div className="flex items-center gap-2">
-              <span className="text-base">{getIcon(action.content_type)}</span>
+              <span className="text-base">{getIcon(String(action.content_type ?? ""))}</span>
               <span className="text-xs font-semibold text-indigo-700 tracking-wide">
-                {action.content_type || (isEn ? "Content" : "コンテンツ")}
+                {String(action.content_type ?? "") || (isEn ? "Content" : "コンテンツ")}
               </span>
-              {DIRECTLY_USABLE_TYPES.includes(action.content_type) && (
+              {DIRECTLY_USABLE_TYPES.includes(String(action.content_type ?? "")) && (
                 <span className="text-xs text-indigo-500 font-medium bg-indigo-100 px-2 py-0.5 rounded-full">
                   {isEn ? "Ready to use" : "そのまま使える"}
                 </span>

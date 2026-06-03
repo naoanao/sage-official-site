@@ -79,7 +79,10 @@ export default function DashboardPage() {
     );
   }
 
-  const actions = session.actions ?? [];
+  // Filter out any malformed actions where required fields are objects instead of strings
+  const actions = (session.actions ?? []).filter(
+    (a) => a && typeof a === "object" && "title" in a
+  );
   const doneCount = actions.filter((a) => a.completed).length;
   const totalCount = actions.length;
   const progressPct = Math.round((doneCount / totalCount) * 100);
