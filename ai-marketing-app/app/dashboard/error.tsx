@@ -19,7 +19,28 @@ export default function DashboardError({
     // Dump localStorage session for debugging
     try {
       const raw = localStorage.getItem("ai_mkt_session");
-      setSessionDump(raw ? raw.slice(0, 500) : "null");
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          // Show strategy_note and each action's non-content fields
+          const summary = {
+            strategy_note: parsed.strategy_note,
+            actions: (parsed.actions || []).map((a: Record<string, unknown>) => ({
+              role: a.role,
+              title: a.title,
+              detail: a.detail,
+              content_type: a.content_type,
+              completed: a.completed,
+              content_preview: typeof a.content === "string" ? a.content.slice(0, 30) : a.content,
+            })),
+          };
+          setSessionDump(JSON.stringify(summary, null, 2));
+        } catch {
+          setSessionDump(raw.slice(0, 1000));
+        }
+      } else {
+        setSessionDump("null");
+      }
     } catch {
       setSessionDump("could not read localStorage");
     }
