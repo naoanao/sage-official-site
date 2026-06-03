@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function DashboardError({
@@ -12,8 +12,17 @@ export default function DashboardError({
 }) {
   const router = useRouter();
 
+  const [sessionDump, setSessionDump] = useState<string>("");
+
   useEffect(() => {
     console.error("Dashboard error:", error.message, error.stack);
+    // Dump localStorage session for debugging
+    try {
+      const raw = localStorage.getItem("ai_mkt_session");
+      setSessionDump(raw ? raw.slice(0, 500) : "null");
+    } catch {
+      setSessionDump("could not read localStorage");
+    }
   }, [error]);
 
   return (
@@ -26,10 +35,14 @@ export default function DashboardError({
         <p className="text-sm text-gray-500 mb-4 leading-relaxed">
           We hit an unexpected error. Sorry about that!
         </p>
-        <p className="text-xs text-red-400 mb-6 text-left bg-red-50 rounded p-2 break-all font-mono">
+        <p className="text-xs text-red-400 mb-2 text-left bg-red-50 rounded p-2 break-all font-mono">
           {error.message || "Unknown error"}
-          {error.digest ? ` (digest: ${error.digest})` : ""}
         </p>
+        {sessionDump && (
+          <p className="text-xs text-gray-500 mb-6 text-left bg-gray-50 rounded p-2 break-all font-mono">
+            Session: {sessionDump}
+          </p>
+        )}
         <div className="flex flex-col gap-3">
           <button
             onClick={reset}
