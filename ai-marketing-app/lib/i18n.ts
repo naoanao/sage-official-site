@@ -248,10 +248,11 @@ type TranslationKey = keyof typeof translations.ja;
 const LANG_EVENT = "growl:lang-change";
 
 export function useLang() {
-  const [lang, setLang] = useState<Lang>("en");
+  // デフォルトは日本語（ターゲットは日本の個人事業主）
+  const [lang, setLang] = useState<Lang>("ja");
 
   useEffect(() => {
-    // 初期ロード: localStorage から言語を読む
+    // 初期ロード: localStorage から言語を読む（未設定なら日本語のまま）
     const saved = localStorage.getItem("growl_lang") as Lang | null;
     if (saved === "en" || saved === "ja") setLang(saved);
 
@@ -283,7 +284,4 @@ export function useLang() {
 
 // ── 言語を1回だけ読む（SSR不要の場所で使う） ──────────────────────────────────
 export function getLang(): Lang {
-  if (typeof window === "undefined") return "ja";
-  const v = localStorage.getItem("growl_lang");
-  return v === "ja" ? "ja" : "en";
-}
+  if (typeof windo
