@@ -143,7 +143,7 @@ Each card tells ONE angle. Together they build an irresistible case. Think Dyson
   "hook_type": "chosen hook + why (1 sentence)",
   "headline": "max 40 chars — number, timeframe, or emotional trigger. NEVER generic.",
   "primary_text_short": "under 125 chars — ONLY the hook. This is what shows before 'See More'. Must make them tap.",
-  "primary_text_full": "300-500 chars — complete story: hook → pain agitation (2-3 sentences making it hurt) → solution introduction → specific proof with numbers → emotional close → CTA. Write like a top copywriter.",
+  "primary_text_full": "MINIMUM 300 chars, TARGET 400-500 chars. MANDATORY structure: [Hook sentence] [2-3 sentences agitating the pain - make it real and specific] [Introduce solution naturally] [Proof point using provided data or qualitative if no data] [Emotional close] [CTA]. DO NOT summarize. Write the FULL narrative. Every section must be present.",
   "description": "max 30 chars — strongest single benefit",
   "cta": "LEARN_MORE or BOOK_NOW or SIGN_UP or GET_QUOTE or CONTACT_US",
   "target_audience": "precise: age range, specific interests, behaviors, life events, job titles if B2B",
@@ -225,7 +225,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
   "hook_type": "選んだフックと理由（1文）",
   "headline": "40文字以内 — 数字・期間・感情トリガー。ありきたり表現は絶対禁止",
   "primary_text_short": "125文字以内 — フックのみ。「もっと見る」をタップさせる一言",
-  "primary_text_full": "300〜500文字 — 完全ストーリー：フック→痛みを煽る（2〜3文で深く刺す）→解決策導入→具体的な証拠・数字→感情的クロージング→CTA。世界最高のコピーライターとして書く",
+  "primary_text_full": "最低300文字・目標400〜500文字。必須構成：[フック文] [痛みを深く煽る2〜3文（具体的な状況・感情を描写）] [解決策の自然な導入] [証拠ポイント（提供データがあれば使用、なければ定性表現）] [感情的クロージング] [CTA]。要約は禁止。各セクションを省略せず完全に書き切ること。",
   "description": "30文字以内 — 最強のベネフィット1つ",
   "cta": "LEARN_MORE または BOOK_NOW または SIGN_UP または GET_QUOTE または CONTACT_US",
   "target_audience": "具体的：年齢・特定の興味関心・行動・ライフイベント・職種（B2Bなら）",
@@ -246,7 +246,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 1500,
+        max_tokens: 2000,
         response_format: { type: "json_object" },
       }),
     });

@@ -117,23 +117,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: `AdSet creation failed: ${JSON.stringify(adset)}` }, { status: 400 });
     }
 
-    // Step 3: クリエイティブ作成
+    // Step 3: 画像ハッシュ取得（Supabaseキャッシュ→なければアップロード）
+    let imageHash: string | null = null;
+    try {
+      const { data: cachedHash } = await supabase
+        .from("app_config").select("value").eq("key", `meta_img_hash_${ad_account_id}`).single();
+      if (cachedHash?.value) {
+        imageHash = cachedHash.value;
+      } else {
+        // Growlのデフォルト画像をMetaにアップロード
+        const imgUrl = "https://growl-app.vercel.app/og-ad-image.png";
+        const imgRes = await fetch(imgUrl);
+        const imgBlob = await imgRes.blob();
+        const formData = new FormData();
+        formData.append("filename", new Blob([await imgBlob.arrayBuffer()], { type: "image/png" }), "growl_ad.png");
+        formData.append("access_token", access_token);
+        const uploadRes = await fetch(`${BASE_URL}/${ad_account_id}/adimages`, { method: "POST", body: formData });
+        const uploadData = await uploadRes.json();
+        const images = uploadData.images || {};
+        imageHash = Object.values(images as Record<string, { hash: string }>)[0]?.hash || null;
+        if (imageHash) {
+          await supabase.from("app_config").upsert({ key: `meta_img_hash_${ad_account_id}`, value: imageHash, updated_at: new Date().toISOString() });
+        }
+      }
+    } catch {}
+
+    // クリエイティブ本文：primary_text_full（フルストーリー）を優先
+    const adText = ad_copy.primary_text_full || ad_copy.primary_text || "";
+
+    // Step 4: クリエイティブ作成
+    const linkData: Record<string, unknown> = {
+      message: adText,
+      link: link_url || "https://growl-app.vercel.app",
+      name: ad_copy.headline,
+      description: ad_copy.description || "",
+      call_to_action: {
+        type: ad_copy.cta || "LEARN_MORE",
+        value: { link: link_url || "https://growl-app.vercel.app" },
+      },
+    };
+    if (imageHash) {
+      linkData.image_hash = imageHash;
+    } else {
+      linkData.picture = "https://growl-app.vercel.app/og-ad-image.png";
+    }
+
     const creativePayload: Record<string, string> = {
       name: `Growl_Creative_${Date.now()}`,
-      object_story_spec: JSON.stringify({
-        page_id: effectivePageId,
-        link_data: {
-          message: ad_copy.primary_text,
-          link: link_url || "https://growl-app.vercel.app",
-          name: ad_copy.headline,
-          description: ad_copy.description,
-          picture: "https://growl-app.vercel.app/og-ad-image.png",
-          call_to_action: {
-            type: ad_copy.cta || "LEARN_MORE",
-            value: { link: link_url || "https://growl-app.vercel.app" },
-          },
-        },
-      }),
+      object_story_spec: JSON.stringify({ page_id: effectivePageId, link_data: linkData }),
       access_token,
     };
 
