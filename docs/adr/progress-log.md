@@ -1,0 +1,326 @@
+# Sage プログレスログ
+
+> プロジェクト全体の進捗を事実ベースで記録する。
+> 各エントリは1セッション = 1項目。
+
+---
+
+## 2026-06-04: Phase 1 完了 — flask_server.py システムルート分割
+
+### 決定
+ADR-0001 に従い、`flask_server.py` からシステム系15ルートを `backend/routes/system.py` にBlueprint分割した。
+
+### 根拠
+- 4883行のモノリスは変更リスクが高く、最初に最も安全なSystemルート群を分離
+- AGENTS.md の「小さい変更」「ADR優先」ルールに準拠
+
+### 実績
+| 項目 | 値 |
+|------|-----|
+| 新規作成ファイル | `backend/routes/system.py` |
+| 移動したルート数 | 15 |
+| 削減した行数 | approx. 256行 (4883→4627) |
+| 残存ルート数 | 99 (flask_server.py) |
+| 使用パターン | `current_app.config` で循環インポート回避 |
+
+### リスク
+- なし。全ルートとも振る舞い不変で移動完了。認証・課金コードには未着手。
+
+### 次回確認点
+- Phase 2 (Store/Payment) を開始する前に、`docs/adr/0002-auth-decorator.md` で共通認証方式の設計が必要
+- Phase 2 は最高危険度 (🔴) のため、Dry-run またはステージング環境での検証必須
+
+---
+
+## 2026-06-04: Phase 2 事前準備完了 — 課金ルート調査 + 防衛テスト
+
+### 決定
+Phase 2 (Store/Payment) の分割に先立ち、全課金ルートの徹底スキャンと、現状追認テストを作成した。コードはまだ1行も変更していない。
+
+### スキャン結果: 22 課金ルート特定 (`flask_server.py`)
+
+| # | パス | メソッド | 種別 | 認証 | 使用環境変数 |
+|---|------|---------|------|------|------------|
+| 1 | `/api/stripe/checkout` | POST | Stripe | なし | `STRIPE_SECRET_KEY`, `GUMROAD_FALLBACK_URL`, `SITE_URL` |
+| 2 | `/api/customer-portal` | GET | Stripe | なし | (Hardcoded URL) |
+| 3 | `/api/customer_portal` | GET | Stripe | なし | (同上) |
+| 4 | `/api/webhook/stripe` | POST | Stripe | Stripe-Signature | `STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `CLOUDFLARE_API_TOKEN`, `MAKE_WEBHOOK_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` |
+| 5 | `/api/paypal/checkout` | POST | PayPal | なし | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ME_URL`, `SITE_URL` |
+| 6 | `/api/whop/publish` | POST | Whop | なし | `WHOP_DRY_RUN` |
+| 7 | `/api/webhook/whop` | POST | Whop | X-Whop-Signature-256 | `WHOP_WEBHOOK_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` |
+| 8 | `/api/productize/update-whop` | POST | Whop | なし | — |
+| 9 | `/api/gumroad/run-now` | POST | Gumroad | なし (stop-event check) | — |
+| 10 | `/api/gumroad/revenue` | GET | Gumroad | なし | — |
+| 11 | `/api/store/revenue` | GET | Store(Stripe) | なし | `STRIPE_SECRET_KEY` |
+| 12 | `/api/store/orders` | GET | Store(Stripe) | なし | `STRIPE_SECRET_KEY` |
+| 13 | `/api/store/products` | GET | Store(Stripe) | なし | `STRIPE_SECRET_KEY` |
+| 14 | `/api/store/products/create` | POST | Store(Stripe) | なし | `STRIPE_SECRET_KEY` |
+| 15 | `/api/store/products/<id>/update` | POST | Store(Stripe) | なし | `STRIPE_SECRET_KEY` |
+| 16 | `/api/store/products/<id>/archive` | POST | Store(Stripe) | なし | `STRIPE_SECRET_KEY` |
+| 17 | `/api/store/whop-products` | GET | Store(Whop) | なし | — |
+| 18 | `/api/productize` | POST | Productize | なし (X-Sage-Test-Mode) | `GROQ_API_KEY` |
+| 19 | `/api/productize/execute` | POST | Productize | なし | — |
+| 20 | `/api/productize/rewrite` | POST | Productize | なし (X-Sage-Test-Mode) | `GROQ_API_KEY` |
+| 21 | `/api/productize/regenerate_images` | POST | Productize | なし | `HF_TOKEN` |
+| 22 | `/api/productize/finalize` | POST | Productize | なし (X-Sage-Test-Mode) | — |
+| 23 | `/api/monetization/approve` | POST | Admin | localhost only | — |
+
+### 防衛テスト結果
+**ファイル**: `tests/test_payment_characterization.py`
+**ステータス**: 7 tests — **7 passed ✅** (0 failed)
+**所要時間**: 46秒 (初回import 49秒含む)
+
+| テスト | 検証内容 | 結果 |
+|--------|---------|------|
+| Stripe checkout no key → fallback | 空のSTRIPE_SECRET_KEYでフォールバック | ✅ |
+| Stripe checkout empty body → fallback | 空リクエストでもフォールバック | ✅ |
+| PayPal no keys → no_keys | 空のPayPal鍵でフォールバック | ✅ |
+| PayPal default amount → URL出力 | 空リクエストでもURL返却 | ✅ |
+| Whop invalid signature → 401 | 偽シグネチャで拒否 | ✅ |
+| Stripe webhook dev mode → 200 | 空シークレットでも200応答 | ✅ |
+| Whop publish missing fields → 400 | 必須欠落でバリデーション | ✅ |
+
+### リスク
+- 22ルート中、**認証が一切ないエンドポイントが17件** (Webhook 2件のみシグネチャ検証)
+- Stripeは実APIキーが.envに存在するため、テストでは `load_dotenv` をモックして隔離
+- 全テストが実コードに対してパスする状態を確認済み
+
+### 次回確認点
+- Phase 2 分割時は、この防衛テストが引き続きパスすることを確認してからマージ
+- store系ルート(#11〜#17)とproductize系(#18〜#23)は分離候補だが、productizeは課金直接ではなくコンテンツ生成のためPhase 3/4の方が適切か検討要
+
+---
+
+## 2026-06-04: Phase 2a 完了 — Stripe/StoreルートをBlueprint分割
+
+### 決定
+Phase 2 を細分化し、最初に Stripe + Store Manager ルート (10ルート) を `backend/routes/store.py` にBlueprint分割した。PayPal/Whop/Gumroad/Productizeは今後のPhaseで対応。
+
+### 実績
+| 項目 | 値 |
+|------|-----|
+| 新規作成ファイル | `backend/routes/store.py` (333行) |
+| 移動したルート数 | 10 (Stripe/Store系) |
+| 削減した行数 | approx. 824行 (4627→3803) |
+| 残存ルート数 | 89 (flask_server.py) |
+| 使用パターン | `store_bp` Blueprint、logger はモジュールローカル |
+| 防衛テスト | 7/7 passed ✅ |
+
+### 移動したルート一覧
+1. `GET /api/customer-portal` — Stripe Billing portal redirect
+2. `GET /api/customer_portal` — 同上 (alias)
+3. `POST /api/stripe/checkout` — Stripe Payment Link作成
+4. `GET /api/store/revenue` — Stripe収益サマリー
+5. `GET /api/store/orders` — Stripe注文一覧
+6. `GET /api/store/products` — Stripe商品一覧
+7. `POST /api/store/products/create` — Stripe商品作成
+8. `POST /api/store/products/<id>/update` — Stripe商品更新
+9. `POST /api/store/products/<id>/archive` — Stripe商品アーカイブ
+10. `POST /api/webhook/stripe` — Stripe Webhook (158行, 内部ヘルパー4つ)
+
+### テクニカルノート
+- `stripe_checkout` 内の `Path(__file__).parent.parent / '.env'` はモジュール移動に伴い `Path(__file__).resolve().parent.parent.parent / '.env'` に修正
+- `logger` は `store.py` 内で新規定義 (`logging.getLogger(__name__)`)
+- `load_dotenv` をモックするテストは引き続きパス確認済み
+
+### 残存リスク
+- Stripe Webhook (158行) は複雑で高リスク — 分割済みだが変更時は注意
+- 認証デコレータ未導入 — 引き続きインライン認証
+
+---
+
+## 2026-06-04: Phase 2 完了 — Store/Payment 15ルート全分割完了
+
+### 決定
+全15のStore/Paymentルートを `store_bp` (store.py) に統合完了。独立Blueprint不要。
+Phase 2 (危険度🔴) をすべて安全に抽出し、防衛テストで確認済み。
+
+### 実績
+| 項目 | 値 |
+|------|-----|
+| store.py ルート数 | 15 (Stripe/Store 10 + PayPal/Whop/Gumroad 4 + Whop Products 1) |
+| store.py サイズ | 506行 |
+| flask_server.py削減 | 4264→3628行 (-636行, Phase 2開始時比) |
+| 残存ルート数 (flask_server) | 84 |
+| 分割済み合計 | 30ルート (system 15 + store 15) |
+| ファイル削減 (全Phase) | 4883→3628行 (-1,255行) |
+| 防衛テスト | 12/12 passed ✅ |
+
+### 全15ルート一覧
+1. `GET /api/customer-portal` — Stripe Billing portal
+2. `GET /api/customer_portal` — 同上 (alias)
+3. `POST /api/stripe/checkout` — Stripe Payment Link
+4. `GET /api/store/revenue` — Stripe収益
+5. `GET /api/store/orders` — Stripe注文
+6. `GET /api/store/products` — Stripe商品一覧
+7. `POST /api/store/products/create` — 商品作成
+8. `POST /api/store/products/<id>/update` — 商品更新
+9. `POST /api/store/products/<id>/archive` — 商品アーカイブ
+10. `POST /api/webhook/stripe` — Stripe Webhook
+11. `POST /api/paypal/checkout` — PayPal注文
+12. `POST /api/whop/publish` — Whop商品公開
+13. `POST /api/webhook/whop` — Whop Webhook
+14. `GET /api/gumroad/revenue` — Gumroad収益
+15. `GET /api/store/whop-products` — Whop registry一覧
+
+### 未分割のPayment隣接ルート (次回以降)
+- `/api/gumroad/run-now` — スケジューラ手動実行 (Phase 3/7)
+- `/api/productize/update-whop` — Productize連携 (Phase 3候補)
+
+---
+
+## 2026-06-04: ADR-0002 実装 — 共通認証導入 (system.py + store.py)
+
+### 決定
+ADR-0002 の設計に従い、`backend/utils/auth.py` に共通認証ロジックを切り出し、
+`system_bp` と `store_bp` に `before_request` を導入した。
+
+### 変更内容
+- **新規**: `backend/utils/__init__.py`, `backend/utils/auth.py`
+  - `AuthStrategy` enum (PUBLIC / ADMIN_TOKEN / TEST_MODE)
+  - `require_admin_token()` — ヘッダー検証 (env未設定時はスキップ)
+  - `admin_required` デコレータ — ルート単位の認証要求
+  - `apply_public_strategy()` — PUBLIC戦略 (g.auth_strategy 設定)
+- **system.py**: `@system_bp.before_request` + `api_brake_toggle` に `@admin_required`
+  - インラインadmin tokenチェックを削除し、共通デコレータに置換
+- **store.py**: `@store_bp.before_request` (PUBLIC戦略)
+- **flask_server.py**: 変更なし (Phase 4で対応予定)
+
+### 確認
+- 12/12 payment tests green ✅
+- 既存のURL/レスポンスは完全に不変
+
+### 次回
+- Phase 4: flask_server.py 内インライン認証 (`admin_strategy` 等) のBP移行
+- Phase 5: 認証テスト用 conftest 拡張
+- 全15ルートとも、関数内ローカルインポート＋`os.getenv()` のみで動作。`current_app.config`不要
+- `logger` は store.py のモジュールローカル logger を使用
+- 循環インポートは発生せず
+- 全ルート12件の防衛テストで動作確認済み
+- ADR-0002 (認証デコレータ設計) が次回最優先
+
+---
+
+## 2026-06-04: Phase 3a 完了 — SNS/Publishing ステータス8ルート分割
+
+### 決定
+Phase 3aとして、8つのstatus-only/read-only SNS・Publishingルートを `backend/routes/publish.py` にBlueprint分割した。
+
+### 移動したルート一覧
+1. `GET /api/sns/stats` — SNS投稿統計
+2. `GET /api/telegram/health` — Telegram状態確認
+3. `GET /api/bluesky/status` — Bluesky状態確認
+4. `GET /api/notion/status` — Notion状態確認
+5. `GET /api/devto/status` — Dev.to状態確認
+6. `GET /api/engagement/status` — Engagement Bot状態確認
+7. `GET /api/monetization/tags` — タグパフォーマンス
+8. `GET /api/monetization/stats` — 収益統計
+
+### 実績
+| 項目 | 値 |
+|------|-----|
+| publish.py サイズ | 186行 (8ルート) |
+| flask_server.py削減 | 3628→3561行 (Phase 3a開始時比) |
+| 残存ルート数 | 77 |
+| 分割済み合計 | 38ルート (system 15 + store 15 + publish 8) |
+| 追加テスト | 8 (test_publishing_characterization.py) |
+| 全テスト | 20/20 passed ✅ |
+
+---
+
+## 2026-06-04: Phase 3b 完了 — SNS ポスティング3ルート分割
+
+### 決定
+3つのfeature-gated SNSポスティングルートを `publish.py` に追加。
+
+### 移動したルート
+1. `POST /api/telegram/send` — Telegram送信
+2. `POST /api/bluesky/post` — Bluesky投稿
+3. `POST /api/devto/post` — Dev.to投稿
+
+### 実績
+| 項目 | 値 |
+|------|-----|
+| publish.py サイズ | 249行 (11ルート) |
+| flask_server.py削減 | 3561→3524行 |
+| 残存ルート数 | 75 |
+| 全テスト | 26/26 passed ✅ |
+
+---
+
+## 2026-06-04: Phase 3c 完了 — Productize/Monetize 7ルート分割
+
+### 決定
+7つのプロダクト生成・収益化ルートを `backend/routes/productize.py` にBlueprint分割。
+
+### 移動したルート
+1. `POST /api/productize` — 商品企画生成
+2. `POST /api/productize/execute` — コース/記事生成実行
+3. `POST /api/productize/rewrite` — セクション書き直し
+4. `POST /api/productize/regenerate_images` — 画像再生成
+5. `POST /api/productize/finalize` — コース保存
+6. `POST /api/productize/update-whop` — Whop商品更新
+7. `POST /api/monetization/approve` — QA承認
+
+### 共有状態
+以下の依存関係を `app.config` 経由で注入:
+- `COURSE_GEN_GLOBAL`, `CONSULTATIVE_GEN`, `MEMORY`, `ORCHESTRATOR` (動的)
+- `TONE_PROMPTS_EN`, `TONE_PROMPTS_JA`, `IDENTITY` (静的)
+- `GET_OR_INIT_PIPELINE` (関数参照)
+- `CONTENT_MGR`, `MONETIZATION_MEASURE`
+
+### 実績
+| 項目 | 値 |
+|------|-----|
+| productize.py サイズ | 351行 (7ルート) |
+| flask_server.py削減 | 3524→3298行 |
+| 残存ルート数 | 69 |
+| 分割済み合計 | 48ルート (5 Blueprints) |
+| 追加テスト | 19 (test_productize_characterization.py) |
+| 全テスト | 45/45 passed ✅ |
+
+---
+
+## 2026-06-04: ADR-0002 Phase 4 完了 — flask_server.py インライン認証移行
+
+### 決定
+`flask_server.py` 内唯一のインライン認証パターン (`admin_strategy` ルート) を、共有デコレータ `@admin_required` に置換。
+
+### 変更
+- `/api/admin/strategy` の inline `X-SAGE-ADMIN-TOKEN` チェックを削除
+- `@admin_required` デコレータを適用 (同じ挙動を保証)
+- `from backend.utils.auth import admin_required` を追加
+
+### 状態
+`flask_server.py` にインライン認証は0件。全認証がBlueprintレベルまたは共有ユーティリティに統合済み。
+
+---
+
+## 2026-06-04: セッション最終サマリー — 全体進捗
+
+| 指標 | 値 |
+|------|------|
+| `flask_server.py` | 3,296行, **69ルート** 残存 |
+| 抽出済みBlueprint | 5 (note, system, store, publish, productize) |
+| 抽出済みルート数 | **48** |
+| 特性テスト | **45/45 passed ✅** (51.25s) |
+| インライン認証 | **0件** — 全認証が統合済み |
+| 認証ユーティリティ | `backend/utils/auth.py` — AuthStrategy, require_admin_token, admin_required, apply_public_strategy |
+
+### セッション内訳
+| Phase | 抽出ルート | ファイル | 追加テスト |
+|-------|-----------|---------|-----------|
+| 3a: SNS/Publish Status | 8 | `publish.py` | 8 |
+| 3b: SNS Posting | 3 | `publish.py` | 6 |
+| 3c: Productize/Monetize | 7 | `productize.py` | 19 |
+| ADR-0002 P4: Auth migration | — | `flask_server.py` | — |
+
+### 次回着手候補
+1. Phase 4: 残存69ルートの一括抽出 (blog CRUD, brain, research, video, PDF, browser, files)
+2. ADR-0002 Phase 5: conftest 認証モック共通化 (optional)
+
+### アーキテクチャノート
+- 全抽出Blueprintは `current_app.config` 経由で共有状態を注入
+- 循環インポートは発生していない
+- Webhook署名検証 (Stripe, Whop) はルート内インラインのまま
+- `get_or_init_pipeline()` は関数参照として `app.config['GET_OR_INIT_PIPELINE']` に登録
