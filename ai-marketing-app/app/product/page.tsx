@@ -3,9 +3,12 @@
 import { useRouter } from "next/navigation";
 import ProductMarketingPanel from "@/components/product/ProductMarketingPanel";
 import { loadSession } from "@/lib/store";
+import { useLang } from "@/lib/i18n";
 
 export default function ProductPage() {
   const router = useRouter();
+  const { lang } = useLang();
+  const isEn = lang === "en";
   const session = typeof window !== "undefined" ? loadSession() : null;
   const industry = session?.user_profile?.industry ?? "other";
 
@@ -17,12 +20,4 @@ export default function ProductPage() {
           onClick={() => router.push("/dashboard")}
           className="text-gray-400 hover:text-gray-700 transition-colors"
         >
-          ← Back to Dashboard
-        </button>
-      </div>
-
-      {/* メインパネル */}
-      <ProductMarketingPanel industry={industry} />
-    </main>
-  );
-}
+          {isEn ? "← Back to Dashboard" : "← ダッシュボード
