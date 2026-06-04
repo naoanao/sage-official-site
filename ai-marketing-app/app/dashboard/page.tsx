@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { loadSession, updateActionComplete, StoredSession, clearOnboarding, clearSession } from "@/lib/store";
+import { useRouter, useSearchParams } from "next/navigation";
+import { loadSession, updateActionComplete, StoredSession, clearOnboarding, clearSession, loadUserId } from "@/lib/store";
 import ActionCard from "@/components/ActionCard";
 import FreeProgressBar from "@/components/FreeProgressBar";
 import LangToggle from "@/components/LangToggle";
@@ -13,12 +13,22 @@ import { useLang } from "@/lib/i18n";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, lang } = useLang();
   const isEn = lang === "en";
   const [session, setSession] = useState<StoredSession | null>(null);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [lineLinked, setLineLinked] = useState<boolean | null>(null);
+  // Facebookページ選択モーダル
+  const [pageSelectModal, setPageSelectModal] = useState<{
+    pages: { id: string; name: string }[];
+    accounts: { id: string; name: string }[];
+    deviceId: string;
+  } | null>(null);
+  const [selectedPageId, setSelectedPageId] = useState("");
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [savingPage, setSavingPage] = useState(false);
 
   useEffect(() => {
     function reloadSession() {
@@ -37,6 +47,43 @@ export default function DashboardPage() {
       window.removeEventListener("pageshow", reloadSession);
     };
   }, [router]);
+
+  // Facebookページ選択URLパラメータ監視
+  useEffect(() => {
+    if (searchParams.get("select_page") === "1") {
+      try {
+        const pages = JSON.parse(decodeURIComponent(searchParams.get("pages") || "[]"));
+        const accounts = JSON.parse(decodeURIComponent(searchParams.get("accounts") || "[]"));
+        const deviceId = searchParams.get("device_id") || loadUserId() || "global";
+        if (pages.length > 0) {
+          setPageSelectModal({ pages, accounts, deviceId });
+          setSelectedPageId(pages[0].id);
+          setSelectedAccountId(accounts[0]?.id || "");
+        }
+      } catch {}
+    }
+  }, [searchParams]);
+
+  async function handleSavePage() {
+    if (!pageSelectModal || !selectedPageId) return;
+    setSavingPage(true);
+    try {
+      const page = pageSelectModal.pages.find(p => p.id === selectedPageId);
+      await fetch("/api/meta-ads/select-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: pageSelectModal.deviceId,
+          page_id: selectedPageId,
+          page_name: page?.name || "",
+          ad_account_id: selectedAccountId || null,
+        }),
+      });
+      setPageSelectModal(null);
+      router.replace("/dashboard?meta_connected=1");
+    } catch {}
+    setSavingPage(false);
+  }
 
   useEffect(() => {
     const deviceId = typeof window !== "undefined"
@@ -100,6 +147,60 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10">
+      {/* Facebookページ選択モーダル */}
+      {pageSelectModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h2 className="text-base font-bold text-gray-900 mb-1">
+              {isEn ? "Select your Facebook Page" : "Facebookページを選択"}
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">
+              {isEn ? "Choose the page your ads will run from." : "広告を出稿するページを選んでください。"}
+            </p>
+
+            <div className="space-y-2 mb-4">
+              <label className="block text-xs font-bold text-gray-700">
+                {isEn ? "Facebook Page" : "Facebookページ"}
+              </label>
+              <select
+                value={selectedPageId}
+                onChange={e => setSelectedPageId(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400"
+              >
+                {pageSelectModal.pages.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                ))}
+              </select>
+            </div>
+
+            {pageSelectModal.accounts.length > 0 && (
+              <div className="space-y-2 mb-4">
+                <label className="block text-xs font-bold text-gray-700">
+                  {isEn ? "Ad Account" : "広告アカウント"}
+                </label>
+                <select
+                  value={selectedAccountId}
+                  onChange={e => setSelectedAccountId(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400"
+                >
+                  {pageSelectModal.accounts.map(a => (
+                    <option key={a.id} value={a.id}>{a.name} ({a.id})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              onClick={handleSavePage}
+              disabled={savingPage || !selectedPageId}
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 transition-all text-sm"
+            >
+              {savingPage ? (isEn ? "Saving..." : "保存中...") : (isEn ? "Save & Continue" : "保存して続ける")}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-lg mx-auto">
 
         <div className="flex items-center justify-between mb-2">

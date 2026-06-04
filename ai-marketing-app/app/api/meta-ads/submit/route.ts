@@ -17,35 +17,39 @@ async function getUserMetaConfig(deviceId: string): Promise<{
   accountId: string | null;
   pageId: string | null;
 }> {
-  const keys = [
-    `meta_token_${deviceId}`,
-    `meta_account_${deviceId}`,
-    `meta_page_${deviceId}`,
-    // フォールバック: グローバル（後方互換）
-    "meta_ads_access_token",
-  ];
-  const { data } = await supabase.from("app_config").select("key,value").in("key", keys);
-  const map: Record<string, string> = {};
-  for (const row of data || []) map[row.key] = row.value;
+  // user_meta_tokensテーブルから取得（正規）
+  const { data: userToken } = await supabase
+    .from("user_meta_tokens")
+    .select("access_token, page_id, ad_account_id")
+    .eq("device_id", deviceId)
+    .single();
 
-  const token = map[`meta_token_${deviceId}`] || map["meta_ads_access_token"] || process.env.META_ADS_ACCESS_TOKEN || null;
-
-  let accountId = map[`meta_account_${deviceId}`] || null;
-  if (!accountId) {
-    const raw = process.env.META_AD_ACCOUNT_ID || "";
-    accountId = raw ? (raw.startsWith("act_") ? raw : `act_${raw}`) : null;
-  } else {
-    accountId = accountId.startsWith("act_") ? accountId : `act_${accountId}`;
+  if (userToken?.access_token) {
+    const accountId = userToken.ad_account_id
+      ? (userToken.ad_account_id.startsWith("act_") ? userToken.ad_account_id : `act_${userToken.ad_account_id}`)
+      : null;
+    return {
+      token: userToken.access_token,
+      accountId,
+      pageId: userToken.page_id || process.env.META_PAGE_ID || null,
+    };
   }
 
-  let pageId = null;
-  const pageJson = map[`meta_page_${deviceId}`];
-  if (pageJson) {
-    try { pageId = JSON.parse(pageJson).id; } catch {}
-  }
-  if (!pageId) pageId = process.env.META_PAGE_ID || "173041465895454";
+  // フォールバック: app_configのグローバルトークン（後方互換）
+  const { data: globalToken } = await supabase
+    .from("app_config")
+    .select("value")
+    .eq("key", "meta_ads_access_token")
+    .single();
 
-  return { token, accountId, pageId };
+  const raw = process.env.META_AD_ACCOUNT_ID || "";
+  const accountId = raw ? (raw.startsWith("act_") ? raw : `act_${raw}`) : null;
+
+  return {
+    token: globalToken?.value || process.env.META_ADS_ACCESS_TOKEN || null,
+    accountId,
+    pageId: process.env.META_PAGE_ID || "173041465895454",
+  };
 }
 
 export async function POST(req: NextRequest) {
