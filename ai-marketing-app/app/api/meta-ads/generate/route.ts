@@ -93,6 +93,22 @@ ${competitor_diff ? `Why we're different: ${competitor_diff}` : ""}
 ${price_or_offer ? `Offer: ${price_or_offer}` : ""}
 ${customer_quote ? `Real customer quote: "${customer_quote}"` : ""}
 
+## CHOOSE YOUR FRAMEWORK (pick ONE that fits this product best):
+1. **PASP** — Problem → Agitate → Solution → Proof (+35% CVR for trust-barrier products)
+2. **BAT** — Before/After Transformation with specific timeframe (+45% CTR for transformation products)
+3. **CLO** — Curiosity Loop Opening, create information gap (+55% CTR)
+4. **SPS** — Social Proof Stacking: weave numbers + testimonial + media mention (+30% CVR)
+5. **OP** — Objection Preemption: address top objections directly in the ad (+25% CVR for high-ticket)
+6. **CLM** — Customer Language Mirror: use exact words real customers use (+40-60% engagement)
+
+## CHOOSE YOUR HOOK TYPE (first 2-3 seconds):
+- **Question**: "Are you still [painful situation]?"
+- **Number**: "[X] businesses achieved [result] in [timeframe]"
+- **Reverse Psychology**: "Stop doing [common mistake] if you want [result]"
+- **Tension**: "The [mistake/secret] that's costing you [specific loss]"
+- **First-Person**: "I used to [struggle] until I found [solution]"
+- **FOMO**: "Only [X] spots left — [specific benefit]"
+
 ## WHAT WORLD-CLASS META ADS ACTUALLY DO (from top DTC brands):
 - Dyson: 10 carousel cards showing different customer transformations
 - Monday.com: "Your team deserves better" — emotional guilt + clear before/after
@@ -146,6 +162,22 @@ ${after_state ? `顧客のアフター状態: ${after_state}` : ""}
 ${competitor_diff ? `競合との差別化: ${competitor_diff}` : ""}
 ${price_or_offer ? `価格・オファー: ${price_or_offer}` : ""}
 ${customer_quote ? `実際のお客様の声: 「${customer_quote}」` : ""}
+
+## フレームワーク選択（この商品に最適な1つ）：
+1. **PASP** — 問題→煽る→解決→証明（信頼障壁のある商品で+35% CVR）
+2. **BAT** — ビフォーアフター変容＋具体的期間（変容系商品で+45% CTR）
+3. **CLO** — 好奇心ループ、情報ギャップで止める（+55% CTR）
+4. **SPS** — 社会的証明スタッキング：数字+証言+メディア言及を1つの流れで（+30% CVR）
+5. **OP** — 反論先取り：広告内で上位2つの反論を潰す（高額商品で+25% CVR）
+6. **CLM** — 顧客の言葉ミラー：実際のお客様が使う言葉をそのまま使う（+40〜60% エンゲージメント）
+
+## フックタイプ選択（冒頭2〜3秒）：
+- **質問型**：「まだ〇〇で悩んでいますか？」
+- **数字型**：「〇〇社が〇日で〇〇を達成」
+- **逆説型**：「〇〇をやめると〇〇が改善します」
+- **テンション型**：「あなたの〇〇を毎月〇万円奪っているもの」
+- **一人称型**：「私も〇〇で苦しんでいました。〇〇するまでは」
+- **FOMO型**：「残り〇名 — 〇〇が無料で使えます」
 
 ## 世界トップ広告が実際にやっていること：
 - Dyson：10枚カルーセルで異なる顧客変容を見せる
