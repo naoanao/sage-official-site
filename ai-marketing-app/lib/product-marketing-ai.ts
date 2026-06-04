@@ -159,11 +159,11 @@ ${p.competitor_diff ? `競合との違い: ${p.competitor_diff}` : ""}
 
 【AEO/GEO の原則を必ず守ること】
 1. 直接回答（Direct Response）: 各答えの冒頭40-60文字で質問に直接答える
-2. 数値データ（Numerical Data）: 具体的な数字・パーセント・期間を含める
+2. 数値データは【商品情報】に明示されたもののみ使用する。入力に存在しない数字・パーセント・件数・認証・受賞歴を自分で作ることは絶対禁止。数字がなければ定性表現を使う。
 3. Q&A形式で情報を整理する（箇条書きより自然な一文の回答を優先）
 4. 専門性（Original Expertise）: 一般論ではなくこの商品固有の知識を示す
-5. 「2026年現在」など時事性を示す表現を入れる
-6. 入力情報にない固有情報（住所・距離・営業時間など）は推測しない
+5. 入力にない固有情報（住所・距離・営業時間・認定・資格・受賞・第三者評価）は絶対に推測・捏造しない
+6. 「〜円」「〜分」「〜%」など具体的な数値は必ず商品情報内の数字のみ使用すること
 
 【出力形式 — 必ずこのJSONのみ返すこと、コードブロック不要】
 {
@@ -474,11 +474,25 @@ export async function generateProductMarketingPlan(
     meta_description: string;
   }>(aeoRaw, "AI検索対策");
 
+  // ハルシネーション検知: 入力データに含まれない数字が生成されていないか検証
+  const inputFacts = [
+    String(product.price), product.description, product.usp,
+    product.social_proof || "", product.competitor_diff || "", product.target,
+  ].join(" ");
+  const aeoText = (aeoBase.qa_blocks ?? []).map((qa) => qa.answer).join(" ")
+    + " " + (aeoBase.meta_description ?? "");
+  const numbersInAEO = aeoText.match(/\d+[%万円名社人ヶ月日週時間]+|\d{2,}/g) || [];
+  const suspiciousAEONumbers = numbersInAEO.filter((n) => !inputFacts.includes(n));
+  const aeoWarnings = suspiciousAEONumbers.map(
+    (n) => `「${n}」は入力情報にありません。公開前に事実確認してください`
+  );
+
   const aeoData = {
     faq_schema_jsonld: buildFaqSchemaJsonLd(aeoBase.qa_blocks ?? []),
     product_schema_jsonld: buildProductSchemaJsonLd(product),
     qa_blocks: aeoBase.qa_blocks ?? [],
     meta_description: aeoBase.meta_description ?? "",
+    warnings: aeoWarnings,
   };
 
   const funnelData = parseJSON<{

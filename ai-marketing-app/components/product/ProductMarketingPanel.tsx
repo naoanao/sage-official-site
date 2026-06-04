@@ -53,6 +53,7 @@ interface MarketingPlan {
     product_schema_jsonld: string;
     qa_blocks: AEOBlock[];
     meta_description: string;
+    warnings?: string[];
   };
   funnel: {
     /** AIが競合分析の結果発見した独自の切り口（CoT Step1） */
@@ -171,6 +172,10 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Generation failed. Please try again.");
+      // API側のwarningsをplanのaeo.warningsにマージ
+      if (data.plan && data.warnings?.length) {
+        data.plan.aeo.warnings = data.warnings;
+      }
       setPlan(data.plan);
       setActiveTab("actions");
     } catch (e) {
@@ -567,6 +572,22 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
                 AEO/GEO — Get cited by ChatGPT, Perplexity, Gemini & Google AI Overview
               </p>
 
+              {/* ハルシネーション警告バナー（常時表示） */}
+              <div className="mb-4 bg-amber-50 border border-amber-300 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-800 mb-1">⚠️ Fact-check before publishing</p>
+                <p className="text-xs text-amber-700">
+                  AI generates content from your input. Verify all numbers, certifications, and claims are accurate before adding to your site.
+                </p>
+                {plan.aeo.warnings && plan.aeo.warnings.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {plan.aeo.warnings.map((w, i) => (
+                      <li key={i} className="text-xs text-red-600 font-medium">⚠️ {w}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              </p>
+
               {/* Meta Description */}
               <ContentCard
                 label="Meta Description (first text AI reads)"
@@ -588,7 +609,8 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
               {/* Structured data */}
               <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-xs font-semibold text-amber-700 mb-1">⚡ AI Search Optimization: JSON-LD Structured Data</p>
-                <p className="text-xs text-amber-600 mb-3">Paste the code below inside your site's &lt;head&gt; tag to get cited by ChatGPT & Perplexity. Share with your developer if needed.</p>
+                <p className="text-xs text-amber-600 mb-2">Paste the code below inside your site's &lt;head&gt; tag to get cited by ChatGPT & Perplexity. Share with your developer if needed.</p>
+                <p className="text-xs text-red-600 font-medium mb-3">⚠️ Verify all numbers and facts in the FAQ answers match your actual business before adding this code.</p>
                 <div className="space-y-3">
                   <div>
                     <div className="flex justify-between items-center mb-1">

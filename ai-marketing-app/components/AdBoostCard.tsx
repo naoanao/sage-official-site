@@ -356,6 +356,11 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
               <p className="text-2xl mb-1">🎉</p>
               <p className="text-sm font-bold text-green-700">{isEn ? "Ad Created!" : "広告を作成しました！"}</p>
               <p className="text-xs text-green-600 mt-1">{result.message}</p>
+              {result.campaign_id && (
+                <p className="text-xs text-gray-500 mt-2 font-mono break-all">
+                  Campaign ID: <span className="font-semibold text-gray-700">{result.campaign_id}</span>
+                </p>
+              )}
             </div>
             <a href={result.manager_url || "https://adsmanager.facebook.com"}
               target="_blank" rel="noopener noreferrer"

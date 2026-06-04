@@ -40,7 +40,10 @@ export async function POST(req: NextRequest) {
 
     const plan = await generateProductMarketingPlan(product);
 
-    return NextResponse.json({ plan });
+    return NextResponse.json({
+      plan,
+      warnings: plan.aeo.warnings ?? [],
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("product-marketing error:", msg);
