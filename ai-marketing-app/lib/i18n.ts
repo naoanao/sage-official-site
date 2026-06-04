@@ -284,4 +284,8 @@ export function useLang() {
 
 // ── 言語を1回だけ読む（SSR不要の場所で使う） ──────────────────────────────────
 export function getLang(): Lang {
-  if (typeof windo
+  if (typeof window === "undefined") return "ja";
+  const v = localStorage.getItem("growl_lang");
+  // 未設定 or "ja" → 日本語。明示的に "en" 指定時のみ英語。
+  return v === "en" ? "en" : "ja";
+}
