@@ -3,53 +3,55 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { loadOnboarding } from "@/lib/store";
-import { getLang } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n";
 
 // ────────────────────────────────────────────
 // Constants
 // ────────────────────────────────────────────
-const SITUATIONS = [
-  {
-    id: "s1",
-    icon: "🔭",
-    title: "Know Your Market",
-    sub: "Environment analysis · Competitive edge",
-    frameworks: [
-      { id: "pest", name: "PEST Analysis", desc: "Understand political, economic, social & tech trends shaping your market", time: "5 min" },
-      { id: "3c", name: "3C Analysis", desc: "Map your business from three angles: customer, competitor, company", time: "5 min" },
-      { id: "swot", name: "SWOT Analysis", desc: "Identify strengths, weaknesses, opportunities & threats", time: "5 min" },
-    ],
-  },
-  {
-    id: "s2",
-    icon: "💎",
-    title: "Differentiate",
-    sub: "Value design · Competitive advantage",
-    frameworks: [
-      { id: "vrio", name: "VRIO Analysis", desc: "Evaluate your resources for sustainable competitive advantage", time: "5 min" },
-    ],
-  },
-  {
-    id: "s3",
-    icon: "🎯",
-    title: "Build Your Strategy",
-    sub: "Targeting · Positioning",
-    frameworks: [
-      { id: "stp", name: "STP Analysis", desc: "Segment the market and establish your positioning", time: "5 min" },
-      { id: "4p", name: "4P / 4C Analysis", desc: "Design your product, price, place & promotion mix", time: "5 min" },
-    ],
-  },
-  {
-    id: "s4",
-    icon: "🚀",
-    title: "Web & AI Search Traffic",
-    sub: "2026 growth strategy",
-    frameworks: [
-      { id: "ulssas", name: "ULSSAS Analysis", desc: "Design a viral loop for growth in the social media era", time: "5 min" },
-      { id: "aeo", name: "AEO Strategy", desc: "Get recommended by ChatGPT, Gemini & AI search engines", time: "5 min" },
-    ],
-  },
-];
+function getSituations(isEn: boolean) {
+  return [
+    {
+      id: "s1",
+      icon: "🔭",
+      title: isEn ? "Know Your Market" : "市場を知る",
+      sub: isEn ? "Environment analysis · Competitive edge" : "環境分析・競合優位性",
+      frameworks: [
+        { id: "pest", name: "PEST Analysis", desc: isEn ? "Understand political, economic, social & tech trends shaping your market" : "政治・経済・社会・技術トレンドを把握する", time: "5 min" },
+        { id: "3c", name: "3C Analysis", desc: isEn ? "Map your business from three angles: customer, competitor, company" : "顧客・競合・自社の3視点でビジネスを分析する", time: "5 min" },
+        { id: "swot", name: "SWOT Analysis", desc: isEn ? "Identify strengths, weaknesses, opportunities & threats" : "強み・弱み・機会・脅威を整理する", time: "5 min" },
+      ],
+    },
+    {
+      id: "s2",
+      icon: "💎",
+      title: isEn ? "Differentiate" : "差別化する",
+      sub: isEn ? "Value design · Competitive advantage" : "価値設計・競合優位性",
+      frameworks: [
+        { id: "vrio", name: "VRIO Analysis", desc: isEn ? "Evaluate your resources for sustainable competitive advantage" : "持続的競合優位のためにリソースを評価する", time: "5 min" },
+      ],
+    },
+    {
+      id: "s3",
+      icon: "🎯",
+      title: isEn ? "Build Your Strategy" : "戦略を構築する",
+      sub: isEn ? "Targeting · Positioning" : "ターゲット設定・ポジショニング",
+      frameworks: [
+        { id: "stp", name: "STP Analysis", desc: isEn ? "Segment the market and establish your positioning" : "市場をセグメントし自社のポジションを確立する", time: "5 min" },
+        { id: "4p", name: "4P / 4C Analysis", desc: isEn ? "Design your product, price, place & promotion mix" : "製品・価格・流通・プロモーションを設計する", time: "5 min" },
+      ],
+    },
+    {
+      id: "s4",
+      icon: "🚀",
+      title: isEn ? "Web & AI Search Traffic" : "Web・AI検索流入",
+      sub: isEn ? "2026 growth strategy" : "2026年成長戦略",
+      frameworks: [
+        { id: "ulssas", name: "ULSSAS Analysis", desc: isEn ? "Design a viral loop for growth in the social media era" : "SNS時代のバイラルループを設計する", time: "5 min" },
+        { id: "aeo", name: "AEO Strategy", desc: isEn ? "Get recommended by ChatGPT, Gemini & AI search engines" : "ChatGPT・GeminiなどAI検索エンジンに推薦される", time: "5 min" },
+      ],
+    },
+  ];
+}
 
 const CONTENT_TYPE_ICONS: Record<string, string> = {
   "Instagram Post": "📸",
@@ -246,6 +248,10 @@ function PositioningMapChart({ data }: { data: PositioningMap }) {
 // Main Component
 // ────────────────────────────────────────────
 export default function MarketingPage() {
+  const { lang } = useLang();
+  const isEn = lang === "en";
+  const SITUATIONS = getSituations(isEn);
+
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
   const [product, setProduct] = useState("");
@@ -288,7 +294,7 @@ export default function MarketingPage() {
   function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidInput(name) || !isValidInput(product) || !isValidInput(target)) {
-      setFormError("Please enter at least 2 characters for business name, product/service, and target customer.");
+      setFormError(isEn ? "Please enter at least 2 characters for business name, product/service, and target customer." : "ビジネス名・商品サービス・ターゲット顧客をそれぞれ2文字以上入力してください。");
       return;
     }
     setFormError(null);
@@ -313,7 +319,7 @@ export default function MarketingPage() {
           framework: selectedFw,
           industry: industry || undefined,
           price: price || undefined,
-          lang: getLang(),
+          lang,
         }),
       });
       const data = await res.json();
@@ -369,7 +375,7 @@ export default function MarketingPage() {
           target,
           industry: industry || undefined,
           price: price || undefined,
-          lang: getLang(),
+          lang,
         }),
       });
       const data = await res.json();
@@ -436,9 +442,9 @@ export default function MarketingPage() {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
         <div className="animate-spin w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full mb-6" />
-        <p className="text-gray-600 font-medium text-lg">AI is researching your market…</p>
-        <p className="text-gray-400 text-sm mt-2 text-center">Scanning competitors, reviews, ads, market size & government data</p>
-        <p className="text-gray-300 text-xs mt-1">(Takes 30–60 seconds)</p>
+        <p className="text-gray-600 font-medium text-lg">{isEn ? "AI is researching your market…" : "AIが市場をリサーチ中…"}</p>
+        <p className="text-gray-400 text-sm mt-2 text-center">{isEn ? "Scanning competitors, reviews, ads, market size & government data" : "競合・レビュー・広告・市場規模・政府データをスキャン中"}</p>
+        <p className="text-gray-300 text-xs mt-1">{isEn ? "(Takes 30–60 seconds)" : "（30〜60秒かかります）"}</p>
       </main>
     );
   }
@@ -454,29 +460,29 @@ export default function MarketingPage() {
               onClick={() => { setStep("situation"); setResearchResult(null); scrollTop(); }}
               className="text-gray-400 text-sm hover:text-gray-600"
             >
-              ← Back
+              {isEn ? "← Back" : "← 戻る"}
             </button>
-            <h1 className="text-xl font-bold text-gray-900">🔍 AI Market Research Report</h1>
+            <h1 className="text-xl font-bold text-gray-900">🔍 {isEn ? "AI Market Research Report" : "AI市場リサーチレポート"}</h1>
           </div>
 
           {/* Summary badge */}
           <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl px-4 py-4 mb-5 text-white shadow-lg">
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-xs font-bold text-emerald-100 tracking-widest uppercase">Research Complete</p>
+              <p className="text-xs font-bold text-emerald-100 tracking-widest uppercase">{isEn ? "Research Complete" : "リサーチ完了"}</p>
               <span className="text-xs bg-emerald-400 bg-opacity-50 px-2 py-0.5 rounded-full">
                 {researchRegion === "jp" ? "🇯🇵 Japan" : researchRegion === "us" ? "🇺🇸 US / English" : "🌐 Global"}
               </span>
             </div>
             <p className="text-sm font-semibold leading-snug">{researchResult.summary}</p>
-            <p className="text-xs text-emerald-200 mt-2">Gemini 2.0 + Live Web Search</p>
+            <p className="text-xs text-emerald-200 mt-2">{isEn ? "Gemini 2.0 + Live Web Search" : "Gemini 2.0 + ライブWeb検索"}</p>
           </div>
 
           {/* Customer analysis */}
           <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">👤 Customer</p>
+            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">👤 {isEn ? "Customer" : "顧客"}</p>
             {r.customer.purchase_motives.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs font-semibold text-gray-500 mb-1.5">Purchase Motives (from 5-star reviews)</p>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">{isEn ? "Purchase Motives (from 5-star reviews)" : "購買動機（5つ星レビューより）"}</p>
                 <ul className="flex flex-col gap-1">
                   {r.customer.purchase_motives.map((m, i) => (
                     <li key={i} className="flex gap-2 text-sm text-gray-700"><span className="text-emerald-400 flex-shrink-0">✓</span>{m}</li>
@@ -486,7 +492,7 @@ export default function MarketingPage() {
             )}
             {r.customer.pain_points.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs font-semibold text-gray-500 mb-1.5">Pain Points (from 2–3 star reviews)</p>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">{isEn ? "Pain Points (from 2–3 star reviews)" : "ペインポイント（2〜3つ星レビューより）"}</p>
                 <ul className="flex flex-col gap-1">
                   {r.customer.pain_points.map((p, i) => (
                     <li key={i} className="flex gap-2 text-sm text-gray-700"><span className="text-red-400 flex-shrink-0">✗</span>{p}</li>
@@ -496,7 +502,7 @@ export default function MarketingPage() {
             )}
             {r.customer.latent_needs.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs font-semibold text-gray-500 mb-1.5">Latent Needs (from social / UGC)</p>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">{isEn ? "Latent Needs (from social / UGC)" : "潜在ニーズ（SNS・UGCより）"}</p>
                 <ul className="flex flex-col gap-1">
                   {r.customer.latent_needs.map((n, i) => (
                     <li key={i} className="flex gap-2 text-sm text-gray-700"><span className="text-amber-400 flex-shrink-0">💬</span>{n}</li>
@@ -506,7 +512,7 @@ export default function MarketingPage() {
             )}
             {r.customer.quantitative.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1.5">Quantitative Data (government / industry stats)</p>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">{isEn ? "Quantitative Data (government / industry stats)" : "定量データ（政府・業界統計より）"}</p>
                 <ul className="flex flex-col gap-1">
                   {r.customer.quantitative.map((q, i) => (
                     <li key={i} className="flex gap-2 text-sm text-gray-700"><span className="text-blue-400 flex-shrink-0">📊</span>{q}</li>
@@ -518,17 +524,17 @@ export default function MarketingPage() {
 
           {/* Competitor analysis */}
           <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">⚔️ Competitor</p>
+            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">⚔️ {isEn ? "Competitor" : "競合"}</p>
             {r.competitor.top_competitors.map((c, i) => (
               <div key={i} className="mb-3 pb-3 border-b border-gray-50 last:border-0 last:mb-0 last:pb-0">
                 <p className="text-sm font-bold text-gray-800 mb-1">{c.name}</p>
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <p className="text-xs text-gray-400 mb-0.5">Strength</p>
+                    <p className="text-xs text-gray-400 mb-0.5">{isEn ? "Strength" : "強み"}</p>
                     <p className="text-xs text-gray-700">{c.strength}</p>
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs text-gray-400 mb-0.5">Weakness (your opportunity)</p>
+                    <p className="text-xs text-gray-400 mb-0.5">{isEn ? "Weakness (your opportunity)" : "弱み（あなたのチャンス）"}</p>
                     <p className="text-xs text-emerald-700">{c.weakness}</p>
                   </div>
                 </div>
@@ -537,13 +543,13 @@ export default function MarketingPage() {
             ))}
             {r.competitor.ad_landscape && (
               <div className="mt-2 pt-2 border-t border-gray-50">
-                <p className="text-xs font-semibold text-gray-500 mb-1">Ad Landscape</p>
+                <p className="text-xs font-semibold text-gray-500 mb-1">{isEn ? "Ad Landscape" : "広告状況"}</p>
                 <p className="text-sm text-gray-700">{r.competitor.ad_landscape}</p>
               </div>
             )}
             {r.competitor.white_space && (
               <div className="mt-2 pt-2 border-t border-gray-50">
-                <p className="text-xs font-semibold text-emerald-600 mb-1">🎯 Market Gap (competitors missing this)</p>
+                <p className="text-xs font-semibold text-emerald-600 mb-1">🎯 {isEn ? "Market Gap (competitors missing this)" : "市場のスキマ（競合が手をつけていない）"}</p>
                 <p className="text-sm text-emerald-800 font-medium">{r.competitor.white_space}</p>
               </div>
             )}
@@ -552,10 +558,10 @@ export default function MarketingPage() {
           {/* Company opportunities */}
           {r.company_gaps.length > 0 && (
             <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-              <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">🏢 Company — Differentiation Opportunities</p>
+              <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">🏢 {isEn ? "Company — Differentiation Opportunities" : "自社 — 差別化の機会"}</p>
               {r.company_gaps.map((g, i) => (
                 <div key={i} className="mb-3 pb-3 border-b border-gray-50 last:border-0 last:mb-0 last:pb-0">
-                  <p className="text-xs font-semibold text-gray-700 mb-0.5">Gap: {g.gap}</p>
+                  <p className="text-xs font-semibold text-gray-700 mb-0.5">{isEn ? "Gap" : "課題"}: {g.gap}</p>
                   <p className="text-sm text-indigo-700">→ {g.opportunity}</p>
                 </div>
               ))}
@@ -564,9 +570,9 @@ export default function MarketingPage() {
 
           {/* Market data */}
           <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">📈 Market</p>
-            {r.market.market_size && <p className="text-sm text-gray-700 mb-1"><span className="text-xs text-gray-400">Market size: </span>{r.market.market_size}</p>}
-            {r.market.trend && <p className="text-sm text-gray-700 mb-2"><span className="text-xs text-gray-400">Trend: </span>{r.market.trend}</p>}
+            <p className="text-xs font-bold text-indigo-500 mb-3 uppercase tracking-wide">📈 {isEn ? "Market" : "市場"}</p>
+            {r.market.market_size && <p className="text-sm text-gray-700 mb-1"><span className="text-xs text-gray-400">{isEn ? "Market size: " : "市場規模: "}</span>{r.market.market_size}</p>}
+            {r.market.trend && <p className="text-sm text-gray-700 mb-2"><span className="text-xs text-gray-400">{isEn ? "Trend: " : "トレンド: "}</span>{r.market.trend}</p>}
             {r.market.key_statistics.length > 0 && (
               <ul className="flex flex-col gap-1">
                 {r.market.key_statistics.map((s, i) => (
@@ -579,19 +585,19 @@ export default function MarketingPage() {
           {/* US-specific: positioning, GTM, growth levers */}
           {r.positioning_statement && (
             <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-4 mb-4">
-              <p className="text-xs font-bold text-blue-600 mb-2">🎯 Positioning Statement</p>
+              <p className="text-xs font-bold text-blue-600 mb-2">🎯 {isEn ? "Positioning Statement" : "ポジショニングステートメント"}</p>
               <p className="text-sm text-blue-900 italic leading-relaxed">&ldquo;{r.positioning_statement}&rdquo;</p>
             </div>
           )}
           {r.gtm_motion && (
             <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-              <p className="text-xs font-bold text-indigo-500 mb-1">🚀 GTM Motion</p>
+              <p className="text-xs font-bold text-indigo-500 mb-1">🚀 {isEn ? "GTM Motion" : "GTM戦略"}</p>
               <p className="text-sm text-gray-700">{r.gtm_motion}</p>
             </div>
           )}
           {r.growth_levers && r.growth_levers.length > 0 && (
             <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-              <p className="text-xs font-bold text-indigo-500 mb-2">📈 Growth Levers</p>
+              <p className="text-xs font-bold text-indigo-500 mb-2">📈 {isEn ? "Growth Levers" : "成長レバー"}</p>
               {r.growth_levers.map((g, i) => (
                 <p key={i} className="text-sm text-gray-700 mb-1 flex gap-2"><span className="text-indigo-400 flex-shrink-0">▶</span>{g}</p>
               ))}
@@ -601,18 +607,18 @@ export default function MarketingPage() {
           {/* Global: localization */}
           {r.beachhead_market && (
             <div className="bg-teal-50 border border-teal-100 rounded-2xl px-4 py-4 mb-4">
-              <p className="text-xs font-bold text-teal-600 mb-1">🌍 Beachhead Market (where to win first)</p>
+              <p className="text-xs font-bold text-teal-600 mb-1">🌍 {isEn ? "Beachhead Market (where to win first)" : "橋頭堡市場（最初に勝つべき場所）"}</p>
               <p className="text-sm text-teal-900">{r.beachhead_market}</p>
             </div>
           )}
           {r.localization_gaps && r.localization_gaps.length > 0 && (
             <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-              <p className="text-xs font-bold text-indigo-500 mb-3">🌐 Localization Requirements</p>
+              <p className="text-xs font-bold text-indigo-500 mb-3">🌐 {isEn ? "Localization Requirements" : "ローカライゼーション要件"}</p>
               {r.localization_gaps.map((lg, i) => (
                 <div key={i} className="mb-3 pb-3 border-b border-gray-50 last:border-0 last:mb-0 last:pb-0">
                   <p className="text-xs font-bold text-gray-700 mb-1">📍 {lg.market}</p>
-                  <p className="text-xs text-gray-600 mb-0.5"><span className="text-red-400 font-semibold">Must adapt: </span>{lg.adapt}</p>
-                  <p className="text-xs text-gray-600"><span className="text-emerald-500 font-semibold">Universal: </span>{lg.keep}</p>
+                  <p className="text-xs text-gray-600 mb-0.5"><span className="text-red-400 font-semibold">{isEn ? "Must adapt: " : "要変更: "}</span>{lg.adapt}</p>
+                  <p className="text-xs text-gray-600"><span className="text-emerald-500 font-semibold">{isEn ? "Universal: " : "共通: "}</span>{lg.keep}</p>
                 </div>
               ))}
             </div>
@@ -621,7 +627,7 @@ export default function MarketingPage() {
           {/* USP candidates */}
           {r.usp_candidates.length > 0 && (
             <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-4 mb-4">
-              <p className="text-xs font-semibold text-amber-600 mb-2">💡 USP Candidates</p>
+              <p className="text-xs font-semibold text-amber-600 mb-2">💡 {isEn ? "USP Candidates" : "USP候補"}</p>
               {r.usp_candidates.map((u, i) => (
                 <p key={i} className="text-sm text-amber-900 mb-1">✦ {u}</p>
               ))}
@@ -631,7 +637,7 @@ export default function MarketingPage() {
           {/* Recommended actions */}
           {r.recommended_actions.length > 0 && (
             <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-              <p className="text-xs font-semibold text-gray-500 mb-3">Actions you can take this week (30 min, no budget needed)</p>
+              <p className="text-xs font-semibold text-gray-500 mb-3">{isEn ? "Actions you can take this week (30 min, no budget needed)" : "今週できるアクション（30分・予算ゼロ）"}</p>
               <ol className="flex flex-col gap-3">
                 {r.recommended_actions.map((action, i) => (
                   <li key={i} className="flex gap-3">
@@ -646,14 +652,14 @@ export default function MarketingPage() {
           {/* Sources */}
           {r.sources.length > 0 && (
             <div className="bg-gray-50 rounded-2xl px-4 py-3 mb-6">
-              <p className="text-xs text-gray-400 font-semibold mb-1">📚 Sources</p>
+              <p className="text-xs text-gray-400 font-semibold mb-1">📚 {isEn ? "Sources" : "情報源"}</p>
               {r.sources.map((s, i) => <p key={i} className="text-xs text-gray-500">· {s}</p>)}
             </div>
           )}
 
           <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-6">
             <p className="text-xs text-amber-700 leading-relaxed">
-              ⚠️ This research was automatically collected by AI + web search. Always verify key figures and competitor data from primary sources before making business decisions.
+              {isEn ? "⚠️ This research was automatically collected by AI + web search. Always verify key figures and competitor data from primary sources before making business decisions." : "⚠️ このリサーチはAI＋Web検索で自動収集されたものです。ビジネス判断を行う前に、重要な数字や競合データは一次情報で必ず確認してください。"}
             </p>
           </div>
 
@@ -662,7 +668,7 @@ export default function MarketingPage() {
               onClick={() => { setStep("situation"); setResearchResult(null); scrollTop(); }}
               className="w-full border border-gray-200 text-gray-600 font-medium py-3 rounded-2xl hover:bg-gray-50 transition-colors"
             >
-              ← Back to Framework Analysis
+              {isEn ? "← Back to Framework Analysis" : "← フレームワーク選択に戻る"}
             </button>
           </div>
         </div>
@@ -675,9 +681,9 @@ export default function MarketingPage() {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
         <div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full mb-6" />
-        <p className="text-gray-600 font-medium text-lg">AI is analyzing…</p>
+        <p className="text-gray-600 font-medium text-lg">{isEn ? "AI is analyzing…" : "AIが分析中…"}</p>
         <p className="text-gray-400 text-sm mt-2">
-          Generating {situation?.frameworks.find((f) => f.id === selectedFw)?.name ?? "framework"}
+          {isEn ? "Generating" : "生成中："} {situation?.frameworks.find((f) => f.id === selectedFw)?.name ?? "framework"}
         </p>
       </main>
     );
@@ -693,7 +699,7 @@ export default function MarketingPage() {
               onClick={() => { setStep("situation"); setResult(null); setPosts(null); scrollTop(); }}
               className="text-gray-400 text-sm hover:text-gray-600"
             >
-              ← Back
+              {isEn ? "← Back" : "← 戻る"}
             </button>
             <h1 className="text-xl font-bold text-gray-900">{result.framework}</h1>
           </div>
@@ -701,10 +707,10 @@ export default function MarketingPage() {
           {/* Strategy summary */}
           {result.strategy_summary && (
             <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl px-4 py-4 mb-5 text-white shadow-lg shadow-indigo-200">
-              <p className="text-xs font-bold text-indigo-200 mb-3 tracking-widest uppercase">📋 Strategy Summary</p>
+              <p className="text-xs font-bold text-indigo-200 mb-3 tracking-widest uppercase">📋 {isEn ? "Strategy Summary" : "戦略サマリー"}</p>
               <div className="flex flex-col gap-2.5">
                 <div className="flex items-start gap-2">
-                  <span className="text-xs text-indigo-300 w-24 flex-shrink-0 pt-0.5">Target</span>
+                  <span className="text-xs text-indigo-300 w-24 flex-shrink-0 pt-0.5">{isEn ? "Target" : "ターゲット"}</span>
                   <span className="text-sm font-semibold leading-snug">{result.strategy_summary.target}</span>
                 </div>
                 <div className="flex items-start gap-2">
@@ -712,15 +718,15 @@ export default function MarketingPage() {
                   <span className="text-sm font-semibold leading-snug">{result.strategy_summary.usp}</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs text-indigo-300 w-24 flex-shrink-0 pt-0.5">Main Channel</span>
+                  <span className="text-xs text-indigo-300 w-24 flex-shrink-0 pt-0.5">{isEn ? "Main Channel" : "メインチャネル"}</span>
                   <span className="text-sm font-semibold leading-snug">{result.strategy_summary.main_channel}</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs text-indigo-300 w-24 flex-shrink-0 pt-0.5">Top Priority</span>
+                  <span className="text-xs text-indigo-300 w-24 flex-shrink-0 pt-0.5">{isEn ? "Top Priority" : "最優先事項"}</span>
                   <span className="text-sm font-semibold leading-snug">{result.strategy_summary.top_priority}</span>
                 </div>
                 <div className="mt-1 pt-2.5 border-t border-indigo-500">
-                  <p className="text-xs text-indigo-300 mb-1">Winning Message</p>
+                  <p className="text-xs text-indigo-300 mb-1">{isEn ? "Winning Message" : "訴求メッセージ"}</p>
                   <p className="text-base font-bold leading-snug">{result.strategy_summary.winning_message}</p>
                 </div>
               </div>
@@ -729,7 +735,7 @@ export default function MarketingPage() {
 
           {/* Why it matters */}
           <div className="bg-indigo-50 rounded-2xl px-4 py-3 mb-5">
-            <p className="text-xs text-indigo-400 font-medium mb-1">Why this analysis matters</p>
+            <p className="text-xs text-indigo-400 font-medium mb-1">{isEn ? "Why this analysis matters" : "この分析が重要な理由"}</p>
             <p className="text-indigo-800 text-sm leading-relaxed">{stripMarkdown(result.why)}</p>
           </div>
 
@@ -755,13 +761,13 @@ export default function MarketingPage() {
 
           {/* Insight */}
           <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-4 mb-5">
-            <p className="text-xs font-semibold text-amber-500 mb-1">💡 Key Insight</p>
+            <p className="text-xs font-semibold text-amber-500 mb-1">💡 {isEn ? "Key Insight" : "キーインサイト"}</p>
             <p className="text-amber-900 text-sm leading-relaxed">{stripMarkdown(result.insight)}</p>
           </div>
 
           {/* Actions */}
           <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
-            <p className="text-xs font-semibold text-gray-500 mb-3">Actions you can take this week (30 min, no budget needed)</p>
+            <p className="text-xs font-semibold text-gray-500 mb-3">{isEn ? "Actions you can take this week (30 min, no budget needed)" : "今週できるアクション（30分・予算ゼロ）"}</p>
             <ol className="flex flex-col gap-3">
               {result.actions.map((action, i) => (
                 <li key={i} className="flex gap-3">
@@ -777,7 +783,7 @@ export default function MarketingPage() {
           {/* Disclaimer */}
           <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-5">
             <p className="text-xs text-amber-700 leading-relaxed">
-              ⚠️ This analysis is an AI-generated starting point. Always verify current regulations and market data from primary sources before making business decisions.
+              {isEn ? "⚠️ This analysis is an AI-generated starting point. Always verify current regulations and market data from primary sources before making business decisions." : "⚠️ この分析はAIが生成した出発点です。ビジネス判断を行う前に、最新の規制や市場データは一次情報で必ず確認してください。"}
             </p>
           </div>
 
@@ -788,42 +794,42 @@ export default function MarketingPage() {
                 onClick={handleGeneratePosts}
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-4 rounded-2xl transition-all active:scale-95 shadow-lg shadow-indigo-100"
               >
-                📱 Generate 3 social posts from this analysis →
+                {isEn ? "📱 Generate 3 social posts from this analysis →" : "📱 この分析から投稿文3つを生成する →"}
               </button>
             )}
 
             {postsLoading && (
               <div className="w-full flex flex-col items-center justify-center py-8 bg-white rounded-2xl border border-gray-100">
                 <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mb-3" />
-                <p className="text-gray-500 text-sm">Generating posts…</p>
+                <p className="text-gray-500 text-sm">{isEn ? "Generating posts…" : "投稿文を生成中…"}</p>
               </div>
             )}
 
             {posts && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-bold text-gray-800">📱 Ready-to-post copy</span>
-                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Verify facts before posting</span>
+                  <span className="text-sm font-bold text-gray-800">📱 {isEn ? "Ready-to-post copy" : "すぐ投稿できる文章"}</span>
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{isEn ? "Verify facts before posting" : "投稿前に内容を確認してください"}</span>
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-                  <p className="text-xs font-semibold text-amber-700 mb-2">⚠️ Please check before copying</p>
+                  <p className="text-xs font-semibold text-amber-700 mb-2">⚠️ {isEn ? "Please check before copying" : "コピーする前に確認してください"}</p>
                   <ul className="flex flex-col gap-1.5">
                     <li className="flex items-start gap-2 text-xs text-amber-800">
                       <span className="text-amber-500 mt-0.5 flex-shrink-0">□</span>
-                      <span>Does it mention any <strong>product names, menu items, or services</strong> that don&apos;t actually exist?</span>
+                      <span>{isEn ? <>Does it mention any <strong>product names, menu items, or services</strong> that don&apos;t actually exist?</> : <>実際には存在しない<strong>商品名・メニュー・サービス</strong>が書かれていませんか？</>}</span>
                     </li>
                     <li className="flex items-start gap-2 text-xs text-amber-800">
                       <span className="text-amber-500 mt-0.5 flex-shrink-0">□</span>
-                      <span>Are there any <strong>made-up discounts, prices, or promotions</strong>?</span>
+                      <span>{isEn ? <>Are there any <strong>made-up discounts, prices, or promotions</strong>?</> : <>実際にはない<strong>割引・価格・プロモーション</strong>が含まれていませんか？</>}</span>
                     </li>
                     <li className="flex items-start gap-2 text-xs text-amber-800">
                       <span className="text-amber-500 mt-0.5 flex-shrink-0">□</span>
-                      <span>Is everything described something you <strong>actually offer right now</strong>?</span>
+                      <span>{isEn ? <>Is everything described something you <strong>actually offer right now</strong>?</> : <>書かれている内容は<strong>実際に今提供しているもの</strong>ですか？</>}</span>
                     </li>
                   </ul>
                   <p className="text-xs text-amber-600 mt-2 leading-relaxed">
-                    AI generates content based on your input but may add details that don&apos;t exist. Always read through before posting.
+                    {isEn ? "AI generates content based on your input but may add details that don't exist. Always read through before posting." : "AIは入力内容をもとに文章を生成しますが、存在しない詳細を付け加えることがあります。投稿前に必ずお読みください。"}
                   </p>
                 </div>
 
@@ -854,7 +860,7 @@ export default function MarketingPage() {
                             : "bg-indigo-500 hover:bg-indigo-600 text-white"
                         }`}
                       >
-                        {postsCopied[i] ? "✓ Copied!" : "📋 Copy"}
+                        {postsCopied[i] ? (isEn ? "✓ Copied!" : "✓ コピー済") : (isEn ? "📋 Copy" : "📋 コピー")}
                       </button>
                     </div>
                   </div>
@@ -863,7 +869,7 @@ export default function MarketingPage() {
                   onClick={() => { setPosts(null); handleGeneratePosts(); }}
                   className="text-xs text-center text-gray-400 hover:text-indigo-500 py-2"
                 >
-                  🔄 Generate different variations
+                  {isEn ? "🔄 Generate different variations" : "🔄 別のバリエーションを生成する"}
                 </button>
               </div>
             )}
@@ -875,7 +881,7 @@ export default function MarketingPage() {
               onClick={handleCopy}
               className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3.5 rounded-2xl transition-colors active:scale-95"
             >
-              {copied ? "✅ Copied!" : "📋 Copy Analysis"}
+              {copied ? (isEn ? "✅ Copied!" : "✅ コピー済！") : (isEn ? "📋 Copy Analysis" : "📋 分析結果をコピー")}
             </button>
             <button
               onClick={() => {
@@ -888,11 +894,11 @@ export default function MarketingPage() {
               }}
               className="w-full border border-gray-200 text-gray-600 font-medium py-3 rounded-2xl hover:bg-gray-50 transition-colors"
             >
-              Analyze with a different framework
+              {isEn ? "Analyze with a different framework" : "別のフレームワークで分析する"}
             </button>
             <div className="w-full border border-gray-200 text-gray-400 font-medium py-3 rounded-2xl text-center cursor-not-allowed flex items-center justify-center gap-2">
-              <span>Create weekly action plan</span>
-              <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-semibold">Coming Soon</span>
+              <span>{isEn ? "Create weekly action plan" : "週次アクションプランを作成"}</span>
+              <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-semibold">{isEn ? "Coming Soon" : "近日公開"}</span>
             </div>
           </div>
         </div>
@@ -909,9 +915,9 @@ export default function MarketingPage() {
             onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); scrollTop(); }}
             className="text-gray-400 text-sm mb-4 hover:text-gray-600"
           >
-            ← Edit business info
+            {isEn ? "← Edit business info" : "← ビジネス情報を編集"}
           </button>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Which analysis do you need?</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">{isEn ? "Which analysis do you need?" : "どの分析が必要ですか？"}</h1>
           <p className="text-gray-500 text-sm mb-6">{name} · {product}</p>
 
           {error && (
@@ -931,8 +937,8 @@ export default function MarketingPage() {
             <div className="flex items-start gap-3 mb-3">
               <span className="text-2xl">🔍</span>
               <div>
-                <p className="font-bold text-gray-900 text-sm">AI Real-Time Market Research</p>
-                <p className="text-xs text-gray-500 mt-0.5">AI scans reviews, ads, competitor rankings, market size & government data to auto-generate a 3C analysis</p>
+                <p className="font-bold text-gray-900 text-sm">{isEn ? "AI Real-Time Market Research" : "AIリアルタイム市場リサーチ"}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{isEn ? "AI scans reviews, ads, competitor rankings, market size & government data to auto-generate a 3C analysis" : "AIがレビュー・広告・競合ランキング・市場規模・政府データをスキャンして3C分析を自動生成"}</p>
               </div>
             </div>
             {/* Region selector */}
@@ -952,20 +958,20 @@ export default function MarketingPage() {
               ))}
             </div>
             <p className="text-xs text-gray-400 mb-3">
-              {researchRegion === "jp" && "Sources: Amazon JP · Rakuten · Yano Research · Ministry of Health & Stat"}
-              {researchRegion === "us" && "Sources: Amazon.com · G2 · Trustpilot · Statista · IBISWorld · US Census"}
-              {researchRegion === "global" && "Sources: JP + US combined coverage"}
+              {researchRegion === "jp" && (isEn ? "Sources: Amazon JP · Rakuten · Yano Research · Ministry of Health & Stat" : "情報源: Amazon JP・楽天・矢野経済研・厚生労働省統計")}
+              {researchRegion === "us" && (isEn ? "Sources: Amazon.com · G2 · Trustpilot · Statista · IBISWorld · US Census" : "Sources: Amazon.com · G2 · Trustpilot · Statista · IBISWorld · US Census")}
+              {researchRegion === "global" && (isEn ? "Sources: JP + US combined coverage" : "情報源: JP + US 合算カバレッジ")}
             </p>
             <button
               onClick={handleResearch}
               className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-semibold py-3 rounded-xl transition-all text-sm shadow-sm"
             >
-              🌐 Auto-collect web data and generate 3C analysis →
+              {isEn ? "🌐 Auto-collect web data and generate 3C analysis →" : "🌐 Webデータを自動収集して3C分析を生成する →"}
             </button>
-            <p className="text-xs text-center text-gray-400 mt-2">Takes 30–60 seconds</p>
+            <p className="text-xs text-center text-gray-400 mt-2">{isEn ? "Takes 30–60 seconds" : "30〜60秒かかります"}</p>
           </div>
 
-          <p className="text-xs text-gray-400 font-semibold mb-3">Or: choose a framework for instant AI analysis</p>
+          <p className="text-xs text-gray-400 font-semibold mb-3">{isEn ? "Or: choose a framework for instant AI analysis" : "または：フレームワークを選んで即座にAI分析"}</p>
 
           <div className="flex flex-col gap-4 mb-6">
             {SITUATIONS.map((sit) => (
@@ -1027,8 +1033,8 @@ export default function MarketingPage() {
             }`}
           >
             {selectedFw
-              ? `Run ${SITUATIONS.flatMap((s) => s.frameworks).find((f) => f.id === selectedFw)?.name ?? ""} →`
-              : "Select a framework to continue"}
+              ? `${isEn ? "Run" : "実行："} ${SITUATIONS.flatMap((s) => s.frameworks).find((f) => f.id === selectedFw)?.name ?? ""} →`
+              : (isEn ? "Select a framework to continue" : "フレームワークを選んでください")}
           </button>
         </div>
       </main>
@@ -1040,29 +1046,31 @@ export default function MarketingPage() {
     <main className="min-h-screen bg-white flex flex-col">
       <section className="flex-1 px-6 py-12 max-w-lg mx-auto w-full">
         <div className="mb-8">
-          <Link href="/" className="text-gray-400 text-sm hover:text-gray-600">← Back to Home</Link>
+          <Link href="/" className="text-gray-400 text-sm hover:text-gray-600">{isEn ? "← Back to Home" : "← ホームへ"}</Link>
           <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 text-xs font-medium px-3 py-1.5 rounded-full mt-4 mb-3">
-            <span>📊</span> AI Marketing Analysis
+            <span>📊</span> {isEn ? "AI Marketing Analysis" : "AIマーケティング分析"}
           </div>
           <h1 className="text-3xl font-bold text-gray-900 leading-tight">
-            Analyze your business<br />
-            <span className="text-indigo-500">with proven frameworks</span>
+            {isEn ? "Analyze your business" : "あなたのビジネスを"}<br />
+            <span className="text-indigo-500">{isEn ? "with proven frameworks" : "実績あるフレームワークで分析"}</span>
           </h1>
           <p className="text-gray-500 text-sm mt-3 leading-relaxed">
-            Enter your business details and get a professional-level<br />PEST, 3C, STP, 4P analysis generated by AI in minutes.
+            {isEn
+              ? "Enter your business details and get a professional-level PEST, 3C, STP, 4P analysis generated by AI in minutes."
+              : "ビジネス情報を入力するだけで、PEST・3C・STP・4PのプロレベルAI分析が数分で届きます。"}
           </p>
         </div>
 
         <form onSubmit={handleFormSubmit} noValidate className="flex flex-col gap-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Business Name <span className="text-red-400">*</span>
+              {isEn ? "Business Name" : "ビジネス名"} <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setFormError(null); }}
-              placeholder="e.g. Main Street Café / Acme Corp"
+              placeholder={isEn ? "e.g. Main Street Café / Acme Corp" : "例：メインストリートカフェ / 株式会社〇〇"}
               required
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
             />
@@ -1070,12 +1078,12 @@ export default function MarketingPage() {
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Product / Service <span className="text-red-400">*</span>
+              {isEn ? "Product / Service" : "商品・サービス"} <span className="text-red-400">*</span>
             </label>
             <textarea
               value={product}
               onChange={(e) => { setProduct(e.target.value); setFormError(null); }}
-              placeholder="e.g. Lunch café using local vegetables. Takeout available."
+              placeholder={isEn ? "e.g. Lunch café using local vegetables. Takeout available." : "例：地元野菜を使ったランチカフェ。テイクアウトあり。"}
               required
               rows={2}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition resize-none"
@@ -1084,13 +1092,13 @@ export default function MarketingPage() {
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Target Customer <span className="text-red-400">*</span>
+              {isEn ? "Target Customer" : "ターゲット顧客"} <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
               value={target}
               onChange={(e) => { setTarget(e.target.value); setFormError(null); }}
-              placeholder="e.g. Office workers aged 30–50 who want healthy lunches"
+              placeholder={isEn ? "e.g. Office workers aged 30–50 who want healthy lunches" : "例：ヘルシーランチを求める30〜50代のオフィスワーカー"}
               required
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
             />
@@ -1098,21 +1106,21 @@ export default function MarketingPage() {
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Price Range <span className="text-gray-400 font-normal">(optional)</span>
+              {isEn ? "Price Range" : "価格帯"} <span className="text-gray-400 font-normal">({isEn ? "optional" : "任意"})</span>
             </label>
             <input
               type="text"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="e.g. avg. check $15 / monthly $50 / setup $800"
+              placeholder={isEn ? "e.g. avg. check $15 / monthly $50 / setup $800" : "例：平均客単価1500円 / 月額5000円 / 初期費用80000円"}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
             />
-            <p className="text-xs text-gray-400 mt-1">Helps generate price-appropriate strategy and competitor analysis</p>
+            <p className="text-xs text-gray-400 mt-1">{isEn ? "Helps generate price-appropriate strategy and competitor analysis" : "価格に合った戦略と競合分析の精度が上がります"}</p>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Website URL <span className="text-gray-400 font-normal">(optional)</span>
+              {isEn ? "Website URL" : "ウェブサイトURL"} <span className="text-gray-400 font-normal">({isEn ? "optional" : "任意"})</span>
             </label>
             <input
               type="url"
@@ -1137,13 +1145,13 @@ export default function MarketingPage() {
                 : "bg-gray-200 text-gray-500 hover:bg-gray-300 active:scale-95"
             }`}
           >
-            Choose a framework →
+            {isEn ? "Choose a framework →" : "フレームワークを選ぶ →"}
           </button>
         </form>
 
         {/* Framework preview */}
         <div className="mt-10">
-          <p className="text-xs text-gray-400 font-medium mb-4 text-center">Available analysis frameworks (8 types)</p>
+          <p className="text-xs text-gray-400 font-medium mb-4 text-center">{isEn ? "Available analysis frameworks (8 types)" : "利用可能なフレームワーク（8種類）"}</p>
           <div className="flex flex-wrap gap-2 justify-center">
             {["PEST", "3C", "SWOT", "VRIO", "STP", "4P/4C", "ULSSAS", "AEO"].map((fw) => (
               <span key={fw} className="text-xs bg-gray-100 text-gray-500 px-3 py-1 rounded-full">{fw}</span>
