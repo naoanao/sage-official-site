@@ -482,7 +482,11 @@ export async function generateProductMarketingPlan(
   const aeoText = (aeoBase.qa_blocks ?? []).map((qa) => qa.answer).join(" ")
     + " " + (aeoBase.meta_description ?? "");
   const numbersInAEO = aeoText.match(/\d+[%万円名社人ヶ月日週時間]+|\d{2,}/g) || [];
-  const suspiciousAEONumbers = numbersInAEO.filter((n) => !inputFacts.includes(n));
+  const suspiciousAEONumbers = [...new Set(numbersInAEO)].filter((n) => {
+    // 数字部分だけ（単位なし）でも入力に含まれていれば正当な数字とみなす
+    const digitsOnly = n.replace(/[^\d]/g, "");
+    return !inputFacts.includes(n) && !inputFacts.includes(digitsOnly);
+  });
   const aeoWarnings = suspiciousAEONumbers.map(
     (n) => `「${n}」は入力情報にありません。公開前に事実確認してください`
   );
