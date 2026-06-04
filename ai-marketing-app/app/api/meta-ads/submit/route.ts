@@ -55,7 +55,7 @@ async function getUserMetaConfig(deviceId: string): Promise<{
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { ad_copy, link_url, daily_budget = 500, page_id, device_id } = body;
+    const { ad_copy, link_url, daily_budget = 500, page_id, device_id, image_prompt } = body;
 
     const { token: access_token, accountId: ad_account_id, pageId: resolvedPageId } =
       await getUserMetaConfig(device_id || "global");
@@ -117,28 +117,64 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: `AdSet creation failed: ${JSON.stringify(adset)}` }, { status: 400 });
     }
 
-    // Step 3: 画像ハッシュ取得（Supabaseキャッシュ→なければアップロード）
+    // Step 3: 画像生成 → Metaにアップロード → ハッシュ取得
     let imageHash: string | null = null;
     try {
-      const { data: cachedHash } = await supabase
-        .from("app_config").select("value").eq("key", `meta_img_hash_${ad_account_id}`).single();
-      if (cachedHash?.value) {
-        imageHash = cachedHash.value;
-      } else {
-        // Growlのデフォルト画像をMetaにアップロード
-        const imgUrl = "https://growl-app.vercel.app/og-ad-image.png";
-        const imgRes = await fetch(imgUrl);
-        const imgBlob = await imgRes.blob();
+      let imageBytes: Buffer | null = null;
+
+      // A) image_promptがあればFLUX.1-schnell（HuggingFace）で商品特化画像を生成
+      const prompt = image_prompt || ad_copy.image_prompt_single;
+      if (prompt && process.env.HF_TOKEN) {
+        try {
+          const hfRes = await fetch(
+            "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${process.env.HF_TOKEN}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                inputs: `High quality Meta ad photo. ${prompt}. Photorealistic, professional, no text overlays, bright natural lighting, landscape 16:9 format.`,
+              }),
+            }
+          );
+          if (hfRes.ok) {
+            const contentType = hfRes.headers.get("content-type") || "";
+            if (contentType.includes("image")) {
+              const arrayBuffer = await hfRes.arrayBuffer();
+              imageBytes = Buffer.from(arrayBuffer);
+            }
+          }
+        } catch {}
+      }
+
+      // B) 生成できなければキャッシュ済みハッシュを使用
+      if (!imageBytes) {
+        const { data: cachedHash } = await supabase
+          .from("app_config").select("value").eq("key", `meta_img_hash_${ad_account_id}`).single();
+        if (cachedHash?.value) {
+          imageHash = cachedHash.value;
+        }
+      }
+
+      // C) 画像バイトがあればMetaにアップロード
+      if (imageBytes && !imageHash) {
         const formData = new FormData();
-        formData.append("filename", new Blob([await imgBlob.arrayBuffer()], { type: "image/png" }), "growl_ad.png");
+        formData.append("filename", new Blob([imageBytes], { type: "image/png" }), "ad_image.png");
         formData.append("access_token", access_token);
         const uploadRes = await fetch(`${BASE_URL}/${ad_account_id}/adimages`, { method: "POST", body: formData });
         const uploadData = await uploadRes.json();
         const images = uploadData.images || {};
-        imageHash = Object.values(images as Record<string, { hash: string }>)[0]?.hash || null;
-        if (imageHash) {
-          await supabase.from("app_config").upsert({ key: `meta_img_hash_${ad_account_id}`, value: imageHash, updated_at: new Date().toISOString() });
-        }
+        imageHash = (Object.values(images as Record<string, { hash: string }>)[0])?.hash || null;
+        // キャッシュ（Gemini生成は毎回異なるのでキャッシュしない）
+      }
+
+      // D) どれも失敗した場合はデフォルトをアップロード
+      if (!imageHash) {
+        const { data: cachedHash } = await supabase
+          .from("app_config").select("value").eq("key", `meta_img_hash_${ad_account_id}`).single();
+        imageHash = cachedHash?.value || null;
       }
     } catch {}
 

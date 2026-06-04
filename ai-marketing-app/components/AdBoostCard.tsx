@@ -127,6 +127,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
           link_url: "https://growl-app.vercel.app",
           daily_budget: budget,
           device_id: deviceId || "global",
+          image_prompt: adCopy.image_prompt_single || adCopy.image_prompt || null,
         }),
       });
       const data = await res.json();
