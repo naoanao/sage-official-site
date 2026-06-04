@@ -3,7 +3,7 @@
 > Sageシステムの全体構造・なおさんのアイデンティティ・既知問題と解決策を含む。  
 > 「2ヶ月に一回同じことを繰り返す」を防ぐためのシステムメモリ。
 
-最終更新: 2026-06-03（Meta広告全自動化・プライバシーポリシー・利用規約 追加）
+最終更新: 2026-06-04（Meta広告マルチユーザー対応・世界トップレベルプロンプト・ハルシネーション対策 完了）
 
 ---
 
@@ -960,6 +960,49 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 - 大切なのは、上位国と同じく「全部AIに丸投げ」ではなく、**人間の判断・業務手順・成果データを先に構造化してAIへ渡すこと**。
 
 ---
+
+---
+
+## 12b. Cowork自律実行ログ（2026-06-04）
+
+### Meta広告機能 完全リファクタリング
+
+> ⚠️ 次のAIセッションへ: 以下はすべて完了済み。同じ作業を再度やらないこと。
+
+#### 完了した作業
+
+| # | 作業 | 結果 | 詳細 |
+|---|---|---|---|
+| 1 | Supabase `user_meta_tokens` テーブル作成 | ✅ | Management API経由でSQL実行。device_id, access_token, page_id, page_name, ad_account_id |
+| 2 | Meta OAuthをマルチユーザー対応に変更 | ✅ | state=device_id で各ユーザー固有のトークン・ページ・広告アカウントを保存 |
+| 3 | Facebookページ選択モーダル実装 | ✅ | 複数ページ保有ユーザーに `/dashboard?select_page=1&pages=...` でモーダル表示 |
+| 4 | submit/route.ts をユーザー固有設定で動作 | ✅ | device_id → user_meta_tokens → ユーザー自身のページ・広告アカウントで出稿 |
+| 5 | ターゲティングを Advantage+ 全世界対応 | ✅ | JP限定→JP/US/GB/AU/CA + advantage_audience: 1 |
+| 6 | 世界トップレベルプロンプト v3 | ✅ | Nick Shackelford/Florind Metalla/Superside思考 + 6フレームワーク + ロケール別(US/UK/AU/CA/JP) |
+| 7 | primary_text を 125文字制限→500文字フルストーリー | ✅ | primary_text_short（フック）+ primary_text_full（完全ナラティブ）の2段構成 |
+| 8 | カルーセルカード3枚生成 | ✅ | 各カードが異なる角度でベネフィットを語る |
+| 9 | 証拠データ収集（6フィールド追加） | ✅ | proof_numbers, customer_quote, price_or_offer, before_state, after_state, competitor_diff |
+| 10 | オンボーディングに proof ステップ追加 | ✅ | problem→proof→goal の順。任意入力（スキップ可能）|
+| 11 | AdBoostCard に「広告強化パネル」追加 | ✅ | 生成前に任意で実績・お客様の声・価格を入力可能。localStorage に永続保存 |
+| 12 | ハルシネーション防止（3層構造） | ✅ | プロンプトに絶対ルール + APIで数字検出 + UIで常時警告バナー |
+| 13 | .gitignore 修正・リポジトリクリーンアップ | ✅ | ルート直下の.py/.jpg/.docx等をgit管理から除外。261MB→正常サイズに |
+
+#### 現在の動作確認済み状態（2026-06-04）
+
+- **Growlダッシュボード** → `growl-app.vercel.app` で稼働中
+- **Meta広告生成API** → `/api/meta-ads/generate` 正常動作
+- **Meta広告出稿API** → `/api/meta-ads/submit` 正常動作（PAUSED状態で作成）
+- **user_meta_tokens テーブル** → Supabase に存在・RLS有効
+- **OAuthフロー** → `/api/meta-ads/oauth-callback` でdevice_idごとに保存
+- **ハルシネーション対策** → 証拠データなし時は定性表現のみ使用、確認済み
+
+#### 既知の残課題
+
+| 課題 | 優先度 | 対応方針 |
+|---|---|---|
+| ad_copy.primary_text が submit時 full版を使うよう更新 | 中 | submit/route.tsのcreativePayloadでprimary_text_full優先に |
+| カルーセル広告の実際のAPI出稿 | 中 | 現在は単一画像のみ。carousel formatのMeta API実装が必要 |
+| Facebookページ接続後の再接続UIの改善 | 低 | 接続状態をdashboardで視覚的に表示 |
 
 ---
 
