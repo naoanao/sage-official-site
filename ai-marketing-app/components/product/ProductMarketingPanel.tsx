@@ -586,7 +586,6 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
                   </ul>
                 )}
               </div>
-              </p>
 
               {/* Meta Description */}
               <ContentCard
