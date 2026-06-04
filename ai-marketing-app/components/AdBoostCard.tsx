@@ -25,6 +25,7 @@ interface AdBoostCardProps {
     customer_desc?: string;
     main_problem?: string;
     final_goal?: string;
+    booking_url?: string;
   };
   lang?: string;
   locale?: "us" | "uk" | "au" | "ca" | "jp" | "global";
@@ -94,6 +95,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
           goal: session.final_goal,
           lang,
           locale: locale || (lang === "en" ? "us" : "jp"),
+          booking_url: session.booking_url || undefined,
           // 広告強化データ（入力済みのみ渡す）
           proof_numbers: proofNumbers.trim() || undefined,
           customer_quote: customerQuote.trim() || undefined,

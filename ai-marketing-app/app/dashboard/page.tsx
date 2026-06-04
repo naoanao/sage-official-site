@@ -187,6 +187,7 @@ useEffect(() => {
               customer_desc: session.user_profile?.customer_desc as string,
               main_problem: session.user_profile?.main_problem as string,
               final_goal: session.user_profile?.final_goal as string,
+              booking_url: session.user_profile?.booking_url as string,
             }}
             lang={lang}
           />

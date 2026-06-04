@@ -7,14 +7,32 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       industry, business_desc, customer_desc, main_problem, product, goal, lang, locale,
-      // 追加の深掘り情報（あれば使う）
-      proof_numbers,    // 実績・数字「300社導入」「平均CVR3倍」等
-      before_state,     // 顧客のビフォー状態（具体的に）
-      after_state,      // 顧客のアフター状態（具体的に）
-      competitor_diff,  // 競合との差別化ポイント
-      price_or_offer,   // 価格・オファー「月額980円」「初月無料」等
-      customer_quote,   // 実際のお客様の声（あれば）
+      proof_numbers, before_state, after_state, competitor_diff, price_or_offer, customer_quote,
+      booking_url,  // ユーザーのウェブサイトURL（あれば内容をスクレイプして参考にする）
     } = body;
+
+    // ウェブサイトURL → テキスト抽出（最大2000文字、失敗しても続行）
+    let siteContent = "";
+    if (booking_url) {
+      try {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(booking_url, {
+          signal: controller.signal,
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; GrowlBot/1.0)", "Accept": "text/html" },
+        });
+        if (res.ok) {
+          const html = await res.text();
+          siteContent = html
+            .replace(/<script[\s\S]*?<\/script>/gi, " ")
+            .replace(/<style[\s\S]*?<\/style>/gi, " ")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 2000);
+        }
+      } catch {}
+    }
 
     const isEn = lang === "en";
 
@@ -104,6 +122,7 @@ ${after_state ? `Customer AFTER: ${after_state}` : ""}
 ${competitor_diff ? `Why we're different: ${competitor_diff}` : ""}
 ${price_or_offer ? `Offer: ${price_or_offer}` : ""}
 ${customer_quote ? `Real customer quote: "${customer_quote}"` : ""}
+${siteContent ? `\n## WEBSITE CONTENT (use specific details, services, language from this site — but only verified facts):\n${siteContent}` : ""}
 
 ## CHOOSE YOUR FRAMEWORK (pick ONE that fits this product best):
 1. **PASP** — Problem → Agitate → Solution → Proof (+35% CVR for trust-barrier products)
@@ -186,6 +205,7 @@ ${after_state ? `顧客のアフター状態: ${after_state}` : ""}
 ${competitor_diff ? `競合との差別化: ${competitor_diff}` : ""}
 ${price_or_offer ? `価格・オファー: ${price_or_offer}` : ""}
 ${customer_quote ? `実際のお客様の声: 「${customer_quote}」` : ""}
+${siteContent ? `\n## ウェブサイト内容（このサイトの具体的なサービス・言葉・特徴を活用すること。ただし確認できた事実のみ使用）：\n${siteContent}` : ""}
 
 ## フレームワーク選択（この商品に最適な1つ）：
 1. **PASP** — 問題→煽る→解決→証明（信頼障壁のある商品で+35% CVR）
