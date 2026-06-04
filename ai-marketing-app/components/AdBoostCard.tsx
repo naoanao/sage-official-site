@@ -263,6 +263,185 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
                 </ul>
               )}
             </div>
+
+            {(adCopy.framework || adCopy.hook_type) && (
+              <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
+                <p className="text-xs font-bold text-indigo-500 mb-1">🧠 {isEn ? "Strategy" : "戦略"}</p>
+                {adCopy.framework && <p className="text-xs text-indigo-700 mb-1">📐 {adCopy.framework}</p>}
+                {adCopy.hook_type && <p className="text-xs text-indigo-600">🪝 {adCopy.hook_type}</p>}
+              </div>
+            )}
+
+            <div className="bg-white rounded-xl p-3 border border-blue-100">
+              <p className="text-xs font-bold text-blue-500 mb-1">{isEn ? "Headline" : "見出し"}</p>
+              <p className="text-sm font-bold text-gray-900">{adCopy.headline}</p>
+            </div>
+
+            <div className="bg-white rounded-xl p-3 border border-blue-100">
+              <p className="text-xs font-bold text-blue-500 mb-1">{isEn ? "Ad Text (preview)" : "広告本文（プレビュー）"}</p>
+              <p className="text-sm text-gray-700">{adCopy.primary_text_short || adCopy.primary_text}</p>
+              {adCopy.primary_text_full && (
+                <details className="mt-2">
+                  <summary className="text-xs text-blue-400 cursor-pointer">{isEn ? "▼ Full story copy" : "▼ フルストーリー本文"}</summary>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed whitespace-pre-wrap">{adCopy.primary_text_full}</p>
+                </details>
+              )}
+            </div>
+
+            {adCopy.carousel_cards && adCopy.carousel_cards.length > 0 && (
+              <div className="bg-white rounded-xl p-3 border border-blue-100">
+                <p className="text-xs font-bold text-blue-500 mb-2">🎠 {isEn ? "Carousel Cards" : "カルーセルカード"}</p>
+                <div className="space-y-1">
+                  {adCopy.carousel_cards.map((card, i) => (
+                    <div key={i} className="bg-blue-50 rounded-lg p-2">
+                      <p className="text-xs font-bold text-gray-800">{card.card_headline}</p>
+                      <p className="text-xs text-gray-600">{card.card_body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white rounded-xl p-3 border border-blue-100">
+              <p className="text-xs font-bold text-blue-500 mb-1">{isEn ? "Target Audience" : "ターゲット提案"}</p>
+              <p className="text-xs text-gray-600">
+                {typeof adCopy.target_audience === "object"
+                  ? JSON.stringify(adCopy.target_audience)
+                  : adCopy.target_audience}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl p-3 border border-blue-100">
+              <p className="text-xs font-bold text-blue-500 mb-2">{isEn ? "Daily Budget" : "1日の予算"}</p>
+              <div className="flex items-center gap-3">
+                <input type="range" min={300} max={3000} step={100} value={budget}
+                  onChange={(e) => setBudget(Number(e.target.value))} className="flex-1" />
+                <span className="text-sm font-bold text-gray-900 w-16 text-right">¥{budget.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setStep("idle")}
+                className="flex-1 bg-gray-100 text-gray-600 font-medium text-sm py-2.5 rounded-xl hover:bg-gray-200 transition-all">
+                {isEn ? "Regenerate" : "作り直す"}
+              </button>
+              <button onClick={handleSubmit}
+                className="flex-1 bg-blue-600 text-white font-bold text-sm py-2.5 rounded-xl hover:bg-blue-700 active:scale-95 transition-all">
+                {isEn ? "Submit Ad (Paused)" : "広告を作成する"}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 text-center">
+              {isEn ? "Ad will be created in PAUSED state. Activate in Meta Ads Manager." : "一時停止状態で作成されます。Meta広告マネージャーで有効化してください。"}
+            </p>
+          </div>
+        )}
+
+        {/* submitting */}
+        {step === "submitting" && (
+          <div className="flex items-center justify-center gap-2 py-4">
+            <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+            <span className="text-sm text-blue-600 font-medium">
+              {isEn ? "Submitting to Meta..." : "Meta広告に送信中..."}
+            </span>
+          </div>
+        )}
+
+        {/* done: 作成成功 */}
+        {step === "done" && result && (
+          <div className="space-y-3">
+            <div className="bg-green-50 rounded-xl p-4 border border-green-200 text-center">
+              <p className="text-2xl mb-1">🎉</p>
+              <p className="text-sm font-bold text-green-700">{isEn ? "Ad Created!" : "広告を作成しました！"}</p>
+              <p className="text-xs text-green-600 mt-1">{result.message}</p>
+            </div>
+            <a href={result.manager_url || "https://adsmanager.facebook.com"}
+              target="_blank" rel="noopener noreferrer"
+              className="block w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-xl text-center hover:bg-blue-700 transition-all">
+              📊 {isEn ? "Check in Meta Ads Manager" : "Meta広告マネージャーで確認"}
+            </a>
+            <p className="text-xs text-gray-400 text-center">
+              {isEn ? "Ad is PAUSED. Turn it ON when ready to go live." : "広告は一時停止中です。確認したらONにして配信を開始してください。"}
+            </p>
+            <button onClick={() => { setStep("idle"); setResult(null); }}
+              className="w-full bg-gray-100 text-gray-600 font-medium text-sm py-2 rounded-xl hover:bg-gray-200 transition-all">
+              {isEn ? "Create another ad" : "別の広告を作る"}
+            </button>
+          </div>
+        )}
+
+        {/* error */}
+        {step === "error" && result && (
+          <div className="space-y-3">
+            <div className="bg-red-50 rounded-xl p-3 border border-red-100">
+              <p className="text-sm font-bold text-red-600 mb-1">❌ {isEn ? "Error" : "エラー"}</p>
+              <p className="text-xs text-red-500">{result.error}</p>
+            </div>
+            <button onClick={() => setStep("idle")}
+              className="w-full bg-gray-100 text-gray-600 font-medium text-sm py-2.5 rounded-xl hover:bg-gray-200 transition-all">
+              {isEn ? "Try again" : "もう一度試す"}
+            </button>
+            {result.error?.includes("credentials") && (
+              <button onClick={() => setStep("update-token")}
+                className="w-full bg-blue-100 text-blue-600 font-medium text-xs py-2 rounded-xl hover:bg-blue-200 transition-all">
+                🔑 {isEn ? "Update token" : "トークンを更新"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* update-token */}
+        {step === "update-token" && (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-600">{isEn ? "Paste your new Meta access token:" : "新しいMetaアクセストークンを貼り付けてください:"}</p>
+            <textarea value={newToken} onChange={e => setNewToken(e.target.value)} rows={3}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-400 resize-none" />
+            {tokenMsg && <p className="text-xs text-center">{tokenMsg}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => setStep("idle")}
+                className="flex-1 bg-gray-100 text-gray-600 text-sm py-2 rounded-xl hover:bg-gray-200 transition-all">
+                {isEn ? "Cancel" : "キャンセル"}
+              </button>
+              <button onClick={handleSaveToken} disabled={tokenSaving}
+                className="flex-1 bg-blue-600 text-white font-bold text-sm py-2 rounded-xl hover:bg-blue-700 disabled:bg-gray-200 transition-all">
+                {tokenSaving ? "..." : (isEn ? "Save" : "保存")}
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+          <div className="flex items-center justify-center gap-2 py-4">
+            <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+            <span className="text-sm text-blue-600 font-medium">
+              {isEn ? "Generating ad copy..." : "広告文を生成中..."}
+            </span>
+          </div>
+        )}
+
+        {/* preview: 生成結果確認 */}
+        {step === "preview" && adCopy && (
+          <div className="space-y-3">
+            {/* 常に表示する事実確認バナー */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-xs font-bold text-amber-700 mb-1">
+                ⚠️ {isEn ? "Fact-check before publishing" : "公開前に必ず事実確認を"}
+              </p>
+              <p className="text-xs text-amber-600">
+                {isEn
+                  ? "AI generates copy from your input. Verify all numbers, claims, and quotes are accurate."
+                  : "AIがあなたの入力から生成しました。数字・実績・お客様の声は公開前に必ず事実を確認してください。"}
+              </p>
+              {warnings.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {warnings.map((w, i) => (
+                    <li key={i} className="text-xs text-red-600 font-medium">⚠️ {w}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div className="bg-white rounded-xl p-3 border border-blue-100">
               <p className="text-xs font-bold text-blue-500 mb-1">
                 {isEn ? "Headline" : "見出し"}
