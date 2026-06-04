@@ -44,6 +44,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
   const [customerQuote, setCustomerQuote] = useState("");
   const [priceOrOffer, setPriceOrOffer] = useState("");
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     const proof = loadProofData();
@@ -102,6 +103,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
       const data = await res.json();
       if (data.success && data.ad_copy) {
         setAdCopy(data.ad_copy);
+        setWarnings(data.warnings || []);
         setStep("preview");
       } else {
         setResult({ error: String(data.error || "Generation failed") });
@@ -243,6 +245,24 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
         {/* preview: 生成結果確認 */}
         {step === "preview" && adCopy && (
           <div className="space-y-3">
+            {/* 常に表示する事実確認バナー */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-xs font-bold text-amber-700 mb-1">
+                ⚠️ {isEn ? "Fact-check before publishing" : "公開前に必ず事実確認を"}
+              </p>
+              <p className="text-xs text-amber-600">
+                {isEn
+                  ? "AI generates copy from your input. Verify all numbers, claims, and quotes are accurate."
+                  : "AIがあなたの入力から生成しました。数字・実績・お客様の声は公開前に必ず事実を確認してください。"}
+              </p>
+              {warnings.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {warnings.map((w, i) => (
+                    <li key={i} className="text-xs text-red-600 font-medium">⚠️ {w}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div className="bg-white rounded-xl p-3 border border-blue-100">
               <p className="text-xs font-bold text-blue-500 mb-1">
                 {isEn ? "Headline" : "見出し"}

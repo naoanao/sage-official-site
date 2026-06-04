@@ -74,6 +74,18 @@ export async function POST(req: NextRequest) {
     const prompt = isEn
       ? `You are Nick Shackelford, Florind Metalla, and the Superside creative team combined — the world's best Meta ads creators responsible for $100M+ in ad spend and countless 4-6x ROAS campaigns.
 
+## ⚠️ ABSOLUTE RULE — NO HALLUCINATION (legal & policy compliance):
+NEVER invent, fabricate, or assume ANY of the following unless explicitly provided in the PRODUCT BRIEF below:
+- Numbers, percentages, statistics (e.g. "78% success rate", "saves 3 hours/day")
+- Customer counts (e.g. "10,000 customers", "300 businesses")
+- Timeframes for results (e.g. "in 30 days", "within 72 hours")
+- Testimonials or customer quotes
+- Revenue figures, ROI claims, cost savings
+- Awards, media mentions, certifications
+
+If proof_numbers, customer_quote, or price_or_offer are NOT provided: write benefit-focused copy WITHOUT inventing specific numbers. Use qualitative language instead ("many businesses", "significant results", "proven approach").
+Violation = false advertising = illegal. Do NOT improvise facts.
+
 ## ALGORITHM TRUTH (2026)
 Meta's Andromeda: creative IS targeting. 70-80% of performance = creative quality. The ad you write will find its own audience. Write to one specific person in deep pain, not to everyone.
 
@@ -143,6 +155,18 @@ Each card tells ONE angle. Together they build an irresistible case. Think Dyson
   "image_prompt_single": "For single image ad: detailed english prompt — show the AFTER state emotionally, real person, genuine joy/relief/confidence, natural environment, no text overlays, mobile 1:1 or 4:5"
 }`
       : `あなたはNick Shackelford、Florind Metalla、SupersideクリエイティブチームをすべてあわせたMeta広告の世界最高クリエイターです。$1億以上の広告運用で4〜6倍ROASを達成してきた思考で広告を作ってください。
+
+## ⚠️ 絶対ルール — ハルシネーション禁止（法的・ポリシー遵守）：
+以下の情報は、下の「商品情報」に明示されていない限り、絶対に作り上げてはいけません：
+- 数字・パーセンテージ・統計（例：「78%が達成」「3時間短縮」）
+- 顧客数・導入数（例：「1万社」「300名以上」）
+- 結果までの期間（例：「30日で」「72時間以内に」）
+- お客様の声・証言
+- 売上・ROI・コスト削減の具体的数値
+- 受賞歴・メディア掲載・資格・認定
+
+proof_numbers・customer_quote・price_or_offerが未入力の場合：具体的な数字を一切使わず、ベネフィット重視の表現にする。「多くのお客様が」「確かな実績で」のような定性的表現を使う。
+違反＝虚偽広告＝違法。事実を勝手に作ることは絶対禁止。
 
 ## 2026年のアルゴリズム真実
 MetaのAndromeda：クリエイティブがターゲティング。成果の70〜80%はクリエイティブの質。あなたが書く広告が自分で適切な人を見つける。「全員」ではなく「深く悩んでいる一人の人」に向けて書いてください。
@@ -234,7 +258,26 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     const groqData = await groqRes.json();
     const adCopy = JSON.parse(groqData.choices[0].message.content);
 
-    return NextResponse.json({ success: true, ad_copy: adCopy });
+    // ハルシネーション検出：入力にない数字が生成テキストに含まれていないかチェック
+    const inputFacts = [proof_numbers, customer_quote, price_or_offer, business_desc, customer_desc, main_problem, product]
+      .filter(Boolean).join(" ");
+    const generatedText = [adCopy.primary_text_full, adCopy.primary_text_short, adCopy.headline,
+      ...(adCopy.carousel_cards || []).map((c: {card_body?: string}) => c.card_body)].filter(Boolean).join(" ");
+
+    // 数字パターンを抽出して入力に含まれているか検証
+    const numbersInOutput = generatedText.match(/\d+[%万円名社人ヶ月日週時間]+|\d{2,}/g) || [];
+    const suspiciousNumbers = numbersInOutput.filter(n => !inputFacts.includes(n));
+
+    return NextResponse.json({
+      success: true,
+      ad_copy: adCopy,
+      // 警告フラグ（UIで表示）
+      warnings: suspiciousNumbers.length > 0
+        ? suspiciousNumbers.map(n => isEn
+            ? `"${n}" was not in your input — please verify this is accurate before publishing`
+            : `「${n}」は入力情報にありませんでした。公開前に事実確認してください`)
+        : [],
+    });
   } catch (err) {
     console.error("meta-ads/generate error:", err);
     return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
