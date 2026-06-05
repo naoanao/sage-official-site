@@ -3,7 +3,7 @@
 > Sageシステムの全体構造・なおさんのアイデンティティ・既知問題と解決策を含む。  
 > 「2ヶ月に一回同じことを繰り返す」を防ぐためのシステムメモリ。
 
-最終更新: 2026-06-04（Meta広告マルチユーザー対応・世界トップレベルプロンプト・ハルシネーション対策 完了）
+最終更新: 2026-06-05（Growlプロンプト品質PDCA・英語版修正・Geminiフォールバック追加・収益化実装 完了）
 
 ---
 
@@ -62,6 +62,60 @@ Claude Code / Cowork などの外部AIツールは、SageというAI分身の**�
 - **volume投稿への回帰禁止**：CTAだけの投稿、宣伝投稿の連投はしない
 - **pr_post_copy.mdのBluesky投稿文は旧スタイルのため使用しない**（CTA/ハッシュタグ混入・一括投稿前提）
 - EngagementBotは停止中（再開条件：reply persona確認後、flask_server.pyのコメント解除）
+
+---
+
+## 3a-1. Growl プロンプト品質改善ログ（2026-06-05 完了）
+
+> AIへ: 同じ問題を再修正しないために必ず読むこと。
+
+### 修正済み問題と対処法
+
+| 問題 | 原因 | 対処法 | 状態 |
+|---|---|---|---|
+| JSON途中切れ（500エラー） | maxOutputTokens:1500が不足 | 3000に増量（Gemini・Groq両方） | ✅解決済み |
+| actionsが広告費必要・長期作業 | JSONテンプレートの例示が弱い | テンプレートに「スマホ・無料・30分・KPI必須」制約を直接埋め込み | ✅解決済み |
+| headline「産後ダイエットの悩み」等の無フックコピー | テンプレートに禁止例なし | 禁止ワード・良い例をテンプレートに追記 | ✅解決済み |
+| BOFU（CONVERSIONS）でCTA=LEARN_MORE | ゴール別分岐指示なし | goal別CTAマッピングをテンプレートに追加 | ✅解決済み |
+| USPに架空の完走率87%等が出る | 定量データ必須ルールとUSPが競合 | COMMON_RULESにUSP例外規定を追記 | ✅解決済み |
+| image_prompt_singleがテンプレート説明文をコピー | サンプル形式の書き方が悪い | 「[Write a custom prompt…]」形式に変更 | ✅解決済み |
+| main_channel「Instagram + 公式EC」（ジムにEC不適切） | テンプレートの例が不正確 | EC禁止条件をテンプレートに追記 | ✅解決済み |
+| EN版に promotion_gap フィールド欠落 | JA版のみ実装、EN版に追加忘れ | EN JSONテンプレートにも追加 | ✅解決済み |
+| Meta広告がGroqレートリミットで全停止 | フォールバックなし | Gemini→Groqフォールバック追加、maxDuration:30→55 | ✅解決済み |
+
+### ⚠️ 既知の制限事項
+- Groq無料枠 + Gemini無料枠は1日の大量テストで枯渇する。翌日リセットで復旧。
+- GrowlのgitブランチはWorkspace内で `candidate/20260605-playwright-mcp` → mainへpushするフロー。
+
+---
+
+## 3a-2. Growl 収益化実装ログ（2026-06-05 完了）
+
+> AIへ: 収益化インフラは既に存在する。同じものを再実装しないこと。
+
+### 収益化の現状（本番稼働済み）
+
+| 機能 | 状態 | 詳細 |
+|---|---|---|
+| Stripe Payment Links | ✅ 設定済み | Standard ¥3,000/月、Pro ¥8,000/月 |
+| Stripe Webhook | ✅ 実装済み | `/api/webhook/stripe` で署名検証・プランDB更新 |
+| /upgrade ページ | ✅ 実装済み | プラン比較表・Stripe決済リンク |
+| /api/my-plan | ✅ 実装済み | Supabaseからプラン取得 |
+| FreeProgressBar | ✅ 実装済み | 月5回制限カウンター（localStorage） |
+| LP価格表 | ✅ 2026-06-05追加 | フリー¥0 / スタンダード¥3,000 の2プラン表示 |
+| Meta広告ゲート | ✅ 2026-06-05実装 | 有料プランのみAdBoostCard表示、無料は/upgradeへ誘導 |
+| 支援バナー | ✅ 2026-06-05追加 | complete画面に「☕ Growlを応援する」→/upgrade |
+
+### 収益化の設計思想
+- **マーケ分析（analyze）**: 無料（月5回制限）→ 集客の核心。制限到達でアップグレード誘導
+- **Meta広告生成（meta-ads）**: 有料専用 → 最も高価値な機能。競合は$50+で提供
+- **課金フロー**: LP → 無料体験 → 価格表 → Stripe → Webhook → Supabaseにプラン保存 → isPaidPlan()でゲート開放
+
+### 収益化で触ったファイル
+- `ai-marketing-app/app/page.tsx` — LP価格表セクション追加
+- `ai-marketing-app/app/dashboard/page.tsx` — Meta広告をisPaidPlan()でゲート
+- `ai-marketing-app/app/complete/[id]/page.tsx` — 支援バナー追加
+- `ai-marketing-app/lib/stripe-config.ts` — Stripe設定（変更なし・参照のみ）
 
 ---
 

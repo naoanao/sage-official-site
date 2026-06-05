@@ -1,5 +1,41 @@
 # 🧠 Sage AI / Growl / LearnAI — 真・完全統合調査レポート（神話級・真の決定版）
-> 調査・更新日: 2026-06-04 | Meta広告マルチユーザー対応・世界トップレベルプロンプト・ハルシネーション対策 完了
+> 調査・更新日: 2026-06-05 | プロンプト品質PDCA・英語版修正・Geminiフォールバック追加・収益化実装 完了
+
+---
+
+## 🔥 最新更新（2026-06-05 Part 2）— Growl 収益化実装
+
+**収益化インフラ（本番稼働開始）**
+- LPに価格表セクション追加（フリー¥0 / スタンダード¥3,000）
+- Meta広告生成を有料プランのみに制限（isPaidPlan()ゲート）
+- complete画面に「☕ Growlを応援する」支援バナー追加
+- 収益化の流れ：LP → 無料体験（5回）→ 価格表 → Stripe → Webhook → Supabase → ゲート開放
+
+**収益化設計の判断**
+- マーケ分析（3C・SWOT等）：無料維持 → 集客の核心、摩擦ゼロが最優先
+- Meta広告生成：有料専用 → 競合が$50+取る最高価値機能。ここで差別化
+
+---
+
+## 🔥 最新更新（2026-06-05 Part 1）— Growl プロンプト品質PDCA・インフラ強化
+
+**プロンプト品質（一流マーケター視点でのPDCA完了）**
+- `analyze/route.ts`：maxOutputTokens 1500→3000（JSON途中切れ解決）
+- actions テンプレートに「スマホ・無料・30分・KPI必須」制約を直接埋め込み
+- COMMON_RULESにUSP例外規定追加（架空の完走率・達成率の生成を禁止）
+- 英語版3CテンプレートにEN `promotion_gap` フィールドを追加（欠落していた）
+- `winning_message` / `headline` にクリシェ禁止ルール（"Transform Your Body"等）追加
+- `main_channel` からEC禁止条件を追加（ジム・サービス業に不適切だったため）
+
+**広告コピー品質（meta-ads/generate/route.ts）**
+- BOFU（goal=CONVERSIONS）時のCTA自動マッピング：BOOK_NOW/GET_QUOTE強制
+- `description` / carousel `card_headline` に具体性制約追加（"Before"/"After"禁止）
+- `image_prompt_single` テンプレートをコピー防止形式に変更
+
+**インフラ強化**
+- `meta-ads/generate`にGeminiフォールバック追加（Groqレートリミット時の全停止を解消）
+- Groqに8秒AbortControllerタイムアウトを追加（高速フォールバック）
+- maxDuration: 30→55（両プロバイダー呼び出しに十分な時間を確保）
 
 ---
 
