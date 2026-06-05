@@ -1,9 +1,11 @@
-from flask import Blueprint, request, jsonify
+import enum
+import os
+import logging
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from models import User
 from sqlalchemy.exc import IntegrityError
 from extensions import db
-import logging
 
 # Configure logging for auth.py
 logging.basicConfig(level=logging.DEBUG)
@@ -57,6 +59,35 @@ def login():
     else:
         logger.debug(f"Password check failed for user {email}")
         return jsonify({"error": "Invalid credentials"}), 401
+
+class AuthStrategy(enum.Enum):
+    PUBLIC = "public"
+    ADMIN_TOKEN = "admin_token"
+    TEST_MODE = "test_mode"
+
+
+def require_admin_token():
+    token = request.headers.get('X-SAGE-ADMIN-TOKEN', '')
+    env_token = os.getenv('SAGE_ADMIN_TOKEN', '')
+    if env_token and token != env_token:
+        return jsonify({'error': 'Unauthorized'}), 401
+    return None
+
+
+def admin_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        resp = require_admin_token()
+        if resp:
+            return resp
+        return f(*args, **kwargs)
+    return decorated
+
+
+def apply_public_strategy():
+    g.auth_strategy = AuthStrategy.PUBLIC
+
 
 @auth_bp.route('/protected', methods=['GET'])
 @jwt_required()

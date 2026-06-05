@@ -1,6 +1,6 @@
 """Miscellaneous routes — Phase 5 blueprint extraction (command, strategy, SPA)."""
 import subprocess
-from flask import Blueprint, request, jsonify, send_from_directory, abort
+from flask import Blueprint, request, jsonify, send_from_directory, abort, current_app
 
 misc_bp = Blueprint('misc_bp', __name__)
 
@@ -21,7 +21,7 @@ def command_execute():
 
 @misc_bp.route('/api/admin/strategy', methods=['GET'])
 def get_strategy():
-    sm = getattr(misc_bp, '_strategy_manager', None)
+    sm = current_app.config.get('STRATEGY_MANAGER')
     if not sm:
         return jsonify({'error': 'Strategy manager not available'}), 503
     return jsonify(sm.get_strategy())
@@ -29,7 +29,7 @@ def get_strategy():
 
 @misc_bp.route('/api/admin/strategy', methods=['POST'])
 def save_strategy():
-    sm = getattr(misc_bp, '_strategy_manager', None)
+    sm = current_app.config.get('STRATEGY_MANAGER')
     if not sm:
         return jsonify({'error': 'Strategy manager not available'}), 503
     data = request.get_json()

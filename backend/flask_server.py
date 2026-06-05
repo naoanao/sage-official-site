@@ -299,6 +299,14 @@ except Exception as _e:
     import logging as _logging
     _logging.getLogger(__name__).warning(f"misc routes not loaded: {_e}")
 
+# ── sns_writer blueprint (blog/gumroad run-now, bilingual posting, SNS sync) ──
+try:
+    from backend.routes.sns_writer import sns_writer_bp
+    app.register_blueprint(sns_writer_bp)
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(f"sns_writer routes not loaded: {_e}")
+
 # ── chat / pilot blueprint (chat, pilot/chat, pilot/generate) ──────────
 try:
     from backend.routes.chat import chat_bp

@@ -445,3 +445,56 @@ Phase 3aとして、8つのstatus-only/read-only SNS・Publishingルートを `b
 - Webhook署名検証 (Stripe, Whop) はルート内インラインのまま
 - `get_or_init_pipeline()` は関数参照として `app.config['GET_OR_INIT_PIPELINE']` に登録
 - Phase 4b では `pathlib.Path("obsidian_vault/knowledge")` を `_project_root()` 経由に修正し安全化
+
+---
+
+## 2026-06-05: Phase 5 完了 — extensions復元 + sns_writer_bp抽出 + scheduler再エクスポート
+
+### 決定
+3つの残タスクを一括解決。加えて misc.py の戦略マネージャ参照バグ（BP属性→`current_app.config`未移行）も修正。
+
+### 変更内容
+
+#### ① extensions モジュールの復元 (優先度①)
+- **新規**: `backend/extensions/__init__.py` — `db` (SQLAlchemy), `bcrypt` (Bcrypt) を定義
+- **新規**: `backend/utils/__init__.py` — 空パッケージ（utils を Python パッケージ化）
+- **修正**: `backend/utils/auth.py` — `AuthStrategy` enum, `require_admin_token()`, `admin_required` デコレータ, `apply_public_strategy()` を追加（既存JWT BPと併存）
+
+**効果**: `publish_bp` と `productize_bp` がロード可能になり、SNS/Publishing 8ルート + Productize 7ルート = 15ルートが復活。
+
+#### ② sns_writer_bp の抽出 (優先度②)
+- **新規**: `backend/routes/sns_writer.py` — `sns_writer_bp` Blueprint、5ルート
+  - `POST /api/blog/run-now`
+  - `POST /api/gumroad/run-now`
+  - `POST /api/sns/post_bilingual`
+  - `POST /api/sns/sync_performance`
+  - `GET /api/sns/performance_summary`
+- **削除**: `publish.py` から上記5ルートを除去（重複登録回避）
+- **登録**: `flask_server.py` に `sns_writer_bp` 登録ブロック追加
+
+#### ③ scheduler/__init__.py 再エクスポート (優先度③)
+- **修正**: `backend/scheduler/__init__.py` — 全7スケジューラクラスの明示的再エクスポートを追加
+
+#### ④ misc.py 戦略マネージャ参照バグ修正 (付随)
+- **修正**: `backend/routes/misc.py` — `getattr(misc_bp, '_strategy_manager')` → `current_app.config.get('STRATEGY_MANAGER')`
+- **効果**: `TestAdminStrategy` 6テストが全件グリーンに復帰
+
+### 実績
+| 項目 | 値 |
+|------|-----|
+| 新規作成ファイル | `extensions/__init__.py`, `utils/__init__.py`, `routes/sns_writer.py` |
+| 修正ファイル | `auth.py`, `flask_server.py`, `publish.py`, `misc.py`, `scheduler/__init__.py` |
+| 復活したBlueprintルート | publish 14 + productize 19 = 33ルート (publish_bp + productize_bp) |
+| 新規抽出Blueprintルート | sns_writer 5ルート (sns_writer_bp) |
+| 抽出済みBlueprint合計 | **8** (note, system, store, publish, productize, content, brain, sns_writer) |
+| 特性テスト | **188/195 passed ✅** (7件は事前存在の既存失敗) |
+| 未解決: `backend.data.jobs_store` | blog/gumroad run-now (4テスト) |
+| 未解決: Content CRUD 404 | 1テスト |
+| 未解決: Payment webhook | 2テスト |
+
+### 次回タスク
+- `backend.data.jobs_store` モジュールの作成または削除（blog_scheduler + gumroad_scheduler依存）
+- Content CRUD `test_update_nonexistent_returns_404` の調査
+- Payment webhook テストの調査（おそらくルート移動後の期待値不一致）
+- `server.py`（510行, シンプルHTTPサーバー）の取扱い検討
+- `backend/routes/identity.py` + `jobs.py` の `flask_server.py` 登録（Blueprintsは既存・未配線）
