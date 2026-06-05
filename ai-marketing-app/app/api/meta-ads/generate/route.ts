@@ -438,30 +438,43 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     }
 
     // 2nd: Gemini fallback (rate limit / error 時)
+    let geminiDebug = "";
     if (!adCopy && process.env.GEMINI_API_KEY) {
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt + "\n\nRespond with valid JSON only." }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
-          }),
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt + "\n\nRespond with valid JSON only." }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
+            }),
+          }
+        );
+        geminiDebug = `status:${geminiRes.status}`;
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+          geminiDebug += ` rawLen:${raw.length}`;
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (match) {
+            try { adCopy = JSON.parse(match[0]); geminiDebug += " parsed:ok"; }
+            catch(e) { geminiDebug += ` parseErr:${e}`; }
+          } else {
+            geminiDebug += " noJsonMatch";
+          }
+        } else {
+          const errBody = await geminiRes.text();
+          geminiDebug += ` body:${errBody.slice(0, 200)}`;
         }
-      );
-      if (geminiRes.ok) {
-        const geminiData = await geminiRes.json();
-        const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-        const match = raw.match(/\{[\s\S]*\}/);
-        if (match) {
-          try { adCopy = JSON.parse(match[0]); } catch {}
-        }
+      } catch(e) {
+        geminiDebug += ` exception:${e}`;
       }
     }
 
     if (!adCopy) {
-      throw new Error("All AI providers failed. Please try again later.");
+      throw new Error(`All AI providers failed. Gemini debug: ${geminiDebug}`);
     }
 
     // ハルシネーション検出：入力にない数字が生成テキストに含まれていないかチェック
