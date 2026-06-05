@@ -253,6 +253,24 @@ function CompleteContent() {
           </div>
         </div>
 
+        {/* Support banner */}
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 mb-4 text-center">
+          <p className="text-sm font-semibold text-amber-800 mb-1">
+            {isEn ? "☕ Support this project" : "☕ このツールを応援する"}
+          </p>
+          <p className="text-xs text-amber-600 mb-3 leading-relaxed">
+            {isEn
+              ? "Growl is built solo, 3 hours/day. If it saved you time today, a coffee keeps it alive."
+              : "Growlは1人で1日3時間ずつ作っています。役に立ったと思ったら、コーヒー1杯分の支援が続ける力になります。"}
+          </p>
+          <a
+            href="/upgrade"
+            className="inline-block bg-amber-400 hover:bg-amber-500 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-colors"
+          >
+            {isEn ? "Support Growl →" : "Growlを応援する →"}
+          </a>
+        </div>
+
         {/* Back button */}
         <button
           type="button"

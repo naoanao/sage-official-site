@@ -192,6 +192,53 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section className="px-6 py-16 bg-white">
+        <div className="max-w-md mx-auto">
+          <h2 className="text-xl font-bold text-gray-800 text-center mb-2">
+            {isEn ? "Simple pricing" : "シンプルな料金"}
+          </h2>
+          <p className="text-gray-400 text-xs text-center mb-10">
+            {isEn ? "Start free. Upgrade when you're ready." : "まず無料で試して、必要になったら上げる。"}
+          </p>
+          <div className="flex flex-col gap-4">
+            {/* Free */}
+            <div className="rounded-2xl border border-gray-100 p-6 bg-gray-50">
+              <p className="text-sm font-semibold text-gray-500 mb-1">{isEn ? "Free" : "フリー"}</p>
+              <p className="text-3xl font-bold text-gray-900 mb-4">{isEn ? "$0" : "¥0"}<span className="text-base font-normal text-gray-400">{isEn ? "/mo" : "/月"}</span></p>
+              <ul className="flex flex-col gap-2 text-sm text-gray-600 mb-6">
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span>{isEn ? "5 analyses per month" : "月5回まで分析"}</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span>{isEn ? "All 10 frameworks (3C, SWOT, STP...)" : "全10フレームワーク（3C・SWOT・STPなど）"}</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span>{isEn ? "No signup required" : "登録不要"}</li>
+              </ul>
+              <Link href="/onboarding/industry" className="block text-center border border-gray-200 rounded-xl py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                {isEn ? "Start free →" : "無料で始める →"}
+              </Link>
+            </div>
+            {/* Standard — highlighted */}
+            <div className="rounded-2xl border-2 border-indigo-500 p-6 bg-indigo-50 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                {isEn ? "Most popular" : "おすすめ"}
+              </div>
+              <p className="text-sm font-semibold text-indigo-600 mb-1">{isEn ? "Standard" : "スタンダード"}</p>
+              <p className="text-3xl font-bold text-gray-900 mb-4">{isEn ? "$19" : "¥3,000"}<span className="text-base font-normal text-gray-400">{isEn ? "/mo" : "/月"}</span></p>
+              <ul className="flex flex-col gap-2 text-sm text-gray-700 mb-6">
+                <li className="flex items-center gap-2"><span className="text-indigo-500">✓</span>{isEn ? "Unlimited analyses" : "分析回数は無制限"}</li>
+                <li className="flex items-center gap-2"><span className="text-indigo-500">✓</span><strong>{isEn ? "Meta Ads copy generator" : "Meta広告コピー自動生成"}</strong></li>
+                <li className="flex items-center gap-2"><span className="text-indigo-500">✓</span>{isEn ? "Weekly actions auto-delivered" : "毎週の施策を自動配信"}</li>
+                <li className="flex items-center gap-2"><span className="text-indigo-500">✓</span>{isEn ? "Monthly performance report" : "月次レポートで効果を確認"}</li>
+              </ul>
+              <Link href="/upgrade" className="block text-center bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl py-3 text-sm font-bold transition-colors shadow-lg shadow-indigo-200">
+                {isEn ? "Start Standard →" : "スタンダードにする →"}
+              </Link>
+            </div>
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-4">
+            {isEn ? "Cancel anytime · Secure payment via Stripe" : "いつでもキャンセル可 · Stripe決済で安全"}
+          </p>
+        </div>
+      </section>
+
       {/* CTA bottom */}
       <section className="px-6 py-16 text-center">
         <p className="text-gray-500 text-sm mb-2">
