@@ -303,14 +303,24 @@ ${jsonTemplate}`;
     "Competitor (gaps they leave unfilled)": ["What competitors tend to focus on and what customer frustration that creates 1", "The deeper customer need competitors seem to miss — the gap this business can own 2", "The unique value this business delivers when it fills that gap 3"],
     "Company (change only you can deliver)": ["The specific life change or experience only this business can provide 1", "Why competitors cannot copy this — name the real barrier (skill, story, relationship) 2", "A weakness to own honestly, and the one move that still makes this business worth choosing 3"]
   },
+  "promotion_gap": {
+    "meta_ads_status": "Estimated competition level for this category on Meta Ads — are competitors already heavy here, or is there whitespace?",
+    "google_ads_status": "Estimated competition on Google Search for this business category — key keyword competition level",
+    "untapped_channel": "A specific channel or keyword angle competitors haven't moved into yet — a first-mover opportunity",
+    "recommended_first_ad": "The single first ad campaign this business should run now — specify channel, angle, and target audience"
+  },
   "insight": "The life change this business can create for customers, and the first move to communicate it this week (2 sentences, plain text)",
-  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. No invented discounts, coupons, referral programs, or events", "same 2", "same 3"],
+  "actions": [
+    "RULE: No paid ads, no hiring, no events. Smartphone only, free, completable in 30 minutes this week. Must include: which app, what exactly to do, and which metric to check afterward. Example: Post a before/after photo on Instagram with #postpartumfitness + #[city]personalgym → check reach and profile visits 24 hours later.",
+    "RULE: Same constraints. Different channel from action 1. Example: Create a Google Maps review-request message and send it via text to 3 past clients → track review count over the next 7 days.",
+    "RULE: Same constraints. Competitor research angle. Example: Open the top 3 competitor Instagram accounts, find their 3 most-saved posts, note the common theme, and apply it to your next post topic."
+  ],
   "strategy_summary": {
-    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
-    "usp": "Unique strength only this business can honestly claim (under 15 words)",
-    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
-    "top_priority": "Single most important action this month (specific, under 20 words)",
-    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+    "target": "Top priority customer segment — be specific: age, life stage, exact pain point, awareness level (under 25 words)",
+    "usp": "The one honest claim only this business can make — no invented numbers or percentages unless provided. Use qualitative differentiators from the input (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google Maps / Email / Facebook / YouTube. NO LINE. NO e-commerce platforms unless product is physical retail.",
+    "top_priority": "Single most important action this month (specific and actionable, under 20 words)",
+    "winning_message": "A compelling tagline with a number, specific timeframe, or strong emotional trigger — under 15 words. BANNED PHRASES: 'Transform Your [body/life/business]', 'Reclaim Your [confidence/freedom]', 'Take Your [X] to the Next Level', 'Achieve Your Goals', 'Unlock Your Potential'. Write something only THIS business can say."
   }
 }` : `{
   "framework": "3C分析",

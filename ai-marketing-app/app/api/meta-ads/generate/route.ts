@@ -284,18 +284,18 @@ Each card tells ONE angle. Together they build an irresistible case. Think Dyson
 {
   "framework": "chosen framework + why (1 sentence)",
   "hook_type": "chosen hook + why (1 sentence)",
-  "headline": "max 40 chars — MUST contain a number, specific timeframe, or strong emotional trigger. BANNED: product category as headline ('Marketing Course', 'Personal Gym'), vague pain noun ('Your Struggle', 'The Problem'). GOOD examples: 'Postpartum -4kg in 3 months. Here's how.' / 'Stop guessing. Your 3 actions this week.'",
+  "headline": "max 40 chars — MUST contain a number, specific timeframe, or strong emotional trigger. BANNED: product category as headline ('Marketing Course', 'Personal Gym'), vague pain noun ('Your Struggle', 'The Problem'). GOOD examples: 'Lost 9 lbs in 3 months. Here's how.' / 'Stop guessing. Your 3 actions this week.'",
   "primary_text_short": "under 125 chars — stops the scroll. Use curiosity gap or direct pain hit. 'Are you still [specific struggle]?' or '[Specific fear] is costing you [specific loss].'",
   "primary_text_full": "MINIMUM 300 chars, TARGET 400-500 chars. MANDATORY structure: [Hook sentence] [2-3 sentences agitating the pain - make it real and specific] [Introduce solution naturally] [Proof point using provided data or qualitative if no data] [Emotional close] [CTA]. DO NOT summarize. Write the FULL narrative. Every section must be present.",
-  "description": "max 30 chars — benefit as a verb or transformation, NOT product category alone",
+  "description": "max 30 chars — a specific benefit, result, or offer. BANNED generic phrases: 'Transform Your Body', 'Change Your Life', 'Achieve Your Goals', 'Take Control', 'Get Results'. Use what makes THIS product different (e.g. 'Only 2x/week. Built for moms.' or 'First session free.').",
   "cta": "Choose by campaign goal: AWARENESS→LEARN_MORE / CONSIDERATION→LEARN_MORE or SIGN_UP / CONVERSIONS or SALES→BOOK_NOW or GET_QUOTE (mandatory for conversion goals) / LEAD_GEN→CONTACT_US",
-  "target_audience": "precise: age range, specific interests, behaviors, life events, job titles if B2B",
+  "target_audience": "Detailed audience spec — include: age range + life stage/event + specific interests + behaviors. Example: 'Women 28-40, life event: new parent, interests: postpartum fitness/baby care, behaviors: engaged with fitness content, exclude: current gym members'",
   "carousel_cards": [
-    {"card_headline": "max 40 chars", "card_body": "max 60 chars — one specific angle. Cards 2-3 should speak to the expansion layer (same pain, different awareness stage)", "card_image_prompt": "English visual prompt — show THIS specific transformation/benefit, authentic real person showing genuine emotion (NOT stock-photo style), no text overlay, mobile 1:1"},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, genuine emotion, no text"},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, genuine emotion, no text"}
+    {"card_headline": "Use a specific number, timeframe, or named pain — NEVER just 'Before' or 'After'. Example: '8 months postpartum' or 'Still 11 lbs over'", "card_body": "max 60 chars — specific detail from the product brief, not category description", "card_image_prompt": "English visual prompt — show THIS specific transformation/benefit, authentic real person, genuine emotion, no text overlay, mobile 1:1"},
+    {"card_headline": "Specific result or turning point — Example: 'Lost 9 lbs in 3 months' or 'Energy came back'", "card_body": "max 60 chars — one concrete proof point or benefit", "card_image_prompt": "English prompt only — specific after-state scene, genuine emotion, no text"},
+    {"card_headline": "Address the expansion layer objection — Example: 'Only 2x/week. Fits mom life.' or 'First session free'", "card_body": "max 60 chars — removes the biggest objection or shows the offer", "card_image_prompt": "English prompt only — specific scene showing ease/accessibility/offer, no text"}
   ],
-  "image_prompt_single": "[Write a custom English image generation prompt specific to THIS product's after-state. Format: '[demographic matching target customer] [specific emotional expression showing the after-state] [specific setting relevant to this product] [clothing/props relevant to product] [lighting quality] no text overlay [aspect ratio 1:1 or 4:5]'. Do NOT copy this instruction text — generate a unique prompt for this specific product.]"
+  "image_prompt_single": "[Write a unique English image generation prompt for THIS product's after-state. Include: demographic matching target customer + specific emotional expression + specific setting + relevant clothing/context + lighting + no text overlay + aspect ratio. Do NOT copy this instruction — write a fresh custom prompt.]"
 }`
       : `あなたはNick Shackelford、Florind Metalla、SupersideクリエイティブチームをすべてあわせたMeta広告の世界最高クリエイターです。$1億以上の広告運用で4〜6倍ROASを達成してきた思考で広告を作ってください。
 
