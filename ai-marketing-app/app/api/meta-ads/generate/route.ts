@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
 
     const isEn = lang === "en";
 
+    // undefined/null/空文字を安全な文字列に変換するヘルパー
+    const safe = (v: unknown, fallback = ""): string =>
+      !v || v === "undefined" || v === "null" ? fallback : String(v);
+
     // ロケール別文化的コンテキスト（2026年 2.8M広告分析より）
     const localeContext: Record<string, string> = {
       us: `LOCALE: United States 🇺🇸
@@ -110,18 +114,18 @@ Meta's Andromeda: creative IS targeting. 70-80% of performance = creative qualit
 ## ${localeInstruction}
 
 ## PRODUCT BRIEF
-Business: ${business_desc}
-Industry: ${industry}
-Ideal customer: ${customer_desc}
-Their #1 pain: ${main_problem}
-Product: ${product || "our service"}
-Goal: ${goal || "get more customers"}
-${proof_numbers ? `Proof/Numbers: ${proof_numbers}` : ""}
-${before_state ? `Customer BEFORE: ${before_state}` : ""}
-${after_state ? `Customer AFTER: ${after_state}` : ""}
-${competitor_diff ? `Why we're different: ${competitor_diff}` : ""}
-${price_or_offer ? `Offer: ${price_or_offer}` : ""}
-${customer_quote ? `Real customer quote: "${customer_quote}"` : ""}
+Business: ${safe(business_desc, "a local small business")}
+Industry: ${safe(industry, "small business")}
+Ideal customer: ${safe(customer_desc, "local customers")}
+Their #1 pain: ${safe(main_problem, "not getting enough new customers")}
+Product: ${safe(product, "our service")}
+Goal: ${safe(goal, "get more customers")}
+${safe(proof_numbers) ? `Proof/Numbers: ${proof_numbers}` : ""}
+${safe(before_state) ? `Customer BEFORE: ${before_state}` : ""}
+${safe(after_state) ? `Customer AFTER: ${after_state}` : ""}
+${safe(competitor_diff) ? `Why we're different: ${competitor_diff}` : ""}
+${safe(price_or_offer) ? `Offer: ${price_or_offer}` : ""}
+${safe(customer_quote) ? `Real customer quote: "${customer_quote}"` : ""}
 ${siteContent ? `\n## WEBSITE CONTENT (use specific details, services, language from this site — but only verified facts):\n${siteContent}` : ""}
 
 ## CHOOSE YOUR FRAMEWORK (pick ONE that fits this product best):
@@ -193,18 +197,18 @@ MetaのAndromeda：クリエイティブがターゲティング。成果の70�
 ## ${localeInstruction}
 
 ## 商品情報
-業種: ${industry}
-事業説明: ${business_desc}
-理想顧客: ${customer_desc}
-最大の悩み: ${main_problem}
-商品/サービス: ${product || "サービス全般"}
-目標: ${goal || "新規顧客獲得"}
-${proof_numbers ? `実績・数字: ${proof_numbers}` : ""}
-${before_state ? `顧客のビフォー状態: ${before_state}` : ""}
-${after_state ? `顧客のアフター状態: ${after_state}` : ""}
-${competitor_diff ? `競合との差別化: ${competitor_diff}` : ""}
-${price_or_offer ? `価格・オファー: ${price_or_offer}` : ""}
-${customer_quote ? `実際のお客様の声: 「${customer_quote}」` : ""}
+業種: ${safe(industry, "小規模店舗")}
+事業説明: ${safe(business_desc, "地域に根ざした小規模ビジネス")}
+理想顧客: ${safe(customer_desc, "地域の一般消費者")}
+最大の悩み: ${safe(main_problem, "新規顧客が増えない")}
+商品/サービス: ${safe(product, "サービス全般")}
+目標: ${safe(goal, "新規顧客獲得")}
+${safe(proof_numbers) ? `実績・数字: ${proof_numbers}` : ""}
+${safe(before_state) ? `顧客のビフォー状態: ${before_state}` : ""}
+${safe(after_state) ? `顧客のアフター状態: ${after_state}` : ""}
+${safe(competitor_diff) ? `競合との差別化: ${competitor_diff}` : ""}
+${safe(price_or_offer) ? `価格・オファー: ${price_or_offer}` : ""}
+${safe(customer_quote) ? `実際のお客様の声: 「${customer_quote}」` : ""}
 ${siteContent ? `\n## ウェブサイト内容（このサイトの具体的なサービス・言葉・特徴を活用すること。ただし確認できた事実のみ使用）：\n${siteContent}` : ""}
 
 ## フレームワーク選択（この商品に最適な1つ）：

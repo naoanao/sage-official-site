@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { loadSession, updateActionComplete, StoredSession, clearOnboarding, clearSession } from "@/lib/store";
+import { loadSession, loadOnboarding, updateActionComplete, StoredSession, clearOnboarding, clearSession } from "@/lib/store";
 import ActionCard from "@/components/ActionCard";
 import FreeProgressBar from "@/components/FreeProgressBar";
 import LangToggle from "@/components/LangToggle";
@@ -17,11 +17,13 @@ export default function DashboardPage() {
   const { t, lang } = useLang();
   const isEn = lang === "en";
   const [session, setSession] = useState<StoredSession | null>(null);
+  const [onboarding, setOnboarding] = useState<ReturnType<typeof loadOnboarding>>({});
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [lineLinked, setLineLinked] = useState<boolean | null>(null);
 
   useEffect(() => {
+    setOnboarding(loadOnboarding());
     function reloadSession() {
       const s = loadSession();
       if (!s) {
@@ -182,12 +184,13 @@ useEffect(() => {
         <SafeSection>
           <AdBoostCard
             session={{
-              industry: session.user_profile?.industry as string,
-              business_desc: session.user_profile?.business_desc as string,
-              customer_desc: session.user_profile?.customer_desc as string,
-              main_problem: session.user_profile?.main_problem as string,
-              final_goal: session.user_profile?.final_goal as string,
-              booking_url: session.user_profile?.booking_url as string,
+              // onboarding を優先、なければ session.user_profile にフォールバック
+              industry: (onboarding.industry || session.user_profile?.industry) as string,
+              business_desc: (onboarding.business_desc || session.user_profile?.business_desc) as string,
+              customer_desc: (onboarding.customer_desc || session.user_profile?.customer_desc) as string,
+              main_problem: (onboarding.main_problem || session.user_profile?.main_problem) as string,
+              final_goal: (onboarding.final_goal || session.user_profile?.final_goal) as string,
+              booking_url: (onboarding.booking_url || session.user_profile?.booking_url) as string,
             }}
             lang={lang}
           />
