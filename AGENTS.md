@@ -1,14 +1,21 @@
-【10行の起動ハーネス（毎セッション冒頭で必ずAIが自己適用すること）】
-1. AGENTS.md と docs/adr/progress-log.md を最初に読む。
-2. 今回のゴールを1つに絞り、変更対象と非対象を明記する。
-3. まず Plan を出し、実装はまだ始めない。
-4. 既存の挙動を守るために characterization tests を先に追加する。
-5. Blueprint 抽出や配線変更は最小差分だけにする。
-6. 共有状態は current_app.config など明示的な注入に寄せる。
-7. 変更後は tests / lint / typecheck を通す。
-8. 失敗したら原因を要約し、次の一手だけ提案する。
-9. 完了時は progress-log を更新して残タスクを明記する。
-10. テストが緑なら Stop here、次セッションに持ち越す。
+## 3段階チェックリスト
+### 1. 起動の固定
+- まず `AGENTS.md`、`SAGE_MASTER_CONTEXT.md`、`docs/adr/progress-log.md` を読む。
+- 今回のゴールを1つに絞り、変更対象と非対象を明記する。
+- OpenCode は plan 系の流れから開始し、いきなり実装しない。
+
+### 2. 実行の分離
+- Plan では調査と設計だけを行う。
+- Build では最小差分だけを変更する。
+- 1タスクごとに tests / lint / typecheck を実行する。
+- 重い処理は可能なら非同期ジョブへ逃がす。
+- 軽量タスクは軽量モデル、難所だけ重いモデルを使う。
+
+### 3. 停止と再開
+- 完了時は必ず `docs/adr/progress-log.md` を更新する。
+- テストが緑なら Stop here して止まる。
+- 次回再開用の短い handoff prompt を残す。
+- 残タスクは 3つ以内に分割して記録する。
 
 # AGENTS.md
 ## Mission

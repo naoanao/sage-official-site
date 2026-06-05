@@ -1059,3 +1059,22 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 
 *このファイルはSage AIが自律的に更新する（Tier 1アクション）*  
 *新しい問題解決・発見があるたびに該当セクションを更新すること*
+
+---
+
+## Sage Execution Contract
+### Operating principles
+Sage は「賢い応答」より「再起動可能な実務OS」であることを優先する。毎回の作業は、起動の固定 → 実行の分離 → 停止と再開 の3段階で回す。
+
+### Non-negotiables
+- セッション開始時に `AGENTS.md` と `docs/adr/progress-log.md` を確認する。
+- Plan / Build / Verify を混ぜない。
+- 1セッションで扱う対象は1タスクに絞る。
+- 変更後は必ず検証し、緑なら止まる。
+- 重大な依存変更や挙動変更は、先に characterization tests を追加する。
+
+### Performance strategy
+- 同期HTTPで重いAI処理を抱え込まない。
+- 長い処理は job_id 付き非同期ジョブに逃がす。
+- 軽量タスクと重いタスクでモデル階層を分ける。
+- フリーズや遅延は、モデルの賢さではなくハーネスで制御する。
