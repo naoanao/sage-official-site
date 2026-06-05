@@ -804,7 +804,7 @@ async function callGemini(prompt: string): Promise<string | null> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
         }),
       }
     );
@@ -828,7 +828,7 @@ async function callGroq(prompt: string): Promise<string | null> {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 1500,
+        max_tokens: 3000,
         temperature: 0.7,
       }),
     });

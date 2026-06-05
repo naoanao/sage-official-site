@@ -413,7 +413,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 2000,
+        max_tokens: 3000,
         response_format: { type: "json_object" },
       }),
     });
