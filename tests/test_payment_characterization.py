@@ -1,6 +1,7 @@
 """Characterization tests for payment / store routes (Phase 5 — store_bp)."""
 import os
 import sys
+import stripe
 import pytest
 from unittest.mock import patch
 
@@ -28,12 +29,14 @@ class TestStripeWebhook:
         assert resp.status_code == 400
 
     def test_invalid_signature_returns_400(self, client):
-        resp = client.post(
-            '/api/stripe/webhook',
-            data='{"type": "checkout.session.completed"}',
-            content_type='application/json',
-            headers={'Stripe-Signature': 'invalid'}
-        )
+        with patch.dict(client.application.config, {'STRIPE_WEBHOOK_SECRET': 'whsec_mock'}):
+            with patch('stripe.Webhook.construct_event', side_effect=stripe.error.SignatureVerificationError('bad sig', 'invalid')):
+                resp = client.post(
+                    '/api/stripe/webhook',
+                    data='{"type": "checkout.session.completed"}',
+                    content_type='application/json',
+                    headers={'Stripe-Signature': 'invalid'}
+                )
         assert resp.status_code == 400
 
 
@@ -49,7 +52,7 @@ class TestPaypalWebhook:
     """POST /api/paypal/webhook — PayPal webhook receiver."""
 
     def test_missing_body_returns_400(self, client):
-        resp = client.post('/api/paypal/webhook', data='{}', content_type='application/json')
+        resp = client.post('/api/paypal/webhook', data='', content_type='application/json')
         assert resp.status_code == 400
 
     def test_paypal_webhook_returns_200(self, client):

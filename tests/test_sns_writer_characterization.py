@@ -2,7 +2,7 @@
 import os
 import sys
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
@@ -100,8 +100,7 @@ class TestBlogRunNow:
 
     def test_reenabled_then_success(self, client):
         with patch.dict(client.application.config, {'AUTOMATION_STOP_EVENTS': {'blog': type('E', (), {'is_set': lambda self: False})()}}):
-            with patch('backend.scheduler.blog_scheduler.BlogScheduler.run_once') as mock:
-                mock.return_value = None
+            with patch('backend.scheduler.blog_scheduler.BlogScheduler', return_value=MagicMock(run_once=MagicMock(return_value=None))):
                 resp = client.post('/api/blog/run-now')
                 assert resp.status_code == 200
 

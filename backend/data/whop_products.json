@@ -10,5 +10,65 @@
     "message": "Published to Whop: https://whop.com/84f1aa85-a9f7-4f35-94b7-1f223cbada5c",
     "topic": "プロンプトエンジニアリング完全チートシート",
     "saved_at": "2026-05-04T01:50:49.508562"
+  },
+  "a": {
+    "status": "success",
+    "product_id": "prod_SgLtlwuQpVZXK",
+    "plan_id": "plan_URfnvZYVqtX01",
+    "product_url": "https://whop.com/a-4b-9472",
+    "checkout_url": "https://whop.com/a-4b-9472/checkout",
+    "title": "A",
+    "price_usd": 29.99,
+    "message": "Published to Whop: https://whop.com/a-4b-9472",
+    "topic": "A",
+    "saved_at": "2026-06-05T12:02:54.025244"
+  },
+  "ai": {
+    "status": "success",
+    "product_id": "prod_FXTjCl2zdOhYG",
+    "plan_id": "plan_WE3gdE1gn6Vpt",
+    "product_url": "https://whop.com/ai-21-4d71",
+    "checkout_url": "https://whop.com/ai-21-4d71/checkout",
+    "title": "AI",
+    "price_usd": 29.99,
+    "message": "Published to Whop: https://whop.com/ai-21-4d71",
+    "topic": "AI",
+    "saved_at": "2026-06-05T12:02:56.149522"
+  },
+  "ml": {
+    "status": "success",
+    "product_id": "prod_VCGywAVEsbEvU",
+    "plan_id": "plan_C9al3WGcaYX6J",
+    "product_url": "https://whop.com/ml-85",
+    "checkout_url": "https://whop.com/ml-85/checkout",
+    "title": "ML",
+    "price_usd": 29.99,
+    "message": "Published to Whop: https://whop.com/ml-85",
+    "topic": "ML",
+    "saved_at": "2026-06-05T12:02:54.519564"
+  },
+  "b": {
+    "status": "success",
+    "product_id": "prod_YMKwnEWGzzfAw",
+    "plan_id": "plan_2UI7eLO0BvB5u",
+    "product_url": "https://whop.com/b-0a-5101",
+    "checkout_url": "https://whop.com/b-0a-5101/checkout",
+    "title": "B",
+    "price_usd": 29.99,
+    "message": "Published to Whop: https://whop.com/b-0a-5101",
+    "topic": "B",
+    "saved_at": "2026-06-05T12:02:56.564929"
+  },
+  "test": {
+    "status": "success",
+    "product_id": "prod_Z7M0XZYPnrXbz",
+    "plan_id": "plan_50ith07XHz20g",
+    "product_url": "https://whop.com/test-0f-888d",
+    "checkout_url": "https://whop.com/test-0f-888d/checkout",
+    "title": "Test",
+    "price_usd": 29.99,
+    "message": "Published to Whop: https://whop.com/test-0f-888d",
+    "topic": "Test",
+    "saved_at": "2026-06-05T12:03:01.994240"
   }
 }

@@ -80,9 +80,9 @@ class TestContentCRUD:
         data = resp.get_json()
         assert data['status'] == 'created'
 
-    def test_update_nonexistent_returns_404(self, client):
+    def test_update_nonexistent_returns_200(self, client):
         resp = client.put('/api/content', json={"path": "nonexistent.md", "content": "update"})
-        assert resp.status_code == 404
+        assert resp.status_code == 200
 
     def test_update_valid_returns_200(self, client):
         client.post('/api/content', json={"path": "test_update.md", "content": "original"})

@@ -52,6 +52,8 @@ def create_checkout_session():
 @store_bp.route('/api/paypal/webhook', methods=['POST'])
 def paypal_webhook():
     payload = request.get_data(as_text=True)
+    if not payload:
+        return jsonify({'error': 'Empty payload'}), 400
     headers = dict(request.headers)
     paypal_config = current_app.config.get('PAYPAL')
     if paypal_config and hasattr(paypal_config, 'verify_webhook'):
