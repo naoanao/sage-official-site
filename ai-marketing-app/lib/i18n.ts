@@ -118,6 +118,25 @@ const translations = {
     "learn.learnai.desc": "理由を理解する。なぜその施策が効くのかを学んで、判断力を上げる",
     "learn.back": "← ダッシュボードに戻る",
 
+    // ── 月次レポート ──
+    "report.badge": "月次レポート",
+    "report.title": "今月の結果",
+    "report.sub": "AIマーケ活動のまとめ",
+    "report.total": "タスク完了！",
+    "report.total.sub": "継続こそが最大のマーケ優位性です",
+    "report.thisweek": "今週",
+    "report.tasks": "完了タスク数",
+    "report.rate": "完了率",
+    "report.past4": "過去4週間",
+    "report.empty": "来週から結果が表示されます",
+    "report.empty.sub": "使えば使うほど、AIの精度が上がります 📈",
+    "report.lock.title": "月次レポートはスタンダードプラン以上",
+    "report.lock.sub": "完了アクション・成果・トレンドをまとめて確認",
+    "report.lock.cta": "プランを見る →",
+    "report.standard": "フル履歴はスタンダードプランで見られます",
+    "report.upgrade": "プランを見る →",
+    "report.back": "← ダッシュボードに戻る",
+
     // ── 完了画面 ──
     "complete.back": "← ダッシュボードに戻る",
     "complete.share": "シェアする",
@@ -233,6 +252,25 @@ const translations = {
     "learn.learnai.label": "LearnAI",
     "learn.learnai.desc": "Understand the why. Learn why each tactic works and sharpen your marketing judgment.",
     "learn.back": "← Back to Dashboard",
+
+    // ── Monthly Report ──
+    "report.badge": "Monthly Report",
+    "report.title": "This Month's Results",
+    "report.sub": "Summary of your AI-driven marketing activity",
+    "report.total": "tasks completed total",
+    "report.total.sub": "Consistency is your biggest marketing advantage",
+    "report.thisweek": "This Week",
+    "report.tasks": "Tasks Completed",
+    "report.rate": "Completion Rate",
+    "report.past4": "Past 4 Weeks",
+    "report.empty": "Results will appear here next week",
+    "report.empty.sub": "The more you use Growl, the better the AI gets 📈",
+    "report.lock.title": "Monthly Report is Standard plan or higher",
+    "report.lock.sub": "View completed actions, results, and trends all in one place",
+    "report.lock.cta": "View Plans →",
+    "report.standard": "Full report history is available on the Standard Plan",
+    "report.upgrade": "View Plans →",
+    "report.back": "← Back to Dashboard",
 
     // ── Complete ──
     "complete.back": "← Back to Dashboard",
