@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const maxDuration = 30;
+export const maxDuration = 55;
 
 export async function POST(req: NextRequest) {
   try {
@@ -407,27 +407,34 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     // Groq → Gemini フォールバック
     let adCopy: Record<string, unknown> | null = null;
 
-    // 1st: Groq
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 3000,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (groqRes.ok) {
-      const groqData = await groqRes.json();
-      const raw = groqData.choices?.[0]?.message?.content;
-      if (raw) {
-        try { adCopy = JSON.parse(raw); } catch {}
+    // 1st: Groq（8秒でタイムアウト → Geminiへ素早くフォールバック）
+    try {
+      const groqController = new AbortController();
+      const groqTimeout = setTimeout(() => groqController.abort(), 8000);
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 3000,
+          response_format: { type: "json_object" },
+        }),
+        signal: groqController.signal,
+      });
+      clearTimeout(groqTimeout);
+      if (groqRes.ok) {
+        const groqData = await groqRes.json();
+        const raw = groqData.choices?.[0]?.message?.content;
+        if (raw) {
+          try { adCopy = JSON.parse(raw); } catch {}
+        }
       }
+    } catch {
+      // Groq タイムアウト or エラー → Gemini へ
     }
 
     // 2nd: Gemini fallback (rate limit / error 時)
