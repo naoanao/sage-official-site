@@ -438,7 +438,6 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     }
 
     // 2nd: Gemini fallback (rate limit / error 時)
-    let geminiDebug = "";
     if (!adCopy && process.env.GEMINI_API_KEY) {
       try {
         const geminiRes = await fetch(
@@ -452,29 +451,19 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
             }),
           }
         );
-        geminiDebug = `status:${geminiRes.status}`;
         if (geminiRes.ok) {
           const geminiData = await geminiRes.json();
           const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          geminiDebug += ` rawLen:${raw.length}`;
           const match = raw.match(/\{[\s\S]*\}/);
           if (match) {
-            try { adCopy = JSON.parse(match[0]); geminiDebug += " parsed:ok"; }
-            catch(e) { geminiDebug += ` parseErr:${e}`; }
-          } else {
-            geminiDebug += " noJsonMatch";
+            try { adCopy = JSON.parse(match[0]); } catch {}
           }
-        } else {
-          const errBody = await geminiRes.text();
-          geminiDebug += ` body:${errBody.slice(0, 200)}`;
         }
-      } catch(e) {
-        geminiDebug += ` exception:${e}`;
-      }
+      } catch {}
     }
 
     if (!adCopy) {
-      throw new Error(`All AI providers failed. Gemini debug: ${geminiDebug}`);
+      throw new Error("AI generation failed. Please try again in a few minutes.");
     }
 
     // ハルシネーション検出：入力にない数字が生成テキストに含まれていないかチェック
