@@ -553,3 +553,26 @@ Phase 3aとして、8つのstatus-only/read-only SNS・Publishingルートを `b
 ### 次回確認点
 - 残存2失敗は本セッション対象外: `test_auth_check_unauthenticated` (エンドポイント不在), `productize` flaky
 - `notion_content_pool` が本物のモジュールとして追加された場合、BlogSchedulerのモックを外せる
+
+---
+
+## 2026-06-05: Playwright MCP + 隔離ブランチ運用 + sage-review スキル
+
+### 決定
+OpenCode 環境に以下を導入:
+1. **Playwright MCP**: `@playwright/mcp` v0.0.75 を `opencode.jsonc` に MCP Server として追加（`--headless` 制限）
+2. **隔離ブランチ運用ルール**: AGENTS.md の commit 節を修正し、`main` 直コミット禁止 + `candidate/YYYYMMDD-<desc>` 上での commit candidate 作成を明文化
+3. **sage-review スキル**: `.opencode/skills/sage-review/` に read-only レビュースキルを新規作成（変更禁止・提案のみ）
+
+### 変更ファイル
+| ファイル | 変更内容 |
+|---------|---------|
+| `~/.config/opencode/opencode.jsonc` | Playwright MCP Server 追加 |
+| `AGENTS.md` | commit 節を隔離ブランチ対応に修正 |
+| `.opencode/skills/sage-review/SKILL.md` | 新規: read-only レビュースキル定義 |
+| `.opencode/skills/sage-review/prompts.md` | 新規: レビュープロンプト定義 |
+| `docs/adr/progress-log.md` | 本エントリ追加 |
+
+### 確認
+- テストパス: 前セッション同条件（設定変更のみでコード未変更）
+- 非対象: flask_server.py / routes / tests は一切未変更
