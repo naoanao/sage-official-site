@@ -315,12 +315,133 @@ Phase 3aとして、8つのstatus-only/read-only SNS・Publishingルートを `b
 | 3c: Productize/Monetize | 7 | `productize.py` | 19 |
 | ADR-0002 P4: Auth migration | — | `flask_server.py` | — |
 
-### 次回着手候補
-1. Phase 4: 残存69ルートの一括抽出 (blog CRUD, brain, research, video, PDF, browser, files)
-2. ADR-0002 Phase 5: conftest 認証モック共通化 (optional)
+---
+
+## 2026-06-05: Phase 4a 完了 — Content/File/PDF/Video 16ルート分割
+
+### 決定
+16のコンテンツ関連ルート (knowledge, content CRUD, file operations, PDF, video) を `backend/routes/content.py` にBlueprint分割した。
+
+### 移動したルート一覧
+1. `GET /api/knowledge/list` — KBファイル一覧
+2. `GET /api/knowledge/content` — KBファイル内容
+3. `GET /api/content/list` — Content Manager一覧
+4. `POST /api/content/save` — Content Manager保存
+5. `POST /api/content/read` — Content Manager読み取り
+6. `GET /api/images/<filename>` — 画像配信
+7. `GET /api/files/<path:path>` — ファイル配信
+8. `POST /api/files/read` — ファイル読み取り
+9. `POST /api/files/write` — ファイル書き込み
+10. `GET /api/files/list` — ファイル一覧
+11. `POST /api/pdf/product` — 商品PDF生成
+12. `GET /api/pdf/sns-report` — SNSレポートPDF生成
+13. `GET /api/pdf/download/<filename>` — PDFダウンロード
+14. `POST /api/video/generate` — 動画生成
+15. `GET /api/video/list` — 動画一覧
+16. (TONE_PROMPTS_EN/TONE_PROMPTS_JA の dict 定義も移動)
+
+### 特性テスト
+- **新規**: `tests/test_content_characterization.py` — 23 tests ✅
+- 全テスト 68/68 passed
+
+---
+
+## 2026-06-05: Phase 4b 完了 — Brain/Research/Browser/Computer 18ルート分割
+
+### 決定
+18のBrain・Research・Browser・Computerルートを `backend/routes/brain.py` にBlueprint分割した。
+テストで保護された20エンドポイント (重複なし) を安全に抽出。
+
+### 移動したルート一覧 (4カテゴリ)
+
+**Brain系** (6):
+- `GET /api/brain/stats` — 脳統計サマリー
+- `GET /api/brain/stats/detailed` — 詳細脳統計 (モックフォールバック)
+- `GET /api/memory/recent` — 最近のメモリ
+- `POST /api/memory/clear` — メモリクリア
+- `GET /api/history` — 会話履歴
+- `POST /api/scholar/search` — 学術論文検索
+
+**Research系** (3):
+- `POST /api/research/run` — D1リサーチ実行 (リトライ+タイムアウト)
+- `GET /api/research/check` — 研究ファイル確認 (テストモード対応)
+- `POST /api/niche/validate` — 5軸ニッチ検証 (テストモード対応)
+
+**Browser系** (3):
+- `POST /api/browser/browse` — Webブラウズ
+- `POST /api/browser/search` — Google検索
+- `POST /api/browser/screenshot` — URLスクリーンショット
+
+**Computer系** (5):
+- `POST /api/computer/screenshot` — デスクトップ撮影
+- `POST /api/computer/find-and-click` — UI要素説明→クリック
+- `POST /api/computer/click` — 座標クリック
+- `GET /api/computer/status` — 利用可能状態確認
+- `POST /api/d1/generate` — D1知識ループ手動実行
+
+**その他** (1):
+- `GET /api/admin/posts` — Firestore記事取得 (ローカルフォールバック)
+
+### 依存状態の安全設計
+| グローバル | config キー | 用途 |
+|-----------|-------------|------|
+| `orchestrator` | `ORCHESTRATOR` | brain stats, brain stats/detailed |
+| `memory` | `MEMORY` | history, memory/recent, memory/clear |
+| `autonomous` | `AUTONOMOUS` | d1/generate, research/run |
+| `course_gen_global` | `COURSE_GEN_GLOBAL` | brain/stats (globals置換) |
+| `sage_scholar` | `SAGE_SCHOLAR` | scholar/search (新規追加) |
+
+### 特性テスト
+- `tests/test_brain_characterization.py` — **29 tests** ✅ (validation gates, 400/503/fallback)
+- 全テスト 102/102 passed ✅ (95.6s)
+
+---
+
+## 2026-06-05: セッション最終サマリー — 全体進捗
+
+| 指標 | 値 |
+|------|------|
+| `flask_server.py` | **2,795行, 35ルート 残存** |
+| 抽出済みBlueprint | **7** (note, system, store, publish, productize, content, brain) |
+| 抽出済みルート数 | **82** |
+| ファイル削減 (初期比) | **4,883→2,795行 (-2,088行, 57%削減)** |
+| 特性テスト | **102/102 passed ✅** (95.6s) |
+| インライン認証 | **0件** — 全認証が統合済み |
+
+### セッション内訳
+
+| Phase | 抽出ルート | ファイル | 追加テスト |
+|-------|-----------|---------|-----------|
+| 1: System | 15 | `system.py` | — |
+| 2: Store/Payment | 15 | `store.py` | 12 |
+| 3a: SNS Status | 8 | `publish.py` | 8 |
+| 3b: SNS Posting | 3 | `publish.py` | 6 |
+| 3c: Productize | 7 | `productize.py` | 19 |
+| 4a: Content | 16 | `content.py` | 23 |
+| 4b: Brain | 18 | `brain.py` | 29 |
+| ADR-0002 Auth | — | `auth.py` | — |
+
+### 残存35ルート (次回Phase 5で一括抽出)
+
+| カテゴリ | ルート |
+|---------|--------|
+| **Chat / Pilot** | `/api/chat`, `/api/pilot/chat`, `/api/pilot/generate` |
+| **Automation** | `/api/automations`, `/api/automations/toggle`, `/api/automations/<id>/logs`, `/api/automations/<id>/trigger` |
+| **Identity** | `/api/identity` (GET/POST), `/api/identity/default`, `/api/identity/reset` |
+| **Workspace** | `/api/workspace` |
+| **Instagram** | `/api/instagram/status`, `/api/instagram/post` |
+| **Notion write** | `/api/notion/write` |
+| **Blog / Gumroad / SNS** | `/api/blog/run-now`, `/api/gumroad/run-now`, `/api/sns/post_bilingual`, `/api/sns/sync_performance`, `/api/sns/performance_summary` |
+| **Command** | `/api/command/execute` |
+| **Strategy** | `/api/admin/strategy` (GET/POST) |
+| **Jobs** | `/api/jobs/pipeline/start`, `/api/jobs/<id>/status` |
+| **Productize execute** | `/api/productize/execute` (remapped) |
+| **Market demand** | `/api/market/demand` |
+| **SPA catch-all** | `/` + `/<path:path>` |
 
 ### アーキテクチャノート
 - 全抽出Blueprintは `current_app.config` 経由で共有状態を注入
 - 循環インポートは発生していない
 - Webhook署名検証 (Stripe, Whop) はルート内インラインのまま
 - `get_or_init_pipeline()` は関数参照として `app.config['GET_OR_INIT_PIPELINE']` に登録
+- Phase 4b では `pathlib.Path("obsidian_vault/knowledge")` を `_project_root()` 経由に修正し安全化

@@ -203,7 +203,7 @@ function buildSystemConstraint(user: UserProfile): string {
     "- content_typeの選択肢: Instagram投稿文、LINE配信文、Googleレビュー返信文、ブログ記事冒頭、メール文、告知文、チラシ文",
     "- contentはターゲット顧客に直接届けるコピペ用の完成文章（ビジネスオーナーへのアドバイスは不要）",
     "- Instagram投稿文: 3〜5文＋ハッシュタグ5〜8個",
-    "- Googleレビュー返信文: URLなし・感謝＋店舗の差別化要素1つ（business_descより）＋再来店の気持ちを込めた2〜3文。「ありがとうございます」で始めず、具体的な感謝から入る",
+    "- Googleレビュー返信文: URLなし・感謝と再来店の気持ちを込めた一文のみ",
     "- 工務店・建設業: 「ご来店」禁止 → 「現地見積もり」「お問い合わせ」を使う",
     "- フレームワーク名（3C・STP・4P等）は使わない",
   ].join("\n");
@@ -506,4 +506,6 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Generate
     }
   }
 
-  consol
+  console.error("All APIs failed:", errors.join(" | "));
+  throw new Error("生成に失敗しました。詳細: " + errors.join(" | "));
+}

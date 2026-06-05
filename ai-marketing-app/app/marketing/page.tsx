@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { loadOnboarding } from "@/lib/store";
 import { useLang } from "@/lib/i18n";
-import LangToggle from "@/components/LangToggle";
 
 // ────────────────────────────────────────────
 // Constants
@@ -695,17 +694,14 @@ export default function MarketingPage() {
     return (
       <main className="min-h-screen bg-gray-50 px-4 py-10">
         <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => { setStep("situation"); setResult(null); setPosts(null); scrollTop(); }}
-                className="text-gray-400 text-sm hover:text-gray-600"
-              >
-                {isEn ? "← Back" : "← 戻る"}
-              </button>
-              <h1 className="text-xl font-bold text-gray-900">{result.framework}</h1>
-            </div>
-            <LangToggle />
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={() => { setStep("situation"); setResult(null); setPosts(null); scrollTop(); }}
+              className="text-gray-400 text-sm hover:text-gray-600"
+            >
+              {isEn ? "← Back" : "← 戻る"}
+            </button>
+            <h1 className="text-xl font-bold text-gray-900">{result.framework}</h1>
           </div>
 
           {/* Strategy summary */}
@@ -915,15 +911,12 @@ export default function MarketingPage() {
     return (
       <main className="min-h-screen bg-gray-50 px-4 py-10">
         <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); scrollTop(); }}
-              className="text-gray-400 text-sm hover:text-gray-600"
-            >
-              {isEn ? "← Edit business info" : "← ビジネス情報を編集"}
-            </button>
-            <LangToggle />
-          </div>
+          <button
+            onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); scrollTop(); }}
+            className="text-gray-400 text-sm mb-4 hover:text-gray-600"
+          >
+            {isEn ? "← Edit business info" : "← ビジネス情報を編集"}
+          </button>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">{isEn ? "Which analysis do you need?" : "どの分析が必要ですか？"}</h1>
           <p className="text-gray-500 text-sm mb-6">{name} · {product}</p>
 
@@ -1053,10 +1046,7 @@ export default function MarketingPage() {
     <main className="min-h-screen bg-white flex flex-col">
       <section className="flex-1 px-6 py-12 max-w-lg mx-auto w-full">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <Link href="/" className="text-gray-400 text-sm hover:text-gray-600">{isEn ? "← Back to Home" : "← ホームへ"}</Link>
-            <LangToggle />
-          </div>
+          <Link href="/" className="text-gray-400 text-sm hover:text-gray-600">{isEn ? "← Back to Home" : "← ホームへ"}</Link>
           <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 text-xs font-medium px-3 py-1.5 rounded-full mt-4 mb-3">
             <span>📊</span> {isEn ? "AI Marketing Analysis" : "AIマーケティング分析"}
           </div>
@@ -1171,4 +1161,13 @@ export default function MarketingPage() {
       </section>
 
       <footer className="text-center py-8 text-xs text-gray-300 border-t border-gray-100">
-        <div className="flex items-center justify-c
+        <div className="flex items-center justify-center gap-4 mb-2">
+          <a href="/privacy" className="hover:text-gray-500 transition-colors">Privacy Policy</a>
+          <a href="/terms" className="hover:text-gray-500 transition-colors">Terms of Service</a>
+          <a href="mailto:contact@growl-app.vercel.app" className="hover:text-gray-500 transition-colors">Contact</a>
+        </div>
+        © 2026 Growl
+      </footer>
+    </main>
+  );
+}

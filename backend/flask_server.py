@@ -248,6 +248,7 @@ app.config['GET_OR_INIT_PIPELINE'] = None
 app.config['MEMORY'] = None
 app.config['CONSULTATIVE_GEN'] = None
 app.config['COURSE_GEN_GLOBAL'] = None
+app.config['SAGE_SCHOLAR'] = None
 app.config['CONTENT_MGR'] = None
 
 # ── note.com uploader blueprint ──────────────────────────────────────────────
@@ -289,6 +290,24 @@ try:
 except Exception as _e:
     import logging as _logging
     _logging.getLogger(__name__).warning(f"productize routes not loaded: {_e}")
+
+# ── content blueprint (knowledge, content CRUD, files, PDF, video) ──────────
+try:
+    from backend.routes.content import content_bp
+    app.register_blueprint(content_bp)
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(f"content routes not loaded: {_e}")
+
+# ── brain blueprint (brain stats, memory, research, browser, computer) ────
+try:
+    from backend.routes.brain import brain_bp, _TONE_PROMPTS_EN, _TONE_PROMPTS_JA
+    app.register_blueprint(brain_bp)
+    app.config['TONE_PROMPTS_EN'] = _TONE_PROMPTS_EN
+    app.config['TONE_PROMPTS_JA'] = _TONE_PROMPTS_JA
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(f"brain routes not loaded: {_e}")
 
 # ── Background job store (pipeline async jobs) ───────────────────────────────
 _jobs: Dict[str, dict] = {}        # job_id → {status, result, error, created_at}
@@ -446,8 +465,6 @@ def audit_log_request(response):
     except Exception as e:
         logger.error(f"Audit log failed: {e}")
     return response
-
-# (moved to routes/system.py)
 
 @app.route('/api/automations', methods=['GET'])
 def get_automations():
@@ -988,19 +1005,6 @@ def notion_write():
 
 
 
-# --- SPA ROUTING (Moved to bottom for priority) ---
-
-@app.route('/api/images/<path:filename>', methods=['GET'])
-def serve_tmp_image(filename):
-    """Serve locally cached images so Meta's crawler can reach them via ngrok."""
-    import re
-    # Whitelist: UUID hex + extension only — no path traversal
-    if not re.match(r'^[a-f0-9\-]{8,64}\.(jpg|jpeg|png|webp)$', filename, re.IGNORECASE):
-        return '', 404
-    img_dir = os.path.join(os.path.dirname(__file__), 'data', 'tmp_images')
-    return send_from_directory(img_dir, filename)
-
-
 @app.route('/api/instagram/status', methods=['GET'])
 def instagram_status():
     from backend.integrations.instagram_integration import InstagramBot
@@ -1151,6 +1155,7 @@ def init_brain():
             try:
                 from backend.modules.sage_scholar import SageScholar
                 sage_scholar = SageScholar()
+                app.config['SAGE_SCHOLAR'] = sage_scholar
                 logger.info("[INIT] Sage Scholar (arXiv/OpenAlex) Ready.")
             except Exception as e:
                 logger.error(f"Sage Scholar Init Failed: {e}")
@@ -1414,28 +1419,7 @@ def init_brain():
         except Exception as e:
             logger.error(f"[ERROR] Brain Initialization Failed: {e}")
 
-@app.route('/api/scholar/search', methods=['POST'])
-def api_scholar_search():
-    """
-    Sage Scholar: Search for academic papers
-    """
-    if not sage_scholar:
-        return jsonify({"status": "error", "message": "Sage Scholar module not initialized"}), 503
-        
-    try:
-        data = request.json or {}
-        query = data.get('query')
-        if not query:
-            return jsonify({"status": "error", "message": "Query required"}), 400
-            
-        logger.info(f"[PILOT] Scholar Search: {query}")
-        results = sage_scholar.search_papers(query)
-        
-        return jsonify({"status": "success", "results": results}), 200
-        
-    except Exception as e:
-        logger.error(f"Scholar search error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # --- Content Manager Integration (Unified Storage) ---
 try:
@@ -1447,163 +1431,6 @@ except Exception as e:
     logger.error(f"Failed to init ContentManager: {e}")
     content_mgr = None
     app.config['CONTENT_MGR'] = None
-
-@app.route('/api/knowledge/list', methods=['GET'])
-def api_knowledge_list():
-    # List all knowledge base files (The 'Summarized Wisdom').
-    try:
-        kb_dir = pathlib.Path(os.path.join(os.path.dirname(__file__), "sage_knowledge_base"))
-        if not kb_dir.exists():
-            return jsonify({"status": "error", "message": "Knowledge Base directory not found"}), 404
-            
-        files = []
-        for f in kb_dir.glob("*.md"):
-            stats = f.stat()
-            files.append({
-                "filename": f.name,
-                "size": stats.st_size,
-                "created": datetime.fromtimestamp(stats.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
-                "modified": datetime.fromtimestamp(stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-            })
-        
-        # Sort by modification time (newest first)
-        files.sort(key=lambda x: x['modified'], reverse=True)
-        return jsonify({"status": "success", "files": files})
-    except Exception as e:
-        logger.error(f"KB List Error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/api/knowledge/content', methods=['GET'])
-def api_knowledge_content():
-    # Get content of a specific knowledge file.
-    filename = request.args.get('filename')
-    if not filename:
-        return jsonify({"error": "Filename required"}), 400
-        
-    try:
-        kb_dir = pathlib.Path(os.path.join(os.path.dirname(__file__), "sage_knowledge_base"))
-        file_path = kb_dir / filename
-        
-        # Security check to prevent directory traversal
-        if not file_path.resolve().is_relative_to(kb_dir.resolve()):
-            return jsonify({"error": "Invalid path"}), 403
-
-
-        if not file_path.exists():
-            return jsonify({"error": "File not found"}), 404
-            
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-            
-        return jsonify({"status": "success", "filename": filename, "content": content})
-    except Exception as e:
-        logger.error(f"KB Content Error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-# --- Previous Existing Routes ---
-@app.route('/api/content/list', methods=['GET'])
-def api_content_list():
-    # List generated content (blogs, articles, memos) with metadata.
-    if not content_mgr:
-        return jsonify({"error": "Content Manager Offline"}), 503
-
-    ctype = request.args.get('type')
-    limit = int(request.args.get('limit', 20))
-
-    try:
-        raw = content_mgr.list_content(ctype, limit)
-        # Flatten metadata dict to top-level so frontend can access item.title etc.
-        items = []
-        for item in raw:
-            meta = item.pop("metadata", {}) or {}
-            items.append({**item, **meta})
-
-        # For blog type, also include posts from src/blog/posts/ (mdx)
-        if ctype == 'blog' and not items:
-            import glob as _glob
-            blog_dir = os.path.join(os.path.dirname(__file__), '..', 'src', 'blog', 'posts')
-            blog_files = sorted(_glob.glob(os.path.join(blog_dir, '*.mdx')), key=os.path.getmtime, reverse=True)
-            for f_path in blog_files[:limit]:
-                try:
-                    with open(f_path, 'r', encoding='utf-8') as f:
-                        first = f.readline().strip()
-                        meta = {}
-                        if first == '---':
-                            fm = []
-                            for _ in range(20):
-                                line = f.readline()
-                                if line.strip() == '---':
-                                    break
-                                fm.append(line)
-                            import yaml as _yaml
-                            meta = _yaml.safe_load(''.join(fm)) or {}
-                    fname = os.path.basename(f_path)
-                    items.append({
-                        'path': f'blog/posts/{fname}',
-                        'filename': fname,
-                        'size': os.path.getsize(f_path),
-                        'modified': os.path.getmtime(f_path),
-                        'type': 'blog',
-                        'title': meta.get('title', fname.replace('.mdx', '')),
-                        **{k: v for k, v in meta.items() if k != 'title'},
-                    })
-                except Exception:
-                    pass
-
-        return jsonify({"status": "success", "items": items})
-    except Exception as e:
-        logger.error(f"Content list error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/api/content/save', methods=['POST'])
-def api_content_save():
-    # Save generated content to standard storage.
-    if not content_mgr:
-        return jsonify({"error": "Content Manager Offline"}), 503
-    
-    data = request.json or {}
-    try:
-        path = content_mgr.save_content(
-            content_type=data.get('type', 'general'),
-            title=data.get('title', 'Untitled'),
-            body=data.get('body', ''),
-            metadata=data.get('metadata', {})
-        )
-        return jsonify({"status": "success", "path": path})
-    except Exception as e:
-        logger.error(f"Content save error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/api/content/read', methods=['GET'])
-def api_content_read():
-    """Read a content file body (strips YAML frontmatter). Returns up to 3000 chars."""
-    if not content_mgr:
-        return jsonify({"error": "Content Manager Offline"}), 503
-    path = request.args.get('path', '').strip()
-    if not path or '..' in path:
-        return jsonify({"error": "Invalid path"}), 400
-    try:
-        # blog/posts/ files live in src/blog/posts/ (repo root), not content_mgr.base_dir
-        repo_root = Path(__file__).parent.parent
-        if path.startswith('blog/posts/'):
-            full_path = repo_root / 'src' / path
-        else:
-            full_path = content_mgr.base_dir / path
-        if not full_path.exists() or not full_path.is_file():
-            return jsonify({"error": "Not found"}), 404
-        with open(full_path, 'r', encoding='utf-8') as f:
-            raw = f.read()
-        # Strip YAML frontmatter (--- ... ---)
-        body = raw
-        if raw.startswith('---'):
-            end = raw.find('\n---', 3)
-            if end >= 0:
-                body = raw[end + 4:].lstrip('\n')
-        return jsonify({"status": "ok", "content": body[:3000]})
-    except Exception as e:
-        logger.error(f"Content read error: {e}")
-        return jsonify({"error": str(e)}), 500
-
 
 def _pick(data, *keys, default=None):
     for k in keys:
@@ -2301,41 +2128,7 @@ def chat_endpoint():
         }), 500
 
 
-@app.route('/api/history', methods=['GET'])
-def get_history():
-    """
-    会話履歴を取得するエンドポイント
-    フロントエンドからの定期的なリクエストに対応
-    """
-    global memory
-    
-    if memory is None:
-        return jsonify({"history": []})
-    
-    try:
-        # SageMemoryから履歴を取得
-        history_data = []
-        
-        # Correctly call SageMemory's method
-        if hasattr(memory, 'get_short_term'):
-            messages = memory.get_short_term(limit=50)
-            # Ensure retrieval format is correct
-            history_data = messages # get_short_term already returns [{"role":..., "content":...}]
-        elif hasattr(memory, 'chat_memory') and hasattr(memory.chat_memory, 'messages'):
-            # LangChain Default Fallback
-            messages = memory.chat_memory.messages[-50:]  
-            history_data = [
-                {"role": "user" if msg.type == "human" else "assistant", "content": msg.content} 
-                for msg in messages
-            ]
-        
 
-        logger.info(f"[LOG] History retrieved: {len(history_data)} messages")
-        return jsonify({"history": history_data})
-    
-    except Exception as e:
-        logger.error(f"[ERROR] History retrieval error: {e}")
-        return jsonify({"error": str(e), "history": []}), 500
 
 
 
@@ -2569,87 +2362,9 @@ def jobs_status(job_id):
     return jsonify(resp), 200
 
 
-@app.route('/api/memory/recent', methods=['GET'])
-def get_recent_memories():
-    """
-    SageOS UI用: 最近のメモリカードデータを取得
-    """
-    global memory
-    
-    try:
-        # ChromaDBまたはアクティブメモリから最近の知識を取得
-        if memory and hasattr(memory, 'get_knowledge'):
-            knowledge_records = memory.get_knowledge(limit=10)
-            
-            # SageOS UI形式に変換
-            memories = []
-            for i, record in enumerate(knowledge_records):
-                memories.append({
-                    "id": i + 1,
-                    "category": record.get('category', 'KNOWLEDGE'),
-                    "content": record.get('content', '')[:120] + '...',
-                    "lastAccessed": record.get('timestamp', '1h ago'),
-                    "tags": record.get('tags', ['knowledge'])
-                })
-            
-            if memories:
-                return jsonify({"memories": memories})
-        
-        # フォールバック: モックデータ
-        return jsonify({
-            "memories": [
-                {
-                    "id": 1,
-                    "category": "USER_PREF",
-                    "content": "ユーザーは朝7時にコーヒーショップのマーケティングレポートを好む。",
-                    "lastAccessed": "2m ago",
-                    "tags": ["preference", "routine"]
-                },
-                {
-                    "id": 2,
-                    "category": "PROJECT_CONTEXT",
-                    "content": "Sage統合の進捗: Phase 2完了。次はComputer Visionの実装。",
-                    "lastAccessed": "1h ago",
-                    "tags": ["dev", "sage"]
-                }
-            ]
-        })
-    except Exception as e:
-        logger.error(f"[ERROR] Recent memories error: {e}")
-        return jsonify({"memories": []})
 
-# --- FILE SERVING ---
-from flask import send_from_directory, redirect, request
-from pathlib import Path
 
-@app.route("/files/<path:filename>")
-def serve_files(filename):
-    # Serve files from the project root 'files' directory.
-    try:
-        # Determine project root from flask_server.py location
-        # backend/flask_server.py -> backend -> ROOT
-        base_dir = Path(__file__).resolve().parents[1]
-        files_dir = base_dir / "files"
-        files_dir.mkdir(parents=True, exist_ok=True)
-        return send_from_directory(str(files_dir), filename)
-    except Exception as e:
-        logger.error(f"[ERROR] File serve error: {e}")
-        return jsonify({"error": "File not found"}), 404
 
-@app.route("/files<path:filename>")
-def redirect_files(filename):
-    # Compatibility redirect for malformed URLs (e.g., /filesimage.jpg -> /files/image.jpg)
-    return redirect(f"/files/{filename}")
-
-# (moved to routes/system.py)
-
-@app.route('/api/memory/clear', methods=['POST'])
-def clear_memory():
-    # 記憶のクリア
-    if memory:
-        # memory.clear() # 実装に応じて
-        return jsonify({"status": "Memory cleared (Logic pending)"})
-    return jsonify({"status": "No memory module loaded"})
 
 # ============================================================
 # Google Workspace Studio統合エンドポイント
@@ -2721,173 +2436,21 @@ def workspace_integration():
 
 # (moved to routes/system.py)
 
-# --- FILE OPERATIONS API ---
-@app.route('/api/files/read', methods=['POST'])
-def api_read_file():
-    # Read file contents
-    try:
-        data = request.json
-        path = data.get('path')
-        
-        if not path:
-            return jsonify({"status": "error", "message": "path required"}), 400
-        
-        from backend.modules.file_operations_agent import FileOperationsAgent
-        agent = FileOperationsAgent()
-        result = agent.read_file(path)
-        
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Read file error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/browser/browse', methods=['POST'])
-def api_browser_browse():
-    try:
-        data = request.json
-        url = data.get('url')
-        if not url:
-            return jsonify({"status": "error", "message": "url required"}), 400
-        
-        from backend.modules.browser_agent import BrowserAgent
-        agent = BrowserAgent()
-        result = agent.browse(url)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Browse error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/browser/search', methods=['POST'])
-def api_browser_search():
-    try:
-        data = request.json
-        query = data.get('query')
-        if not query:
-            return jsonify({"status": "error", "message": "query required"}), 400
-        
-        from backend.modules.browser_agent import BrowserAgent
-        agent = BrowserAgent()
-        result = agent.search_google(query)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Search error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # --- COMPUTER VISION / PC CONTROL (Sage's Eyes & Hands) ---
 
-@app.route('/api/computer/screenshot', methods=['POST'])
-def api_computer_screenshot():
-    """スクリーンショットを撮影してパスを返す"""
-    try:
-        from backend.integrations.computer_vision_agent import ComputerVisionAgent
-        data = request.get_json(silent=True) or {}
-        filename = data.get('filename', f"sage_screen_{int(__import__('time').time())}.png")
-        agent = ComputerVisionAgent()
-        path = agent.capture_screen(filename)
-        return jsonify({"status": "success", "screenshot_path": str(path)})
-    except Exception as e:
-        logger.error(f"Computer screenshot error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/computer/find-and-click', methods=['POST'])
-def api_computer_find_and_click():
-    """画面上の要素を説明文で探してクリック（分身の目と手）"""
-    try:
-        from backend.integrations.computer_vision_agent import ComputerVisionAgent
-        data = request.get_json(silent=True) or {}
-        description = data.get('description', '')
-        if not description:
-            return jsonify({"status": "error", "message": "description required"}), 400
-        agent = ComputerVisionAgent()
-        result = agent.find_and_click(description)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Computer find-and-click error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/computer/click', methods=['POST'])
-def api_computer_click():
-    """指定座標をクリック"""
-    try:
-        from backend.integrations.computer_vision_agent import ComputerVisionAgent
-        data = request.get_json(silent=True) or {}
-        x, y = data.get('x', 0), data.get('y', 0)
-        agent = ComputerVisionAgent()
-        success = agent.click_element(x, y)
-        return jsonify({"status": "success" if success else "error", "x": x, "y": y})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/computer/status', methods=['GET'])
-def api_computer_status():
-    """ComputerVisionAgentの利用可能状態を確認"""
-    try:
-        import pyautogui
-        pyautogui_ok = True
-    except ImportError:
-        pyautogui_ok = False
-    gemini_ok = bool(os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
-    return jsonify({
-        "pyautogui": pyautogui_ok,
-        "gemini_key": gemini_ok,
-        "available": pyautogui_ok and gemini_ok,
-        "note": "PC local execution required — does not run in CF Workers"
-    })
 
-@app.route('/api/browser/screenshot', methods=['POST'])
-def api_browser_screenshot():
-    try:
-        data = request.json
-        url = data.get('url')
-        output_path = data.get('output_path', 'screenshot.png')
-        if not url:
-            return jsonify({"status": "error", "message": "url required"}), 400
-        
-        from backend.modules.browser_agent import BrowserAgent
-        agent = BrowserAgent()
-        result = agent.take_screenshot(url, output_path)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Screenshot error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/files/write', methods=['POST'])
-def api_write_file():
-    # Write file
-    try:
-        data = request.json
-        path = data.get('path')
-        content = data.get('content', '')
-        overwrite = data.get('overwrite', False)
-        
-        if not path:
-            return jsonify({"status": "error", "message": "path required"}), 400
-        
-        from backend.modules.file_operations_agent import FileOperationsAgent
-        agent = FileOperationsAgent()
-        result = agent.write_file(path, content, overwrite)
-        
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Write file error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/files/list', methods=['POST'])
-def api_list_directory():
-    # List directory contents
-    try:
-        data = request.json or {}
-        path = data.get('path', '.')
-        pattern = data.get('pattern', '*')
-        
-        from backend.modules.file_operations_agent import FileOperationsAgent
-        agent = FileOperationsAgent()
-        result = agent.list_directory(path, pattern)
-        
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"List directory error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+
 
 # --- SYSTEM MONITOR API ---
 from backend.modules.system_monitor_agent import SystemMonitorAgent
@@ -2914,95 +2477,7 @@ def api_execute_command():
         logger.error(f"Execute command error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# [FIX] RESTORED & FIXED: Brain Stats API (Fixes Brain Usage 0%)
-@app.route('/api/brain/stats/detailed', methods=['GET'])
-def get_brain_stats_detailed():
-    # Get comprehensive brain statistics for UI visualization
-    try:
-        brain = None
-        if orchestrator:
-            # Prioritize neuromorphic_brain, fallback to brain
-            brain = getattr(orchestrator, 'neuromorphic_brain', None) or getattr(orchestrator, 'brain', None)
-            
-        if brain:
-            stats = brain.get_stats()
-            
-            # [FIX] FIX: Use correct key names from neuromorphic_brain.py
-            total_queries = stats.get('total_queries', 0)
-            brain_hits = stats.get('brain_hits', 0)  # Changed from 'high_confidence_count'
-            learned_patterns = stats.get('learned_patterns', 0)
-            
-            # Calculate usage rate correctly
-            usage_rate = (brain_hits / total_queries * 100) if total_queries > 0 else 0
-            
-            # Confidence metrics (Brain v2.0.1 uses fixed 0.98 for hits, 0.15 for misses)
-            avg_confidence = (brain_hits * 0.98) / total_queries if total_queries > 0 else 0
-            highest_confidence = 0.98 if brain_hits > 0 else 0
-            
-            # Learning buffer info (Visualize STDP Batch Progress)
-            current_buffer = len(brain.feedback_memory) if hasattr(brain, 'feedback_memory') else 0
-            learning_buffer_size = current_buffer % 10
-            learning_progress = (learning_buffer_size / 10.0) * 100  # Percentage to next learning
-                        
-            # Processing time
-            avg_processing_time = stats.get('avg_processing_time', 0) * 1000  # Convert to ms
-            
-            # Confidence trend
-            confidence_trend = stats.get('confidence_trend', 'insufficient_data')
-            
-            # Word2Vec info
-            word2vec_enabled = getattr(brain, 'word2vec_enabled', False)
-            vocabulary_size = 0
-            if word2vec_enabled and hasattr(brain, 'word2vec') and brain.word2vec:
-                try:
-                    vocabulary_size = brain.word2vec.get_stats()['vocabulary_size']
-                except:
-                    vocabulary_size = 0
-            
-            return jsonify({
-                "status": "success",
-                "stats": {
-                    "usage_rate": round(usage_rate, 1),
-                    "avg_confidence": round(avg_confidence, 3),
-                    "highest_confidence": round(highest_confidence, 3),
-                    "total_queries": total_queries,
-                    "brain_responses": brain_hits,  # [FIX] Fixed: Now uses brain_hits
-                    "learned_patterns": learned_patterns,  # [FIX] Added
-                    "learning_buffer": learning_buffer_size,
-                    "learning_progress": round(learning_progress, 1),
-                    "avg_processing_time": round(avg_processing_time, 0),
-                    "confidence_trend": confidence_trend,
-                    "word2vec_enabled": word2vec_enabled,
-                    "vocabulary_size": vocabulary_size,
-                    "learning_enabled": getattr(brain, 'learning_enabled', False),
-                    "learning_updates": brain.learning_stats.get('updates', 0) if hasattr(brain, 'learning_stats') else 0
-                }
-            })
-        else:
-            # Return mock data for testing widget UI
-            logger.warning("Brain not initialized, returning mock data")
-            return jsonify({
-                "status": "success",
-                "stats": {
-                    "usage_rate": 0,
-                    "avg_confidence": 0,
-                    "highest_confidence": 0,
-                    "total_queries": 0,
-                    "brain_responses": 0,
-                    "learning_buffer": 0,
-                    "learning_progress": 0,
-                    "avg_processing_time": 0,
-                    "confidence_trend": "stable",
-                    "word2vec_enabled": False,
-                    "vocabulary_size": 0,
-                    "learning_enabled": False,
-                    "learning_updates": 0
-                }
-            })
 
-    except Exception as e:
-        logger.error(f"Error getting brain stats: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
 
 # --- END FILE OPERATIONS API ---
 
@@ -3034,92 +2509,14 @@ def admin_strategy():
     return jsonify({"status": "error", "message": "StrategyManager not loaded"}), 503
 
 
-# --- PUBLIC BLOG API for Frontend Restoration ---
-@app.route('/api/admin/posts', methods=['GET'])
-def public_get_posts():
-    # Publicly accessible blog posts with local fallback.
-    try:
-        from firebase_admin import firestore
-        db = firestore.client()
-        docs = db.collection('posts').where('status', '==', 'published').order_by('created_at', direction=firestore.Query.DESCENDING).limit(10).stream()
-        posts = []
-        for doc in docs:
-            p = doc.to_dict()
-            p['id'] = doc.id
-            # Convert datetime to string for JSON serialization
-            if 'created_at' in p: p['created_at'] = p['created_at'].isoformat()
-            if 'updated_at' in p: p['updated_at'] = p['updated_at'].isoformat()
-            posts.append(p)
-        
-        if not posts:
-             raise Exception("No posts in DB")
-             
-        return jsonify({"posts": posts}), 200
-    except Exception as e:
-        # Fallback to local placeholders so the UI isn't broken
-        logger.warning(f"Firestore posts fetch failed, using fallback: {e}")
-        return jsonify({
-            "posts": [
-                {
-                    "id": "1",
-                    "title": "Autonomous Revenue Cycles: The SAGE Protocol",
-                    "slug": "post-autonomous-revenue",
-                    "excerpt": "How Sage 3.0 achieves 24/7 monetization with zero human intervention.",
-                    "updated_at": "2026-02-13T10:00:00",
-                    "size": 4500
-                },
-                {
-                    "id": "2",
-                    "title": "Neuromorphic Brain: Learning at the Edge",
-                    "slug": "post-neuromorphic-brain",
-                    "excerpt": "Explaining the SNN architecture and STDP learning rules in Sage.",
-                    "updated_at": "2026-02-12T15:00:00",
-                    "size": 3200
-                }
-            ]
-        }), 200
+
 
 
 
 
 # (moved to routes/system.py)
 
-@app.route('/api/d1/generate', methods=['POST'])
-def api_d1_generate():
-    """Manual trigger for D1 Knowledge Loop (D1: Idea -> Observation -> Artifacts)"""
-    try:
-        logger.info("🚀 [D1] Knowledge Loop manual trigger started via Cockpit")
-        
-        if not autonomous:
-             return jsonify({"status": "error", "message": "Autonomous adapter not initialized"}), 503
 
-        # Force Observation
-        obs = autonomous._observe_and_log()
-        
-        data = request.get_json(silent=True) or {}
-        topic = data.get('topic', 'AI Monetization Trends 2026')
-        
-        # Manually trigger a high-value 'D1' Action: Trend Research & Report
-        decision = {
-            'type': 'research_ai_trends',
-            'data': {'topic': topic}
-        }
-        
-        # We temporarily enable execution if it was off, just for this manual trigger
-        original_exec = autonomous.phase_2_execute
-        autonomous.phase_2_execute = True
-        try:
-            autonomous._execute_decision(decision)
-        finally:
-            autonomous.phase_2_execute = original_exec
-
-        return jsonify({
-            "status": "success", 
-            "message": f"D1 Loop Executed: Research report for '{topic}' generated and stored."
-        })
-    except Exception as e:
-        logger.error(f"D1 trigger error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/blog/run-now', methods=['POST'])
 def api_blog_run_now():
@@ -3211,288 +2608,11 @@ def api_sns_performance_summary():
 
 
 
-@app.route('/api/pdf/product', methods=['POST'])
-def api_pdf_product():
-    """
-    商品PDFを生成して返す。
-    Body: { "title": str, "sections": [{"heading": str, "body": str}],
-            "tagline": str, "price": str, "url": str }
-    """
-    try:
-        from backend.integrations.pdf_generator import generate_product_pdf
-        data = request.get_json(silent=True) or {}
-        title = data.get("title", "").strip()
-        if not title:
-            return jsonify({"error": "title required"}), 400
-        sections = data.get("sections", [{"heading": "内容", "body": data.get("body", "")}])
-        path = generate_product_pdf(
-            title=title,
-            content_sections=sections,
-            tagline=data.get("tagline", ""),
-            price_str=data.get("price", ""),
-            product_url=data.get("url", "sage-official-site.pages.dev"),
-        )
-        if path:
-            filename = os.path.basename(path)
-            return jsonify({"status": "ok", "path": path, "filename": filename}), 200
-        return jsonify({"status": "error", "message": "PDF generation failed"}), 500
-    except Exception as e:
-        logger.error(f"[PDF] product endpoint error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@app.route('/api/pdf/sns-report', methods=['GET'])
-def api_pdf_sns_report():
-    """週次SNSレポートPDFを生成して返す。Query: ?days=7"""
-    try:
-        from backend.integrations.pdf_generator import generate_sns_report_pdf
-        days = int(request.args.get("days", 7))
-        path = generate_sns_report_pdf(days=days)
-        if path:
-            filename = os.path.basename(path)
-            return jsonify({"status": "ok", "path": path, "filename": filename}), 200
-        return jsonify({"status": "error", "message": "Report generation failed"}), 500
-    except Exception as e:
-        logger.error(f"[PDF] sns-report endpoint error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@app.route('/api/pdf/download/<filename>', methods=['GET'])
-def api_pdf_download(filename: str):
-    """生成済みPDFをダウンロード。"""
-    import re
-    from flask import send_from_directory
-    if not re.match(r'^[\w\-\.]+\.pdf$', filename):
-        return jsonify({"error": "invalid filename"}), 400
-    pdf_dir = os.path.join(os.path.dirname(__file__), "data", "pdfs")
-    return send_from_directory(pdf_dir, filename, as_attachment=True)
-
-
-@app.route('/api/video/generate', methods=['POST'])
-def api_video_generate():
-    """
-    SNSショート動画を生成する（バックグラウンド実行）。
-    Body: { "title": str, "slides": [str, ...], "cta_text": str,
-            "subtitle": str, "duration_per_slide": float }
-    """
-    try:
-        import threading
-        from backend.integrations.video_generator import generate_sns_short_video
-        data = request.get_json(silent=True) or {}
-        title = data.get("title", "").strip()
-        slides = data.get("slides", [])
-        if not title or not slides:
-            return jsonify({"error": "title and slides required"}), 400
-
-        # バックグラウンド実行
-        def _bg():
-            try:
-                path = generate_sns_short_video(
-                    title=title,
-                    slides=slides,
-                    cta_text=data.get("cta_text", "詳しくはプロフから"),
-                    subtitle=data.get("subtitle", ""),
-                    duration_per_slide=float(data.get("duration_per_slide", 3.5)),
-                )
-                logger.info(f"[Video] Background generation done: {path}")
-            except Exception as e:
-                logger.error(f"[Video] Background generation error: {e}", exc_info=True)
-
-        t = threading.Thread(target=_bg, name="VideoGen-API", daemon=True)
-        t.start()
-        return jsonify({"status": "started", "message": "動画生成を開始しました（バックグラウンド実行）"}), 202
-    except Exception as e:
-        logger.error(f"[Video] endpoint error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@app.route('/api/video/list', methods=['GET'])
-def api_video_list():
-    """生成済み動画ファイルのリストを返す。"""
-    try:
-        video_dir = os.path.join(os.path.dirname(__file__), "data", "videos")
-        if not os.path.exists(video_dir):
-            return jsonify({"status": "ok", "videos": []}), 200
-        files = []
-        for f in sorted(os.listdir(video_dir), reverse=True):
-            if f.endswith(".mp4"):
-                fpath = os.path.join(video_dir, f)
-                files.append({
-                    "filename": f,
-                    "size_mb": round(os.path.getsize(fpath) / 1024 / 1024, 2),
-                    "created_at": datetime.fromtimestamp(
-                        os.path.getctime(fpath)).isoformat(),
-                })
-        return jsonify({"status": "ok", "videos": files}), 200
-    except Exception as e:
-        logger.error(f"[Video] list endpoint error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 
-@app.route('/api/research/run', methods=['POST'])
-def api_research_run():
-    """Run D1 research for a topic and return a human-readable summary.
-    Includes retry logic (up to 2 attempts) and extended timeout (90s).
-    """
-    import concurrent.futures
-    try:
-        data = request.get_json(silent=True) or {}
-        topic = data.get('topic', '').strip()
-        if not topic:
-            return jsonify({"error": "topic required"}), 400
-
-        if not autonomous:
-            return jsonify({"error": "Autonomous adapter not initialized"}), 503
-
-        def _run_research():
-            autonomous._observe_and_log()
-            decision = {'type': 'research_ai_trends', 'data': {'topic': topic}}
-            original_exec = autonomous.phase_2_execute
-            autonomous.phase_2_execute = True
-            try:
-                autonomous._execute_decision(decision)
-            finally:
-                autonomous.phase_2_execute = original_exec
-
-        MAX_ATTEMPTS = 2
-        last_error = None
-        for attempt in range(1, MAX_ATTEMPTS + 1):
-            try:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(_run_research)
-                    future.result(timeout=90)  # Extended: 90s (was 30s)
-                last_error = None
-                break  # Success
-            except concurrent.futures.TimeoutError:
-                last_error = "timeout"
-                logger.warning(f"research/run attempt {attempt} timed out for topic: {topic}")
-            except Exception as e:
-                last_error = str(e)
-                logger.warning(f"research/run attempt {attempt} error: {e}")
-
-        if last_error:
-            if last_error == "timeout":
-                # Timeout is OK — research may have partially completed
-                logger.info(f"research/run timed out after {MAX_ATTEMPTS} attempts, continuing")
-            else:
-                return jsonify({"error": last_error}), 500
-
-        summary = f"Research for '{topic}' complete. Report saved to output/ folder."
-        return jsonify({"status": "success", "summary": summary})
-    except Exception as e:
-        logger.error(f"research/run error: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/research/check', methods=['GET'])
-def check_research_for_topic():
-    """Check if D1 research files exist for a given topic."""
-    if request.headers.get('X-Sage-Test-Mode') == '1':
-        return jsonify({"has_research": True, "file": "test_research.md", "test_mode": True}), 200
-    import pathlib
-    topic = request.args.get('topic', '').strip()
-    if not topic:
-        return jsonify({"has_research": False, "file": None}), 400
-
-    vault_dir = pathlib.Path("obsidian_vault/knowledge")
-    if not vault_dir.exists():
-        return jsonify({"has_research": False, "file": None})
-
-    files = sorted(vault_dir.glob("research_*.md"), key=lambda x: x.stat().st_mtime, reverse=True)
-    keywords = [k.lower() for k in topic.split() if len(k) > 1] or [topic.lower()]
-
-    for f in files[:20]:
-        try:
-            content = f.read_text(encoding='utf-8', errors='ignore')
-            if len(content) < 300:
-                continue
-            if any(kw in content.lower() for kw in keywords):
-                return jsonify({"has_research": True, "file": f.name})
-        except Exception:
-            continue
-
-    return jsonify({"has_research": False, "file": None})
-
-@app.route('/api/niche/validate', methods=['POST'])
-def niche_validate():
-    """5-axis niche validation before product generation."""
-    if request.headers.get('X-Sage-Test-Mode') == '1':
-        return jsonify({"score": 85, "tier": "A", "verdict": "[TEST] Strong niche (stub)", "test_mode": True}), 200
-    data = request.get_json(silent=True) or {}
-    topic = data.get('topic', '').strip()
-    if not topic:
-        return jsonify({"status": "error", "error": "topic required"}), 400
-    try:
-        from backend.pipelines.niche_validator import NicheValidator
-        import os as _os
-        validator = NicheValidator(groq_api_key=_os.getenv("GROQ_API_KEY"))
-        result = validator.validate(topic)
-        return jsonify(result), 200
-    except Exception as e:
-        logger.error(f"[NICHE VALIDATE] {e}", exc_info=True)
-        return jsonify({"status": "error", "error": str(e)}), 500
 
 
-_TONE_PROMPTS_EN = {
-    'conversational': (
-        "Rewrite this in a conversational, engaging tone — like a smart friend explaining it.\n\n"
-        "Rules:\n"
-        "- Use contractions (you're, it's, don't, here's)\n"
-        "- Start sentences with 'And,' 'But,' 'So,' 'Here's the thing:'\n"
-        "- Add rhetorical questions to pull the reader in\n"
-        "- Replace formal transitions: 'Furthermore' → 'And get this', 'Therefore' → 'So here's what this means'\n"
-        "- Power words: crazy, wild, game-changer, massive, ridiculously\n"
-        "- Reader asides like '(yeah, I know)' or '(trust me on this)'\n"
-        "- Paragraphs max 2-3 sentences. Keep it punchy."
-    ),
-    'storytelling_us': (
-        "Rewrite this using American storytelling structure. Lead with a scene, not a fact.\n\n"
-        "Rules:\n"
-        "- Open with 'Picture this:' or 'Imagine...' — a specific micro-scenario\n"
-        "- Use a real-feeling character with a name (not 'a person' or 'someone')\n"
-        "- Add sensory detail: what they saw, felt, heard\n"
-        "- Build tension → resolution arc\n"
-        "- Data and stats come AFTER the story, never before\n"
-        "- End with a transformation: 'Three months later...'\n"
-        "- Conversational, warm tone throughout."
-    ),
-    'pasona': (
-        "Rewrite this using the PASONA sales framework. Make the reader feel seen, then solve their problem.\n\n"
-        "Structure (in order):\n"
-        "1. Problem — Open with a specific, visceral pain point. Make it concrete.\n"
-        "2. Agitate — Amplify the cost of doing nothing. What does inaction cost them?\n"
-        "3. Solution — Present the method as the answer. Be specific, not vague.\n"
-        "4. Narrow — Define exactly who this is for (income level, situation, stage).\n"
-        "5. Action — End with a strong, urgent CTA.\n\n"
-        "Style:\n"
-        "- Direct. Benefit-focused. Address reader as 'you'.\n"
-        "- Numbers for credibility (use sparingly).\n"
-        "- Short punchy sentences mixed with medium ones."
-    ),
-    'quest': (
-        "Rewrite this using the QUEST sales framework. Consultative, empathetic, logical.\n\n"
-        "Structure (in order):\n"
-        "1. Qualify — Who exactly is this for? Be specific and exclusive.\n"
-        "2. Understand — Show deep empathy for their struggle. They must feel heard.\n"
-        "3. Educate — Explain why current approaches fail. Make them rethink.\n"
-        "4. Stimulate — Paint the after-picture vividly. Transformation, not features.\n"
-        "5. Transition — Smooth, low-friction CTA ('Ready to start?' or 'Here's your next step').\n\n"
-        "Style:\n"
-        "- Lead with questions. Warm consultant tone.\n"
-        "- Logic AND emotional triggers together.\n"
-        "- Use brief case study or example in step 3 or 4."
-    ),
-}
-
-_TONE_PROMPTS_JA = {
-    'casual': "もっとカジュアルで親しみやすい口調で書き直してください。友達に話しかけるような文体で。",
-    'professional': "専門的・権威のある口調に書き直してください。信頼感と説得力を最大化してください。",
-    'story': "物語形式で書き直してください。読者が主人公で、課題→解決の旅路として展開してください。",
-    'persuasive': "説得力の高いセールスライティングに書き直してください。痛みを明確にし、解決策を提示し、行動を促してください。",
-}
-
-app.config['TONE_PROMPTS_EN'] = _TONE_PROMPTS_EN
-app.config['TONE_PROMPTS_JA'] = _TONE_PROMPTS_JA
 
 
 
@@ -3526,24 +2646,6 @@ def generate_image_hf(prompt: str, width: int = 768, height: int = 512) -> str:
     logger.info(f"[generate_image_hf] LoremFlickr fallback: {url}")
     return url
 
-
-
-@app.route('/api/brain/stats', methods=['GET'])
-def get_brain_stats():
-    pipeline = globals().get('course_gen_global')
-    orc = globals().get('orchestrator')
-    brain = (
-        (pipeline.brain if pipeline and pipeline.brain else None)
-        or getattr(orc, 'neuromorphic_brain', None)
-        or getattr(orc, 'brain', None)
-    )
-    if brain:
-        stats = brain.get_stats()
-        total = stats.get("total_queries", 0)
-        hits = stats.get("brain_hits", 0)
-        stats["accuracy"] = (hits / total) if total > 0 else 0.0
-        return jsonify({"status": "success", "data": stats}), 200
-    return jsonify({"status": "error", "error": "brain not initialized"}), 503
 
 
 
