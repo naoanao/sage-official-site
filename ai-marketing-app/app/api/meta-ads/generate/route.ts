@@ -404,6 +404,10 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
   "image_prompt_single": "[Write a custom English image generation prompt specific to THIS product's after-state. Format: '[ethnicity/age matching target] [specific emotional expression] [specific setting matching the product] [clothing/context relevant to product] [lighting] no text overlay [aspect ratio]'. Do NOT copy this instruction — write your own unique prompt.]"
 }`;
 
+    // Groq → Gemini フォールバック
+    let adCopy: Record<string, unknown> | null = null;
+
+    // 1st: Groq
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -418,12 +422,40 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
       }),
     });
 
-    if (!groqRes.ok) {
-      throw new Error(`Groq API error: ${groqRes.status}`);
+    if (groqRes.ok) {
+      const groqData = await groqRes.json();
+      const raw = groqData.choices?.[0]?.message?.content;
+      if (raw) {
+        try { adCopy = JSON.parse(raw); } catch {}
+      }
     }
 
-    const groqData = await groqRes.json();
-    const adCopy = JSON.parse(groqData.choices[0].message.content);
+    // 2nd: Gemini fallback (rate limit / error 時)
+    if (!adCopy && process.env.GEMINI_API_KEY) {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt + "\n\nRespond with valid JSON only." }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
+          }),
+        }
+      );
+      if (geminiRes.ok) {
+        const geminiData = await geminiRes.json();
+        const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { adCopy = JSON.parse(match[0]); } catch {}
+        }
+      }
+    }
+
+    if (!adCopy) {
+      throw new Error("All AI providers failed. Please try again later.");
+    }
 
     // ハルシネーション検出：入力にない数字が生成テキストに含まれていないかチェック
     const inputFacts = [proof_numbers, customer_quote, price_or_offer, business_desc, customer_desc, main_problem, product]
