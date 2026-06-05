@@ -295,7 +295,7 @@ Each card tells ONE angle. Together they build an irresistible case. Think Dyson
     {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, genuine emotion, no text"},
     {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, genuine emotion, no text"}
   ],
-  "image_prompt_single": "English visual prompt only — show the AFTER emotional state: specific transformation visible, authentic real person, genuine expression (joy/relief/confidence), natural environment, NO text overlays, NO couple/family photo unless product is explicitly family-focused, mobile 1:1 or 4:5. Be specific about ethnicity/age/setting matching the target customer. Example: 'Japanese woman in her 30s, post-workout confidence, athletic wear, bright gym environment, genuine proud smile, no text, mobile 1:1'"
+  "image_prompt_single": "[Write a custom English image generation prompt specific to THIS product's after-state. Format: '[demographic matching target customer] [specific emotional expression showing the after-state] [specific setting relevant to this product] [clothing/props relevant to product] [lighting quality] no text overlay [aspect ratio 1:1 or 4:5]'. Do NOT copy this instruction text — generate a unique prompt for this specific product.]"
 }`
       : `あなたはNick Shackelford、Florind Metalla、SupersideクリエイティブチームをすべてあわせたMeta広告の世界最高クリエイターです。$1億以上の広告運用で4〜6倍ROASを達成してきた思考で広告を作ってください。
 
@@ -401,7 +401,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, emotion, no text"},
     {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, emotion, no text"}
   ],
-  "image_prompt_single": "English visual prompt only — show the AFTER emotional state: specific transformation visible (e.g. confident posture, genuine smile, active lifestyle), authentic real person, natural environment, no text overlays, no family/couple if product is individual transformation. Mobile 1:1 or 4:5. Example for fitness: 'Confident Japanese woman in her 30s, athletic casual wear, bright natural light, genuine smile of pride, no text, mobile 1:1'"
+  "image_prompt_single": "[Write a custom English image generation prompt specific to THIS product's after-state. Format: '[ethnicity/age matching target] [specific emotional expression] [specific setting matching the product] [clothing/context relevant to product] [lighting] no text overlay [aspect ratio]'. Do NOT copy this instruction — write your own unique prompt.]"
 }`;
 
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
