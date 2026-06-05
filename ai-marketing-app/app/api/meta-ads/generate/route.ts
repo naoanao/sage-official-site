@@ -284,18 +284,18 @@ Each card tells ONE angle. Together they build an irresistible case. Think Dyson
 {
   "framework": "chosen framework + why (1 sentence)",
   "hook_type": "chosen hook + why (1 sentence)",
-  "headline": "max 40 chars — number, timeframe, or emotional trigger. NEVER generic.",
-  "primary_text_short": "under 125 chars — ONLY the hook. This is what shows before 'See More'. Must make them tap.",
+  "headline": "max 40 chars — MUST contain a number, specific timeframe, or strong emotional trigger. BANNED: product category as headline ('Marketing Course', 'Personal Gym'), vague pain noun ('Your Struggle', 'The Problem'). GOOD examples: 'Postpartum -4kg in 3 months. Here's how.' / 'Stop guessing. Your 3 actions this week.'",
+  "primary_text_short": "under 125 chars — stops the scroll. Use curiosity gap or direct pain hit. 'Are you still [specific struggle]?' or '[Specific fear] is costing you [specific loss].'",
   "primary_text_full": "MINIMUM 300 chars, TARGET 400-500 chars. MANDATORY structure: [Hook sentence] [2-3 sentences agitating the pain - make it real and specific] [Introduce solution naturally] [Proof point using provided data or qualitative if no data] [Emotional close] [CTA]. DO NOT summarize. Write the FULL narrative. Every section must be present.",
-  "description": "max 30 chars — strongest single benefit",
-  "cta": "LEARN_MORE or BOOK_NOW or SIGN_UP or GET_QUOTE or CONTACT_US",
+  "description": "max 30 chars — benefit as a verb or transformation, NOT product category alone",
+  "cta": "Choose by campaign goal: AWARENESS→LEARN_MORE / CONSIDERATION→LEARN_MORE or SIGN_UP / CONVERSIONS or SALES→BOOK_NOW or GET_QUOTE (mandatory for conversion goals) / LEAD_GEN→CONTACT_US",
   "target_audience": "precise: age range, specific interests, behaviors, life events, job titles if B2B",
   "carousel_cards": [
-    {"card_headline": "max 40 chars", "card_body": "max 60 chars — one specific angle/benefit", "card_image_prompt": "english visual prompt — show THIS specific transformation/benefit, real person, emotion, no text, mobile 1:1"},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "..."},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "..."}
+    {"card_headline": "max 40 chars", "card_body": "max 60 chars — one specific angle. Cards 2-3 should speak to the expansion layer (same pain, different awareness stage)", "card_image_prompt": "English visual prompt — show THIS specific transformation/benefit, authentic real person showing genuine emotion (NOT stock-photo style), no text overlay, mobile 1:1"},
+    {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, genuine emotion, no text"},
+    {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, genuine emotion, no text"}
   ],
-  "image_prompt_single": "For single image ad: detailed english prompt — show the AFTER state emotionally, real person, genuine joy/relief/confidence, natural environment, no text overlays, mobile 1:1 or 4:5"
+  "image_prompt_single": "English visual prompt only — show the AFTER emotional state: specific transformation visible, authentic real person, genuine expression (joy/relief/confidence), natural environment, NO text overlays, NO couple/family photo unless product is explicitly family-focused, mobile 1:1 or 4:5. Be specific about ethnicity/age/setting matching the target customer. Example: 'Japanese woman in her 30s, post-workout confidence, athletic wear, bright gym environment, genuine proud smile, no text, mobile 1:1'"
 }`
       : `あなたはNick Shackelford、Florind Metalla、SupersideクリエイティブチームをすべてあわせたMeta広告の世界最高クリエイターです。$1億以上の広告運用で4〜6倍ROASを達成してきた思考で広告を作ってください。
 
@@ -390,18 +390,18 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
 {
   "framework": "選んだフレームワークと理由（1文）",
   "hook_type": "選んだフックと理由（1文）",
-  "headline": "40文字以内 — 数字・期間・感情トリガー。ありきたり表現は絶対禁止",
-  "primary_text_short": "125文字以内 — フックのみ。「もっと見る」をタップさせる一言",
+  "headline": "40文字以内厳守。必ず数字・具体的期間・感情トリガーのいずれかを含める。禁止ワード：「〇〇の悩み」「〇〇のご案内」「〇〇サービス」「〇〇について」など商品説明・カテゴリ名のみの表現。良い例：「産後8ヶ月、体重が戻らないのは方法が違うから」「週2回で体が変わる。産後専門が伴走」",
+  "primary_text_short": "125文字以内 — 最初の一言でスクロールを止める。「まだ〇〇ですか？」「〇〇している間に〇〇」など好奇心か痛みを直撃するフックのみ",
   "primary_text_full": "最低300文字・目標400〜500文字。必須構成：[フック文] [痛みを深く煽る2〜3文（具体的な状況・感情を描写）] [解決策の自然な導入] [証拠ポイント（提供データがあれば使用、なければ定性表現）] [感情的クロージング] [CTA]。要約は禁止。各セクションを省略せず完全に書き切ること。",
-  "description": "30文字以内 — 最強のベネフィット1つ",
-  "cta": "LEARN_MORE または BOOK_NOW または SIGN_UP または GET_QUOTE または CONTACT_US",
+  "description": "30文字以内 — 変化・ベネフィットを動詞で表現（禁止：商品名のみ・カテゴリ名のみ）",
+  "cta": "目標ステージで選択：認知(AWARENESS)→LEARN_MORE / 検討(CONSIDERATION)→LEARN_MORE or SIGN_UP / 購入(CONVERSIONS/SALES)→BOOK_NOW or GET_QUOTE / リード→CONTACT_US。goal=CONVERSIONSまたはSALESの場合は必ずBOOK_NOWかGET_QUOTEを使用すること",
   "target_audience": "具体的：年齢・特定の興味関心・行動・ライフイベント・職種（B2Bなら）",
   "carousel_cards": [
-    {"card_headline": "40文字以内", "card_body": "60文字以内 — 1つの特定の角度/ベネフィット", "card_image_prompt": "英語のビジュアルプロンプト — この特定の変容/ベネフィットを映す、本物感のある人物、感情、テキストなし、モバイル1:1"},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "..."},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "..."}
+    {"card_headline": "40文字以内", "card_body": "60文字以内 — 1つの角度/ベネフィット。拡張層にも届く悩みの入口を複数用意する", "card_image_prompt": "English visual prompt — show THIS specific transformation or benefit, authentic real person showing genuine emotion (NOT stock photo style), no text overlay, mobile 1:1"},
+    {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, emotion, no text"},
+    {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, emotion, no text"}
   ],
-  "image_prompt_single": "シングル画像広告用：アフター状態の感情を映す詳細英語プロンプト — 本物の喜び/安堵/自信、自然な環境、テキストオーバーレイなし、モバイル1:1または4:5"
+  "image_prompt_single": "English visual prompt only — show the AFTER emotional state: specific transformation visible (e.g. confident posture, genuine smile, active lifestyle), authentic real person, natural environment, no text overlays, no family/couple if product is individual transformation. Mobile 1:1 or 4:5. Example for fitness: 'Confident Japanese woman in her 30s, athletic casual wear, bright natural light, genuine smile of pride, no text, mobile 1:1'"
 }`;
 
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
