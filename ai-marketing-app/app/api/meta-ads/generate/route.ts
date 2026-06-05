@@ -40,6 +40,102 @@ export async function POST(req: NextRequest) {
     const safe = (v: unknown, fallback = ""): string =>
       !v || v === "undefined" || v === "null" ? fallback : String(v);
 
+    // ターゲット設計：コア層・拡張層 + 態度変容マップ
+    const targetDesign = isEn
+      ? `## TARGET AUDIENCE DESIGN (mandatory — apply to all ad copy)
+CORE LAYER (highest purchase intent — write the ad primarily for this person):
+The person who is already aware of the problem, actively searching for a solution, and has the budget and motivation to buy now.
+Typical profile: ${safe(customer_desc, "your most ready-to-buy customer segment")}
+
+EXTENDED LAYER (broader resonance — secondary audience who shares the same insight):
+People who have the same underlying frustration but haven't yet committed to seeking a solution.
+Goal: Use the ad copy to make them realize "this is my problem too."
+
+IMPORTANT: Meta's Andromeda algorithm means creative IS targeting. A well-crafted ad for your core layer will automatically find both layers. Write for one specific person in deep pain — not for everyone.
+
+## ATTITUDE CHANGE MAP — which stage is this ad targeting?
+AWARENESS: Customer doesn't know the problem exists → use curiosity/education hook
+INTEREST: Customer knows the problem but not your solution → use comparison/benefit hook
+DESIRE: Customer is considering options → use proof/USP/objection-preemption
+ACTION: Customer almost ready → use risk-removal (trial price, guarantee, no commitment)
+LOYALTY: Customer bought once → use community/results/upsell hooks
+→ Identify which stage has the biggest bottleneck and write the ad to move people through that specific gap.
+
+## USP ARCHITECTURE — separate strategy from customer copy:
+STRATEGIC USP (internal): The honest claim only this product can make — the non-copyable fact.
+CUSTOMER HOOK (ad copy): Translate that fact into the emotional outcome the customer actually wants.
+Example: Strategic USP = "Only functional certified kale juice with 2 live bacteria strains" → Customer Hook = "The morning guilt is gone. One cup. 780 yen."
+→ Write the customer hook in the headline. The strategic USP becomes proof in the body copy.`
+      : `## ターゲット設計（必須 — 全ての広告コピーに反映すること）
+コア層（購買確度が最も高い層 — この人に向けて広告を書く）：
+既に問題を自覚し、解決策を積極的に探していて、予算と意欲が揃っている人。
+想定プロフィール：${safe(customer_desc, "最も購買意欲の高い顧客層")}
+
+拡張層（コア層と同じインサイトを持つ周辺層 — 二次ターゲット）：
+同じ根本的な不満を抱えているが、まだ積極的に解決策を探していない層。
+目標：広告コピーで「これは自分の問題だ」と気づかせること。
+
+重要：MetaのAndromedaアルゴリズムではクリエイティブがターゲティング。深く悩んでいる一人の人に向けて書いた広告が、アルゴリズムが両層を自動で見つける。「全員向け」ではなく「深い悩みを持つ一人向け」に書くこと。
+
+## 態度変容マップ — この広告はどのステージを動かすか？
+AWARENESS（認知）：問題の存在すら知らない層 → 好奇心・教育型フック
+INTEREST（興味）：問題は知っているが解決策を探していない層 → 比較・ベネフィット型フック
+DESIRE（欲求）：選択肢を比較検討中の層 → 証拠・USP・反論先取り型
+ACTION（行動）：買いたいが踏み出せない層 → リスク除去（初回価格・保証・縛りなし）
+LOYALTY（継続）：一度購入した層 → コミュニティ・結果報告・アップセル型
+→ 最もボトルネックになっているステージを特定し、そのギャップを動かす広告を書くこと。
+
+## USPアーキテクチャ — 戦略USPと顧客向けコピーを分けて設計する
+戦略USP（社内の核）：この商品だけが正直に言える競合にコピーできないファクト
+顧客向けコピー（広告フック）：そのファクトを「顧客が実際に手に入れたい感情・生活の変化」に翻訳したもの
+例：戦略USP「生菌2種×国産ケールの日本初機能性表示青汁」→ 顧客コピー「朝の罪悪感がなくなった。もう一杯。780円から。」
+→ 見出しには顧客コピーを。戦略USPは本文の「証拠」として使う。`;
+
+    // 4つのクリエイティブ訴求軸 + UGC戦略 + 競合カウンター
+    const creativeAxisGuide = isEn
+      ? `## 4 CREATIVE AXIS TYPES — choose the best fit for this product:
+1. PAIN ATTACK: Open by naming the exact pain. "Are you still [specific frustration]?" Best for: products solving acute, recognized problems.
+2. FUNCTIONAL PROOF: Lead with a specific, verifiable benefit. "[Specific ingredient/mechanism] → [Specific outcome]". Best for: functional foods, supplements, tech products with provable claims.
+3. BRAND TRUST: Lead with authority or legacy. "Since [year] / [Certification] / [Award]". Best for: established brands, regulated products, trust-barrier categories.
+4. UGC TESTIMONIAL: Open with a real customer's exact words or transformation. "I used to [struggle]... now [result]". Best for: products where social proof overcomes skepticism.
+
+## UGC CREATIVE STRATEGY (highest-performing format in 2026):
+UGC (User Generated Content) style ads outperform polished brand ads in almost every category.
+WHY it works: Andromeda's algorithm distributes UGC-style content more broadly because users engage with it like organic content.
+HOW to write UGC-style copy even without real reviews:
+- Write in first-person ("I was struggling with...")
+- Include specific sensory details ("It dissolved instantly, no shaker needed")
+- Show the before/after transformation through one person's experience
+- End with a natural, non-pushy CTA ("I just reordered my 3rd pack")
+
+## COMPETITIVE COUNTER COPY (when competitor_diff is provided):
+If a key competitive weakness exists, use it as the ad's central tension — without naming the competitor:
+Example: Competitors use heat-killed bacteria → "Not all bacteria survive the journey. Ours do."
+This works in the FUNCTIONAL PROOF axis and turns a competitor's weakness into your proof point.
+
+Select the best axis, explain why in "framework" field, and write ALL copy to match that axis consistently.`
+      : `## 4つのクリエイティブ訴求軸 — この商品に最適なものを選択：
+1. ペイン直撃型: 冒頭でターゲットの悩みをそのまま言葉にする。「まだ〇〇に悩んでいますか？」最適：既に問題を自覚している層への商品。
+2. 機能証明型: 具体的・検証可能なベネフィットで始める。「〇〇成分 → 〇〇の効果」最適：機能性食品・サプリ・根拠を示せる商品。
+3. ブランド安心型: 権威・歴史・認定で始める。「〇〇年の歴史 / 機能性表示食品 / No.1」最適：信頼障壁の高い商品・大手ブランド。
+4. UGC体験談型: 実際の顧客の言葉・変化で始める。「飲み始めて〇週間、お腹の調子が…」最適：実績・口コミが購入の決め手になる商品。
+
+## UGC（口コミ風）クリエイティブ戦略（2026年最高パフォーマンス形式）：
+UGCスタイルの広告は、ほぼ全ての商品カテゴリでブランド広告を圧倒する。
+なぜ機能するか：Andromedaアルゴリズムはオーガニックコンテンツと区別がつかないUGC風広告を有機的に拡散する。
+実際のレビューなしでUGCスタイルのコピーを書く方法：
+- 一人称で書く（「私は〇〇に悩んでいました。でも…」）
+- 具体的な感覚的詳細を入れる（「スプーンで混ぜるだけで、シャカシャカが不要で朝が楽に」）
+- 一人の体験を通じてビフォーアフターを描く
+- 自然なCTAで締める（「3袋目をもう注文しました」）
+
+## 競合カウンターコピー（competitor_diffが提供された場合）：
+競合の弱点が明確なら、競合名を出さずに「その弱点」を広告の中心的な緊張感として使う：
+例：競合が殺菌乳酸菌 → 「菌が届かない青汁を、知らずに飲んでいませんか？」
+機能証明型の軸で使うと、競合の弱みが自社の証拠ポイントに変わる。
+
+最適な軸を選び、選んだ理由を "framework" フィールドに明記すること。全てのコピーをその軸で一貫させること。`;
+
     // ロケール別文化的コンテキスト（2026年 2.8M広告分析より）
     const localeContext: Record<string, string> = {
       us: `LOCALE: United States 🇺🇸
@@ -111,7 +207,31 @@ Violation = false advertising = illegal. Do NOT improvise facts.
 ## ALGORITHM TRUTH (2026)
 Meta's Andromeda: creative IS targeting. 70-80% of performance = creative quality. The ad you write will find its own audience. Write to one specific person in deep pain, not to everyone.
 
+## TARGET ARCHITECTURE — Core Layer vs. Expansion Layer
+Before writing any copy, mentally define TWO layers from the business data:
+- **Core Layer (コア層)**: Primary customers most likely to convert now. Specific pain + specific life stage + specific awareness level. (Example: "Women 40-50s who started noticing gut decline and are actively looking for a solution")
+- **Expansion Layer (拡張層)**: Adjacent customers who share the pain but haven't started searching yet. (Example: "Busy working mothers 30-40s who feel guilty about not eating enough vegetables in the morning")
+Write primary_text_full targeting the CORE layer. Write carousel_cards that also speak to the expansion layer.
+
+## 3C → USP → CREATIVE CHAIN
+The best Meta ad is built on this chain — do not skip steps:
+1. **3C insight**: What gap does the competitor's ★2-3 reviews reveal? (What are customers repeatedly complaining about?)
+2. **USP extraction**: What can this business claim that competitors CANNOT? (The intersection of customer need × brand strength × competitor weakness)
+3. **Creative direction**: Translate the USP into the first 2-3 seconds of emotional impact. The hook is NOT about the product — it's about the customer's life BEFORE the product.
+When business data is limited, infer the 3C gap from the industry type and create copy based on the most common competitor weakness patterns.
+
+## CAMPAIGN STRUCTURE THINKING
+Think in campaign objectives before writing:
+- **Awareness campaign**: Curiosity hook → broad pain agitation → brand name last. (TOFU — top of funnel)
+- **Consideration campaign**: Specific solution copy → social proof → comparison to competitor weakness → CTA. (MOFU)
+- **Conversion campaign**: Objection preemption → risk removal (guarantee, trial) → urgency → single clear CTA. (BOFU)
+Default to CONSIDERATION copy unless the product/service is completely unknown in the market.
+
 ## ${localeInstruction}
+
+${targetDesign}
+
+${creativeAxisGuide}
 
 ## PRODUCT BRIEF
 Business: ${safe(business_desc, "a local small business")}
@@ -194,7 +314,30 @@ proof_numbers・customer_quote・price_or_offerが未入力の場合：具体的
 ## 2026年のアルゴリズム真実
 MetaのAndromeda：クリエイティブがターゲティング。成果の70〜80%はクリエイティブの質。あなたが書く広告が自分で適切な人を見つける。「全員」ではなく「深く悩んでいる一人の人」に向けて書いてください。
 
+## ターゲット設計：コア層 vs 拡張層
+広告コピーを書く前に、入力データから2つのターゲット層を頭の中で定義すること：
+- **コア層**：今すぐ購入する可能性が最も高い顧客層。具体的な悩み・ライフステージ・課題認知レベルが明確。（例：「腸の衰えが気になり始め、解決策を積極的に探している40〜50代」）
+- **拡張層**：同じ悩みを持ちながらまだ解決策を探していない周辺層。（例：「朝の野菜不足に罪悪感を持つ、仕事・家事・子育てに多忙な30〜40代の共働き主婦」）
+primary_text_full はコア層に向けて書く。carousel_cards は拡張層にも届くよう、悩みの入口を複数用意する。
+
+## 3C → USP → クリエイティブ の連鎖
+最強のMeta広告はこの連鎖から生まれる。順番を飛ばさないこと：
+1. **3Cギャップ発見**：競合の★2〜3レビューで繰り返される不満は何か？（「競合ではまだ解決されていない顧客の欲求」）
+2. **USP導出**：このビジネスだけが正直に言えることは何か？（顧客ニーズ × 自社強み × 競合弱みの3つが重なる領域）
+3. **クリエイティブ方向性**：USPを最初の2〜3秒の感情的インパクトに翻訳する。フックは商品説明ではなく「この商品と出会う前の顧客の日常と感情」
+
+## キャンペーン目的別の書き方
+キャンペーンの目的ステージを意識してコピーを書き分けること：
+- **認知目的（TOFU）**：好奇心フック → 広く痛みを煽る → ブランドは後半。「まだ知らない人に存在を届ける」
+- **検討目的（MOFU）**：具体的な解決策 → 社会的証明 → 競合との違い → CTA。「比較・検討中の人を選ばせる」
+- **購入目的（BOFU）**：反論先取り → リスク除去（保証・初回トライアル）→ 背中を押すCTA。「今すぐ買う理由を作る」
+入力データから推測できる場合は検討目的（MOFU）をデフォルトとして書くこと。
+
 ## ${localeInstruction}
+
+${targetDesign}
+
+${creativeAxisGuide}
 
 ## 商品情報
 業種: ${safe(industry, "小規模店舗")}
