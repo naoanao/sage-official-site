@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import threading
 from flask import Blueprint, jsonify, request, current_app
 
 from backend.utils.auth import apply_public_strategy
@@ -303,3 +304,205 @@ def devto_post():
     except Exception as e:
         logger.error(f'[DEV.TO] post error: {e}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@publish_bp.route('/api/notion/write', methods=['POST'])
+def notion_write():
+    if os.getenv("SAGE_ENABLE_NOTION") != "1":
+        return jsonify({"error": "Feature disabled by default"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    mode = request_data.get("mode", "page")
+    title = request_data.get("title")
+    content = request_data.get("content", "")
+
+    if not title:
+        return jsonify({"error": "No title provided"}), 400
+
+    try:
+        from backend.integrations.notion_integration import notion_integration
+
+        result = None
+        if mode == "page":
+            parent_id = request_data.get("parent_id")
+            result = notion_integration.create_page(title, content, parent_id)
+        elif mode == "database":
+            database_id = request_data.get("database_id")
+            properties = request_data.get("properties", {"Name": {"title": [{"text": {"content": title}}]}})
+            result = notion_integration.add_to_database(database_id, properties, content)
+
+        if result:
+            return jsonify({"status": "success", "result": {"id": result.get("id"), "url": result.get("url")}}), 200
+        else:
+            return jsonify({"error": "Failed to perform Notion operation. Check server logs."}), 500
+
+    except Exception as e:
+        logger.error(f"Notion write error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@publish_bp.route('/api/instagram/status', methods=['GET'])
+def instagram_status():
+    from backend.integrations.instagram_integration import InstagramBot
+    bot = InstagramBot()
+    configured = bool(bot.access_token and bot.account_id)
+    enabled = os.getenv("SAGE_ENABLE_INSTAGRAM", "1") != "0"
+    return jsonify({
+        "status": "wired",
+        "enabled": enabled,
+        "configured": configured,
+        "reason": "restored"
+    }), 200
+
+
+@publish_bp.route('/api/instagram/post', methods=['POST'])
+def instagram_post():
+    request_data = request.get_json(silent=True) or {}
+    image_url = request_data.get("image_url")
+    caption = request_data.get("caption") or request_data.get("content", "Sage System Online")
+
+    if not image_url:
+        logger.warning("Instagram post attempted without image_url — returning structured error")
+        return jsonify({
+            "status": "error",
+            "error": "no_image",
+            "message": "Instagram requires a public image URL. Please upload an image first or post manually."
+        }), 422
+
+    try:
+        from backend.integrations.instagram_integration import InstagramBot
+        from backend.integrations.image_generation import image_gen_enhanced
+        import requests as _req
+        import uuid as _uuid
+
+        backend_url = (os.getenv('VITE_BACKEND_URL') or '').rstrip('/')
+        tmp_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'tmp_images')
+        os.makedirs(tmp_dir, exist_ok=True)
+
+        if backend_url:
+            try:
+                r = _req.get(image_url, timeout=30, stream=True)
+                ct = r.headers.get('content-type', 'image/jpeg')
+                if r.status_code == 200 and ct.startswith('image'):
+                    ext = 'jpg' if 'jpeg' in ct or 'jpg' in ct else ct.split('/')[-1].split(';')[0].strip() or 'jpg'
+                    fname = f"{_uuid.uuid4().hex}.{ext}"
+                    fpath = os.path.join(tmp_dir, fname)
+                    with open(fpath, 'wb') as _f:
+                        for chunk in r.iter_content(8192):
+                            _f.write(chunk)
+                    stable_url = f"{backend_url}/api/images/{fname}"
+                    logger.info(f"[IG] Serving image via ngrok: {stable_url}")
+                    image_url = stable_url
+                else:
+                    logger.warning(f"[IG] Source image returned {r.status_code} — using original URL")
+            except Exception as _dl_err:
+                logger.warning(f"[IG] Local cache failed ({_dl_err}) — using original URL")
+        else:
+            logger.warning("[IG] VITE_BACKEND_URL not set — Meta may reject the image URL")
+
+        bot = InstagramBot()
+        if not bot.access_token or not bot.account_id:
+            return jsonify({
+                "status": "error",
+                "error": "missing_credentials",
+                "message": "INSTAGRAM_ACCESS_TOKEN or INSTAGRAM_ACCOUNT_ID not set in .env"
+            }), 503
+
+        result = bot.post_image(image_url, caption)
+
+        if result.get("success"):
+            try:
+                from backend.modules.sage_audit import audit_logger
+                if audit_logger:
+                    audit_logger.log_event("sns_post_success", "system", {"platform": "instagram", "id": result.get("id")})
+            except:
+                pass
+            return jsonify({"status": "success", "result": result}), 200
+        else:
+            err = result.get("error", {})
+            msg = err.get("message") if isinstance(err, dict) else str(err)
+            logger.error(f"Instagram post failed: {err}")
+            return jsonify({"status": "error", "error": err, "message": msg or "Instagram post failed"}), 500
+
+    except Exception as e:
+        logger.error(f"Instagram post error: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@publish_bp.route('/api/blog/run-now', methods=['POST'])
+def api_blog_run_now():
+    try:
+        logger.info("🚀 [BLOG] Manual trigger via /api/blog/run-now")
+        _automation_stop_events = current_app.config.get('AUTOMATION_STOP_EVENTS', {})
+        _record_run_fn = current_app.config.get('RECORD_RUN')
+        if _automation_stop_events.get('blog', threading.Event()).is_set():
+            return jsonify({"status": "error", "message": "Blog automation is disabled. Enable it first."}), 403
+        from backend.scheduler.blog_scheduler import BlogScheduler
+        blog_sched = BlogScheduler()
+        blog_sched.run_once()
+        if _record_run_fn:
+            _record_run_fn("blog")
+        return jsonify({"status": "success", "message": "Blog post generated and published. Check git log."})
+    except Exception as e:
+        logger.error(f"[BLOG] Manual trigger error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@publish_bp.route('/api/gumroad/run-now', methods=['POST'])
+def api_gumroad_run_now():
+    try:
+        logger.info("🚀 [GUMROAD] Manual trigger via /api/gumroad/run-now")
+        _automation_stop_events = current_app.config.get('AUTOMATION_STOP_EVENTS', {})
+        _record_run_fn = current_app.config.get('RECORD_RUN')
+        if _automation_stop_events.get('gumroad', threading.Event()).is_set():
+            return jsonify({"status": "error", "message": "Gumroad automation is disabled. Enable it first."}), 403
+        from backend.scheduler.gumroad_scheduler import GumroadScheduler
+        gumroad_sched = GumroadScheduler()
+        gumroad_sched.run_once()
+        if _record_run_fn:
+            _record_run_fn("gumroad")
+        return jsonify({"status": "success", "message": "Gumroad scheduler executed. Check logs."})
+    except Exception as e:
+        logger.error(f"[GUMROAD] Manual trigger error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@publish_bp.route('/api/sns/post_bilingual', methods=['POST'])
+def api_sns_post_bilingual():
+    try:
+        data = request.get_json(silent=True) or {}
+        topic = (data.get("topic") or "").strip()
+        if not topic:
+            return jsonify({"status": "error", "message": "topic is required"}), 400
+
+        from backend.modules.bilingual_poster import BilingualPoster
+        poster = BilingualPoster()
+        result = poster.post_bilingual(topic)
+        return jsonify({"status": "ok", **result}), 200
+    except Exception as e:
+        logger.error(f"[BILINGUAL] post_bilingual error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@publish_bp.route('/api/sns/sync_performance', methods=['POST'])
+def api_sns_sync_performance():
+    try:
+        from backend.modules.sns_performance_tracker import SNSPerformanceTracker
+        tracker = SNSPerformanceTracker()
+        result = tracker.sync_and_learn()
+        return jsonify({"status": "ok", **result}), 200
+    except Exception as e:
+        logger.error(f"[SNS_TRACKER] sync_performance error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@publish_bp.route('/api/sns/performance_summary', methods=['GET'])
+def api_sns_performance_summary():
+    try:
+        from backend.modules.sns_performance_tracker import SNSPerformanceTracker
+        tracker = SNSPerformanceTracker()
+        summary = tracker.get_summary()
+        return jsonify({"status": "ok", **summary}), 200
+    except Exception as e:
+        logger.error(f"[SNS_TRACKER] summary error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500

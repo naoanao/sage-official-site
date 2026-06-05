@@ -1,5 +1,27 @@
 # 次セッション引き継ぎ指示書
-作成日: 2026-05-20（最終更新: 2026-06-03）
+作成日: 2026-05-20（最終更新: 2026-06-05）
+
+---
+
+## 🎯 現在地（2026-06-05 JST）
+
+**収益: ¥0 / 目標: 年内¥10M**
+
+### ✅ 2026-06-05 実施済み（Meta広告コピー品質修正）
+
+#### 問題の発見・修正
+- **根本原因**: `growl_session` に `user_profile` なし。`AdBoostCard` が `session.user_profile` を参照するとすべて `undefined` → プロンプトに文字列 `"undefined"` が渡り、汎用コピーが生成されていた
+- **修正①** `app/dashboard/page.tsx`: `loadOnboarding()` を追加インポートし、オンボーディングデータをAdBoostCardのsessionに優先注入
+- **修正②** `app/api/meta-ads/generate/route.ts`: `safe()` ヘルパー追加 → undefined/null/空文字をフォールバック値に変換し、プロンプトに "undefined" 文字列が混入するのを防止
+- **コード修正済み・Vercel未デプロイ**（VM停止のためgit pushが未実施）
+
+#### Meta広告テスト結果（2026-06-05）
+- ✅ Generate Ad Copy → 生成成功（Groq API稼働中）
+- ✅ コピー品質修正済みデプロイ完了（commit 87235eb・本番稼働中）
+- ✅ Submit Ad (Paused) → 成功レスポンス + Campaign ID表示
+- ✅ META_ADS_ACCESS_TOKEN → **Vercel設定済み（2日前）**
+- ✅ META_AD_ACCOUNT_ID → **Vercel設定済み（2日前）**
+- **⚠️ 要確認**: 今日のSubmit Adで作成されたキャンペーン（ID: 120247848721930389）がAds Managerに実在するか確認を
 
 ---
 
