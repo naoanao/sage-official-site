@@ -388,7 +388,7 @@ TikTokへのAI自動投稿は**完全自動化が可能**。Sage AIのn8n基盤�
 
 ---
 
-## 4. システム実際の動作状況（2026-05-19 時点）
+## 4. システム実際の動作状況（2026-06-06 更新）
 
 ### ✅ 実際に動いているもの
 
@@ -398,20 +398,30 @@ Flaskサーバーが以下のスレッドを**自動バックグラウンド起�
 | スレッド | 内容 | 動作確認 |
 |---|---|---|
 | SageSNSScheduler | Bluesky 2アカウント投稿（1時間ごとチェック） | ✅ 確認済み |
-| SageBlogScheduler | ブログ自動生成（JST 09:00） | ✅ 起動中 |
+| SageBlogScheduler | ブログ自動生成（JST 09:00）| ✅ Groq優先に更新済み（2026-06-06） |
 | SageDreamScheduler | 夢モード・アイデア生成（JST 03:00-05:00） | ✅ 起動中 |
 | SageMarketScanScheduler | マーケスキャン（JST 06:00） | ✅ 起動中 |
-| SageEngagementBot | Bluesky自動いいね・返信 | 🔴 **DISABLED 2026-05-21** オフブランドな返信（"I'm a Trello fan"）が発生したため停止。再開時はreply persona要修正。 |
+| SageEngagementBot | Bluesky自動いいね・返信 | 🔴 **DISABLED 2026-05-21** オフブランドな返信が発生したため停止。再開時はreply persona要修正。 |
 | SageSNSPerformanceTracker | エンゲージメント学習（JST 22:00） | ✅ 起動中 |
 | SageSelfTestScheduler | 自己診断（JST 07:00） | ✅ 起動中 |
 | NeuromorphicBrain | JSON永続化メモリ（v2.0.1） | ✅ 動作中 |
 | SICALoop | 自己改善提案（JST 20:00） | ✅ Groq切替済 |
 | Watchdog | Flask + ngrokクラッシュ時自動再起動 | ✅ 動作中 |
 
+### LLMフォールバック構成（2026-06-06 全系統更新）
+
+| システム | 優先順 | 月コスト |
+|---|---|---|
+| Sage スケジューラー3本 | Groq（無料）→ DeepSeek（有料fallback） | ~$0 |
+| Growl meta-ads | Groq（無料）→ Gemini（無料）→ DeepSeek（有料fallback） | ~$0 |
+| Growl 週次アクション | Groq → Gemini → DeepSeek | ~$0 |
+| LearnAI チャット | cerebras→groq→github→sambanova→gemini→openrouter→deepseek | ~$0 |
+| **合計** | DeepSeekはfallbackのみ | **~$0〜0.10/月** |
+
 ### ⚠️ 問題あり・要確認
 - **Instagram**: `SAGE_ENABLE_INSTAGRAM=0` と `.env` に書いてあるが、コード側で直接フラグを立てている箇所がある
 - **YouTube Shorts**: アップロード機能は実装済み（2026-05-15）、動画品質は未確認
-- **Blog**: Gemini依存の可能性。Groq切替が必要かもしれない
+- **LearnAI**: ブラウザ実機テスト未実施（file://制限）。コードのPOOL順は確認済み。
 
 ---
 
@@ -606,7 +616,8 @@ Sage_Final_Unified/
 | 2026-06-06 | **DeepSeekモデル名更新**: deepseek-chat → deepseek-v4-flash（deprecated対応）。全6箇所更新（gemini.ts, meta-ads/route.ts, blog/sns/gumroad scheduler, LearnAI） |
 | 2026-06-06 | **meta-ads Prefix Caching最適化**: PRODUCT BRIEF境界でsystem/user分割 → DeepSeekキャッシュヒット時に入力コスト最大50分の1削減 |
 | 2026-06-06 | **全系統を無料枠優先フォールバックに変更**: DeepSeek→Groq を Groq→DeepSeek に逆転。GrowlはさらにGemini無料枠も挟む（Groq→Gemini→DeepSeek）。LearnAIはdeepseekをPOOL最後尾へ。月コスト ~$0.18 → ~$0/月 |
-| 2026-06-06 | **全系統ブラウザ実機テスト実施**: Sage(Groq 1.5s応答✅) / Growl UI(ダッシュボード・3アクション・ハルシネーション警告✅) / Growl API(EN/JA両言語✅) / LearnAI(コード確認✅・ブラウザfile://制限で未実施) |
+| 2026-06-06 | **全系統ブラウザ実機テスト実施**: Sage(Groq 1.5s応答✅) / Growl UI(ダッシュボード・3アクション・ハルシネーション警告✅) / Growl API(EN/JA両言語✅) / LearnAI(POOL_CHAT順コード確認✅・ブラウザ未確認) |
+| 2026-06-06 | **テスト結果スクショ保存**: _assets/07_meta_ads_live/ に llm_fallback_verification / growl_ui_browser_test / full_system_test の3枚を保存 |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 
@@ -1301,9 +1312,4 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 | 2 | Quora回答「How do I get more customers for a restaurant through social media?」 | ✅ 投稿済み | 重複あるが内容は有効 |
 | 3 | Quora回答「What is the best way to promote a restaurant?」 | ✅ 投稿済み | 179答え・285フォロワーの人気質問に追加 |
 | 4 | Gumroad `apvbzh` 販売文 | ✅ 確認済み | 「I'm a restaurant owner in Japan...」で始まる新コピー適用済み |
-| 5 | Uneed.best Growl提出 | ❌ **vercel.appドメイン不可** | カスタムドメイン取得後に再挑戦 |
-| 6 | SaaSHub登録 | ❌ **アカウント作成必要** | なおさんがnaofumi0930@gmail.comで登録→DISTRIBUTION_SUBMISSION_KIT.md参照 |
-| 7 | Show HN | ❌ **HNアカウントのログイン必要** | REDDIT_HN_POSTS_20260529.mdにテキスト完成済み |
-| 8 | Fazier Growl登録 | ⏳ **バッジ検証待ち** | 3コメント完了・layout.tsxにバッジ追加・git push完了（917cb43）。Vercelデプロイ後「Verify Badge」要 |
-| 9 | CLAUDE.mdに究極ビジョン追加 | ✅ 完了 | 「人とAIで、地球環境の保全、育成、活用し、この地球すべての生き物の楽園を創造する」を最上部に強調表示 |
-| 10 | Dev.to トラフィック確認 | ✅ 確認 | 3本 < 2
+| 5 | Uneed.best Growl提出 | ❌ **vercel.appドメイン不可** | カス�
