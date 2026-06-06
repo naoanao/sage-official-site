@@ -1652,6 +1652,23 @@ label.gen-item-row.selected .gen-item-preview,
     <input type="password" id="pplxKeyInput" placeholder="pplx-..."
            onkeydown="if(event.key==='Enter') saveKeys()" />
 
+    <!-- DeepSeek Direct API -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px">
+      DeepSeek APIキー 🔵
+      <a href="https://platform.deepseek.com/api_keys" target="_blank"
+         style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">取得する →</a>
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--green);margin-left:4px">$5で数ヶ月使える</span>
+    </div>
+    <div style="font-size:11px;color:#0369a1;margin-bottom:5px;background:#e0f2fe;border-radius:6px;padding:5px 8px">
+      🚀 <strong>Sage/Growlと共通キー</strong> — $5チャージ済みのキーをここに貼るだけ。
+    </div>
+    <div style="display:flex;gap:6px">
+      <input type="password" id="dsKeyInput" placeholder="sk-..."
+             onkeydown="if(event.key==='Enter') saveKeys()" style="flex:1" />
+      <button type="button" class="btn btn-ghost" onclick="testKey('deepseek')" style="white-space:nowrap;font-size:12px;padding:0 10px">接続テスト</button>
+    </div>
+    <div id="dsTestResult" style="font-size:11px;margin-top:4px;min-height:16px"></div>
+
     <!-- Notion -->
     <div style="border-top:1.5px solid var(--border);margin:16px 0 14px;padding-top:14px">
       <div style="font-size:12px;font-weight:700;color:#5b4db5;margin-bottom:6px">
@@ -1800,6 +1817,7 @@ label.gen-item-row.selected .gen-item-preview,
       <option value="openrouter">OpenRouter</option>
       <option value="github">GitHub Models</option>
       <option value="perplexity">Perplexity</option>
+      <option value="deepseek">DeepSeek 🔵</option>
     </select>
     <!-- モデル（プロバイダーに連動） -->
     <select id="modelSelect" title="モデルを選択" onchange="localStorage.setItem('learnai_model', this.value); updateVisionStatus()"
@@ -2429,14 +2447,14 @@ function _currentGeminiKey() {
 //   OpenRouter : 無料は50 req/day と少ない → 最後尾のみ
 // ※ 旧順: cerebras→gemini→groq→... → Cerebras失敗で即Gemini(250/日)消費が問題
 // ※ 新順: Geminiをgroq/github/sambanovaの後ろへ → Gemini温存・終日動作を実現
-const POOL_CHAT = ['cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
-const POOL_GEN  = ['cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
+const POOL_CHAT = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
+const POOL_GEN  = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
 
 /** キー設定済み・冷却中でないプロバイダーのみを返す */
 function _buildProviderPool(type = 'chat') {
   const order = type === 'gen' ? POOL_GEN : POOL_CHAT;
   const keyMap = {
-    cerebras: cerebrasKey, github: ghKey, groq: groqKey,
+    deepseek: dsKey, cerebras: cerebrasKey, github: ghKey, groq: groqKey,
     openrouter: orKey, sambanova: sambaKey, gemini: apiKey,
   };
   return order.filter(p => !!keyMap[p] && !_isProviderCooling(p));
@@ -2446,6 +2464,8 @@ function _buildProviderPool(type = 'chat') {
  *  type: 'chat'（軽量・対話）or 'gen'（長文生成）でGeminiモデルを切り替え */
 function _callProvider(p, prompt, useHist, sys, type = 'chat') {
   switch (p) {
+    case 'deepseek':
+      return callOpenAICompat('https://api.deepseek.com/v1/chat/completions',           dsKey,       'DeepSeek',     prompt, useHist, { model: 'deepseek-chat' },                       30000, sys);
     case 'cerebras':
       return callOpenAICompat('https://api.cerebras.ai/v1/chat/completions',            cerebrasKey, 'Cerebras',     prompt, useHist, { model: 'llama-3.3-70b' },                      60000, sys);
     case 'github':
@@ -2545,6 +2565,7 @@ let ghKey = getAllowKeySave() ? localStorage.getItem('learnai_gh') : null;
 let cerebrasKey = getAllowKeySave() ? localStorage.getItem('learnai_cerebras') : null;
 let sambaKey = getAllowKeySave() ? localStorage.getItem('learnai_samba') : null;
 let hfKey = getAllowKeySave() ? localStorage.getItem('learnai_hf') : null;
+let dsKey = getAllowKeySave() ? localStorage.getItem('learnai_ds') : null;
 
 let proxyBaseUrl = getAllowKeySave()
   ? (localStorage.getItem('learnai_proxy_base') || 'http://localhost:8000/')
@@ -3201,6 +3222,10 @@ const SAMBA_MODELS = [
   { value: 'DeepSeek-R1',                        label: 'DeepSeek R1（推論強化）' },
   { value: 'DeepSeek-V3-1',                      label: 'DeepSeek V3.1（最新）' },
 ];
+const DEEPSEEK_MODELS = [
+  { value: 'deepseek-chat',     label: 'DeepSeek V3（推奨・高速）' },
+  { value: 'deepseek-reasoner', label: 'DeepSeek R1（推論特化）' },
+];
 
 function currentProvider() {
   return document.getElementById('providerSelect')?.value || 'gemini';
@@ -3220,13 +3245,14 @@ function onProviderChange() {
     perplexity:  PPLX_MODELS,
     cerebras:    CEREBRAS_MODELS,
     sambanova:   SAMBA_MODELS,
+    deepseek:    DEEPSEEK_MODELS,
   };
   const models = modelMap[p] || GEMINI_MODELS;
   sel.innerHTML = models.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
   localStorage.setItem('learnai_provider', p);
   // キー未設定チェック
-  const keyMap  = { gemini: apiKey, groq: groqKey, openrouter: orKey, github: ghKey, perplexity: pplxKey, cerebras: cerebrasKey, sambanova: sambaKey, huggingface: hfKey };
-  const nameMap = { gemini: 'Gemini', groq: 'Groq', openrouter: 'OpenRouter', github: 'GitHub Models', perplexity: 'Perplexity', cerebras: 'Cerebras', sambanova: 'SambaNova', huggingface: 'HuggingFace' };
+  const keyMap  = { gemini: apiKey, groq: groqKey, openrouter: orKey, github: ghKey, perplexity: pplxKey, cerebras: cerebrasKey, sambanova: sambaKey, huggingface: hfKey, deepseek: dsKey };
+  const nameMap = { gemini: 'Gemini', groq: 'Groq', openrouter: 'OpenRouter', github: 'GitHub Models', perplexity: 'Perplexity', cerebras: 'Cerebras', sambanova: 'SambaNova', huggingface: 'HuggingFace', deepseek: 'DeepSeek' };
   if (!keyMap[p]) {
     toast(`${nameMap[p] || p} APIキーを設定してください`, 'err');
     openApiModal();
@@ -4198,7 +4224,7 @@ window.addEventListener('unhandledrejection', e => {
   console.warn('Unhandled rejection:', msg);
 });
 
-  if (!apiKey && !pplxKey && !groqKey && !orKey && !ghKey && !cerebrasKey && !sambaKey && !hfKey) openApiModal();
+  if (!apiKey && !pplxKey && !groqKey && !orKey && !ghKey && !cerebrasKey && !sambaKey && !hfKey && !dsKey) openApiModal();
 }
 
 function openApiModal() {
@@ -4217,6 +4243,7 @@ function openApiModal() {
   document.getElementById('orKeyInput').value       = orKey        || '';
   document.getElementById('ghKeyInput').value       = ghKey        || '';
   document.getElementById('pplxKeyInput').value     = pplxKey      || '';
+  document.getElementById('dsKeyInput').value       = dsKey        || '';
 
   // ── 保存フラグをチェックボックスへ反映（getAllowKeySave() で統一） ──
   const _askEl = document.getElementById('allowKeySave');
@@ -4296,6 +4323,7 @@ const hf  = document.getElementById('hfKeyInput').value.trim();
 const or  = document.getElementById('orKeyInput').value.trim();
 const gh  = document.getElementById('ghKeyInput').value.trim();
 const pp  = document.getElementById('pplxKeyInput').value.trim();
+const ds  = document.getElementById('dsKeyInput').value.trim();
 const pb = (document.getElementById('proxyBaseInput')?.value ?? '').trim() || proxyBaseUrl || 'http://localhost:8000/';
 const np = (document.getElementById('notionProxyInput')?.value ?? '').trim() || notionProxyUrl || 'http://localhost:8000/api/notion';
 const ndb = document.getElementById('notionDbInput').value.trim();
@@ -4317,7 +4345,7 @@ persistKey('learnai_proxy_base',   pb);
 persistKey('learnai_notion_proxy', np);
 persistKey('learnai_notion_db',    ndb);
 
-if (!g && !gr && !cb && !sb && !hf && !or && !gh && !pp) { toast('いずれかのAPIキーを入力してください', 'err'); return; }
+if (!g && !gr && !cb && !sb && !hf && !or && !gh && !pp && !ds) { toast('いずれかのAPIキーを入力してください', 'err'); return; }
 
 persistKey('learnai_key',      g);  _geminiKeys = loadGeminiKeys(g); _geminiKeyIdx = 0; apiKey = _geminiKeys[0] || '';
 if (_geminiKeys.length > 1) toast(`✅ Gemini: ${_geminiKeys.length}個のキーを登録`, 'ok');
@@ -4329,6 +4357,7 @@ persistKey('learnai_hf',       hf); hfKey       = hf;
 persistKey('learnai_or',       or); orKey       = or;
 persistKey('learnai_gh',       gh); ghKey       = gh;
 persistKey('learnai_pplx',     pp); pplxKey     = pp;
+persistKey('learnai_ds',       ds); dsKey       = ds;
 
 document.getElementById('apiModal').classList.add('hidden');
 updateProviderBadge();
@@ -4340,10 +4369,10 @@ function testOrKey() { testKey('openrouter'); }
 
 // 全プロバイダー共通 接続テスト（実際にAPIを叩く）
 async function testKey(provider) {
-  const inputMap  = { gemini: 'keyInput', groq: 'groqKeyInput', openrouter: 'orKeyInput', github: 'ghKeyInput', cerebras: 'cerebrasKeyInput', sambanova: 'sambaKeyInput', huggingface: 'hfKeyInput' };
-  const resultMap = { gemini: 'geminiTestResult', groq: 'groqTestResult', openrouter: 'orTestResult', github: 'ghTestResult', cerebras: 'cerebrasTestResult', sambanova: 'sambaTestResult', huggingface: 'hfTestResult' };
+  const inputMap  = { gemini: 'keyInput', groq: 'groqKeyInput', openrouter: 'orKeyInput', github: 'ghKeyInput', cerebras: 'cerebrasKeyInput', sambanova: 'sambaKeyInput', huggingface: 'hfKeyInput', deepseek: 'dsKeyInput' };
+  const resultMap = { gemini: 'geminiTestResult', groq: 'groqTestResult', openrouter: 'orTestResult', github: 'ghTestResult', cerebras: 'cerebrasTestResult', sambanova: 'sambaTestResult', huggingface: 'hfTestResult', deepseek: 'dsTestResult' };
   const key = document.getElementById(inputMap[provider])?.value.trim()
-           || { gemini: apiKey, groq: groqKey, openrouter: orKey, github: ghKey, cerebras: cerebrasKey, sambanova: sambaKey, huggingface: hfKey }[provider];
+           || { gemini: apiKey, groq: groqKey, openrouter: orKey, github: ghKey, cerebras: cerebrasKey, sambanova: sambaKey, huggingface: hfKey, deepseek: dsKey }[provider];
   const el = document.getElementById(resultMap[provider]);
   if (!el) return;
   if (!key) { el.textContent = '⚠ キーを入力してください'; el.style.color = 'var(--red)'; return; }
@@ -4408,6 +4437,7 @@ async function testKey(provider) {
           cerebras:    { url: 'https://api.cerebras.ai/v1/chat/completions',                                model: 'llama3.1-8b',                             headers: {} },
           sambanova:   { url: `${proxyBaseUrl}/api/sambanova/chat/completions`,                        model: 'Llama-4-Maverick-17B-128E-Instruct',      headers: {} },
           huggingface: { url: 'http://localhost:8000/api/huggingface/v1/chat/completions',                   model: 'Qwen/Qwen2.5-72B-Instruct',              headers: {} },
+          deepseek:    { url: 'https://api.deepseek.com/v1/chat/completions',                                model: 'deepseek-chat',                           headers: {} },
         };
         const cfg = cfgMap[provider];
         if (provider === 'huggingface') {
@@ -4447,13 +4477,13 @@ async function testKey(provider) {
 function updateProviderBadge() {
   const pSel = document.getElementById('providerSelect');
   if (!pSel) return;
-  const keyMap = { gemini: apiKey, groq: groqKey, openrouter: orKey, github: ghKey, perplexity: pplxKey, cerebras: cerebrasKey, sambanova: sambaKey, huggingface: hfKey };
+  const keyMap = { gemini: apiKey, groq: groqKey, openrouter: orKey, github: ghKey, perplexity: pplxKey, cerebras: cerebrasKey, sambanova: sambaKey, huggingface: hfKey, deepseek: dsKey };
   const cur    = pSel.value;
 
   // 現在プロバイダーのキーがなければ使えるものに自動切替
   if (!keyMap[cur]) {
     // POOL_CHAT の優先順と一致させる（Geminiはクォータ温存のため後方）
-    const order = ['cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter', 'perplexity'];
+    const order = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter', 'perplexity'];
     const first = order.find(p => !!keyMap[p]);
     if (first) { pSel.value = first; onProviderChange(); }
   }
@@ -6882,62 +6912,4 @@ async function saveToNotionDB() {
       ...(memo    ? { 'メモ': { rich_text: [{ text: { content: memo.slice(0, 2000) } }] } } : {}),
     },
     children: [{
-      object: 'block', type: 'paragraph',
-      paragraph: { rich_text: [{ text: { content: content.slice(0, 2000) } }] }
-    }]
-  };
-
-  try {
-    // ── server.py プロキシ経由で保存 ──────────────────
-    const res  = await fetch(notionProxyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (res.ok && data.id) {
-      resultEl.textContent = '✅ Notionに保存しました！';
-      resultEl.className   = 'nm-result ok';
-      toast('📓 Notionに保存しました ✓', 'ok');
-      setTimeout(() => closeNotionModal(), 1800);
-    } else {
-      throw new Error(data.message || data.error || `HTTP ${res.status}`);
-    }
-  } catch(e) {
-    resultEl.textContent = `❌ 保存に失敗：${e.message.slice(0, 80)}`;
-    resultEl.className   = 'nm-result err';
-    toast('Notion保存に失敗しました', 'err');
-  }
-  btn.disabled = false; btn.textContent = '📓 Notionに保存';
-}
-
-function clearAll() {
-  if (isCap) { stopCapture(); }
-  accum    = [];
-  chatHist = [];
-  noteOut  = '';
-  pendImgs = [];
-  voiceText = '';
-  _flashcards = [];
-  document.getElementById('flashcardSection').style.display = 'none';
-  const accumList = document.getElementById('accumList');
-  if (accumList) accumList.innerHTML = '';
-  document.getElementById('accumBadge').textContent = '0件';
-  const chatMsgs = document.getElementById('chatMsgs');
-  if (chatMsgs) chatMsgs.innerHTML = '<div class="msg msg-ai"><div class="avatar">🤖</div><div class="bubble">こんにちは！今日は何を学びましたか？<br>気になったことや疑問点があれば何でも話しかけてください。</div></div>';
-  const outBox = document.getElementById('outBox');
-  if (outBox) { outBox.classList.add('empty'); outBox.textContent = 'ここにコンテンツが生成されます…'; }
-  document.getElementById('outActions')?.classList.add('hidden');
-  syncGenSource();
-  renderAccum();
-  toast('クリアしました', 'ok');
-}
-
-function updateCinCount() {
-  const v = document.getElementById('cin').value;
-  const el = document.getElementById('cinCount');
-  if (el) el.textContent = v.length + '文字';
-}
-</script>
-</body>
-</html>
+  
