@@ -273,4 +273,33 @@ class SNSDailyScheduler:
         if img_result.get("status") == "success":
             image_path = img_result["path"]
         else:
-            logger.warning("🚫 [I
+            logger.warning("🚫 [IMAGE GATE] Image generation failed. Posting Bluesky text-only; skipping Instagram.")
+            image_path = None
+
+        self._post_now(ig_caption, bs_text, image_path)
+        self._write_job(item_id, topic, ig_caption, bs_text, image_path or "", status="pending")
+
+        if item.get("id"):
+            self.notion_pool.mark_as_posted(item["id"])
+
+        logger.info(f"✅ SNS Cycle Completed for '{topic}'")
+
+
+if __name__ == "__main__":
+    import schedule
+    import time
+
+    scheduler = SNSDailyScheduler()
+
+    # JST 12:00 = UTC 03:00
+    schedule.every().day.at("03:00").do(scheduler.run_cycle)
+    # EST 08:00 = UTC 13:00
+    schedule.every().day.at("13:00").do(scheduler.run_cycle)
+    # EST 21:00 = UTC 02:00
+    schedule.every().day.at("02:00").do(scheduler.run_cycle)
+
+    logger.info("🚀 SNSDailyScheduler started. Targets: JST 12:00 / EST 08:00 / EST 21:00")
+
+    while True:
+        schedule.run_pending()
+        time.sleep(60)

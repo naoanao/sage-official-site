@@ -236,4 +236,26 @@ Return ONLY valid JSON (no markdown):
         product = self._pick_product(products)
         logger.info(f"[GUMROAD] Promoting: '{product.get('name')}' → {product.get('short_url')}")
 
-       
+        if self.dry_run:
+            logger.info(f"[GUMROAD][DRY_RUN] Would queue SNS for '{product.get('name')}'. Skipping.")
+            return
+
+        copy = self._generate_sns_copy(title, excerpt, product)
+        self._queue_sns_post(copy["bs_text"], copy["ig_caption"], title)
+        logger.info(f"[GUMROAD] ✅ Done. Promotion queued for: {product.get('short_url')}")
+
+    def run(self) -> None:
+        """Background loop: runs daily at UTC 01:00 (JST 10:00)."""
+        import time
+        logger.info("[GUMROAD] GumroadScheduler background loop started.")
+        while True:
+            try:
+                now_utc = datetime.now(timezone.utc)
+                if now_utc.hour == 1 and now_utc.minute < 5:
+                    self.run_once()
+                    time.sleep(300)
+                else:
+                    time.sleep(60)
+            except Exception as e:
+                logger.error(f"[GUMROAD] Loop error: {e}")
+                time.sleep(60)

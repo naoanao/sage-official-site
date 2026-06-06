@@ -499,4 +499,27 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     }
 
     // ハルシネーション検出：入力にない数字が生成テキストに含まれていないかチェック
-    const inputFacts = [proof_numbers, customer
+    const inputFacts = [proof_numbers, customer_quote, price_or_offer, business_desc, customer_desc, main_problem, product]
+      .filter(Boolean).join(" ");
+    const generatedText = [adCopy.primary_text_full, adCopy.primary_text_short, adCopy.headline,
+      ...(adCopy.carousel_cards || []).map((c: {card_body?: string}) => c.card_body)].filter(Boolean).join(" ");
+
+    // 数字パターンを抽出して入力に含まれているか検証
+    const numbersInOutput = generatedText.match(/\d+[%万円名社人ヶ月日週時間]+|\d{2,}/g) || [];
+    const suspiciousNumbers = numbersInOutput.filter(n => !inputFacts.includes(n));
+
+    return NextResponse.json({
+      success: true,
+      ad_copy: adCopy,
+      // 警告フラグ（UIで表示）
+      warnings: suspiciousNumbers.length > 0
+        ? suspiciousNumbers.map(n => isEn
+            ? `"${n}" was not in your input — please verify this is accurate before publishing`
+            : `「${n}」は入力情報にありませんでした。公開前に事実確認してください`)
+        : [],
+    });
+  } catch (err) {
+    console.error("meta-ads/generate error:", err);
+    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+  }
+}
