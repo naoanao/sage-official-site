@@ -606,6 +606,7 @@ Sage_Final_Unified/
 | 2026-06-06 | **DeepSeekモデル名更新**: deepseek-chat → deepseek-v4-flash（deprecated対応）。全6箇所更新（gemini.ts, meta-ads/route.ts, blog/sns/gumroad scheduler, LearnAI） |
 | 2026-06-06 | **meta-ads Prefix Caching最適化**: PRODUCT BRIEF境界でsystem/user分割 → DeepSeekキャッシュヒット時に入力コスト最大50分の1削減 |
 | 2026-06-06 | **全系統を無料枠優先フォールバックに変更**: DeepSeek→Groq を Groq→DeepSeek に逆転。GrowlはさらにGemini無料枠も挟む（Groq→Gemini→DeepSeek）。LearnAIはdeepseekをPOOL最後尾へ。月コスト ~$0.18 → ~$0/月 |
+| 2026-06-06 | **全系統ブラウザ実機テスト実施**: Sage(Groq 1.5s応答✅) / Growl UI(ダッシュボード・3アクション・ハルシネーション警告✅) / Growl API(EN/JA両言語✅) / LearnAI(コード確認✅・ブラウザfile://制限で未実施) |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 
@@ -1305,8 +1306,4 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 | 7 | Show HN | ❌ **HNアカウントのログイン必要** | REDDIT_HN_POSTS_20260529.mdにテキスト完成済み |
 | 8 | Fazier Growl登録 | ⏳ **バッジ検証待ち** | 3コメント完了・layout.tsxにバッジ追加・git push完了（917cb43）。Vercelデプロイ後「Verify Badge」要 |
 | 9 | CLAUDE.mdに究極ビジョン追加 | ✅ 完了 | 「人とAIで、地球環境の保全、育成、活用し、この地球すべての生き物の楽園を創造する」を最上部に強調表示 |
-| 10 | Dev.to トラフィック確認 | ✅ 確認 | 3本 < 25views。昨日投稿のため正常。SEOは2〜4週で効き始める |
-
-### Fazier残作業（次のAIセッションで確認）
-1. growl-app.vercel.appにバッジが表示されているか確認（git push 917cb43で追加済み）
-2. https://fazier.com/launch にアク
+| 10 | Dev.to トラフィック確認 | ✅ 確認 | 3本 < 2
