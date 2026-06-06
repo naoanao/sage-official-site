@@ -50,7 +50,7 @@ def _call_llm_blog(messages: list, max_tokens: int = 3000, temperature: float = 
             resp = _req.post(
                 "https://api.deepseek.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {ds_key}", "Content-Type": "application/json"},
-                json={"model": "deepseek-chat", "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+                json={"model": "deepseek-v4-flash", "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
                 timeout=25,
             )
             if resp.status_code == 200:
@@ -401,24 +401,4 @@ Respond with ONLY the topic title, nothing else. Make it specific and compelling
         if pushed:
             if page_id:
                 self._update_notion_status(page_id, "完了")
-            self._queue_sns_post(article["title"], article["slug"])
-            self._post_devto(article)
-            logger.info(f"[BLOG] ✅ Article published: {article['slug']}")
-        else:
-            logger.error("[BLOG] git push failed. Notion status not updated.")
-
-    def run(self) -> None:
-        """Background loop: runs at JST 09:00 (UTC 00:00) daily."""
-        import time
-        logger.info("[BLOG] BlogScheduler background loop started.")
-        while True:
-            try:
-                now_utc = datetime.now(timezone.utc)
-                if now_utc.hour == 0 and now_utc.minute < 5:
-                    self.run_once()
-                    time.sleep(300)  # prevent double-run within the same hour
-                else:
-                    time.sleep(60)
-            except Exception as e:
-                logger.error(f"[BLOG] Loop error: {e}")
-                time.sleep(60)
+            self._queue_sns_post(article["title"], arti

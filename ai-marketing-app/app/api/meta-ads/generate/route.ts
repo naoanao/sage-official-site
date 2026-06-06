@@ -434,7 +434,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
             "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "deepseek-chat",
+            model: "deepseek-v4-flash",
             messages: dsMessages,
             max_tokens: 3000,
             response_format: { type: "json_object" },
@@ -493,4 +493,4 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-             
+         
