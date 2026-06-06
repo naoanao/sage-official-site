@@ -3,7 +3,7 @@
 > Sageシステムの全体構造・なおさんのアイデンティティ・既知問題と解決策を含む。  
 > 「2ヶ月に一回同じことを繰り返す」を防ぐためのシステムメモリ。
 
-最終更新: 2026-06-05（Growlプロンプト品質PDCA・英語版修正・Geminiフォールバック追加・収益化実装 完了）
+最終更新: 2026-06-06（PR実施・ProductHunt更新・Bluesky投稿・**Substack第1記事公開済み**・TikTok自動化調査 完了）
 
 ---
 
@@ -86,6 +86,200 @@ Claude Code / Cowork などの外部AIツールは、SageというAI分身の**�
 ### ⚠️ 既知の制限事項
 - Groq無料枠 + Gemini無料枠は1日の大量テストで枯渇する。翌日リセットで復旧。
 - GrowlのgitブランチはWorkspace内で `candidate/20260605-playwright-mcp` → mainへpushするフロー。
+
+---
+
+## 3a-3. PR実施ログ（2026-06-06）
+
+> AIへ: **毎回このセクションを読んで重複投稿を防ぐこと。投稿内容の全文もここに記録されている。**
+
+---
+
+### ✅ AI（Claude）が完全に実施済み
+
+#### Bluesky @kanagawatable.bsky.social（2026-06-06）
+```
+Growlに今日、価格表と課金機能を追加しました。
+
+マーケ分析は無料（月5回）、Meta広告コピー生成は有料プランのみ。
+
+コードより「どこで課金するか」の判断が一番難しかった。無料で使い続けてほしいけど、自分も生きていかないといけない。
+
+あなたは自分のサービスの価格、どうやって決めましたか？
+
+👇 growl-app.vercel.app
+```
+
+#### Bluesky @kanagawajapan.bsky.social（2026-06-06）
+```
+Growl just added pricing.
+
+Free: 5 AI marketing analyses/month (3C, SWOT, STP + 7 more)
+
+Paid: unlimited + Meta Ads copy generator — headline, body copy, carousel cards & image prompts. Paste into Ads Manager.
+
+For small business owners without a marketing team.
+
+growl-app.vercel.app
+```
+
+#### ProductHunt 説明文・タグライン更新（2026-06-06）
+- 旧タグライン: "Competitor research for small businesses — in 2 minutes"
+- 新タグライン: "AI marketing for small businesses — 3 actions/week"
+- 新説明文: 10 frameworks + Meta Ads copy generator + pricing構造を反映
+
+#### ProductHunt Maker Comment 投稿（2026-06-06）
+```
+📣 Big update today — Growl just got pricing + Meta Ads copy generation.
+
+What's new:
+• Free plan: 5 AI marketing analyses/month (3C, SWOT, STP + 7 more frameworks)
+• Standard ($19/mo): unlimited analyses + Meta Ads copy generator — headline, body copy, carousel cards, and image prompts ready to paste into Ads Manager
+• No signup required to start
+
+Built this solo, 3 hours/day, while running a restaurant. The Meta Ads feature was the most requested thing from early users — finally shipped it.
+
+If you're a small business owner who's been putting off running ads because "I don't know what to write" — that's exactly the problem this solves.
+
+Try free → growl-app.vercel.app
+```
+
+#### note.com 3C分析記事（2026-06-06）
+- タイトル: 「バーガー屋で売上が落ちたとき、競合・顧客・自社を並べた話　3C分析という考え方」
+- タグ: #マーケティング #AI活用 #個人事業主 #中小企業 #3C分析
+- マガジン: 「誰でもわかるマーケティング」に追加済み
+- ステータス: ⏸ **下書き保存済み（なおさんが note.com で「更新する」を1クリックで公開可能）**
+
+---
+
+### ⏸ 準備完了・なおさんが手動投稿するもの
+
+#### Reddit r/SideProject（フォームに入力済みだった・投稿ボタン押すだけ）
+タイトル: `I built an AI marketing tool for small businesses while running a restaurant — just added pricing and Meta Ads copy generation`
+
+本文（コピペ用）:
+```
+Solo founder here. I run a burger restaurant in Japan and built Growl on the side — 3 hours/day for the past 6 months.
+
+What it does: Small business owners spend 3+ hours/week on marketing planning. Growl gives them 3 AI-generated actions every week — Instagram posts, Google review replies, LINE messages — formatted and ready to copy-paste.
+
+What's new today:
+- 10 marketing frameworks: 3C, SWOT, STP, PEST, VRIO, 4P, and more
+- Meta Ads copy generator: headline, body copy, carousel cards, image prompts — paste straight into Ads Manager
+- Pricing: Free (5 analyses/month) | Standard $19/mo (unlimited + Meta Ads)
+
+The honest story: I'm not an engineer. I learned through trial and error, exhausting free API quotas repeatedly, and late nights after the restaurant closed. The codebase is messy. The AI sometimes hallucinates. But it works, and small business owners tell me it saves them time they don't have.
+
+Live at growl-app.vercel.app — works in English and Japanese.
+Stack: Next.js, Supabase, Groq (Llama 3.3), Gemini fallback
+
+Would love feedback from anyone who runs a local business or works with SMBs.
+```
+
+#### ✅ Substack 第1記事 公開済み（2026-06-06）
+- パブリケーション: nao1649204.substack.com（表示名: Nao）
+- 第1記事タイトル: "I automated my marketing in 3 hours a day — while running a burger restaurant"
+- 公開URL: https://open.substack.com/pub/nao1649204/p/i-automated-my-marketing-in
+- 設定: 全員公開・コメント許可・購読ボタン追加済み
+- **実施方法**: Claude-in-Chrome（なおさんがログイン済みSubstackタブをオレンジ枠グループに追加 → タブのSubdomain URL `nao1649204.substack.com/publish/post/200834614` を使ってタイトル・本文を入力 → Continue → Send to everyone now で公開）
+- 本文: 下記（次のAIセッションでSAGE_MASTER_CONTEXT.mdを読んだAIが「Substack記事の本文を出して」と言われたら出力する）
+
+```
+I'm not a software engineer.
+
+I run a burger restaurant in Japan. I got into this by accident — I needed something to handle the marketing while I was focused on the kitchen.
+
+Three years ago, I was spending 15+ hours a week on marketing. Writing Instagram posts. Responding to Google reviews. Figuring out what to run as ads. None of it felt strategic. It was just noise.
+
+So I built a tool.
+
+---
+
+What Growl does
+
+Growl analyzes your business using marketing frameworks (3C analysis, SWOT, STP) and generates 3 specific actions for the week — formatted for Instagram, Google Reviews, or LINE. No strategy degree required.
+
+I built it because I needed it. I open the tool on Monday, get my 3 actions, and close it. That's the week's marketing done.
+
+---
+
+What I learned building it
+
+Every time the AI generated something useless, I felt it personally. Every time it gave me a specific, actionable suggestion, I used it that day.
+
+The hardest part wasn't the code. It was deciding what should be free and what should cost money.
+
+Here's what I landed on:
+- Free: 5 marketing analyses per month. Enough to feel the value.
+- Paid ($19/mo): Unlimited analyses + Meta Ads copy generation. If you're running ads, you're already spending money on marketing. This pays for itself.
+
+---
+
+Why I'm writing this
+
+I'm a non-engineer, Japanese restaurant owner who built a SaaS product. The AI tools in 2025-2026 made it possible to build things that would have taken a dev team 2 years, in about 6 months of spare time.
+
+Every week: one marketing framework explained with real restaurant examples, one feature I built and what I learned, the honest numbers.
+
+No hype. No "$10k MRR in 3 months" stories. Just what actually happened.
+
+→ Growl is free to try: growl-app.vercel.app
+```
+
+#### Indie Hackers（kanagawatable・投稿権限解除後に投稿）
+- 先にコミュニティでコメントを数本する必要がある（新規アカウント制限）
+- 投稿タイトル: "I added pricing to my AI marketing tool today — here's what I learned about deciding where to charge"
+
+---
+
+### ✅ PR実施済み（2026-06-06）
+| プラットフォーム | ステータス | 内容 |
+|---|---|---|
+| Bluesky @kanagawatable | ✅ 投稿済み | 収益化発表・価格設定の葛藤（JA） |
+| Bluesky @kanagawajapan | ✅ 投稿済み | Growl pricing発表（EN） |
+| ProductHunt | ✅ 更新済み | タグライン・説明文・Maker Comment |
+| Substack | ✅ **公開済み** | 第1記事「I automated my marketing...」 |
+| note.com | ⏸ 下書き保存 | なおさんが「更新する」クリックで公開 |
+| Reddit r/SideProject | ⏸ 手動投稿待ち | テキスト準備済み（上記参照） |
+| Indie Hackers | ⏸ コメント積み上げ後 | 新規アカウント制限解除後に投稿 |
+
+### 今後のPR優先順位
+1. なおさん手動: Reddit r/SideProject 投稿（テキスト準備済み）
+2. なおさん手動: note記事「更新する」クリック
+3. AI実施可能: TikTok AI自動投稿パイプライン（下記参照）
+4. Substack 第2記事（マーケフレームワーク実例）
+
+---
+
+## 3a-4. TikTok AI自動投稿 実装計画（2026-06-06 調査完了）
+
+### 調査結果サマリー
+
+TikTokへのAI自動投稿は**完全自動化が可能**。Sage AIのn8n基盤を流用できる。
+
+### 推奨ツールスタック
+
+| 用途 | ツール | 費用 |
+|---|---|---|
+| 最速・最シンプル | AutoShorts.ai | $19-39/月 |
+| n8n連携（既存基盤活用） | n8n + VEO3/InVideo AI + TikTok API | API費用のみ |
+| 高品質AIアバター | HeyGen → TikTok自動投稿 | $29/月〜 |
+
+### なおさんに最適なコンテンツ戦略
+
+**ニッチ**: 「飲食店オーナーがAIでマーケを自動化した話」 → 英語圏で希少・再現不可なストーリー
+
+コンテンツ形式：
+- 「3C分析とは？飲食店での実例」（60秒・テキスト+ナレーション）
+- 「毎週のマーケを30分でAIに任せた方法」
+- 各動画の末尾に「Free → growl-app.vercel.app」
+
+**最速実装方法**: AutoShorts.ai $19/月で即日開始可能。入力：トピック→AI動画生成→TikTok自動投稿まで全自動。
+
+### 注意事項
+- 汎用ファセスレスコンテンツは飽和（0-3再生が多い）
+- なおさんの実話ストーリーを軸にすることで差別化可能
+- n8n既存インフラで独自パイプライン構築可（エンジニア不要）
 
 ---
 
@@ -354,13 +548,20 @@ Sage_Final_Unified/
 
 ## 7. LLM利用状況
 
-| 用途 | LLM | API Key場所 |
+**基本方針（2026-06-06更新）: 無料枠優先 → DeepSeek有料fallback**
+
+| 用途 | 優先順位 | API Key場所 |
 |---|---|---|
-| SNSコンテンツ生成 | Groq llama-3.3-70b-versatile | .env / GROQ_API_KEY |
-| SICA自己改善 | Groq llama-3.3-70b-versatile | .env / GROQ_API_KEY |
+| SNSコンテンツ生成（Sage） | Groq → DeepSeek fallback | .env / GROQ_API_KEY, DEEPSEEK_API_KEY |
+| ブログ生成（Sage） | Groq → DeepSeek fallback | .env / GROQ_API_KEY, DEEPSEEK_API_KEY |
+| Gumroad SNS（Sage） | Groq → DeepSeek fallback | .env / GROQ_API_KEY, DEEPSEEK_API_KEY |
+| Meta広告生成（Growl） | Groq → Gemini → DeepSeek fallback | .env.local / GROQ_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY |
+| 週次アクション生成（Growl） | Groq → Gemini → DeepSeek fallback | .env.local（gemini.ts callers順） |
 | 市場調査（Growl） | Groq llama-3.3-70b-versatile | .env / GROQ_API_KEY |
+| LearnAI チャット | cerebras→groq→github→sambanova→gemini→openrouter→deepseek | UIでAPIキー設定 |
 | Webリサーチ | Tavily API | .env / TAVILY_API_KEY |
-| ~~Gemini~~ | ~~使用停止~~ | quota超過のため全面停止 |
+| DeepSeekモデル名 | deepseek-v4-flash（非推論）| 旧: deepseek-chat（deprecated） |
+| 月コスト目安 | ~$0〜0.10/月（無料枠が大半を吸収） | |
 
 ---
 
@@ -401,6 +602,10 @@ Sage_Final_Unified/
 | 2026-05-31 | **@kanagawatable Bluesky bio更新**: Growlリンク追加 |
 | 2026-05-31 | **毎日9:00 Dev.to自動記事投稿スケジュール設定**: devto-daily-article タスク |
 | 2026-05-31 | **849件の空ジョブ削除**: jobs.json クリア |
+| 2026-06-06 | **DeepSeek直接API統合（LearnAI）**: LearnAI.htmlにDeepSeekプロバイダー追加（UIでキー入力→localStorage）。POOL_CHAT最優先に配置 |
+| 2026-06-06 | **DeepSeekモデル名更新**: deepseek-chat → deepseek-v4-flash（deprecated対応）。全6箇所更新（gemini.ts, meta-ads/route.ts, blog/sns/gumroad scheduler, LearnAI） |
+| 2026-06-06 | **meta-ads Prefix Caching最適化**: PRODUCT BRIEF境界でsystem/user分割 → DeepSeekキャッシュヒット時に入力コスト最大50分の1削減 |
+| 2026-06-06 | **全系統を無料枠優先フォールバックに変更**: DeepSeek→Groq を Groq→DeepSeek に逆転。GrowlはさらにGemini無料枠も挟む（Groq→Gemini→DeepSeek）。LearnAIはdeepseekをPOOL最後尾へ。月コスト ~$0.18 → ~$0/月 |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 
@@ -1104,31 +1309,4 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 
 ### Fazier残作業（次のAIセッションで確認）
 1. growl-app.vercel.appにバッジが表示されているか確認（git push 917cb43で追加済み）
-2. https://fazier.com/launch にアクセス → 「Verify Badge」をクリック → 登録完了
-
-### 繰り返し禁止リスト（既に試したが不可）
-- **Uneed.best** → vercel.appドメイン不可。カスタムドメイン必要
-- **Reddit** → ブラウザセキュリティで遮断。なおさんが手動でREDDIT_HN_POSTS_20260529.mdからコピペ
-- **SaaSHub/AlternativeTo** → アカウント作成が必要（私には不可）
-
-*このファイルはSage AIが自律的に更新する（Tier 1アクション）*  
-*新しい問題解決・発見があるたびに該当セクションを更新すること*
-
----
-
-## Sage Execution Contract
-### Operating principles
-Sage は「賢い応答」より「再起動可能な実務OS」であることを優先する。毎回の作業は、起動の固定 → 実行の分離 → 停止と再開 の3段階で回す。
-
-### Non-negotiables
-- セッション開始時に `AGENTS.md` と `docs/adr/progress-log.md` を確認する。
-- Plan / Build / Verify を混ぜない。
-- 1セッションで扱う対象は1タスクに絞る。
-- 変更後は必ず検証し、緑なら止まる。
-- 重大な依存変更や挙動変更は、先に characterization tests を追加する。
-
-### Performance strategy
-- 同期HTTPで重いAI処理を抱え込まない。
-- 長い処理は job_id 付き非同期ジョブに逃がす。
-- 軽量タスクと重いタスクでモデル階層を分ける。
-- フリーズや遅延は、モデルの賢さではなくハーネスで制御する。
+2. https://fazier.com/launch にアク
