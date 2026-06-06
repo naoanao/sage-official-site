@@ -13,7 +13,8 @@
 
 ### 3. 停止と再開（自律セーブ＆OODA自己修復ルール）
 - 完了時は必ず `docs/adr/progress-log.md` を更新する。
-- テスト検証が完了したら、人間のコマンド入力を待たず、AIは自律的に `git add .` およびタスク内容を要約した `git commit -m "..."` を自動実行せよ。
+- **main への直接コミットは禁止。** テスト検証が完了したら、隔離ブランチ `candidate/YYYYMMDD-<desc>` 上で commit candidate を作成せよ。これは main への直コミット禁止を補助する運用ルールである。
+- 隔離ブランチでのコミット手順: `git checkout -b candidate/YYYYMMDD-<desc>` → `git add .` → `git commit -m "..."`。
 - 【OODA型自己修復ループ】もしGitコマンドがエラー（ロックファイルの衝突、改行コード警告以外の致命的エラー、インデックス破損等）を返した場合、AIは即座に以下のOODAループを自律実行して修正せよ：
   1. [Observe] エラーログを解析し、原因（プロセスロック、未追跡ファイルの不整合等）を特定せよ。
   2. [Orient] 過去の git-001/vercel-001 等の既知の解決策（SAGE_MASTER_CONTEXT.md記載）と照合せよ。

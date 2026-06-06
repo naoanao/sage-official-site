@@ -128,9 +128,10 @@ USPは「機能説明」ではなく「顧客の人生の変化を、自社だ�
 actionsに盛り込む施策は、効果検証できない「やりっぱなし」施策を禁止する。必ず「何を計測するか」をセットで書くこと。
 
 【定量データ必須ルール（言葉だけの分析を禁止）】
-- 各分析セクションに必ず1つ以上の具体的な数値を含めること（市場規模・成長率・割合・人数・金額・検索ボリュームなど）
+- items・insight・promotion_gap の各フィールドには必ず1つ以上の具体的な数値を含めること（市場規模・成長率・割合・人数・金額・検索ボリュームなど）
 - 数値は「〜万人規模」「〜億円市場」「〜%増加」などの推計値でよいが、根拠となる傾向・出典分野を括弧内に示すこと（例: 国内健康食品市場は約9,000億円規模（矢野経済研究所推計）、定期購入市場は年10〜15%成長中）
 - 「多い」「増加傾向」「人気がある」などの定性表現のみの項目は禁止。必ず数値に変換すること
+- ⚠️ strategy_summary.usp は例外：入力に明示された数値のみ使用可。完走率・達成率・満足度・継続率などの%数値を入力なしで作成することは厳禁（虚偽広告になる）
 
 【絶対ルール】
 - 出力言語はユーザーの入力言語に合わせること。入力が日本語なら日本語、英語なら英語、ポルトガル語ならポルトガル語で全て出力する
@@ -242,13 +243,17 @@ const FRAMEWORK_PROMPTS: Record<string, (c: CompanyInfo) => string> = {
     "T（技術・AI）": ["この業種で今すぐ使えるテクノロジー・AIツール1", "同2", "同3"]
   },
   "insight": "このビジネスが今すぐ取るべき具体的な一手（2文、プレーンテキスト）",
-  "actions": ["この商品・サービスの具体的なハッシュタグや検索キーワードを含む、スマホ一台で今週30分以内に完結できる具体的なアクション1（どのアプリで・何を・どう投稿/送信するか明記）", "同2", "同3"],
+  "actions": [
+    "【絶対条件：広告費・外部依頼・イベント企画・インフルエンサー依頼は禁止。スマホのみ・今週中・30分以内・無料で完結するアクションのみ】具体的なアプリ名・ハッシュタグ・文章例・実行後に確認するKPIをセットで書くこと（例：Instagramで「#産後ダイエット神奈川」を付けてビフォーアフター投稿を作成→24時間後のリーチ数とプロフィール訪問数を記録する）",
+    "【同条件・別チャネル】2つ目のアクション（例：Googleマップの口コミ依頼DM文を作成し過去顧客3名にLINEで送る→1週間で口コミ件数を確認する）",
+    "【同条件・競合分析系】3つ目のアクション（例：競合上位3社のInstagramで保存数の多い投稿3〜5件を分析し、自社との差異をメモして次の投稿テーマに反映する）"
+  ],
   "strategy_summary": {
-    "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
-    "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
-    "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
-    "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
+    "target": "最優先ターゲット顧客（年齢・性別・具体的な悩みを含む20文字以内。例：30代産後ダイエット挫折経験ありの主婦）",
+    "usp": "この事業者だけが正直に言えるファクト（競合が使えない具体的な言葉・強み・資格・歴史で20文字以内。入力に証拠数値がない場合は数字を作らず定性的な独自性を書くこと。ハルシネーション禁止）",
+    "main_channel": "この業種・ターゲットで最も費用対効果が高いチャネル（Googleマップ/Instagram/LINE/チラシ等。ECは飲食・物販以外は記載禁止）",
+    "top_priority": "今月だけに集中する施策を1つ（スマホで実行可能な具体的行動を25文字以内で）",
+    "winning_message": "フック力のあるキャッチコピー（25文字以内厳守・数字か感情トリガーを必ず含める。例：週2回で体が変わる。産後専門が伴走。禁止：商品名のみ・「〇〇の悩み」という名詞止め）"
   }
 }`;
     return isEn ? `You are a world-class marketing strategist. Perform a PEST Analysis for the following business.
@@ -298,14 +303,24 @@ ${jsonTemplate}`;
     "Competitor (gaps they leave unfilled)": ["What competitors tend to focus on and what customer frustration that creates 1", "The deeper customer need competitors seem to miss — the gap this business can own 2", "The unique value this business delivers when it fills that gap 3"],
     "Company (change only you can deliver)": ["The specific life change or experience only this business can provide 1", "Why competitors cannot copy this — name the real barrier (skill, story, relationship) 2", "A weakness to own honestly, and the one move that still makes this business worth choosing 3"]
   },
+  "promotion_gap": {
+    "meta_ads_status": "Estimated competition level for this category on Meta Ads — are competitors already heavy here, or is there whitespace?",
+    "google_ads_status": "Estimated competition on Google Search for this business category — key keyword competition level",
+    "untapped_channel": "A specific channel or keyword angle competitors haven't moved into yet — a first-mover opportunity",
+    "recommended_first_ad": "The single first ad campaign this business should run now — specify channel, angle, and target audience"
+  },
   "insight": "The life change this business can create for customers, and the first move to communicate it this week (2 sentences, plain text)",
-  "actions": ["Specific action using real hashtags or search terms — completable in 30 min on a smartphone 1. No invented discounts, coupons, referral programs, or events", "same 2", "same 3"],
+  "actions": [
+    "RULE: No paid ads, no hiring, no events. Smartphone only, free, completable in 30 minutes this week. Must include: which app, what exactly to do, and which metric to check afterward. Example: Post a before/after photo on Instagram with #postpartumfitness + #[city]personalgym → check reach and profile visits 24 hours later.",
+    "RULE: Same constraints. Different channel from action 1. Example: Create a Google Maps review-request message and send it via text to 3 past clients → track review count over the next 7 days.",
+    "RULE: Same constraints. Competitor research angle. Example: Open the top 3 competitor Instagram accounts, find their 3 most-saved posts, note the common theme, and apply it to your next post topic."
+  ],
   "strategy_summary": {
-    "target": "Top priority customer segment (age, gender, pain point, lifestyle — under 25 words)",
-    "usp": "Unique strength only this business can honestly claim (under 15 words)",
-    "main_channel": "Best channel for this market: Instagram / Google / Email / Facebook / YouTube (NO LINE, no Japan-only apps)",
-    "top_priority": "Single most important action this month (specific, under 20 words)",
-    "winning_message": "Most compelling tagline for this target customer (under 15 words)"
+    "target": "Top priority customer segment — be specific: age, life stage, exact pain point, awareness level (under 25 words)",
+    "usp": "The one honest claim only this business can make — no invented numbers or percentages unless provided. Use qualitative differentiators from the input (under 15 words)",
+    "main_channel": "Best channel for this market: Instagram / Google Maps / Email / Facebook / YouTube. NO LINE. NO e-commerce platforms unless product is physical retail.",
+    "top_priority": "Single most important action this month (specific and actionable, under 20 words)",
+    "winning_message": "A compelling tagline with a number, specific timeframe, or strong emotional trigger — under 15 words. BANNED PHRASES: 'Transform Your [body/life/business]', 'Reclaim Your [confidence/freedom]', 'Take Your [X] to the Next Level', 'Achieve Your Goals', 'Unlock Your Potential'. Write something only THIS business can say."
   }
 }` : `{
   "framework": "3C分析",
@@ -322,13 +337,17 @@ ${jsonTemplate}`;
     "recommended_first_ad": "この事業者が今すぐ始めるべき最初の広告施策（チャネル・訴求軸・ターゲット層を具体的に）"
   },
   "insight": "このビジネスが顧客の人生に与えられる変化と、今すぐそれを伝えるための最初の一手（2文）",
-  "actions": ["この商品・サービスの具体的なハッシュタグや検索キーワードを含む、スマホ一台で今週30分以内に完結できる具体的なアクション1（どのアプリで・何を・どう投稿/送信するか明記）", "同2", "同3"],
+  "actions": [
+    "【絶対条件：広告費・外部依頼・イベント企画・インフルエンサー依頼は禁止。スマホのみ・今週中・30分以内・無料で完結するアクションのみ】具体的なアプリ名・ハッシュタグ・文章例・実行後に確認するKPIをセットで書くこと（例：Instagramで「#産後ダイエット神奈川」を付けてビフォーアフター投稿を作成→24時間後のリーチ数とプロフィール訪問数を記録する）",
+    "【同条件・別チャネル】2つ目のアクション（例：Googleマップの口コミ依頼DM文を作成し過去顧客3名にLINEで送る→1週間で口コミ件数を確認する）",
+    "【同条件・競合分析系】3つ目のアクション（例：競合上位3社のInstagramで保存数の多い投稿3〜5件を分析し、自社との差異をメモして次の投稿テーマに反映する）"
+  ],
   "strategy_summary": {
-    "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
-    "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
-    "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
-    "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
+    "target": "最優先ターゲット顧客（年齢・性別・具体的な悩みを含む20文字以内。例：30代産後ダイエット挫折経験ありの主婦）",
+    "usp": "この事業者だけが正直に言えるファクト（競合が使えない具体的な言葉・強み・資格・歴史で20文字以内。入力に証拠数値がない場合は数字を作らず定性的な独自性を書くこと。ハルシネーション禁止）",
+    "main_channel": "この業種・ターゲットで最も費用対効果が高いチャネル（Googleマップ/Instagram/LINE/チラシ等。ECは飲食・物販以外は記載禁止）",
+    "top_priority": "今月だけに集中する施策を1つ（スマホで実行可能な具体的行動を25文字以内で）",
+    "winning_message": "フック力のあるキャッチコピー（25文字以内厳守・数字か感情トリガーを必ず含める。例：週2回で体が変わる。産後専門が伴走。禁止：商品名のみ・「〇〇の悩み」という名詞止め）"
   }
 }`;
     return isEn ? `You are a world-class marketing strategist. Perform a 3C Analysis for the following business.
@@ -386,13 +405,17 @@ ${jsonTemplate}`;
     "Threat（脅威を乗り越える視点）": ["このビジネスを最も脅かしている外部環境の変化と、その影響の具体像1", "脅威を無視し続けた場合の最悪シナリオ2", "この脅威を逆にチャンスに変える発想の転換3"]
   },
   "insight": "この事業者の強みで顧客の人生を変えるために今すぐ動くべき最重要の一手（2文）",
-  "actions": ["この商品・サービスの具体的なハッシュタグや検索キーワードを含む、スマホ一台で今週30分以内に完結できる具体的なアクション1（どのアプリで・何を・どう投稿/送信するか明記）", "同2", "同3"],
+  "actions": [
+    "【絶対条件：広告費・外部依頼・イベント企画・インフルエンサー依頼は禁止。スマホのみ・今週中・30分以内・無料で完結するアクションのみ】具体的なアプリ名・ハッシュタグ・文章例・実行後に確認するKPIをセットで書くこと（例：Instagramで「#産後ダイエット神奈川」を付けてビフォーアフター投稿を作成→24時間後のリーチ数とプロフィール訪問数を記録する）",
+    "【同条件・別チャネル】2つ目のアクション（例：Googleマップの口コミ依頼DM文を作成し過去顧客3名にLINEで送る→1週間で口コミ件数を確認する）",
+    "【同条件・競合分析系】3つ目のアクション（例：競合上位3社のInstagramで保存数の多い投稿3〜5件を分析し、自社との差異をメモして次の投稿テーマに反映する）"
+  ],
   "strategy_summary": {
-    "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
-    "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
-    "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
-    "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
+    "target": "最優先ターゲット顧客（年齢・性別・具体的な悩みを含む20文字以内。例：30代産後ダイエット挫折経験ありの主婦）",
+    "usp": "この事業者だけが正直に言えるファクト（競合が使えない具体的な言葉・強み・資格・歴史で20文字以内。入力に証拠数値がない場合は数字を作らず定性的な独自性を書くこと。ハルシネーション禁止）",
+    "main_channel": "この業種・ターゲットで最も費用対効果が高いチャネル（Googleマップ/Instagram/LINE/チラシ等。ECは飲食・物販以外は記載禁止）",
+    "top_priority": "今月だけに集中する施策を1つ（スマホで実行可能な具体的行動を25文字以内で）",
+    "winning_message": "フック力のあるキャッチコピー（25文字以内厳守・数字か感情トリガーを必ず含める。例：週2回で体が変わる。産後専門が伴走。禁止：商品名のみ・「〇〇の悩み」という名詞止め）"
   }
 }`;
     return isEn ? `You are a world-class marketing strategist. Perform a SWOT Analysis for the following business, reflecting the current 2026 market environment.
@@ -539,13 +562,17 @@ ${jsonTemplate}`;
     "creative_axis": "最も効果が期待できるクリエイティブの訴求タイプ（ペイン直撃型 / 機能証明型 / ブランド安心型 / UGC体験談型 から選択・理由付き）"
   },
   "insight": "最初に着手すべき最重要のPと、それで顧客の人生がどう変わるかを伝える今週の一手（2文）",
-  "actions": ["この商品・サービスの具体的なハッシュタグや検索キーワードを含む、スマホ一台で今週30分以内に完結できる具体的なアクション1（どのアプリで・何を・どう投稿/送信するか明記）", "同2", "同3"],
+  "actions": [
+    "【絶対条件：広告費・外部依頼・イベント企画・インフルエンサー依頼は禁止。スマホのみ・今週中・30分以内・無料で完結するアクションのみ】具体的なアプリ名・ハッシュタグ・文章例・実行後に確認するKPIをセットで書くこと（例：Instagramで「#産後ダイエット神奈川」を付けてビフォーアフター投稿を作成→24時間後のリーチ数とプロフィール訪問数を記録する）",
+    "【同条件・別チャネル】2つ目のアクション（例：Googleマップの口コミ依頼DM文を作成し過去顧客3名にLINEで送る→1週間で口コミ件数を確認する）",
+    "【同条件・競合分析系】3つ目のアクション（例：競合上位3社のInstagramで保存数の多い投稿3〜5件を分析し、自社との差異をメモして次の投稿テーマに反映する）"
+  ],
   "strategy_summary": {
-    "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
-    "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
-    "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
-    "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
+    "target": "最優先ターゲット顧客（年齢・性別・具体的な悩みを含む20文字以内。例：30代産後ダイエット挫折経験ありの主婦）",
+    "usp": "この事業者だけが正直に言えるファクト（競合が使えない具体的な言葉・強み・資格・歴史で20文字以内。入力に証拠数値がない場合は数字を作らず定性的な独自性を書くこと。ハルシネーション禁止）",
+    "main_channel": "この業種・ターゲットで最も費用対効果が高いチャネル（Googleマップ/Instagram/LINE/チラシ等。ECは飲食・物販以外は記載禁止）",
+    "top_priority": "今月だけに集中する施策を1つ（スマホで実行可能な具体的行動を25文字以内で）",
+    "winning_message": "フック力のあるキャッチコピー（25文字以内厳守・数字か感情トリガーを必ず含める。例：週2回で体が変わる。産後専門が伴走。禁止：商品名のみ・「〇〇の悩み」という名詞止め）"
   }
 }`;
     return isEn ? `You are a world-class marketing strategist. Perform a 4P / 4C Analysis for the following business.
@@ -600,13 +627,17 @@ ${jsonTemplate}`;
     "Organization（強みを活かす仕組み）": ["この強みを最大限に顧客に届けられている仕組みと体制1", "強みを活かしきれていない最大の機会損失2", "今すぐ改善できる最も費用対効果の高い組織・仕組みの一手3"]
   },
   "insight": "この事業者の最大の強みを顧客の人生に届けるために今週最初にやるべき一手（2文）",
-  "actions": ["この商品・サービスの具体的なハッシュタグや検索キーワードを含む、スマホ一台で今週30分以内に完結できる具体的なアクション1（どのアプリで・何を・どう投稿/送信するか明記）", "同2", "同3"],
+  "actions": [
+    "【絶対条件：広告費・外部依頼・イベント企画・インフルエンサー依頼は禁止。スマホのみ・今週中・30分以内・無料で完結するアクションのみ】具体的なアプリ名・ハッシュタグ・文章例・実行後に確認するKPIをセットで書くこと（例：Instagramで「#産後ダイエット神奈川」を付けてビフォーアフター投稿を作成→24時間後のリーチ数とプロフィール訪問数を記録する）",
+    "【同条件・別チャネル】2つ目のアクション（例：Googleマップの口コミ依頼DM文を作成し過去顧客3名にLINEで送る→1週間で口コミ件数を確認する）",
+    "【同条件・競合分析系】3つ目のアクション（例：競合上位3社のInstagramで保存数の多い投稿3〜5件を分析し、自社との差異をメモして次の投稿テーマに反映する）"
+  ],
   "strategy_summary": {
-    "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
-    "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
-    "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
-    "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
+    "target": "最優先ターゲット顧客（年齢・性別・具体的な悩みを含む20文字以内。例：30代産後ダイエット挫折経験ありの主婦）",
+    "usp": "この事業者だけが正直に言えるファクト（競合が使えない具体的な言葉・強み・資格・歴史で20文字以内。入力に証拠数値がない場合は数字を作らず定性的な独自性を書くこと。ハルシネーション禁止）",
+    "main_channel": "この業種・ターゲットで最も費用対効果が高いチャネル（Googleマップ/Instagram/LINE/チラシ等。ECは飲食・物販以外は記載禁止）",
+    "top_priority": "今月だけに集中する施策を1つ（スマホで実行可能な具体的行動を25文字以内で）",
+    "winning_message": "フック力のあるキャッチコピー（25文字以内厳守・数字か感情トリガーを必ず含める。例：週2回で体が変わる。産後専門が伴走。禁止：商品名のみ・「〇〇の悩み」という名詞止め）"
   }
 }`;
     return isEn ? `You are a world-class marketing strategist. Perform a VRIO Analysis for the following business.
@@ -755,13 +786,17 @@ ${getPriceContext(c.price, c.lang)}
     "購買と拡散の循環": ["SNS・口コミから購入・予約までの最短導線と、脱落しやすいポイントの改善策1", "一度買った顧客が自然にUGCを生み出すサイクルを作る仕掛け2", "ロイヤル顧客がブランドの伝道師になる具体的な施策3"]
   },
   "insight": "このビジネスで最も拡散が起きやすい体験シナリオと、今週そのサイクルを始める最初の一手（2文）",
-  "actions": ["この商品・サービスの具体的なハッシュタグや検索キーワードを含む、スマホ一台で今週30分以内に完結できる具体的なアクション1（どのアプリで・何を・どう投稿/送信するか明記）", "同2", "同3"],
+  "actions": [
+    "【絶対条件：広告費・外部依頼・イベント企画・インフルエンサー依頼は禁止。スマホのみ・今週中・30分以内・無料で完結するアクションのみ】具体的なアプリ名・ハッシュタグ・文章例・実行後に確認するKPIをセットで書くこと（例：Instagramで「#産後ダイエット神奈川」を付けてビフォーアフター投稿を作成→24時間後のリーチ数とプロフィール訪問数を記録する）",
+    "【同条件・別チャネル】2つ目のアクション（例：Googleマップの口コミ依頼DM文を作成し過去顧客3名にLINEで送る→1週間で口コミ件数を確認する）",
+    "【同条件・競合分析系】3つ目のアクション（例：競合上位3社のInstagramで保存数の多い投稿3〜5件を分析し、自社との差異をメモして次の投稿テーマに反映する）"
+  ],
   "strategy_summary": {
-    "target": "最優先ターゲット顧客（年齢・性別・悩み・ライフスタイルを10〜20文字で）",
-    "usp": "この事業者だけが言える独自の強み（競合が使えない言葉で15〜25文字）",
-    "main_channel": "最も成果が出やすい主戦場チャネル（例: Instagram + 公式EC・LINE + 店舗・Google + チラシ）",
-    "top_priority": "今月の最優先施策（具体的な行動レベルで20〜30文字）",
-    "winning_message": "ターゲット顧客の心に刺さる最強のキャッチコピー（15〜25文字）"
+    "target": "最優先ターゲット顧客（年齢・性別・具体的な悩みを含む20文字以内。例：30代産後ダイエット挫折経験ありの主婦）",
+    "usp": "この事業者だけが正直に言えるファクト（競合が使えない具体的な言葉・強み・資格・歴史で20文字以内。入力に証拠数値がない場合は数字を作らず定性的な独自性を書くこと。ハルシネーション禁止）",
+    "main_channel": "この業種・ターゲットで最も費用対効果が高いチャネル（Googleマップ/Instagram/LINE/チラシ等。ECは飲食・物販以外は記載禁止）",
+    "top_priority": "今月だけに集中する施策を1つ（スマホで実行可能な具体的行動を25文字以内で）",
+    "winning_message": "フック力のあるキャッチコピー（25文字以内厳守・数字か感情トリガーを必ず含める。例：週2回で体が変わる。産後専門が伴走。禁止：商品名のみ・「〇〇の悩み」という名詞止め）"
   }
 }`;
     return isEn ? `You are a world-class marketing strategist. Perform a ULSSAS Analysis for the following business.
@@ -804,7 +839,7 @@ async function callGemini(prompt: string): Promise<string | null> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
         }),
       }
     );
@@ -828,7 +863,7 @@ async function callGroq(prompt: string): Promise<string | null> {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 1500,
+        max_tokens: 3000,
         temperature: 0.7,
       }),
     });

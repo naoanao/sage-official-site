@@ -33,11 +33,33 @@ FALLBACK_PRODUCT = {
 }
 
 
+def _call_llm_gumroad(messages: list, max_tokens: int = 300, temperature: float = 0.7) -> str:
+    """DeepSeek（primary）→ Groq（fallback）"""
+    import requests as _req
+    ds_key = os.getenv("DEEPSEEK_API_KEY")
+    if ds_key:
+        try:
+            resp = _req.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {ds_key}", "Content-Type": "application/json"},
+                json={"model": "deepseek-chat", "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+                timeout=20,
+            )
+            if resp.status_code == 200:
+                return resp.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            logger.warning(f"[LLM] DeepSeek failed: {e}, falling back to Groq")
+    from groq import Groq
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    response = client.chat.completions.create(
+        messages=messages, model=GROQ_MODEL, max_tokens=max_tokens,
+    )
+    return response.choices[0].message.content.strip()
+
+
 class GumroadScheduler:
     def __init__(self):
-        from groq import Groq
-
-        self.groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        self.groq = None  # LLM calls now use _call_llm_gumroad()
         self.access_token = (
             os.getenv("GUMROAD_ACCESS_TOKEN")
             or os.getenv("GUMROAD_API_KEY")
@@ -125,13 +147,11 @@ Return ONLY valid JSON (no markdown):
   "ig_caption": "Instagram caption 3-4 lines, emoji, ends with 'Link in bio!'"
 }}"""
 
-        resp = self.groq.chat.completions.create(
-            model=GROQ_MODEL,
+        raw = _call_llm_gumroad(
             messages=[{"role": "user", "content": prompt}],
             max_tokens=300,
             temperature=0.7,
         )
-        raw = resp.choices[0].message.content.strip()
         raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`").strip()
         m = re.search(r'\{[\s\S]*\}', raw)
         if m:
@@ -216,26 +236,4 @@ Return ONLY valid JSON (no markdown):
         product = self._pick_product(products)
         logger.info(f"[GUMROAD] Promoting: '{product.get('name')}' → {product.get('short_url')}")
 
-        if self.dry_run:
-            logger.info(f"[GUMROAD][DRY_RUN] Would queue SNS for '{product.get('name')}'. Skipping.")
-            return
-
-        copy = self._generate_sns_copy(title, excerpt, product)
-        self._queue_sns_post(copy["bs_text"], copy["ig_caption"], title)
-        logger.info(f"[GUMROAD] ✅ Done. Promotion queued for: {product.get('short_url')}")
-
-    def run(self) -> None:
-        """Background loop: runs daily at UTC 01:00 (JST 10:00)."""
-        import time
-        logger.info("[GUMROAD] GumroadScheduler background loop started.")
-        while True:
-            try:
-                now_utc = datetime.now(timezone.utc)
-                if now_utc.hour == 1 and now_utc.minute < 5:
-                    self.run_once()
-                    time.sleep(300)
-                else:
-                    time.sleep(60)
-            except Exception as e:
-                logger.error(f"[GUMROAD] Loop error: {e}")
-                time.sleep(60)
+       

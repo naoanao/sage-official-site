@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const maxDuration = 30;
+export const maxDuration = 55;
 
 export async function POST(req: NextRequest) {
   try {
@@ -284,18 +284,18 @@ Each card tells ONE angle. Together they build an irresistible case. Think Dyson
 {
   "framework": "chosen framework + why (1 sentence)",
   "hook_type": "chosen hook + why (1 sentence)",
-  "headline": "max 40 chars — number, timeframe, or emotional trigger. NEVER generic.",
-  "primary_text_short": "under 125 chars — ONLY the hook. This is what shows before 'See More'. Must make them tap.",
+  "headline": "max 40 chars — MUST contain a number, specific timeframe, or strong emotional trigger. BANNED: product category as headline ('Marketing Course', 'Personal Gym'), vague pain noun ('Your Struggle', 'The Problem'). GOOD examples: 'Lost 9 lbs in 3 months. Here's how.' / 'Stop guessing. Your 3 actions this week.'",
+  "primary_text_short": "under 125 chars — stops the scroll. Use curiosity gap or direct pain hit. 'Are you still [specific struggle]?' or '[Specific fear] is costing you [specific loss].'",
   "primary_text_full": "MINIMUM 300 chars, TARGET 400-500 chars. MANDATORY structure: [Hook sentence] [2-3 sentences agitating the pain - make it real and specific] [Introduce solution naturally] [Proof point using provided data or qualitative if no data] [Emotional close] [CTA]. DO NOT summarize. Write the FULL narrative. Every section must be present.",
-  "description": "max 30 chars — strongest single benefit",
-  "cta": "LEARN_MORE or BOOK_NOW or SIGN_UP or GET_QUOTE or CONTACT_US",
-  "target_audience": "precise: age range, specific interests, behaviors, life events, job titles if B2B",
+  "description": "max 30 chars — a specific benefit, result, or offer. BANNED generic phrases: 'Transform Your Body', 'Change Your Life', 'Achieve Your Goals', 'Take Control', 'Get Results'. Use what makes THIS product different (e.g. 'Only 2x/week. Built for moms.' or 'First session free.').",
+  "cta": "Choose by campaign goal: AWARENESS→LEARN_MORE / CONSIDERATION→LEARN_MORE or SIGN_UP / CONVERSIONS or SALES→BOOK_NOW or GET_QUOTE (mandatory for conversion goals) / LEAD_GEN→CONTACT_US",
+  "target_audience": "Detailed audience spec — include: age range + life stage/event + specific interests + behaviors. Example: 'Women 28-40, life event: new parent, interests: postpartum fitness/baby care, behaviors: engaged with fitness content, exclude: current gym members'",
   "carousel_cards": [
-    {"card_headline": "max 40 chars", "card_body": "max 60 chars — one specific angle/benefit", "card_image_prompt": "english visual prompt — show THIS specific transformation/benefit, real person, emotion, no text, mobile 1:1"},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "..."},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "..."}
+    {"card_headline": "Use a specific number, timeframe, or named pain — NEVER just 'Before' or 'After'. Example: '8 months postpartum' or 'Still 11 lbs over'", "card_body": "max 60 chars — specific detail from the product brief, not category description", "card_image_prompt": "English visual prompt — show THIS specific transformation/benefit, authentic real person, genuine emotion, no text overlay, mobile 1:1"},
+    {"card_headline": "Specific result or turning point — Example: 'Lost 9 lbs in 3 months' or 'Energy came back'", "card_body": "max 60 chars — one concrete proof point or benefit", "card_image_prompt": "English prompt only — specific after-state scene, genuine emotion, no text"},
+    {"card_headline": "Address the expansion layer objection — Example: 'Only 2x/week. Fits mom life.' or 'First session free'", "card_body": "max 60 chars — removes the biggest objection or shows the offer", "card_image_prompt": "English prompt only — specific scene showing ease/accessibility/offer, no text"}
   ],
-  "image_prompt_single": "For single image ad: detailed english prompt — show the AFTER state emotionally, real person, genuine joy/relief/confidence, natural environment, no text overlays, mobile 1:1 or 4:5"
+  "image_prompt_single": "[Write a unique English image generation prompt for THIS product's after-state. Include: demographic matching target customer + specific emotional expression + specific setting + relevant clothing/context + lighting + no text overlay + aspect ratio. Do NOT copy this instruction — write a fresh custom prompt.]"
 }`
       : `あなたはNick Shackelford、Florind Metalla、SupersideクリエイティブチームをすべてあわせたMeta広告の世界最高クリエイターです。$1億以上の広告運用で4〜6倍ROASを達成してきた思考で広告を作ってください。
 
@@ -390,63 +390,113 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
 {
   "framework": "選んだフレームワークと理由（1文）",
   "hook_type": "選んだフックと理由（1文）",
-  "headline": "40文字以内 — 数字・期間・感情トリガー。ありきたり表現は絶対禁止",
-  "primary_text_short": "125文字以内 — フックのみ。「もっと見る」をタップさせる一言",
+  "headline": "40文字以内厳守。必ず数字・具体的期間・感情トリガーのいずれかを含める。禁止ワード：「〇〇の悩み」「〇〇のご案内」「〇〇サービス」「〇〇について」など商品説明・カテゴリ名のみの表現。良い例：「産後8ヶ月、体重が戻らないのは方法が違うから」「週2回で体が変わる。産後専門が伴走」",
+  "primary_text_short": "125文字以内 — 最初の一言でスクロールを止める。「まだ〇〇ですか？」「〇〇している間に〇〇」など好奇心か痛みを直撃するフックのみ",
   "primary_text_full": "最低300文字・目標400〜500文字。必須構成：[フック文] [痛みを深く煽る2〜3文（具体的な状況・感情を描写）] [解決策の自然な導入] [証拠ポイント（提供データがあれば使用、なければ定性表現）] [感情的クロージング] [CTA]。要約は禁止。各セクションを省略せず完全に書き切ること。",
-  "description": "30文字以内 — 最強のベネフィット1つ",
-  "cta": "LEARN_MORE または BOOK_NOW または SIGN_UP または GET_QUOTE または CONTACT_US",
+  "description": "30文字以内 — 変化・ベネフィットを動詞で表現（禁止：商品名のみ・カテゴリ名のみ）",
+  "cta": "目標ステージで選択：認知(AWARENESS)→LEARN_MORE / 検討(CONSIDERATION)→LEARN_MORE or SIGN_UP / 購入(CONVERSIONS/SALES)→BOOK_NOW or GET_QUOTE / リード→CONTACT_US。goal=CONVERSIONSまたはSALESの場合は必ずBOOK_NOWかGET_QUOTEを使用すること",
   "target_audience": "具体的：年齢・特定の興味関心・行動・ライフイベント・職種（B2Bなら）",
   "carousel_cards": [
-    {"card_headline": "40文字以内", "card_body": "60文字以内 — 1つの特定の角度/ベネフィット", "card_image_prompt": "英語のビジュアルプロンプト — この特定の変容/ベネフィットを映す、本物感のある人物、感情、テキストなし、モバイル1:1"},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "..."},
-    {"card_headline": "...", "card_body": "...", "card_image_prompt": "..."}
+    {"card_headline": "40文字以内", "card_body": "60文字以内 — 1つの角度/ベネフィット。拡張層にも届く悩みの入口を複数用意する", "card_image_prompt": "English visual prompt — show THIS specific transformation or benefit, authentic real person showing genuine emotion (NOT stock photo style), no text overlay, mobile 1:1"},
+    {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, emotion, no text"},
+    {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, emotion, no text"}
   ],
-  "image_prompt_single": "シングル画像広告用：アフター状態の感情を映す詳細英語プロンプト — 本物の喜び/安堵/自信、自然な環境、テキストオーバーレイなし、モバイル1:1または4:5"
+  "image_prompt_single": "[Write a custom English image generation prompt specific to THIS product's after-state. Format: '[ethnicity/age matching target] [specific emotional expression] [specific setting matching the product] [clothing/context relevant to product] [lighting] no text overlay [aspect ratio]'. Do NOT copy this instruction — write your own unique prompt.]"
 }`;
 
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-      }),
-    });
+    // DeepSeek → Groq → Gemini フォールバック
+    let adCopy: Record<string, unknown> | null = null;
 
-    if (!groqRes.ok) {
-      throw new Error(`Groq API error: ${groqRes.status}`);
+    // 1st: DeepSeek（15秒タイムアウト、安定した有料API）
+    if (!adCopy && process.env.DEEPSEEK_API_KEY) {
+      try {
+        const dsController = new AbortController();
+        const dsTimeout = setTimeout(() => dsController.abort(), 15000);
+        const dsRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 3000,
+            response_format: { type: "json_object" },
+          }),
+          signal: dsController.signal,
+        });
+        clearTimeout(dsTimeout);
+        if (dsRes.ok) {
+          const dsData = await dsRes.json();
+          const raw = dsData.choices?.[0]?.message?.content;
+          if (raw) {
+            try { adCopy = JSON.parse(raw); } catch {}
+          }
+        }
+      } catch {
+        // DeepSeek タイムアウト or エラー → Groq へ
+      }
     }
 
-    const groqData = await groqRes.json();
-    const adCopy = JSON.parse(groqData.choices[0].message.content);
+    // 2nd: Groq（8秒でタイムアウト → Geminiへ素早くフォールバック）
+    if (!adCopy) try {
+      const groqController = new AbortController();
+      const groqTimeout = setTimeout(() => groqController.abort(), 8000);
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 3000,
+          response_format: { type: "json_object" },
+        }),
+        signal: groqController.signal,
+      });
+      clearTimeout(groqTimeout);
+      if (groqRes.ok) {
+        const groqData = await groqRes.json();
+        const raw = groqData.choices?.[0]?.message?.content;
+        if (raw) {
+          try { adCopy = JSON.parse(raw); } catch {}
+        }
+      }
+    } catch {
+      // Groq タイムアウト or エラー → Gemini へ
+    }
+
+    // 3rd: Gemini fallback (rate limit / error 時)
+    if (!adCopy && process.env.GEMINI_API_KEY) {
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt + "\n\nRespond with valid JSON only." }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
+            }),
+          }
+        );
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (match) {
+            try { adCopy = JSON.parse(match[0]); } catch {}
+          }
+        }
+      } catch {}
+    }
+
+    if (!adCopy) {
+      throw new Error("AI generation failed. Please try again in a few minutes.");
+    }
 
     // ハルシネーション検出：入力にない数字が生成テキストに含まれていないかチェック
-    const inputFacts = [proof_numbers, customer_quote, price_or_offer, business_desc, customer_desc, main_problem, product]
-      .filter(Boolean).join(" ");
-    const generatedText = [adCopy.primary_text_full, adCopy.primary_text_short, adCopy.headline,
-      ...(adCopy.carousel_cards || []).map((c: {card_body?: string}) => c.card_body)].filter(Boolean).join(" ");
-
-    // 数字パターンを抽出して入力に含まれているか検証
-    const numbersInOutput = generatedText.match(/\d+[%万円名社人ヶ月日週時間]+|\d{2,}/g) || [];
-    const suspiciousNumbers = numbersInOutput.filter(n => !inputFacts.includes(n));
-
-    return NextResponse.json({
-      success: true,
-      ad_copy: adCopy,
-      // 警告フラグ（UIで表示）
-      warnings: suspiciousNumbers.length > 0
-        ? suspiciousNumbers.map(n => isEn
-            ? `"${n}" was not in your input — please verify this is accurate before publishing`
-            : `「${n}」は入力情報にありませんでした。公開前に事実確認してください`)
-        : [],
-    });
-  } catch (err) {
-    console.error("meta-ads/generate error:", err);
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
-  }
-}
+    const inputFacts = [proof_numbers, customer

@@ -41,13 +41,36 @@ def _load_identity() -> dict:
         }
 
 
+def _call_llm_blog(messages: list, max_tokens: int = 3000, temperature: float = 0.7) -> str:
+    """DeepSeek（primary）→ Groq（fallback）でLLMを呼び出す共通関数"""
+    import requests as _req
+    ds_key = os.getenv("DEEPSEEK_API_KEY")
+    if ds_key:
+        try:
+            resp = _req.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {ds_key}", "Content-Type": "application/json"},
+                json={"model": "deepseek-chat", "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+                timeout=25,
+            )
+            if resp.status_code == 200:
+                return resp.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            logger.warning(f"[LLM] DeepSeek failed: {e}, falling back to Groq")
+    # Groq fallback
+    from groq import Groq
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    response = client.chat.completions.create(
+        messages=messages, model=GROQ_MODEL, max_tokens=max_tokens,
+    )
+    return response.choices[0].message.content.strip()
+
+
 class BlogScheduler:
     def __init__(self):
-        from groq import Groq
         from backend.modules.notion_content_pool import NotionContentPool
         from backend.integrations.devto_integration import DevToIntegration
 
-        self.groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.notion = NotionContentPool()
         self.devto = DevToIntegration()
         self.dry_run = os.getenv("SAGE_DRY_RUN", "False").lower() == "true"
@@ -192,8 +215,7 @@ MANDATORY: End EVERY article with this exact CTA section (adapt wording naturall
 
 One-time purchase. Your code, your keys, your data."""
 
-        resp = self.groq.chat.completions.create(
-            model=GROQ_MODEL,
+        raw = _call_llm_blog(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -201,7 +223,6 @@ One-time purchase. Your code, your keys, your data."""
             max_tokens=3000,
             temperature=0.7,
         )
-        raw = resp.choices[0].message.content.strip()
 
         # Extract actual title from frontmatter for nicer slug
         title_match = re.search(r'^title:\s*["\']?(.+?)["\']?\s*$', raw, re.MULTILINE)
@@ -331,13 +352,11 @@ The topic must be different from these recent posts:
 Respond with ONLY the topic title, nothing else. Make it specific and compelling (e.g. "5 AI Tools That Replace a $10K/Month VA in 2026")."""
 
         try:
-            resp = self.groq.chat.completions.create(
-                model=GROQ_MODEL,
+            topic = _call_llm_blog(
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=80,
                 temperature=0.9,
-            )
-            topic = resp.choices[0].message.content.strip().strip('"').strip("'")
+            ).strip().strip('"').strip("'")
             logger.info(f"[BLOG] Auto-generated topic: '{topic}'")
             return topic
         except Exception as e:
@@ -382,24 +401,4 @@ Respond with ONLY the topic title, nothing else. Make it specific and compelling
         if pushed:
             if page_id:
                 self._update_notion_status(page_id, "完了")
-            self._queue_sns_post(article["title"], article["slug"])
-            self._post_devto(article)
-            logger.info(f"[BLOG] ✅ Article published: {article['slug']}")
-        else:
-            logger.error("[BLOG] git push failed. Notion status not updated.")
-
-    def run(self) -> None:
-        """Background loop: runs at JST 09:00 (UTC 00:00) daily."""
-        import time
-        logger.info("[BLOG] BlogScheduler background loop started.")
-        while True:
-            try:
-                now_utc = datetime.now(timezone.utc)
-                if now_utc.hour == 0 and now_utc.minute < 5:
-                    self.run_once()
-                    time.sleep(300)  # prevent double-run within the same hour
-                else:
-                    time.sleep(60)
-            except Exception as e:
-                logger.error(f"[BLOG] Loop error: {e}")
-                time.sleep(60)
+            self._queue_sns_post(article["title"], article[

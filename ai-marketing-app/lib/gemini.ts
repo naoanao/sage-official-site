@@ -333,6 +333,34 @@ async function callGroqModel(apiKey: string, model: string, systemPrompt: string
   return data.choices?.[0]?.message?.content ?? "";
 }
 
+async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<string> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) throw new Error("DeepSeek: API key not set");
+
+  const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + apiKey,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 3000,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error("DeepSeek " + res.status + ": " + body.slice(0, 300));
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
 async function callGroq(systemPrompt: string, userPrompt: string): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("Groq: API key not set");
@@ -474,6 +502,7 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Generate
   const errors: string[] = [];
 
   const callers: Array<[string, (s: string, u: string) => Promise<string>]> = [
+    ["DeepSeek", callDeepSeek],
     ["Groq", callGroq],
     ["Gemini", callGemini],
   ];
@@ -486,26 +515,4 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Generate
         const match = cleaned.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("JSON not found in response");
         const json = safeParseJSON(match[0]) as { actions?: Action[]; strategy_note?: unknown };
-        if (Array.isArray(json.actions) && json.actions.length > 0) {
-          return {
-            actions: sanitizeActions(json.actions, !!user.booking_url),
-            strategy_note: typeof json.strategy_note === "string" ? json.strategy_note.trim() : "",
-          };
-        }
-        throw new Error("actions array is empty");
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        console.error("[" + name + "] attempt " + (attempt + 1) + " failed:", msg);
-        errors.push(name + "(" + (attempt + 1) + "): " + msg);
-
-        const isTransient = msg.includes("503") || msg.includes("500") || msg.includes("429");
-        if (!isTransient || attempt === 1) break;
-
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-    }
-  }
-
-  console.error("All APIs failed:", errors.join(" | "));
-  throw new Error("生成に失敗しました。詳細: " + errors.join(" | "));
-}
+        if (Array.isArray(js

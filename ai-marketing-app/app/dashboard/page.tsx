@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession, loadOnboarding, updateActionComplete, StoredSession, clearOnboarding, clearSession } from "@/lib/store";
 import ActionCard from "@/components/ActionCard";
-import FreeProgressBar from "@/components/FreeProgressBar";
+import FreeProgressBar, { isPaidPlan } from "@/components/FreeProgressBar";
 import LangToggle from "@/components/LangToggle";
 import dynamic from "next/dynamic";
 import { SafeSection } from "@/components/SafeSection";
@@ -182,18 +182,40 @@ useEffect(() => {
         </SafeSection>
 
         <SafeSection>
-          <AdBoostCard
-            session={{
-              // onboarding を優先、なければ session.user_profile にフォールバック
-              industry: (onboarding.industry || session.user_profile?.industry) as string,
-              business_desc: (onboarding.business_desc || session.user_profile?.business_desc) as string,
-              customer_desc: (onboarding.customer_desc || session.user_profile?.customer_desc) as string,
-              main_problem: (onboarding.main_problem || session.user_profile?.main_problem) as string,
-              final_goal: (onboarding.final_goal || session.user_profile?.final_goal) as string,
-              booking_url: (onboarding.booking_url || session.user_profile?.booking_url) as string,
-            }}
-            lang={lang}
-          />
+          {isPaidPlan() ? (
+            <AdBoostCard
+              session={{
+                industry: (onboarding.industry || session.user_profile?.industry) as string,
+                business_desc: (onboarding.business_desc || session.user_profile?.business_desc) as string,
+                customer_desc: (onboarding.customer_desc || session.user_profile?.customer_desc) as string,
+                main_problem: (onboarding.main_problem || session.user_profile?.main_problem) as string,
+                final_goal: (onboarding.final_goal || session.user_profile?.final_goal) as string,
+                booking_url: (onboarding.booking_url || session.user_profile?.booking_url) as string,
+              }}
+              lang={lang}
+            />
+          ) : (
+            <div className="rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50 px-5 py-6 text-center">
+              <p className="text-2xl mb-2">🎯</p>
+              <p className="font-bold text-gray-800 text-sm mb-1">
+                {isEn ? "Meta Ads Copy Generator" : "Meta広告コピー自動生成"}
+              </p>
+              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                {isEn
+                  ? "Generate headline, body copy, carousel cards & image prompts — ready to paste into Ads Manager."
+                  : "見出し・本文・カルーセル・画像プロンプトを自動生成。Ads Managerにコピペするだけ。"}
+              </p>
+              <button
+                onClick={() => router.push("/upgrade")}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold py-3 rounded-xl transition-colors shadow-md shadow-indigo-200"
+              >
+                {isEn ? "Unlock with Standard Plan →" : "スタンダードプランで使う →"}
+              </button>
+              <p className="text-xs text-gray-400 mt-2">
+                {isEn ? "$19/mo · Cancel anytime" : "¥3,000/月 · いつでもキャンセル可"}
+              </p>
+            </div>
+          )}
         </SafeSection>
 
         {lineLinked === false && !isEn && (
