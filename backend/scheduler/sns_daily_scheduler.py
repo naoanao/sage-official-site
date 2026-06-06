@@ -71,8 +71,18 @@ class SNSDailyScheduler:
         return Groq(api_key=api_key)
 
     def _call_llm(self, messages: list, max_tokens: int = 1500) -> str:
-        """DeepSeek（primary）→ Groq（fallback）でLLMを呼び出す"""
+        """Groq（free・primary）→ DeepSeek（paid fallback）でLLMを呼び出す"""
         import requests as _req
+        # 1st: Groq (free)
+        try:
+            client = self._load_groq_client()
+            response = client.chat.completions.create(
+                messages=messages, model="llama-3.3-70b-versatile", max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f"[LLM] Groq failed: {e}, falling back to DeepSeek")
+        # 2nd: DeepSeek (paid fallback)
         ds_key = os.getenv("DEEPSEEK_API_KEY")
         if ds_key:
             try:
@@ -85,13 +95,8 @@ class SNSDailyScheduler:
                 if resp.status_code == 200:
                     return resp.json()["choices"][0]["message"]["content"].strip()
             except Exception as e:
-                logger.warning(f"[LLM] DeepSeek failed: {e}, falling back to Groq")
-        # Groq fallback
-        client = self._load_groq_client()
-        response = client.chat.completions.create(
-            messages=messages, model="llama-3.3-70b-versatile", max_tokens=max_tokens,
-        )
-        return response.choices[0].message.content.strip()
+                logger.warning(f"[LLM] DeepSeek failed: {e}")
+        raise RuntimeError("All LLM providers failed")
 
     def _generate_content(self, topic: str, content: str, motif: str) -> dict:
         """LLM generates ig_caption, bs_text, image_prompt in one JSON call."""
@@ -268,9 +273,4 @@ class SNSDailyScheduler:
             self._write_job(item_id, topic, ig_caption, bs_text, "[DRY_RUN_NO_IMAGE]", status="dry_run")
             return
 
-        # --- PRODUCTION: generate image then post ---
-        img_result = self._generate_image(image_prompt)
-        if img_result.get("status") == "success":
-            image_path = img_result["path"]
-        else:
-            logger.warning("�
+        # --- PROD

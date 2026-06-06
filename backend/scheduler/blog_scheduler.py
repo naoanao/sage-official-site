@@ -42,8 +42,21 @@ def _load_identity() -> dict:
 
 
 def _call_llm_blog(messages: list, max_tokens: int = 3000, temperature: float = 0.7) -> str:
-    """DeepSeek（primary）→ Groq（fallback）でLLMを呼び出す共通関数"""
+    """Groq（free・primary）→ DeepSeek（paid fallback）でLLMを呼び出す共通関数"""
     import requests as _req
+    # 1st: Groq (free)
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        try:
+            from groq import Groq
+            client = Groq(api_key=groq_key)
+            response = client.chat.completions.create(
+                messages=messages, model=GROQ_MODEL, max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f"[LLM] Groq failed: {e}, falling back to DeepSeek")
+    # 2nd: DeepSeek (paid fallback)
     ds_key = os.getenv("DEEPSEEK_API_KEY")
     if ds_key:
         try:
@@ -56,14 +69,8 @@ def _call_llm_blog(messages: list, max_tokens: int = 3000, temperature: float = 
             if resp.status_code == 200:
                 return resp.json()["choices"][0]["message"]["content"].strip()
         except Exception as e:
-            logger.warning(f"[LLM] DeepSeek failed: {e}, falling back to Groq")
-    # Groq fallback
-    from groq import Groq
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    response = client.chat.completions.create(
-        messages=messages, model=GROQ_MODEL, max_tokens=max_tokens,
-    )
-    return response.choices[0].message.content.strip()
+            logger.warning(f"[LLM] DeepSeek failed: {e}")
+    raise RuntimeError("All LLM providers failed")
 
 
 class BlogScheduler:
@@ -394,11 +401,4 @@ Respond with ONLY the topic title, nothing else. Make it specific and compelling
             logger.info(f"[BLOG][DRY_RUN] Would generate article for '{topic}'. Skipping.")
             return
 
-        article = self._generate_article(topic, evidence_status=ev_status)
-        filepath = self._save_mdx(article)
-        pushed = self._git_push(filepath, article["title"])
-
-        if pushed:
-            if page_id:
-                self._update_notion_status(page_id, "完了")
-            self._queue_sns_post(article["title"], arti
+        article = self._generate_article(topic

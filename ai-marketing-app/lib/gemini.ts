@@ -502,9 +502,9 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Generate
   const errors: string[] = [];
 
   const callers: Array<[string, (s: string, u: string) => Promise<string>]> = [
-    ["DeepSeek", callDeepSeek],
     ["Groq", callGroq],
     ["Gemini", callGemini],
+    ["DeepSeek", callDeepSeek],
   ];
 
   for (const [name, caller] of callers) {

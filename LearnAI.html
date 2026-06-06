@@ -2447,8 +2447,8 @@ function _currentGeminiKey() {
 //   OpenRouter : 無料は50 req/day と少ない → 最後尾のみ
 // ※ 旧順: cerebras→gemini→groq→... → Cerebras失敗で即Gemini(250/日)消費が問題
 // ※ 新順: Geminiをgroq/github/sambanovaの後ろへ → Gemini温存・終日動作を実現
-const POOL_CHAT = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
-const POOL_GEN  = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
+const POOL_CHAT = ['cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter', 'deepseek'];
+const POOL_GEN  = ['cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter', 'deepseek'];
 
 /** キー設定済み・冷却中でないプロバイダーのみを返す */
 function _buildProviderPool(type = 'chat') {

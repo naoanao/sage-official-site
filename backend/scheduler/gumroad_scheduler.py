@@ -34,8 +34,21 @@ FALLBACK_PRODUCT = {
 
 
 def _call_llm_gumroad(messages: list, max_tokens: int = 300, temperature: float = 0.7) -> str:
-    """DeepSeek（primary）→ Groq（fallback）"""
+    """Groq（free・primary）→ DeepSeek（paid fallback）"""
     import requests as _req
+    # 1st: Groq (free)
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        try:
+            from groq import Groq
+            client = Groq(api_key=groq_key)
+            response = client.chat.completions.create(
+                messages=messages, model=GROQ_MODEL, max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f"[LLM] Groq failed: {e}, falling back to DeepSeek")
+    # 2nd: DeepSeek (paid fallback)
     ds_key = os.getenv("DEEPSEEK_API_KEY")
     if ds_key:
         try:
@@ -48,13 +61,8 @@ def _call_llm_gumroad(messages: list, max_tokens: int = 300, temperature: float 
             if resp.status_code == 200:
                 return resp.json()["choices"][0]["message"]["content"].strip()
         except Exception as e:
-            logger.warning(f"[LLM] DeepSeek failed: {e}, falling back to Groq")
-    from groq import Groq
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    response = client.chat.completions.create(
-        messages=messages, model=GROQ_MODEL, max_tokens=max_tokens,
-    )
-    return response.choices[0].message.content.strip()
+            logger.warning(f"[LLM] DeepSeek failed: {e}")
+    raise RuntimeError("All LLM providers failed")
 
 
 class GumroadScheduler:
@@ -229,11 +237,3 @@ Return ONLY valid JSON (no markdown):
         logger.info(f"[GUMROAD] Blog: '{title}'")
 
         if self._already_promoted(title):
-            logger.info(f"[GUMROAD] '{title}' was promoted within last 7 days. Skipping duplicate.")
-            return
-
-        products = self._get_products()
-        product = self._pick_product(products)
-        logger.info(f"[GUMROAD] Promoting: '{product.get('name')}' → {product.get('short_url')}")
-
-   
