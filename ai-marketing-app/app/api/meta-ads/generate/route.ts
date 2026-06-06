@@ -407,11 +407,26 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     // DeepSeek → Groq → Gemini フォールバック
     let adCopy: Record<string, unknown> | null = null;
 
-    // 1st: DeepSeek（15秒タイムアウト、安定した有料API）
+    // 1st: DeepSeek（20秒タイムアウト、安定した有料API）
+    // プロンプトをフレームワーク部(system)とPRODUCT BRIEF部(user)に分割。
+    // DeepSeekのPrefix Cachingにより、同じユーザー・同一ロケールの2回目以降は
+    // systemメッセージ(~4000トークン)がキャッシュヒット → 入力コスト約50分の1に削減。
     if (!adCopy && process.env.DEEPSEEK_API_KEY) {
       try {
         const dsController = new AbortController();
-        const dsTimeout = setTimeout(() => dsController.abort(), 15000);
+        const dsTimeout = setTimeout(() => dsController.abort(), 20000);
+
+        // PRODUCT BRIEF / 商品情報 の直前で分割
+        const briefMarker = isEn ? "\n## PRODUCT BRIEF" : "\n## 商品情報";
+        const splitIdx = prompt.lastIndexOf(briefMarker);
+        const dsMessages: { role: "system" | "user"; content: string }[] =
+          splitIdx > 0
+            ? [
+                { role: "system", content: prompt.slice(0, splitIdx).trim() },
+                { role: "user",   content: prompt.slice(splitIdx).trim() },
+              ]
+            : [{ role: "user", content: prompt }];
+
         const dsRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -420,7 +435,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
           },
           body: JSON.stringify({
             model: "deepseek-chat",
-            messages: [{ role: "user", content: prompt }],
+            messages: dsMessages,
             max_tokens: 3000,
             response_format: { type: "json_object" },
           }),
@@ -478,48 +493,4 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt + "\n\nRespond with valid JSON only." }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
-            }),
-          }
-        );
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          const match = raw.match(/\{[\s\S]*\}/);
-          if (match) {
-            try { adCopy = JSON.parse(match[0]); } catch {}
-          }
-        }
-      } catch {}
-    }
-
-    if (!adCopy) {
-      throw new Error("AI generation failed. Please try again in a few minutes.");
-    }
-
-    // ハルシネーション検出：入力にない数字が生成テキストに含まれていないかチェック
-    const inputFacts = [proof_numbers, customer_quote, price_or_offer, business_desc, customer_desc, main_problem, product]
-      .filter(Boolean).join(" ");
-    const generatedText = [adCopy.primary_text_full, adCopy.primary_text_short, adCopy.headline,
-      ...(adCopy.carousel_cards || []).map((c: {card_body?: string}) => c.card_body)].filter(Boolean).join(" ");
-
-    // 数字パターンを抽出して入力に含まれているか検証
-    const numbersInOutput = generatedText.match(/\d+[%万円名社人ヶ月日週時間]+|\d{2,}/g) || [];
-    const suspiciousNumbers = numbersInOutput.filter(n => !inputFacts.includes(n));
-
-    return NextResponse.json({
-      success: true,
-      ad_copy: adCopy,
-      // 警告フラグ（UIで表示）
-      warnings: suspiciousNumbers.length > 0
-        ? suspiciousNumbers.map(n => isEn
-            ? `"${n}" was not in your input — please verify this is accurate before publishing`
-            : `「${n}」は入力情報にありませんでした。公開前に事実確認してください`)
-        : [],
-    });
-  } catch (err) {
-    console.error("meta-ads/generate error:", err);
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
-  }
-}
+             
