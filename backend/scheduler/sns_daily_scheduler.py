@@ -71,32 +71,27 @@ class SNSDailyScheduler:
         return Groq(api_key=api_key)
 
     def _call_llm(self, messages: list, max_tokens: int = 1500) -> str:
-        """Groq（free・primary）→ DeepSeek（paid fallback）でLLMを呼び出す"""
+        """DeepSeek（primary）→ Groq（fallback）でLLMを呼び出す"""
         import requests as _req
-        # 1st: Groq (free)
-        try:
-            client = self._load_groq_client()
-            response = client.chat.completions.create(
-                messages=messages, model="llama-3.3-70b-versatile", max_tokens=max_tokens,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning(f"[LLM] Groq failed: {e}, falling back to DeepSeek")
-        # 2nd: DeepSeek (paid fallback)
         ds_key = os.getenv("DEEPSEEK_API_KEY")
         if ds_key:
             try:
                 resp = _req.post(
                     "https://api.deepseek.com/v1/chat/completions",
                     headers={"Authorization": f"Bearer {ds_key}", "Content-Type": "application/json"},
-                    json={"model": "deepseek-v4-flash", "messages": messages, "max_tokens": max_tokens, "temperature": 0.7},
+                    json={"model": "deepseek-chat", "messages": messages, "max_tokens": max_tokens, "temperature": 0.7},
                     timeout=20,
                 )
                 if resp.status_code == 200:
                     return resp.json()["choices"][0]["message"]["content"].strip()
             except Exception as e:
-                logger.warning(f"[LLM] DeepSeek failed: {e}")
-        raise RuntimeError("All LLM providers failed")
+                logger.warning(f"[LLM] DeepSeek failed: {e}, falling back to Groq")
+        # Groq fallback
+        client = self._load_groq_client()
+        response = client.chat.completions.create(
+            messages=messages, model="llama-3.3-70b-versatile", max_tokens=max_tokens,
+        )
+        return response.choices[0].message.content.strip()
 
     def _generate_content(self, topic: str, content: str, motif: str) -> dict:
         """LLM generates ig_caption, bs_text, image_prompt in one JSON call."""
@@ -273,4 +268,38 @@ class SNSDailyScheduler:
             self._write_job(item_id, topic, ig_caption, bs_text, "[DRY_RUN_NO_IMAGE]", status="dry_run")
             return
 
-        # --- PROD
+        # --- PRODUCTION: generate image then post ---
+        img_result = self._generate_image(image_prompt)
+        if img_result.get("status") == "success":
+            image_path = img_result["path"]
+        else:
+            logger.warning("🚫 [IMAGE GATE] Image generation failed. Posting Bluesky text-only; skipping Instagram.")
+            image_path = None
+
+        self._post_now(ig_caption, bs_text, image_path)
+        self._write_job(item_id, topic, ig_caption, bs_text, image_path or "", status="pending")
+
+        if item.get("id"):
+            self.notion_pool.mark_as_posted(item["id"])
+
+        logger.info(f"✅ SNS Cycle Completed for '{topic}'")
+
+
+if __name__ == "__main__":
+    import schedule
+    import time
+
+    scheduler = SNSDailyScheduler()
+
+    # JST 12:00 = UTC 03:00
+    schedule.every().day.at("03:00").do(scheduler.run_cycle)
+    # EST 08:00 = UTC 13:00
+    schedule.every().day.at("13:00").do(scheduler.run_cycle)
+    # EST 21:00 = UTC 02:00
+    schedule.every().day.at("02:00").do(scheduler.run_cycle)
+
+    logger.info("🚀 SNSDailyScheduler started. Targets: JST 12:00 / EST 08:00 / EST 21:00")
+
+    while True:
+        schedule.run_pending()
+        time.sleep(60)

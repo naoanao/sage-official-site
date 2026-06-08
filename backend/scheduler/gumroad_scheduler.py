@@ -34,35 +34,27 @@ FALLBACK_PRODUCT = {
 
 
 def _call_llm_gumroad(messages: list, max_tokens: int = 300, temperature: float = 0.7) -> str:
-    """Groq（free・primary）→ DeepSeek（paid fallback）"""
+    """DeepSeek（primary）→ Groq（fallback）"""
     import requests as _req
-    # 1st: Groq (free)
-    groq_key = os.getenv("GROQ_API_KEY")
-    if groq_key:
-        try:
-            from groq import Groq
-            client = Groq(api_key=groq_key)
-            response = client.chat.completions.create(
-                messages=messages, model=GROQ_MODEL, max_tokens=max_tokens,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning(f"[LLM] Groq failed: {e}, falling back to DeepSeek")
-    # 2nd: DeepSeek (paid fallback)
     ds_key = os.getenv("DEEPSEEK_API_KEY")
     if ds_key:
         try:
             resp = _req.post(
                 "https://api.deepseek.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {ds_key}", "Content-Type": "application/json"},
-                json={"model": "deepseek-v4-flash", "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+                json={"model": "deepseek-chat", "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
                 timeout=20,
             )
             if resp.status_code == 200:
                 return resp.json()["choices"][0]["message"]["content"].strip()
         except Exception as e:
-            logger.warning(f"[LLM] DeepSeek failed: {e}")
-    raise RuntimeError("All LLM providers failed")
+            logger.warning(f"[LLM] DeepSeek failed: {e}, falling back to Groq")
+    from groq import Groq
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    response = client.chat.completions.create(
+        messages=messages, model=GROQ_MODEL, max_tokens=max_tokens,
+    )
+    return response.choices[0].message.content.strip()
 
 
 class GumroadScheduler:
@@ -237,3 +229,33 @@ Return ONLY valid JSON (no markdown):
         logger.info(f"[GUMROAD] Blog: '{title}'")
 
         if self._already_promoted(title):
+            logger.info(f"[GUMROAD] '{title}' was promoted within last 7 days. Skipping duplicate.")
+            return
+
+        products = self._get_products()
+        product = self._pick_product(products)
+        logger.info(f"[GUMROAD] Promoting: '{product.get('name')}' → {product.get('short_url')}")
+
+        if self.dry_run:
+            logger.info(f"[GUMROAD][DRY_RUN] Would queue SNS for '{product.get('name')}'. Skipping.")
+            return
+
+        copy = self._generate_sns_copy(title, excerpt, product)
+        self._queue_sns_post(copy["bs_text"], copy["ig_caption"], title)
+        logger.info(f"[GUMROAD] ✅ Done. Promotion queued for: {product.get('short_url')}")
+
+    def run(self) -> None:
+        """Background loop: runs daily at UTC 01:00 (JST 10:00)."""
+        import time
+        logger.info("[GUMROAD] GumroadScheduler background loop started.")
+        while True:
+            try:
+                now_utc = datetime.now(timezone.utc)
+                if now_utc.hour == 1 and now_utc.minute < 5:
+                    self.run_once()
+                    time.sleep(300)
+                else:
+                    time.sleep(60)
+            except Exception as e:
+                logger.error(f"[GUMROAD] Loop error: {e}")
+                time.sleep(60)

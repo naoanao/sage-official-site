@@ -407,8 +407,55 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     // DeepSeek → Groq → Gemini フォールバック
     let adCopy: Record<string, unknown> | null = null;
 
-    // 1st: Groq（無料枠・高速、8秒タイムアウト）
-    if (!adCopy && process.env.GROQ_API_KEY) try {
+    // 1st: DeepSeek（20秒タイムアウト、安定した有料API）
+    // プロンプトをフレームワーク部(system)とPRODUCT BRIEF部(user)に分割。
+    // DeepSeekのPrefix Cachingにより、同じユーザー・同一ロケールの2回目以降は
+    // systemメッセージ(~4000トークン)がキャッシュヒット → 入力コスト約50分の1に削減。
+    if (!adCopy && process.env.DEEPSEEK_API_KEY) {
+      try {
+        const dsController = new AbortController();
+        const dsTimeout = setTimeout(() => dsController.abort(), 20000);
+
+        // PRODUCT BRIEF / 商品情報 の直前で分割
+        const briefMarker = isEn ? "\n## PRODUCT BRIEF" : "\n## 商品情報";
+        const splitIdx = prompt.lastIndexOf(briefMarker);
+        const dsMessages: { role: "system" | "user"; content: string }[] =
+          splitIdx > 0
+            ? [
+                { role: "system", content: prompt.slice(0, splitIdx).trim() },
+                { role: "user",   content: prompt.slice(splitIdx).trim() },
+              ]
+            : [{ role: "user", content: prompt }];
+
+        const dsRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: dsMessages,
+            max_tokens: 3000,
+            response_format: { type: "json_object" },
+          }),
+          signal: dsController.signal,
+        });
+        clearTimeout(dsTimeout);
+        if (dsRes.ok) {
+          const dsData = await dsRes.json();
+          const raw = dsData.choices?.[0]?.message?.content;
+          if (raw) {
+            try { adCopy = JSON.parse(raw); } catch {}
+          }
+        }
+      } catch {
+        // DeepSeek タイムアウト or エラー → Groq へ
+      }
+    }
+
+    // 2nd: Groq（8秒でタイムアウト → Geminiへ素早くフォールバック）
+    if (!adCopy) try {
       const groqController = new AbortController();
       const groqTimeout = setTimeout(() => groqController.abort(), 8000);
       const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -437,7 +484,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
       // Groq タイムアウト or エラー → Gemini へ
     }
 
-    // 2nd: Gemini（無料枠）
+    // 3rd: Gemini fallback (rate limit / error 時)
     if (!adCopy && process.env.GEMINI_API_KEY) {
       try {
         const geminiRes = await fetch(
@@ -446,49 +493,4 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt + "\n\nRespond with valid JSON only." }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
-            }),
-          }
-        );
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          const match = raw.match(/\{[\s\S]*\}/);
-          if (match) {
-            try { adCopy = JSON.parse(match[0]); } catch {}
-          }
-        }
-      } catch {}
-    }
-
-    // 3rd: DeepSeek（有料fallback・Prefix Cachingで入力コスト削減）
-    // プロンプトをフレームワーク部(system)とPRODUCT BRIEF部(user)に分割。
-    // 同じユーザー・同一ロケールの2回目以降はsystemメッセージがキャッシュヒット → コスト削減。
-    if (!adCopy && process.env.DEEPSEEK_API_KEY) {
-      try {
-        const dsController = new AbortController();
-        const dsTimeout = setTimeout(() => dsController.abort(), 20000);
-
-        // PRODUCT BRIEF / 商品情報 の直前で分割
-        const briefMarker = isEn ? "\n## PRODUCT BRIEF" : "\n## 商品情報";
-        const splitIdx = prompt.lastIndexOf(briefMarker);
-        const dsMessages: { role: "system" | "user"; content: string }[] =
-          splitIdx > 0
-            ? [
-                { role: "system", content: prompt.slice(0, splitIdx).trim() },
-                { role: "user",   content: prompt.slice(splitIdx).trim() },
-              ]
-            : [{ role: "user", content: prompt }];
-
-        const dsRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "deepseek-v4-flash",
-            messages: dsMessages,
-            max_tokens: 3000,
-            response_forma
+             

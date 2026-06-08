@@ -2447,8 +2447,8 @@ function _currentGeminiKey() {
 //   OpenRouter : 無料は50 req/day と少ない → 最後尾のみ
 // ※ 旧順: cerebras→gemini→groq→... → Cerebras失敗で即Gemini(250/日)消費が問題
 // ※ 新順: Geminiをgroq/github/sambanovaの後ろへ → Gemini温存・終日動作を実現
-const POOL_CHAT = ['cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter', 'deepseek'];
-const POOL_GEN  = ['cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter', 'deepseek'];
+const POOL_CHAT = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
+const POOL_GEN  = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
 
 /** キー設定済み・冷却中でないプロバイダーのみを返す */
 function _buildProviderPool(type = 'chat') {
@@ -2465,7 +2465,7 @@ function _buildProviderPool(type = 'chat') {
 function _callProvider(p, prompt, useHist, sys, type = 'chat') {
   switch (p) {
     case 'deepseek':
-      return callOpenAICompat('https://api.deepseek.com/v1/chat/completions',           dsKey,       'DeepSeek',     prompt, useHist, { model: 'deepseek-v4-flash' },                   30000, sys);
+      return callOpenAICompat('https://api.deepseek.com/v1/chat/completions',           dsKey,       'DeepSeek',     prompt, useHist, { model: 'deepseek-chat' },                       30000, sys);
     case 'cerebras':
       return callOpenAICompat('https://api.cerebras.ai/v1/chat/completions',            cerebrasKey, 'Cerebras',     prompt, useHist, { model: 'llama-3.3-70b' },                      60000, sys);
     case 'github':
@@ -3223,8 +3223,8 @@ const SAMBA_MODELS = [
   { value: 'DeepSeek-V3-1',                      label: 'DeepSeek V3.1（最新）' },
 ];
 const DEEPSEEK_MODELS = [
-  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash（推奨・最新）' },
-  { value: 'deepseek-v4-pro',   label: 'DeepSeek V4 Pro（高精度・低速）' },
+  { value: 'deepseek-chat',     label: 'DeepSeek V3（推奨・高速）' },
+  { value: 'deepseek-reasoner', label: 'DeepSeek R1（推論特化）' },
 ];
 
 function currentProvider() {
@@ -4437,7 +4437,7 @@ async function testKey(provider) {
           cerebras:    { url: 'https://api.cerebras.ai/v1/chat/completions',                                model: 'llama3.1-8b',                             headers: {} },
           sambanova:   { url: `${proxyBaseUrl}/api/sambanova/chat/completions`,                        model: 'Llama-4-Maverick-17B-128E-Instruct',      headers: {} },
           huggingface: { url: 'http://localhost:8000/api/huggingface/v1/chat/completions',                   model: 'Qwen/Qwen2.5-72B-Instruct',              headers: {} },
-          deepseek:    { url: 'https://api.deepseek.com/v1/chat/completions',                                model: 'deepseek-v4-flash',                       headers: {} },
+          deepseek:    { url: 'https://api.deepseek.com/v1/chat/completions',                                model: 'deepseek-chat',                           headers: {} },
         };
         const cfg = cfgMap[provider];
         if (provider === 'huggingface') {
@@ -6911,4 +6911,5 @@ async function saveToNotionDB() {
       ...(pubDate ? { '公開予定日': { date: { start: pubDate } } } : {}),
       ...(memo    ? { 'メモ': { rich_text: [{ text: { content: memo.slice(0, 2000) } }] } } : {}),
     },
-    
+    children: [{
+  

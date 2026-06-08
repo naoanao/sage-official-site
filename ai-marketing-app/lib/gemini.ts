@@ -344,7 +344,7 @@ async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<s
       Authorization: "Bearer " + apiKey,
     },
     body: JSON.stringify({
-      model: "deepseek-v4-flash",
+      model: "deepseek-chat",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -502,9 +502,9 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Generate
   const errors: string[] = [];
 
   const callers: Array<[string, (s: string, u: string) => Promise<string>]> = [
+    ["DeepSeek", callDeepSeek],
     ["Groq", callGroq],
     ["Gemini", callGemini],
-    ["DeepSeek", callDeepSeek],
   ];
 
   for (const [name, caller] of callers) {
@@ -515,4 +515,26 @@ export async function generateWeeklyActions(user: UserProfile): Promise<Generate
         const match = cleaned.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("JSON not found in response");
         const json = safeParseJSON(match[0]) as { actions?: Action[]; strategy_note?: unknown };
-        if (Array.isArra
+        if (Array.isArray(json.actions) && json.actions.length > 0) {
+          return {
+            actions: sanitizeActions(json.actions, !!user.booking_url),
+            strategy_note: typeof json.strategy_note === "string" ? json.strategy_note.trim() : "",
+          };
+        }
+        throw new Error("actions array is empty");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[" + name + "] attempt " + (attempt + 1) + " failed:", msg);
+        errors.push(name + "(" + (attempt + 1) + "): " + msg);
+
+        const isTransient = msg.includes("503") || msg.includes("500") || msg.includes("429");
+        if (!isTransient || attempt === 1) break;
+
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+  }
+
+  console.error("All APIs failed:", errors.join(" | "));
+  throw new Error("生成に失敗しました。詳細: " + errors.join(" | "));
+}
