@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://growl-app.vercel.app";
+const APP_URL = process.env.TIKTOK_APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ai-marketing-app-blush.vercel.app";
 const CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY!;
 
 export async function GET(req: NextRequest) {
-  const deviceId = req.nextUrl.searchParams.get("device_id") || "global";
+  const { searchParams } = new URL(req.url);
+  const deviceId = searchParams.get("device_id") || "global";
 
-  const scope = "user.info.basic,video.publish,video.upload";
-  const redirectUri = encodeURIComponent(`${APP_URL}/api/auth/tiktok/callback`);
+  if (!CLIENT_KEY) {
+    return NextResponse.json({ error: "TIKTOK_CLIENT_KEY not configured" }, { status: 500 });
+  }
+
+  const redirectUri = `${APP_URL}/api/auth/tiktok/callback`;
+  const scope = "user.info.basic,video.upload,video.publish";
   const state = encodeURIComponent(deviceId);
 
   const authUrl =
     `https://www.tiktok.com/v2/auth/authorize/` +
     `?client_key=${CLIENT_KEY}` +
-    `&scope=${scope}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&response_type=code` +
-    `&redirect_uri=${redirectUri}` +
+    `&scope=${encodeURIComponent(scope)}` +
     `&state=${state}`;
 
   return NextResponse.redirect(authUrl);
