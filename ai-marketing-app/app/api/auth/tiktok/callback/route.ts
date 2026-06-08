@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://growl-app.vercel.app";
+const APP_URL = process.env.TIKTOK_APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ai-marketing-app-blush.vercel.app";
 const CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY!;
 const CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET!;
 
@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
   try {
     const redirectUri = `${APP_URL}/api/auth/tiktok/callback`;
 
+    // code → access_token
     const tokenRes = await fetch("https://open.tiktokapis.com/v2/oauth/token/", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -46,8 +47,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${APP_URL}/dashboard?tiktok_error=token_exchange_failed`);
     }
 
-    const { access_token, refresh_token, open_id, scope, expires_in, refresh_expires_in } = tokenData;
+    const {
+      access_token,
+      refresh_token,
+      open_id,
+      scope,
+      expires_in,
+      refresh_expires_in,
+    } = tokenData;
 
+    // ユーザー情報を取得
     const userRes = await fetch(
       "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
       { headers: { Authorization: `Bearer ${access_token}` } }
@@ -55,6 +64,7 @@ export async function GET(req: NextRequest) {
     const userData = await userRes.json();
     const userInfo = userData.data?.user || {};
 
+    // Supabase に保存
     await supabase.from("user_tiktok_tokens").upsert({
       device_id: deviceId,
       access_token,
@@ -63,14 +73,20 @@ export async function GET(req: NextRequest) {
       display_name: userInfo.display_name || null,
       avatar_url: userInfo.avatar_url || null,
       scope: scope || null,
-      expires_at: expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : null,
-      refresh_expires_at: refresh_expires_in ? new Date(Date.now() + refresh_expires_in * 1000).toISOString() : null,
+      expires_at: expires_in
+        ? new Date(Date.now() + expires_in * 1000).toISOString()
+        : null,
+      refresh_expires_at: refresh_expires_in
+        ? new Date(Date.now() + refresh_expires_in * 1000).toISOString()
+        : null,
       updated_at: new Date().toISOString(),
     });
 
     return NextResponse.redirect(`${APP_URL}/dashboard?tiktok_connected=1`);
   } catch (err) {
     console.error("TikTok OAuth callback error:", err);
-    return NextResponse.redirect(`${APP_URL}/dashboard?tiktok_error=${encodeURIComponent(String(err))}`);
+    return NextResponse.redirect(
+      `${APP_URL}/dashboard?tiktok_error=${encodeURIComponent(String(err))}`
+    );
   }
 }
