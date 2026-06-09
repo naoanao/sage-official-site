@@ -55,6 +55,40 @@ export default function DiagnosisPage() {
   const [copied, setCopied] = useState(false);
   const startedRef = useRef(false);
 
+  // Dynamic page title for SEO
+  useEffect(() => {
+    if (step === "result" && result) {
+      document.title = isEn
+        ? `My SNS Score: ${result.rank} (${result.score}/100) - Growl Diagnosis`
+        : `私のSNS集客力: ${result.rank} (${result.score}点) - Growl診断`;
+    } else if (step === "quiz") {
+      document.title = isEn
+        ? "Free SNS Marketing Score - Diagnose Your Business in 5 Questions | Growl"
+        : "SNS集客力診断 - 5問でわかるあなたのお店のマーケティング力 | Growl";
+    }
+  }, [step, result, isEn]);
+
+  // Structured data for rich search results
+  useEffect(() => {
+    const existing = document.getElementById("seo-schema");
+    if (existing) existing.remove();
+    const script = document.createElement("script");
+    script.id = "seo-schema";
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      name: isEn ? "Free SNS Marketing Score Diagnostic" : "SNS集客力診断ツール",
+      description: isEn
+        ? "Answer 5 questions and get an A-E score for your small business social media marketing. Free, no signup."
+        : "5問答えるだけであなたのビジネスのSNS集客力をA〜Eで診断。無料、登録不要。",
+      url: "https://growl-app.vercel.app/diagnosis",
+      applicationCategory: "MarketingApplication",
+      operatingSystem: "Web",
+    });
+    document.head.appendChild(script);
+  }, [isEn]);
+
   useEffect(() => {
     if (step === "quiz" && !startedRef.current) {
       startedRef.current = true;
