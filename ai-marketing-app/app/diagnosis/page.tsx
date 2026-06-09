@@ -59,12 +59,30 @@ export default function DiagnosisPage() {
 
   useEffect(() => { setIsPaid(isPaidPlan()); }, []);
 
-  // Dynamic page title for SEO
+  // Dynamic page title + OGP meta tags for SEO
   useEffect(() => {
     if (step === "result" && result) {
       document.title = isEn
         ? `My SNS Score: ${result.rank} (${result.score}/100) - Growl Diagnosis`
         : `私のSNS集客力: ${result.rank} (${result.score}点) - Growl診断`;
+      // OGP: rank image for X/Twitter/OGP cards
+      const ogImageUrl = `https://growl-app.vercel.app/diagnosis/rank-${result.rank}.svg`;
+      const ogTitle = isEn
+        ? `I got Rank ${result.rank} on Growl SNS Diagnosis!`
+        : `Growl SNS診断でランク${result.rank}でした！`;
+      const setMeta = (property: string, content: string) => {
+        let el = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+        if (!el) {
+          el = document.createElement("meta");
+          el.setAttribute("property", property);
+          document.head.appendChild(el);
+        }
+        el.setAttribute("content", content);
+      };
+      setMeta("og:image", ogImageUrl);
+      setMeta("og:title", ogTitle);
+      setMeta("og:url", "https://growl-app.vercel.app/diagnosis");
+      setMeta("og:type", "website");
     } else if (step === "quiz") {
       document.title = isEn
         ? "Free SNS Marketing Score - Diagnose Your Business in 5 Questions | Growl"
@@ -241,6 +259,16 @@ export default function DiagnosisPage() {
             </p>
           </div>
 
+          {/* Rank share card image */}
+          <div className="mb-6 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+            <img
+              src={`/diagnosis/rank-${rank}.svg`}
+              alt={`Rank ${rank} - ${label}`}
+              className="w-full"
+              loading="eager"
+            />
+          </div>
+
           {/* Weakness + Tip */}
           <div className="bg-gray-50 rounded-2xl p-6 mb-6">
             <div className="mb-4">
@@ -294,32 +322,4 @@ export default function DiagnosisPage() {
                 {isEn ? "See my 3 actions this week →" : "今週やるべき3つを見る →"}
               </Link>
             </div>
-          ) : (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
-              <p className="text-amber-900 font-bold text-lg mb-2">
-                {isEn
-                  ? `Your "${weakness}" is fixable — here's how`
-                  : `「${weakness}」は直せます`}
-              </p>
-              <p className="text-amber-700 text-sm mb-4">
-                {isEn
-                  ? "Upgrade to Standard ($29/mo) to get 3 ready-to-use marketing actions every week, customized for your business."
-                  : "スタンダードプラン(¥3,000/月)で、あなたの業種と悩みに合わせた今週の集客施策が毎週届きます。"}
-              </p>
-              <Link
-                href="/upgrade"
-                onClick={() => track("diagnosis_cta_click", { weakness })}
-                className="inline-block px-6 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors"
-              >
-                {isEn ? "Upgrade to Standard ($29/mo) →" : "スタンダードにアップグレード →"}
-              </Link>
-            </div>
-          )}
-
-        </div>
-      </main>
-    );
-  }
-
-  return null;
-}
+          ) : (
