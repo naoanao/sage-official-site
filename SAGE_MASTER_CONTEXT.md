@@ -406,6 +406,10 @@ Sage_Final_Unified/
 | 2026-06-09 | **SNS自動化復旧**: `init_brain()` 起動時未呼出バグ修正。`NotionContentPool`/`InstagramBot` 欠落時の fallback 対応。Bluesky投稿確認済み |
 | 2026-06-09 | **Autonomy Ladder & Closeout Rules定義**: AGENTS.md に L1-L3自律レベル + 知識圧縮ルールを追加。OpenCrew調査を反映 |
 | 2026-06-09 | **OpenCrew調査**: AlexAnys/opencrew v0.3.0 (490 stars) の多Agent協業OSを調査。Sage Phase 4-5設計の参考として記録 |
+| 2026-06-09 | **SNSスケジューラ修正**: 頻度 毎時→1日1回(JST 08:00)。プロンプトを会話トリガー・AI語禁止・DM感覚に刷新 |
+| 2026-06-09 | **Growl診断機能MVP**: `/diagnosis` + `/api/diagnosis` (Groq)。5問→A〜E判定→弱点指摘→シェア→有料CTA導線。日英対応 |
+| 2026-06-09 | **診断プロンプト磨き**: 判定基準を行動ベースに具体化、シェア文を自虐的・正直に。質問文を会話調に。CTAを診断結果連動に |
+| 2026-06-09 | **L3マージ & デプロイ**: candidate→mainマージ。origin + growl両リモートにpush。Vercel自動デプロイ発火 |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 

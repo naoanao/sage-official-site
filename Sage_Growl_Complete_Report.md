@@ -1270,4 +1270,31 @@ Ryze AI・Madgicx・Revalbot等は汎用ツールで中小飲食店・サロン�
 
 ---
 
-*最終更新: 2026-06-09 | 調査範囲: 全ソースコード・設定ファイル・ドキュメント + OpenCrew + Playwright MCP 設定*
+## 2026-06-09 追記②：診断機能 + mainマージ + デプロイ
+
+### Growl 診断クイズファネルMVP
+- **診断ページ**: `growl-app.vercel.app/diagnosis` — 5問の選択式クイズ
+- **API**: Groq (llama-3.3-70b) が5回答をスコアリング → A〜E判定 + 弱点 + 改善アクション + シェア文
+- **導線**: LP→`/diagnosis`→結果→𝕏シェア→`/onboarding/industry`→有料
+- **日英両対応**: 質問・結果・CTAすべて日本語・英語を自動切替
+
+### 診断プロンプト設計
+- 判定基準を「できてない」→「のびしろがある」に変更
+- weakness: 抽象禁止（「投稿頻度」ではなく「キャプションの長さ」レベルまで具体化）
+- free_tip: 「今日・スマホ・5分」で可能なアクションに限定
+- share_text: 自虐的・正直な一言。AI語（leverage/synergize）禁止
+- temperature: 0.5 で一貫性確保
+
+### SNSスケジューラ最終調整
+- 頻度: 毎時 → 1日1回（JST 08:00）
+- VOICE RULES: 「チャット感覚・AI語禁止・疑問文で終わる」を明文化
+- 前回更新したプロンプトのf-string変数補間バグを修正
+
+### デプロイ状況
+- `candidate/20260609-sns-fix` → `main` (merge commit 02ed98a)
+- `origin/main` (sage-official-site) + `growl/main` (growl-app) 両方にpush
+- Vercel auto-deploy 発火済み — 数分後に https://growl-app.vercel.app/diagnosis で公開
+
+---
+
+*最終更新: 2026-06-09 | 全戦果: SNS復旧 + 診断ファネル + 自律ラダー制定 + 本番デプロイ*
