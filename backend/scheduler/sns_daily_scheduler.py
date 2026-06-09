@@ -112,28 +112,30 @@ class SNSDailyScheduler:
         target = self.identity.get("target_audience", "solopreneurs and developers")
 
         prompt = (
-            f"You are the {brand} Marketing AI. Generate high-performing content for BOTH Instagram and Bluesky.\n"
+            f"You are a {tone} solopreneur building AI tools for small businesses.\n"
             f"Brand niche: {niche}\n"
             f"Target audience: {target}\n"
             f"Tone: {tone}\n\n"
-            f"[STRATEGIES]\nInstagram: {self.ig_strategy}\nBluesky: {self.bs_strategy}\n[/STRATEGIES]\n\n"
-            f"[RAW CONTENT]\nTopic: {topic}\nDetail: {content}\nDirection: {motif}\n[/RAW CONTENT]\n\n"
+            "[STRATEGIES]\n"
+            "Bluesky: Real, personal, builder perspective. Conversation trigger required in every post.\n"
+            "No hard selling. No CTA links in the post body. End with a question people can answer in 1-2 sentences.\n"
+            "Instagram: Professional, save-rate optimized caption with hashtags.\n"
+            "[/STRATEGIES]\n\n"
+            "[RAW CONTENT]\n"
+            f"Topic: {topic}\nDetail: {content}\nDirection: {motif}\n"
+            "[/RAW CONTENT]\n\n"
             "### TASK:\n"
-            "1. INSTAGRAM CAPTION: Professional, save-rate optimized, with hashtags.\n"
-            "   - End EVERY caption with a link-in-bio CTA, e.g.: '👉 Link in bio to automate yours'\n"
-            "2. BLUESKY SKEET: Punchy, high-energy tech vibe, US/EU market focus. (Max 240 chars)\n"
-            "   - End with: ' → sage-official-site.pages.dev'\n"
-            f"3. UNIFIED IMAGE PROMPT: Unique visual for Stable Diffusion reflecting '{motif}' motif.\n\n"
-            "BRAND RULE: The product is 'Sage 3.0 Developer Blueprint' — a technical guide to building\n"
-            "an autonomous AI content system. $49 one-time purchase. Target: developers and AI engineers.\n"
-            "Never mention AutoPilot AI Pro, SelfThinking AI Pro, or $20/month subscription.\n\n"
-            "ACCURACY RULES (strictly enforced):\n"
-            "- Do NOT invent income figures. Never write specific amounts like ¥500,000/月 or $10,000/mo.\n"
-            "- Use only factual claims: 'automated daily posting', 'runs 24/7 on Cloudflare', etc.\n"
-            "- Never mix currencies in the same post.\n"
-            "- Product CTA: 'naofumi3.gumroad.com/l/apvbzh' — $49 Developer Blueprint.\n\n"
+            "1. BLUESKY POST (max 240 chars): Authentic, real experience. First-person. End with a conversation-triggering question.\n"
+            "   Example: 'Been testing this for 3 weeks. What surprised me: consistency beat perfection. What's one thing you kept up for 30 days?'\n"
+            "   Do NOT include links, CTAs, or product names. Never start with 'Day N.'.\n"
+            "2. INSTAGRAM CAPTION: Professional, save-rate optimized, with 3-5 hashtags. (Only if relevant)\n"
+            "3. IMAGE PROMPT: Minimalist visual reflecting the topic, suitable for social media.\n\n"
+            "ACCURACY RULES:\n"
+            "- Do NOT invent income figures or specific results.\n"
+            "- Use only first-hand, factual statements.\n"
+            "- Never mention pricing or product URLs.\n\n"
             'Output strictly in JSON format:\n'
-            '{\n    "ig_caption": "...",\n    "bs_text": "...",\n    "image_prompt": "..."\n}'
+            '{\n    "bs_text": "...",\n    "ig_caption": "...",\n    "image_prompt": "..."\n}'
         )
         logger.info(f"🤖 Generating optimized SNS content using motif: {motif}")
         raw = self._call_llm([{"role": "user", "content": prompt}])
