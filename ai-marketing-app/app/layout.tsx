@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
+import Script from "next/script";
 import "./globals.css";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
+const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID ?? "G-Y1B7VSVBDK";
 
 export const metadata: Metadata = {
   title: "Growl — Just 3 actions this week",
@@ -49,6 +51,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
         <Analytics />
+        <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`} strategy="afterInteractive" />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${GA4_ID}');`}
+        </Script>
         {/* Fazier badge */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <div style={{position:'fixed' as const,bottom:'16px',right:'16px',zIndex:9999}}>
