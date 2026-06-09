@@ -1263,10 +1263,12 @@ Ryze AI・Madgicx・Revalbot等は汎用ツールで中小飲食店・サロン�
 - **OpenCrew調査**: AlexAnys/opencrew v0.3.0 を調査。多Agent自律協業モデルの知見をSage Phase 4-5設計に反映
 
 ### 既知の未解決問題
-- `backend/modules/notion_content_pool.py` 不在 → BlogSchedulerが起動時にエラー（SNSDailySchedulerはローカルフォールバック対応済み）
-- `backend/integrations/instagram_integration.py` 不在 → Instagram投稿不可（SNSDailySchedulerはgraceful skip対応済み）
-- `backend/modules/auto_regulator.py` 不在 → AutonomousAdapterループがエラー
-- `backend/integrations/image_generation.py` 不在 → 画像生成スキップ（テキスト投稿のみ動作）
+- ~~`backend/modules/notion_content_pool.py` 不在~~ → ✅ **復元済み**（2026-06-09）
+- ~~`backend/integrations/instagram_integration.py` 不在~~ → ✅ **復元済み**（2026-06-09）
+- ~~`backend/modules/auto_regulator.py` 不在~~ → ✅ **復元済み**（2026-06-09）
+- ~~`backend/integrations/image_generation.py` 不在~~ → ✅ **復元済み**（2026-06-09）
+- `kanagawajapan`アカウント未連動 → 課題（bluesky_agentが単一アカウント専用）
+- `IH/HN/Reddit投稿`未実行 → ブラウザ自動化の技術的制限
 
 ---
 
@@ -1387,4 +1389,4 @@ Sageの86エンドポイントの大半はローカルFlaskサーバー上にあ
 
 ---
 
-*最終更新: 2026-06-09 | 全成果: SNS復旧+診断ファネル+Vercel Analytics+自律ラダー+86APIマッピング+市場分析+本番デプロイ*
+*最終更新: 2026-06-09 | 全成果: SNS復旧+診断ファネル+Vercel+GA4+自律ラダー+86APIマッピング+欠落モジュール全復元+本番デプロイ*
