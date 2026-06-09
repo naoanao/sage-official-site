@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
-        temperature: 0.7,
+        temperature: 0.5,
       }),
     });
 
@@ -75,62 +75,60 @@ function _buildJapanesePrompt(
   industry: string, post_frequency: string, pain_type: string,
   review_managed: string, goal: string,
 ): string {
-  return `あなたは中小企業のSNS集客力診断AIです。以下の回答から集客スコアを判定してください。
+  return `あなたは小さなお店のSNS集客アドバイザーです。以下の回答から、この人の「今の状態」と「最初の一歩」を温かく、具体的に診断してください。
 
-【回答】
+▼ この人の回答
 - 業種: ${industry}
-- SNS更新頻度: ${post_frequency}
-- 一番の悩み: ${pain_type}
-- レビュー管理: ${review_managed}
-- 3ヶ月の目標: ${goal}
+- SNSの頻度: ${post_frequency}
+- いちばんの悩み: ${pain_type}
+- レビュー対応: ${review_managed}
+- 3ヶ月後の目標: ${goal}
 
-【判定ルール】
-- A (85-100点): 週3回以上投稿、レビュー返信あり、具体的な数値目標あり
-- B (70-84点): 週1-2回投稿、いずれかの要素が強い
-- C (50-69点): 月数回投稿、改善の余地あり
-- D (30-49点): ほとんど投稿していない、レビュー未対応
-- E (0-29点): まったくSNSを使っていない
+▼ 診断ルール（「できてない」ではなく「まだのびしろがある」視点で）
+- A (85-100点): SNSもレビューも目標も、全部やってる状態
+- B (70-84点): だいたいできてるけど、どれか1つが手薄
+- C (50-69点): たまに投稿してる。レビューは気になるけどできてない。やる気はある
+- D (30-49点): 投稿が止まってる。レビューを見てはいる。始め方がわからない
+- E (0-29点): まだSNSに手をつけられてない。きっかけ待ち
 
-以下のJSONのみを返してください。説明文は不要です。
-{
-  "rank": "A"〜"E"のいずれか,
-  "score": 数値(0-100),
-  "weakness": "最も弱いポイントを一言で（20文字以内）",
-  "free_tip": "今すぐできる具体的な改善アクション1つ（80文字以内）",
-  "share_text": "Xでシェアしたくなる一言（改行含めて50文字以内）。例: 『私の店のSNS集客力は【C】でした。まずは週1投稿から始めます。』",
-  "share_text_en": "English version of share_text (50 chars max)"
-}`;
+▼ アウトプット条件（重要。守らないと診断として機能しません）
+- weakness: この人の「たった1つ直せば結果が出る」弱点を、具体的に15文字以内で。抽象禁止。「SNS更新頻度」や「投稿不足」ではなく、「〇〇の写真が少ない」「キャプションが短い」レベル。
+- free_tip: 「今日、スマホで5分あればできる」行動を1つ。業種に合わせて具体的に。NG例「投稿を継続する」→ OK例「今日のランチの写真をInstagramストーリーズに1枚あげる」
+- share_text: あなた自身が「これ、ちょっとシェアしたくなるな」と思える正直な一言（80文字以内）。他人に見せるとちょっと恥ずかしいけどリアルなやつ。例「うちの美容室、SNS集客力はC。週1投稿はしてるけどレビュー返信ができてなかった。まずは先月の3件、明日返します。」
+- share_text_en: share_textを自然な英語にしたもの（80文字以内）
+
+JSONだけを返してください。余計な説明禁止。コードブロック（\`\`\`）禁止。
+{"rank":"A〜E","score":0〜100,"weakness":"具体的な弱点","free_tip":"今すぐできる行動","share_text":"正直でちょっと自虐的な一言","share_text_en":"English version"}`;
 }
 
 function _buildEnglishPrompt(
   industry: string, post_frequency: string, pain_type: string,
   review_managed: string, goal: string,
 ): string {
-  return `You are an SNS marketing diagnostic AI for small businesses. Score the following answers.
+  return `You are a warm, honest SNS coach for small business owners. Diagnose this person's current state and give them their first step.
 
-[ANSWERS]
+▼ Their answers
 - Industry: ${industry}
-- SNS posting frequency: ${post_frequency}
-- Biggest pain point: ${pain_type}
-- Review management: ${review_managed}
+- SNS: ${post_frequency}
+- Biggest pain: ${pain_type}
+- Reviews: ${review_managed}
 - 3-month goal: ${goal}
 
-[SCORING RULES]
-- A (85-100): 3+ posts/week, replies to reviews, has specific numeric goals
-- B (70-84): 1-2 posts/week, some strong elements
-- C (50-69): few posts/month, room for improvement
-- D (30-49): almost no posting, ignoring reviews
-- E (0-29): no SNS presence at all
+▼ Scoring (focus on "room to grow", not "you're failing")
+- A (85-100): Posts often, replies to reviews, has clear measurable goals — they're doing it all
+- B (70-84): Mostly there, one area could tighten up
+- C (50-69): Posts now and then. Wants to do more. Reviews are irregular but they care.
+- D (30-49): Posting has stalled. They check reviews but haven't replied yet. Not sure how to start.
+- E (0-29): Hasn't begun yet. Just waiting for the right push.
 
-Return ONLY the following JSON. No explanation.
-{
-  "rank": "A" through "E",
-  "score": number 0-100,
-  "weakness": "biggest weak point in one short phrase (max 20 chars)",
-  "free_tip": "one specific, actionable improvement they can do today (max 80 chars)",
-  "share_text": "a short, shareable one-liner for social media (max 50 chars). Example: 'My restaurant's SNS score is C. Starting with 1 post a week.'",
-  "share_text_en": "English version of share_text (max 50 chars)"
-}`;
+▼ Output rules (CRITICAL — these make or break the quiz)
+- weakness: ONE specific, actionable gap. NOT generic like "posting frequency". Must be concrete like "menu photos", "caption length", "review response time". Max 15 chars.
+- free_tip: ONE thing they can do TODAY in 5 minutes on their phone. Tailored to their industry. NOT vague like "post more". Must be like "Snap one photo of today's lunch and put it on Instagram Stories."
+- share_text: Write something a real person would actually want to post on X/Twitter. Slightly self-deprecating, a little embarrassed, totally honest. Example: "My restaurant scored a C on SNS marketing. Thought I was doing fine — turns out I haven't replied to a single review in 2 months. Fixing that tomorrow." Max 80 chars.
+- share_text_en: same as share_text (max 80 chars)
+
+Return ONLY raw JSON. No code fences. No explanation.
+{"rank":"A-E","score":0-100,"weakness":"...concrete...","free_tip":"...specific action...","share_text":"...real person talking...","share_text_en":"..."}`;
 }
 
 function _parseResponse(raw: string, isJapanese: boolean): DiagnosisResult {

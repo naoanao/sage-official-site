@@ -18,19 +18,19 @@ interface Result {
 }
 
 const questionsJa = [
-  { key: "industry", q: "業種を選んでください", options: ["飲食店", "美容サロン", "EC・通販", "士業・コンサル", "工務店・建設", "健康・ボディケア", "教育・スクール", "その他"] },
-  { key: "post_frequency", q: "SNSの更新頻度は？", options: ["ほぼ毎日", "週2〜3回", "週1回", "月に数回", "ほとんど投稿していない"] },
-  { key: "pain_type", q: "集客で一番の悩みは？", options: ["新規客が来ない", "リピート率が低い", "SNS投稿が続かない", "広告費が高い", "何から手をつければいいか分からない"] },
-  { key: "review_managed", q: "GoogleマップやSNSのレビュー対応は？", options: ["毎回返信している", "たまに返信する", "見ているが返信しない", "見ていない"] },
-  { key: "goal", q: "3ヶ月後に達成したいことは？", options: ["売上を10%上げたい", "新規顧客を増やしたい", "常連を増やしたい", "SNSのフォロワーを増やしたい", "とにかく今より良くしたい"] },
+  { key: "industry", q: "どんなお店・お仕事ですか？", options: ["飲食店", "美容サロン", "EC・通販", "士業・コンサル", "工務店・建設", "整体・ボディケア", "教室・スクール", "その他"] },
+  { key: "post_frequency", q: "SNSの更新、できてますか？", options: ["ほぼ毎日", "週2〜3回", "週1回くらい", "月に数回", "ほとんどできてない"] },
+  { key: "pain_type", q: "集客でいちばん悩んでることは？", options: ["新規のお客さんが来ない", "リピートしてくれない", "投稿が続かない・ネタ切れ", "広告費ばかりかさむ", "何から手をつければいいかわからない"] },
+  { key: "review_managed", q: "お店のGoogleクチコミ、どうしてますか？", options: ["毎回ていねいに返信してる", "時間があるときだけ返してる", "見てるけど返せてない", "まだ見る余裕がない"] },
+  { key: "goal", q: "3ヶ月後、どんな状態になっていたい？", options: ["売上をしっかり伸ばしたい", "新規のお客さんを増やしたい", "リピーター・常連を育てたい", "SNSでお店のファンを増やしたい", "いますぐ結果はわからないけど、前に進みたい"] },
 ];
 
 const questionsEn = [
-  { key: "industry", q: "What's your industry?", options: ["Restaurant", "Beauty Salon", "E-commerce", "Consulting / Legal", "Construction", "Health & Body", "Education / School", "Other"] },
-  { key: "post_frequency", q: "How often do you post on SNS?", options: ["Almost daily", "2-3 times / week", "Once a week", "Few times / month", "Almost never"] },
-  { key: "pain_type", q: "Your biggest marketing pain?", options: ["Not enough new customers", "Low repeat rate", "Can't keep up with SNS", "Ads cost too much", "Don't know where to start"] },
-  { key: "review_managed", q: "Do you respond to Google/SNS reviews?", options: ["Always reply", "Sometimes reply", "Read but don't reply", "Don't check them"] },
-  { key: "goal", q: "What do you want in 3 months?", options: ["10% more revenue", "More new customers", "More repeat customers", "More SNS followers", "Just want it to be better"] },
+  { key: "industry", q: "What kind of business do you run?", options: ["Restaurant", "Beauty Salon", "E-commerce", "Consulting / Legal", "Construction", "Health & Body Care", "School / Classes", "Other"] },
+  { key: "post_frequency", q: "How's your SNS posting going?", options: ["Almost every day", "2-3 times a week", "About once a week", "A few times a month", "Haven't really started"] },
+  { key: "pain_type", q: "What's your biggest marketing headache?", options: ["Not enough new customers", "They come once, don't return", "I run out of things to post", "Ads cost too much for what I get", "Honestly, I don't know where to start"] },
+  { key: "review_managed", q: "What do you do with Google reviews?", options: ["I reply to every single one", "I reply when I can", "I read them but haven't replied", "Haven't had time to look yet"] },
+  { key: "goal", q: "Where do you want to be in 3 months?", options: ["Growing revenue steadily", "More new customers through the door", "A loyal group of regulars", "A following on social media", "Honestly just want things to feel better than now"] },
 ];
 
 const rankEmoji: Record<string, string> = { A: "🏆", B: "🌟", C: "📈", D: "🔧", E: "🌱" };
@@ -220,18 +220,20 @@ export default function DiagnosisPage() {
           {/* CTA */}
           <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-center">
             <p className="text-indigo-900 font-bold text-lg mb-2">
-              {isEn ? "Want to improve this score?" : "このスコア、上げませんか？"}
+              {isEn
+                ? `Your "${weakness}" gap? We fix exactly that.`
+                : `「${weakness}」を直すところから、はじめませんか。`}
             </p>
             <p className="text-indigo-700 text-sm mb-4">
               {isEn
-                ? "Get 3 marketing actions every week, customized for your business."
-                : "あなたの業種と悩みに合わせた「今週やるべき3つの集客施策」をAIが届けます。"}
+                ? "Every week, AI picks 3 marketing actions for your business — ready to copy and paste. No marketing skills needed."
+                : "AIがあなたの業種と今の悩みに合わせて、今週やるべき3つの集客施策をお届けします。コピペするだけ。マーケの知識はゼロで大丈夫です。"}
             </p>
             <Link
               href="/onboarding/industry"
               className="inline-block px-6 py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors"
             >
-              {isEn ? "Start free →" : "無料で始める →"}
+              {isEn ? "See my 3 actions this week →" : "今週やるべき3つを見る →"}
             </Link>
           </div>
 
