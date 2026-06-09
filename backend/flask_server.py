@@ -1253,5 +1253,12 @@ if __name__ == '__main__':
 
     handle_pid_lock()
 
+    # Init brain + SNS schedulers after PID lock, before server start
+    try:
+        if orchestrator is None:
+            init_brain()
+    except Exception as e:
+        logger.error(f"[ERROR] Startup init_brain failed (server will start without autonomous): {e}")
+
     app.run(host='0.0.0.0', port=port, debug=debug_mode, use_reloader=False)
 

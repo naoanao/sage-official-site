@@ -576,3 +576,26 @@ OpenCode 環境に以下を導入:
 ### 確認
 - テストパス: 前セッション同条件（設定変更のみでコード未変更）
 - 非対象: flask_server.py / routes / tests は一切未変更
+
+---
+
+## 2026-06-09: SNS 自動化停止の原因特定と復旧
+
+### 問題
+SNS 自動投稿が 2026-05-21 以降停止。スケジューラスレッド (`SageSNSScheduler`) が起動していなかった。
+
+### 原因
+1. **`flask_server.py:898`**: `init_brain()` の起動時呼び出しが前回リファクタリング時にコメントアウトされたまま未復元。スケジューラスレッドが一切起動しなかった。
+2. **`sns_daily_scheduler.py:__init__`**: `NotionContentPool` / `InstagramBot` の import がハードコードされており、モジュール不在時に `__init__` 全体が失敗。ローカルフォールバックに到達できなかった。
+
+### 修正
+| ファイル | 変更内容 |
+|---------|---------|
+| `backend/flask_server.py:1255` | `handle_pid_lock()` 直後に `init_brain()` 呼び出しを追加（起動時に brain + SNS スレッドを起動） |
+| `backend/scheduler/sns_daily_scheduler.py` | `NotionContentPool` / `InstagramBot` の import を try/except でラップし、不在時は `None` にして fallback 動作可能に。`run_cycle()`, `_post_now()`, `_process_item()` で None ガード。 |
+
+### 復旧確認
+- Bluesky API 接続成功 (`kanagawatable.bsky.social`)
+- ローカルコンテンツプールから投稿生成 → Bluesky 投稿成功（URI 確認済み）
+- Instagram は graceful skip（`SAGE_ENABLE_INSTAGRAM=0` + モジュール不在）
+- 画像生成モジュール (`image_generation`) 不在も graceful skip

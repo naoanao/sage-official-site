@@ -21,13 +21,23 @@ class SNSDailyScheduler:
     """
 
     def __init__(self):
-        from backend.modules.notion_content_pool import NotionContentPool
         from backend.integrations.bluesky_agent import BlueskyAgent
-        from backend.integrations.instagram_integration import InstagramBot
 
-        self.notion_pool = NotionContentPool()
+        try:
+            from backend.modules.notion_content_pool import NotionContentPool
+            self.notion_pool = NotionContentPool()
+        except ImportError:
+            self.notion_pool = None
+            logger.warning("[SNS] NotionContentPool not available; using local fallback only.")
+
+        try:
+            from backend.integrations.instagram_integration import InstagramBot
+            self.instagram = InstagramBot()
+        except ImportError:
+            self.instagram = None
+            logger.warning("[SNS] InstagramBot not available; Instagram posting disabled.")
+
         self.bluesky = BlueskyAgent()
-        self.instagram = InstagramBot()
 
         self.ig_strategy = self._load_strategy("backend/cognitive/instagram_strategy.md")
         self.bs_strategy = self._load_strategy("backend/cognitive/bluesky_strategy.md")
@@ -193,14 +203,14 @@ class SNSDailyScheduler:
         logger.info(f"💾 Job Queued: {job_id}")
 
     def _post_now(self, ig_caption: str, bs_text: str, image_path: str | None) -> None:
-        if image_path:
+        if image_path and self.instagram:
             ig_result = self.instagram.post_image(image_url=image_path, caption=ig_caption)
             if ig_result.get("success"):
                 logger.info(f"📸 Instagram posted: {ig_result.get('id')}")
             else:
                 logger.error(f"❌ Instagram post failed: {ig_result.get('error')}")
         else:
-            logger.info("⏭️ Instagram skipped (no image).")
+            logger.info("⏭️ Instagram skipped (no image or Instagram disabled).")
 
         try:
             bs_result = self.bluesky.post_skeet(bs_text)
@@ -211,9 +221,10 @@ class SNSDailyScheduler:
 
     def run_cycle(self) -> None:
         """Check for 'Ready' content and post to both platforms."""
-        logger.info("🔍 [SNS CEO] Scanning Notion for 'Ready' content...")
-
-        items = self.notion_pool.get_ready_content(limit=1)
+        items = []
+        if self.notion_pool:
+            logger.info("🔍 [SNS CEO] Scanning Notion for 'Ready' content...")
+            items = self.notion_pool.get_ready_content(limit=1)
 
         if not items:
             fallback_path = "backend/data/local_content_pool.json"
@@ -279,7 +290,7 @@ class SNSDailyScheduler:
         self._post_now(ig_caption, bs_text, image_path)
         self._write_job(item_id, topic, ig_caption, bs_text, image_path or "", status="pending")
 
-        if item.get("id"):
+        if item.get("id") and self.notion_pool:
             self.notion_pool.mark_as_posted(item["id"])
 
         logger.info(f"✅ SNS Cycle Completed for '{topic}'")
