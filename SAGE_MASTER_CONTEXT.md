@@ -3,7 +3,7 @@
 > Sageシステムの全体構造・なおさんのアイデンティティ・既知問題と解決策を含む。  
 > 「2ヶ月に一回同じことを繰り返す」を防ぐためのシステムメモリ。
 
-最終更新: 2026-06-09（収益化マスター計画策定・全欠落モジュール復元・GA4+Vercel Analytics・本番デプロイ）
+最終更新: 2026-06-09（Phase1 収益化実装完了・全欠落モジュール復元・Vercel再設定・GA4+Vercel Analytics・本番デプロイ）
 
 ---
 
@@ -402,6 +402,13 @@ Sage_Final_Unified/
 **発生ファイル（2026-05-23）**: report/page.tsx, learn/page.tsx, payment-success/page.tsx, product/page.tsx, marketing/page.tsx（合計16,000+ null bytes）  
 **注意**: `git show HEAD:file.tsx | python3 -c "import sys; d=sys.stdin.buffer.read(); print(d.count(b'\\x00'))"` でコミット内のnull bytes数を確認できる。修正済みでも再発する可能性あり。
 
+### Vercel Root Directory設定修正（2026-06-09 追記）
+**根本原因**: Vercelプロジェクト(ai-marketing-app)のRoot Directory設定が `ai-marketing-app/` に固定されており、
+`npx vercel deploy --prod` でパスが二重になる。  
+**解決方法**: https://vercel.com/naoanaos-projects/ai-marketing-app/settings → Root Directoryを `.` に変更・保存。
+最新Productionデプロイメントを Redeploy で復旧。
+**関連事項**: この設定は Gitリポジトリ直下のサブディレクトリ構成と一致しなくなっていたため発生。
+
 ### vercel-002: VercelのGitHub認証切れ（401）→ 新コミットが自動デプロイされない
 **根本原因**: VercelのGitHub連携OAuth tokenが期限切れ。Vercel→GitHub API呼び出しが401を返す。  
 **症状**: pushしても新コミットがVercel deployments一覧に現れない。Branch "main" not found エラー。  
@@ -487,6 +494,8 @@ Sage_Final_Unified/
 | 2026-06-09 | **欠落モジュール復元**: notion_content_pool, auto_regulator, instagram_integration, image_generation の4モジュールをworktreeから復元。BlogScheduler/AutonomousAdapter/Instagram/画像生成エラー解消 |
 | 2026-06-09 | **GA4タグ追加**: Growl layout.tsx にGoogle Analytics 4タグを追加（G-Y1B7VSVBDK）。Vercel Analyticsと併用 |
 | 2026-06-09 | **収益化マスター計画策定**: `backend/cognitive/monetization_master_plan.md` 作成。Phase1（値上げ+機能ゲート）・Phase2（流通内蔵）・Phase3（Meta広告）の3段階戦略 |
+| 2026-06-09 | **Phase1 収益化実装**: Standard $19→$29, Pro $49→$79。診断結果に有料ゲート追加（無料→アップグレードCTA, 有料→オンボーディング）。Vercelデプロイ完了 |
+| 2026-06-09 | **Vercel Root Directory修正**: Vercelプロジェクト設定のRoot Directoryを `ai-marketing-app` → `.` に修正。デプロイ復旧 |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 
