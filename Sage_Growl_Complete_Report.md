@@ -1295,6 +1295,20 @@ Ryze AI・Madgicx・Revalbot等は汎用ツールで中小飲食店・サロン�
 - `origin/main` (sage-official-site) + `growl/main` (growl-app) 両方にpush
 - Vercel auto-deploy 発火済み — 数分後に https://growl-app.vercel.app/diagnosis で公開
 
+### Vercel Analytics 診断ファネル計測
+- `@vercel/analytics` 導入。layoutに `<Analytics />` 配置
+- 5つのカスタムイベントを `diagnosis/page.tsx` に実装:
+
+| イベント | 発火タイミング | パラメータ | 行 |
+|---------|--------------|-----------|-----|
+| `diagnosis_start` | 初回レンダリング時 | — | L58-63 |
+| `diagnosis_question_view` | 各設問表示時 | `question_num` | L65-69 |
+| `diagnosis_complete` | 結果画面到達時 | `score_rank`, `weakness` | L90 |
+| `diagnosis_share` | コピー/Xシェア時 | `platform` | L110, L118 |
+| `diagnosis_cta_click` | CTAクリック時 | `weakness` | L252 |
+
+このデータで「何%のユーザーが診断を完了し、どのランクのユーザーがCTAをクリックしたか」を分析可能。
+
 ---
 
-*最終更新: 2026-06-09 | 全戦果: SNS復旧 + 診断ファネル + 自律ラダー制定 + 本番デプロイ*
+*最終更新: 2026-06-09 | 全戦果: SNS復旧 + 診断ファネル + Vercel Analytics計測 + 自律ラダー制定 + 本番デプロイ*

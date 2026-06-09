@@ -3,7 +3,7 @@
 > Sageシステムの全体構造・なおさんのアイデンティティ・既知問題と解決策を含む。  
 > 「2ヶ月に一回同じことを繰り返す」を防ぐためのシステムメモリ。
 
-最終更新: 2026-06-09（Playwright MCP導入・AGENTS.md隔離ブランチ運用+自律レベル定義・SNS自動化復旧・OpenCrew調査）
+最終更新: 2026-06-09（Playwright MCP導入・AGENTS.md自律レベル定義・SNS自動化復旧・診断機能+Vercel Analytics計測・本番デプロイ）
 
 ---
 
@@ -410,6 +410,7 @@ Sage_Final_Unified/
 | 2026-06-09 | **Growl診断機能MVP**: `/diagnosis` + `/api/diagnosis` (Groq)。5問→A〜E判定→弱点指摘→シェア→有料CTA導線。日英対応 |
 | 2026-06-09 | **診断プロンプト磨き**: 判定基準を行動ベースに具体化、シェア文を自虐的・正直に。質問文を会話調に。CTAを診断結果連動に |
 | 2026-06-09 | **L3マージ & デプロイ**: candidate→mainマージ。origin + growl両リモートにpush。Vercel自動デプロイ発火 |
+| 2026-06-09 | **Vercel Analytics診断ファネル計測**: layoutに`<Analytics />`配置。5イベント（start/question_view/complete/share/cta_click）を診断ページに実装。`@vercel/analytics`導入 |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 
