@@ -137,6 +137,10 @@ const translations = {
     "report.upgrade": "プランを見る →",
     "report.back": "← ダッシュボードに戻る",
 
+    // ── 診断 ──
+    "diag.cta": "あなたの集客力を診断する →",
+    "diag.free": "30秒 · 無料 · 登録不要",
+
     // ── 完了画面 ──
     "complete.back": "← ダッシュボードに戻る",
     "complete.share": "シェアする",
@@ -271,6 +275,10 @@ const translations = {
     "report.standard": "Full report history is available on the Standard Plan",
     "report.upgrade": "View Plans →",
     "report.back": "← Back to Dashboard",
+
+    // ── Diagnosis ──
+    "diag.cta": "Take a free marketing diagnosis →",
+    "diag.free": "30 sec · Free · No signup",
 
     // ── Complete ──
     "complete.back": "← Back to Dashboard",

@@ -3,7 +3,7 @@
 > Sageシステムの全体構造・なおさんのアイデンティティ・既知問題と解決策を含む。  
 > 「2ヶ月に一回同じことを繰り返す」を防ぐためのシステムメモリ。
 
-最終更新: 2026-06-05（Growlプロンプト品質PDCA・英語版修正・Geminiフォールバック追加・収益化実装 完了）
+最終更新: 2026-06-09（Playwright MCP導入・AGENTS.md隔離ブランチ運用+自律レベル定義・SNS自動化復旧・OpenCrew調査）
 
 ---
 
@@ -401,6 +401,11 @@ Sage_Final_Unified/
 | 2026-05-31 | **@kanagawatable Bluesky bio更新**: Growlリンク追加 |
 | 2026-05-31 | **毎日9:00 Dev.to自動記事投稿スケジュール設定**: devto-daily-article タスク |
 | 2026-05-31 | **849件の空ジョブ削除**: jobs.json クリア |
+| 2026-06-05 | **Playwright MCP導入**: `@playwright/mcp` v0.0.75 を opencode.jsonc に追加（`--headless`） |
+| 2026-06-05 | **隔離ブランチ運用 + sage-reviewスキル**: AGENTS.md commit節を修正、main直コミット禁止。`.opencode/skills/sage-review/` 新設 |
+| 2026-06-09 | **SNS自動化復旧**: `init_brain()` 起動時未呼出バグ修正。`NotionContentPool`/`InstagramBot` 欠落時の fallback 対応。Bluesky投稿確認済み |
+| 2026-06-09 | **Autonomy Ladder & Closeout Rules定義**: AGENTS.md に L1-L3自律レベル + 知識圧縮ルールを追加。OpenCrew調査を反映 |
+| 2026-06-09 | **OpenCrew調査**: AlexAnys/opencrew v0.3.0 (490 stars) の多Agent協業OSを調査。Sage Phase 4-5設計の参考として記録 |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 

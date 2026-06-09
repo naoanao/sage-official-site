@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   }
 
   const redirectUri = `${APP_URL}/api/auth/tiktok/callback`;
-  const scope = "user.info.basic,video.upload,video.publish";
+  const scope = "user.info.basic,video.upload"; // video.publish は Sandbox 非対応のため除外
   const state = encodeURIComponent(deviceId);
 
   const authUrl =

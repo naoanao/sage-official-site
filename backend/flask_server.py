@@ -617,12 +617,17 @@ def init_brain():
                             def run_scheduler():
                                 try:
                                     sched = SNSDailyScheduler()
+                                    last_run_date = None
                                     while True:
                                         if not _automation_stop_events.get('bluesky', threading.Event()).is_set():
-                                            logger.info("[SNS] SNS Scheduler: Checking for Ready content in Notion...")
-                                            sched.run_cycle()
-                                            _record_run("bluesky")  # UIのautomation IDは"bluesky"
-                                        time.sleep(3600) # Once per hour
+                                            now_utc = datetime.now(timezone.utc)
+                                            # Run once per day at 23:00 UTC = 08:00 JST
+                                            if now_utc.hour == 23 and now_utc.minute < 5 and last_run_date != now_utc.strftime('%Y-%m-%d'):
+                                                logger.info("[SNS] SNS Scheduler: Checking for Ready content...")
+                                                sched.run_cycle()
+                                                _record_run("bluesky")
+                                                last_run_date = now_utc.strftime('%Y-%m-%d')
+                                        time.sleep(60)
                                 except Exception as e:
                                     logger.error(f"[ERROR] SNS Scheduler Thread Error: {e}")
 
@@ -1252,6 +1257,13 @@ if __name__ == '__main__':
         psutil = None
 
     handle_pid_lock()
+
+    # Init brain + SNS schedulers after PID lock, before server start
+    try:
+        if orchestrator is None:
+            init_brain()
+    except Exception as e:
+        logger.error(f"[ERROR] Startup init_brain failed (server will start without autonomous): {e}")
 
     app.run(host='0.0.0.0', port=port, debug=debug_mode, use_reloader=False)
 

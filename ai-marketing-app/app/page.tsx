@@ -103,6 +103,13 @@ export default function LandingPage() {
           {isEn ? "No signup · 1 minute · No credit card" : "登録不要・1分で完了・クレカ不要"}
         </p>
 
+        <Link
+          href="/diagnosis"
+          className="inline-block mt-3 text-sm text-indigo-500 hover:text-indigo-600 font-medium underline underline-offset-4 transition-colors"
+        >
+          {t("diag.cta")}
+        </Link>
+
         {/* Stats */}
         <div className="flex gap-6 mt-10 text-center">
           <div>

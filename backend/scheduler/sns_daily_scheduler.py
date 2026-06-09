@@ -21,13 +21,23 @@ class SNSDailyScheduler:
     """
 
     def __init__(self):
-        from backend.modules.notion_content_pool import NotionContentPool
         from backend.integrations.bluesky_agent import BlueskyAgent
-        from backend.integrations.instagram_integration import InstagramBot
 
-        self.notion_pool = NotionContentPool()
+        try:
+            from backend.modules.notion_content_pool import NotionContentPool
+            self.notion_pool = NotionContentPool()
+        except ImportError:
+            self.notion_pool = None
+            logger.warning("[SNS] NotionContentPool not available; using local fallback only.")
+
+        try:
+            from backend.integrations.instagram_integration import InstagramBot
+            self.instagram = InstagramBot()
+        except ImportError:
+            self.instagram = None
+            logger.warning("[SNS] InstagramBot not available; Instagram posting disabled.")
+
         self.bluesky = BlueskyAgent()
-        self.instagram = InstagramBot()
 
         self.ig_strategy = self._load_strategy("backend/cognitive/instagram_strategy.md")
         self.bs_strategy = self._load_strategy("backend/cognitive/bluesky_strategy.md")
@@ -102,28 +112,36 @@ class SNSDailyScheduler:
         target = self.identity.get("target_audience", "solopreneurs and developers")
 
         prompt = (
-            f"You are the {brand} Marketing AI. Generate high-performing content for BOTH Instagram and Bluesky.\n"
-            f"Brand niche: {niche}\n"
-            f"Target audience: {target}\n"
-            f"Tone: {tone}\n\n"
-            f"[STRATEGIES]\nInstagram: {self.ig_strategy}\nBluesky: {self.bs_strategy}\n[/STRATEGIES]\n\n"
-            f"[RAW CONTENT]\nTopic: {topic}\nDetail: {content}\nDirection: {motif}\n[/RAW CONTENT]\n\n"
-            "### TASK:\n"
-            "1. INSTAGRAM CAPTION: Professional, save-rate optimized, with hashtags.\n"
-            "   - End EVERY caption with a link-in-bio CTA, e.g.: '👉 Link in bio to automate yours'\n"
-            "2. BLUESKY SKEET: Punchy, high-energy tech vibe, US/EU market focus. (Max 240 chars)\n"
-            "   - End with: ' → sage-official-site.pages.dev'\n"
-            f"3. UNIFIED IMAGE PROMPT: Unique visual for Stable Diffusion reflecting '{motif}' motif.\n\n"
-            "BRAND RULE: The product is 'Sage 3.0 Developer Blueprint' — a technical guide to building\n"
-            "an autonomous AI content system. $49 one-time purchase. Target: developers and AI engineers.\n"
-            "Never mention AutoPilot AI Pro, SelfThinking AI Pro, or $20/month subscription.\n\n"
-            "ACCURACY RULES (strictly enforced):\n"
-            "- Do NOT invent income figures. Never write specific amounts like ¥500,000/月 or $10,000/mo.\n"
-            "- Use only factual claims: 'automated daily posting', 'runs 24/7 on Cloudflare', etc.\n"
-            "- Never mix currencies in the same post.\n"
-            "- Product CTA: 'naofumi3.gumroad.com/l/apvbzh' — $49 Developer Blueprint.\n\n"
-            'Output strictly in JSON format:\n'
-            '{\n    "ig_caption": "...",\n    "bs_text": "...",\n    "image_prompt": "..."\n}'
+            f"You are a {tone} solopreneur sharing real, unfiltered experiences building AI tools while running a small business.\n"
+            f"Your niche: {niche}\n"
+            f"You write for: {target}\n\n"
+            "VOICE RULES (critical):\n"
+            "- Write like you're texting a friend who gets it. Short sentences. Real feelings.\n"
+            "- NEVER use AI-speak: no 'leverage', 'synergize', 'game-changer', 'revolutionize', 'unlock'.\n"
+            "- NEVER use em-dashes or semicolons. Periods and line breaks only.\n"
+            "- If it sounds like a LinkedIn post, delete it and start over.\n\n"
+            "[BLUESKY STRATEGY]\n"
+            "- Max 240 characters.\n"
+            "- First-person. Present tense. Feels like a DM, not a broadcast.\n"
+            "- Every post MUST end with a short question that takes 5 seconds to answer.\n"
+            "  Good: 'What's one thing you kept up for 30 days?'\n"
+            "  Bad: 'How do you approach marketing strategy in today's landscape?'\n"
+            "- No links. No product names. No CTAs. No hashtags.\n"
+            "- Never start with 'Day N.' or 'Thread 🧵'.\n"
+            f"[/BLUESKY]\n\n"
+            f"Topic: {topic}\n"
+            f"Context: {content}\n"
+            f"Mood: {motif}\n\n"
+            "TASK:\n"
+            "1. bs_text: One Bluesky post per the rules above.\n"
+            "2. ig_caption: Instagram caption with 3-5 hashtags. Skip if irrelevant.\n"
+            "3. image_prompt: A simple visual idea, 10 words max.\n\n"
+            "ACCURACY:\n"
+            "- Never make up numbers (revenue, followers, growth %).\n"
+            "- If you don't know, say 'some days it works, some days it doesn't.'\n"
+            "- Never mention specific prices or product URLs.\n\n"
+            'Output ONLY JSON:\n'
+            '{{\n    "bs_text": "...",\n    "ig_caption": "...",\n    "image_prompt": "..."\n}}'
         )
         logger.info(f"🤖 Generating optimized SNS content using motif: {motif}")
         raw = self._call_llm([{"role": "user", "content": prompt}])
@@ -193,14 +211,14 @@ class SNSDailyScheduler:
         logger.info(f"💾 Job Queued: {job_id}")
 
     def _post_now(self, ig_caption: str, bs_text: str, image_path: str | None) -> None:
-        if image_path:
+        if image_path and self.instagram:
             ig_result = self.instagram.post_image(image_url=image_path, caption=ig_caption)
             if ig_result.get("success"):
                 logger.info(f"📸 Instagram posted: {ig_result.get('id')}")
             else:
                 logger.error(f"❌ Instagram post failed: {ig_result.get('error')}")
         else:
-            logger.info("⏭️ Instagram skipped (no image).")
+            logger.info("⏭️ Instagram skipped (no image or Instagram disabled).")
 
         try:
             bs_result = self.bluesky.post_skeet(bs_text)
@@ -211,9 +229,10 @@ class SNSDailyScheduler:
 
     def run_cycle(self) -> None:
         """Check for 'Ready' content and post to both platforms."""
-        logger.info("🔍 [SNS CEO] Scanning Notion for 'Ready' content...")
-
-        items = self.notion_pool.get_ready_content(limit=1)
+        items = []
+        if self.notion_pool:
+            logger.info("🔍 [SNS CEO] Scanning Notion for 'Ready' content...")
+            items = self.notion_pool.get_ready_content(limit=1)
 
         if not items:
             fallback_path = "backend/data/local_content_pool.json"
@@ -279,7 +298,7 @@ class SNSDailyScheduler:
         self._post_now(ig_caption, bs_text, image_path)
         self._write_job(item_id, topic, ig_caption, bs_text, image_path or "", status="pending")
 
-        if item.get("id"):
+        if item.get("id") and self.notion_pool:
             self.notion_pool.mark_as_posted(item["id"])
 
         logger.info(f"✅ SNS Cycle Completed for '{topic}'")

@@ -3,28 +3,35 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-export async function GET(req: NextRequest) {
-  const deviceId = req.nextUrl.searchParams.get("device_id");
-  if (!deviceId) return NextResponse.json({ connected: false }, { status: 400 });
+    export async function GET(req: NextRequest) {
+      const deviceId = req.nextUrl.searchParams.get("device_id");
 
-  const { data, error } = await supabase
-    .from("user_tiktok_tokens")
-    .select("open_id, display_name, avatar_url, expires_at")
-    .eq("device_id", deviceId)
-    .single();
+        if (!deviceId) {
+            return NextResponse.json({ connected: false }, { status: 400 });
+              }
 
-  if (error || !data) return NextResponse.json({ connected: false });
+                const { data, error } = await supabase
+                    .from("user_tiktok_tokens")
+                        .select("open_id, display_name, avatar_url, expires_at")
+                            .eq("device_id", deviceId)
+                                .single();
 
-  const expired = data.expires_at ? new Date(data.expires_at) < new Date() : false;
-  if (expired) return NextResponse.json({ connected: false, expired: true });
+                                  if (error || !data) {
+                                      return NextResponse.json({ connected: false });
+                                        }
 
-  return NextResponse.json({
-    connected: true,
-    display_name: data.display_name,
-    avatar_url: data.avatar_url,
-    open_id: data.open_id,
-  });
-}
+                                          const expired = data.expires_at ? new Date(data.expires_at) < new Date() : false;
+                                            if (expired) {
+                                                return NextResponse.json({ connected: false, expired: true });
+                                                  }
+
+                                                    return NextResponse.json({
+                                                        connected: true,
+                                                            display_name: data.display_name,
+                                                                avatar_url: data.avatar_url,
+                                                                    open_id: data.open_id,
+                                                                      });
+                                                                      }
