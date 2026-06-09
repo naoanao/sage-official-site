@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { track } from "@vercel/analytics";
 import { useLang } from "@/lib/i18n";
 
 type Step = "quiz" | "loading" | "result";
@@ -52,6 +53,20 @@ export default function DiagnosisPage() {
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (step === "quiz" && !startedRef.current) {
+      startedRef.current = true;
+      track("diagnosis_start");
+    }
+  }, [step]);
+
+  useEffect(() => {
+    if (step === "quiz") {
+      track("diagnosis_question_view", { question_num: currentQ + 1 });
+    }
+  }, [currentQ, step]);
 
   async function handleAnswer(option: string) {
     const key = questions[currentQ].key;
@@ -72,6 +87,7 @@ export default function DiagnosisPage() {
         if (data.rank) {
           setResult(data);
           setStep("result");
+          track("diagnosis_complete", { score_rank: data.rank, weakness: data.weakness });
         } else {
           setResult(null);
           setStep("quiz");
@@ -91,6 +107,7 @@ export default function DiagnosisPage() {
     const text = isEn ? result.share_text_en : result.share_text;
     navigator.clipboard.writeText(text);
     setCopied(true);
+    track("diagnosis_share", { platform: "copy" });
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -98,6 +115,7 @@ export default function DiagnosisPage() {
     if (!result) return;
     const text = encodeURIComponent(result.share_text_en);
     const url = encodeURIComponent("https://growl-app.vercel.app/diagnosis");
+    track("diagnosis_share", { platform: "x" });
     window.open(`https://twitter.com/intent/tweet?text=${text}%0A${url}`, "_blank");
   }
 
@@ -231,6 +249,7 @@ export default function DiagnosisPage() {
             </p>
             <Link
               href="/onboarding/industry"
+              onClick={() => track("diagnosis_cta_click", { weakness })}
               className="inline-block px-6 py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors"
             >
               {isEn ? "See my 3 actions this week →" : "今週やるべき3つを見る →"}

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
@@ -47,6 +48,7 @@ export default function RootLayout({
     <html lang="en" translate="no" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
+        <Analytics />
         {/* Fazier badge */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <div style={{position:'fixed' as const,bottom:'16px',right:'16px',zIndex:9999}}>
