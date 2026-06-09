@@ -128,7 +128,25 @@ Claude Code / Cowork などの外部AIツールは、SageというAI分身の**�
 | URL | 機能名 | 内容 |
 |---|---|---|
 | `/` | ランディングページ | 英語・日本語切替対応。"Just 3 actions this week." |
-| `/onboar## 3b. 幻の超高度インテグレーション・自律アセット群（33回極限ブラウジングでの新発掘＋全検証済み）
+| `/diagnosis` | **NEW** SNS集客力診断 | 5問→A〜E判定→弱点→改善アクション→シェア。日英対応 |
+| `/onboarding/industry` | オンボーディングStep1 | 業種選択（8業種） |
+| `/onboarding/business` | オンボーディングStep2 | ビジネス説明 |
+| `/onboarding/customer` | オンボーディングStep3 | 顧客説明 |
+| `/onboarding/problem` | オンボーディングStep4 | 課題記述 |
+| `/onboarding/proof` | オンボーディングStep5 | 広告強化データ（任意） |
+| `/onboarding/goal` | オンボーディングStep6 | 目標→AI生成実行 |
+| `/onboarding/line` | オンボーディングStep7 | LINE連携（任意、JPのみ） |
+| `/dashboard` | メインダッシュボード | 3アクション表示、進捗管理 |
+| `/marketing` | フレームワーク分析 | PEST/3C/SWOT/STP/4P/VRIO/ULSSAS/AEO |
+| `/upgrade` | プランアップグレード | Free($0) / Standard($19) / Pro($49) |
+| `/payment-success` | 決済完了 | Stripeリダイレクト後 |
+| `/learn` | LearnAI | マーケ学習ツール |
+| `/product` | 商品マーケAI | マーケティングプラン生成 |
+| `/report` | 月次レポート | 完了タスク集計 |
+| `/privacy` | プライバシーポリシー | 法令対応 |
+| `/terms` | 利用規約 | 法令対応 |
+| `/diagnosis` | SNS集客力診断 | 5問クイズ→A〜Eランク→シェア→有料CTA導線 |
+| `/api/diagnosis` | 診断API（POST） | Groq(llama-3.3-70b)スコアリング |
 
 約1年間にわたるナオさんのソロAIビルダーとしての開発の歴史の中で、「現在稼働している機能」の背後に眠っていた、極めて高度で実用に耐えうるインフラ・RPA・生成アセット群です。これらはすべて実在し、ディスク上またはGit履歴から発掘・検証済みです。
 
@@ -246,28 +264,82 @@ Sage_Final_Unified/
 │   └── test_dashboard_full.py       # タイムアウト突破非同期ジョブ / コックピット API 結合テスト
 │
 ├── backend/
-│   ├── flask_server.py              # メインサーバー（80+エンドポイント、全スレッド管理）
+│   ├── flask_server.py              # メインサーバー（~1200行、86エンドポイント全管理）
 │   ├── config/
-│   │   └── identity.json           # なおさんのアイデンティティ・マーケ基礎知識（2026-05-19更新）
+│   │   └── identity.json           # なおさんのアイデンティティ・マーケ基礎知識
+│   ├── routes/                      # 11 Blueprint（分割済みルート）
+│   │   ├── chat.py                  # チャット・パイロット（3エンドポイント）
+│   │   ├── brain.py                 # 脳・研究・ブラウザ・RPA（18エンドポイント）
+│   │   ├── content.py               # コンテンツ・ファイル管理（10エンドポイント）
+│   │   ├── publish.py               # SNS公開・ステータス（14エンドポイント）
+│   │   ├── productize.py            # 商品生成・収益化（7エンドポイント）
+│   │   ├── sns_writer.py            # SNSライター・ブログ（5エンドポイント）
+│   │   ├── store.py                 # ストア・決済（11エンドポイント）
+│   │   ├── system.py                # システム管理（3エンドポイント）
+│   │   ├── misc.py                  # コマンド・SPA配信（7エンドポイント）
+│   │   ├── automations.py           # 自動化管理（4エンドポイント）
+│   │   ├── note_routes.py           # ノートCRUD（5エンドポイント）
+│   │   ├── identity.py              # アイデンティティ（未配線・flask_server.py優先）
+│   │   ├── jobs.py                  # ジョブ管理（未配線・flask_server.py優先）
+│   │   └── __init__.py              # Blueprint登録
 │   ├── modules/
-│   │   ├── sica_loop.py            # 自己改善ループ（Groq切替済 2026-05-19）
-│   │   ├── neuromorphic_brain.py   # JSON永続化メモリシステム
-│   │   ├── dream_mode.py           # 夜間アイデア生成（Groq使用）
 │   │   ├── langgraph_orchestrator_v2.py  # LangGraphオーケストレーター
-│   │   └── sage_master_agent.py    # マスターエージェント
+│   │   ├── sage_memory.py           # ChromaDB + JSON永続化メモリ
+│   │   ├── autonomous_adapter.py    # 自律ループ（観察→判断→実行）
+│   │   ├── strategy_manager.py      # 戦略管理
+│   │   ├── monetization_measure.py  # 収益計測
+│   │   ├── content_manager.py       # コンテンツ管理
+│   │   ├── browser_agent.py         # Webブラウザ操作
+│   │   ├── file_operations_agent.py # ファイル操作
+│   │   ├── sage_scholar.py          # 学術論文検索（arXiv/OpenAlex）
+│   │   ├── consultative_generator.py # コンサルタティブ生成
+│   │   ├── bilingual_poster.py      # 日英バイリンガル投稿
+│   │   ├── sns_performance_tracker.py # SNSパフォーマンス追跡
+│   │   ├── api_monitor.py           # API使用量監視
+│   │   ├── self_healing_agent.py    # 自己修復
+│   │   ├── security_utils.py        # セキュリティ（.env自動保護）
+│   │   ├── sage_audit.py            # 監査ログ
+│   │   ├── market_scan_notifier.py  # 市場スキャン通知
+│   │   ├── sica_loop.py             # 自己改善ループ（Groq）
+│   │   └── neuromorphic_brain.py    # JSON永続化メモリシステム
+│   ├── pipelines/
+│   │   ├── course_production_pipeline.py  # コース生成パイプライン
+│   │   └── niche_validator.py       # ニッチ検証
 │   ├── scheduler/
-│   │   ├── sns_daily_scheduler.py  # Bluesky投稿スケジューラー（メイン）
-│   │   ├── instagram_daily_scheduler.py  # Instagram + YouTube Shorts
-│   │   ├── blog_scheduler.py       # ブログ自動生成
-│   │   └── dream_scheduler.py      # 夜間アイデア生成スケジューラー
+│   │   ├── sns_daily_scheduler.py   # Bluesky投稿スケジューラー
+│   │   ├── blog_scheduler.py        # ブログ自動生成
+│   │   ├── gumroad_scheduler.py     # Gumroad PRジョブ
+│   │   ├── dream_scheduler.py       # 夜間アイデア生成
+│   │   ├── market_scan_scheduler.py # 市場トレンドスキャン
+│   │   ├── self_test_scheduler.py   # 自己診断
+│   │   ├── notion_sync_scheduler.py # Git→Notion日報同期
+│   │   └── __init__.py              # 全スケジューラ再エクスポート
+│   ├── agents/
+│   │   ├── market_scan_agent.py     # 市場スキャンエージェント
+│   │   ├── self_test_agent.py       # 自己診断エージェント
+│   │   └── self_test_external.py    # 外部ヘルスチェック
+│   ├── integrations/
+│   │   ├── bluesky_agent.py         # Bluesky投稿
+│   │   ├── engagement_bot.py        # Engagement Bot（停止中）
+│   │   ├── computer_vision_agent.py # 画面認識RPA（Gemini依存・要再開）
+│   │   ├── whop_publisher.py        # Whop自動販売
+│   │   ├── notion_logger.py         # Notionログ
+│   │   └── ... (他多数：kling_agent, suno_agent, fish_audio等)
+│   ├── scripts/
+│   │   ├── job_runner.py            # PRジョブ処理（5分おき）
+│   │   └── smart_watchdog.py        # ポート監視・自動再起動
 │   ├── data/
-│   │   ├── local_content_pool.json     # SNSコンテンツプール（15件、2026-05-19拡充）
-│   │   ├── post_rotation_state.json    # Account 1 ローテーション状態
-│   │   └── post_rotation_state_2.json  # Account 2 ローテーション状態（2026-05-19作成）
-│   └── integrations/
-│       ├── bluesky_bot.py          # Bluesky投稿
-│       ├── instagram_integration.py # Instagram投稿
-│       └── youtube_integration.py  # YouTube Shorts アップロード
+│   │   ├── local_content_pool.json  # SNSコンテンツプール（15件）
+│   │   ├── post_rotation_state.json # Account 1 ローテーション状態
+│   │   ├── post_rotation_state_2.json # Account 2 ローテーション状態
+│   │   ├── jobs_store.py            # ジョブ保存
+│   │   └── market_scan_store.py     # 市場スキャン保存
+│   ├── utils/
+│   │   ├── auth.py                  # 認証デコレータ
+│   │   ├── env_guardian.py          # 環境変数検証
+│   │   └── __init__.py
+│   └── extensions/
+│       └── __init__.py              # SQLAlchemy + Bcrypt
 │
 └── ai-marketing-app/               # Growl（Next.js）
     ├── app/api/market-research/

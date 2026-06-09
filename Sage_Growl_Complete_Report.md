@@ -1311,4 +1311,49 @@ Ryze AI・Madgicx・Revalbot等は汎用ツールで中小飲食店・サロン�
 
 ---
 
-*最終更新: 2026-06-09 | 全戦果: SNS復旧 + 診断ファネル + Vercel Analytics計測 + 自律ラダー制定 + 本番デプロイ*
+## 2026-06-09 追記③：Sage バックエンド全86エンドポイント完全マッピング
+
+本セッションでコードベースを徹底調査し、Sage Flaskサーバーの全APIエンドポイントを特定した。
+
+### 登録済みBlueprint（11）
+
+chat.py / brain.py / content.py / publish.py / productize.py / sns_writer.py / store.py / system.py / misc.py / automations.py / note_routes.py
+
+### エンドポイント数：86
+
+| カテゴリ | ファイル | エンドポイント数 | 主な機能 |
+|---------|---------|---------------|---------|
+| チャット | `chat.py` | 3 | メインチャット、パイロット、コース生成 |
+| 脳・研究 | `brain.py` | 18 | 脳統計、記憶、学術検索、D1リサーチ、ブラウザ操作、画面RPA |
+| コンテンツ | `content.py` | 10 | コンテンツCRUD、PDF、動画生成 |
+| SNS公開 | `publish.py` | 14 | Bluesky/Instagram/Dev.to/Telegram投稿、Notion書込、収益統計 |
+| 商品生成 | `productize.py` | 7 | 企画生成、コース生成、Whop公開、画像再生成 |
+| SNSライター | `sns_writer.py` | 5 | Blog/Gumroad手動実行、バイリンガル投稿、パフォーマンス |
+| 決済 | `store.py` | 11 | Stripe/PayPal/Whop/Gumroad Webhook、商品管理 |
+| システム | `system.py` | 3 | ヘルスチェック、自己修復、自己診断 |
+| 運用 | `misc.py` | 7 | コマンド実行、戦略管理、SPA配信 |
+| 自動化 | `automations.py` | 4 | 自動化一覧、ON/OFF、ログ、手動実行 |
+| ノート | `note_routes.py` | 5 | ノートCRUD |
+| flask_server残存 | — | 7 | アイデンティティ(4)、ジョブ(2)、Workspace(1) |
+
+### スケジューラ（10スレッド）
+
+SNSDailyScheduler / BlogScheduler / GumroadScheduler / DreamScheduler / MarketScanScheduler / SNSPerformanceTracker / SelfTestScheduler / NotionSyncScheduler / SageJobRunner / SICALoop
+
+### モジュール（20＋）
+
+LangGraphOrchestrator, SageMemory, AutonomousAdapter, StrategyManager, ContentManager, BrowserAgent, FileOperationsAgent, SageScholar, ConsultativeGenerator, BilingualPoster, SNSPerformanceTracker, APIMonitor, SelfHealingAgent, SecurityUtils, SageAudit, MarketScanNotifier, SICALoop, NeuromorphicBrain, CourseProductionPipeline, NicheValidator, EnvGuardian
+
+### 本セッションの全成果（再確認）
+
+| 日付 | 成果 |
+|------|------|
+| 06-05 | Playwright MCP導入 / 隔離ブランチ / sage-review |
+| 06-09 | SNS自動化復旧 / Autonomy Ladder / OpenCrew調査 |
+| 06-09 | 診断機能MVP / プロンプト磨き / スケジューラ頻度修正 |
+| 06-09 | Vercel Analytics 5イベント / SEO最適化 |
+| 06-09 | L3マージ・デプロイ・全86エンドポイントマッピング |
+
+---
+
+*最終更新: 2026-06-09 | 全成果: SNS復旧+診断ファネル+Vercel Analytics+自律ラダー+86APIマッピング+本番デプロイ*
