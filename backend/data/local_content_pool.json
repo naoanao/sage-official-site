@@ -118,5 +118,29 @@
     "image_prompt": "single question mark on dark background, contemplative minimal design, soft lighting",
     "category": "question",
     "platform": ["bluesky", "instagram"]
+  },
+  {
+    "id": "local-016",
+    "topic": "I ran my own SNS score. Results were humbling.",
+    "content": "Built a free diagnosis tool for small biz marketing. Then took it myself. Scored C. Thought I was doing okay — turns out I had blindspots in review response and content consistency. Running your own diagnosis before building a strategy is like checking ingredients before cooking. Free tool here if you want to try: growl-app.vercel.app/diagnosis",
+    "image_prompt": "dashboard showing self-diagnosis score C, honest self-reflection, dark minimal UI",
+    "category": "build_in_public",
+    "platform": ["bluesky", "instagram"]
+  },
+  {
+    "id": "local-017",
+    "topic": "The 5-question diagnosis that changed how I post",
+    "content": "Spent 30 seconds answering 5 questions about how I market. The AI told me my biggest gap is review management — not posting frequency, not hashtags. I was ignoring the one thing that actually builds trust. One fix: reply to the 12 unread Google reviews sitting in my inbox. That one action matters more than 10 new posts.",
+    "image_prompt": "Google review notification list on phone screen, dark UI, inbox zero concept",
+    "category": "insight",
+    "platform": ["bluesky", "instagram"]
+  },
+  {
+    "id": "local-018",
+    "topic": "What I learned from scoring D on my own marketing tool",
+    "content": "Built a marketing diagnosis tool. Scored D. The weakness was obvious in hindsight: I was posting without any plan. The fix wasn't 'post more' — it was 'have one clear action per week.' Gave my own tool a try at growl-app.vercel.app/diagnosis if you're curious about your score.",
+    "image_prompt": "score D on dark dashboard, honest founder moment, minimal tech aesthetic",
+    "category": "build_in_public",
+    "platform": ["bluesky", "instagram"]
   }
 ]
