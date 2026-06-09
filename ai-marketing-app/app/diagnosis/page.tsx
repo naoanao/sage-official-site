@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { track } from "@vercel/analytics";
 import { useLang } from "@/lib/i18n";
+import { isPaidPlan } from "@/components/FreeProgressBar";
 
 type Step = "quiz" | "loading" | "result";
 type Answer = string;
@@ -54,6 +55,9 @@ export default function DiagnosisPage() {
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
   const startedRef = useRef(false);
+  const [isPaid, setIsPaid] = useState(false);
+
+  useEffect(() => { setIsPaid(isPaidPlan()); }, []);
 
   // Dynamic page title for SEO
   useEffect(() => {
@@ -270,25 +274,47 @@ export default function DiagnosisPage() {
           </div>
 
           {/* CTA */}
-          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-center">
-            <p className="text-indigo-900 font-bold text-lg mb-2">
-              {isEn
-                ? `Your "${weakness}" gap? We fix exactly that.`
-                : `「${weakness}」を直すところから、はじめませんか。`}
-            </p>
-            <p className="text-indigo-700 text-sm mb-4">
-              {isEn
-                ? "Every week, AI picks 3 marketing actions for your business — ready to copy and paste. No marketing skills needed."
-                : "AIがあなたの業種と今の悩みに合わせて、今週やるべき3つの集客施策をお届けします。コピペするだけ。マーケの知識はゼロで大丈夫です。"}
-            </p>
-            <Link
-              href="/onboarding/industry"
-              onClick={() => track("diagnosis_cta_click", { weakness })}
-              className="inline-block px-6 py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors"
-            >
-              {isEn ? "See my 3 actions this week →" : "今週やるべき3つを見る →"}
-            </Link>
-          </div>
+          {isPaid ? (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-center">
+              <p className="text-indigo-900 font-bold text-lg mb-2">
+                {isEn
+                  ? `Your "${weakness}" gap? We fix exactly that.`
+                  : `「${weakness}」を直すところから、はじめませんか。`}
+              </p>
+              <p className="text-indigo-700 text-sm mb-4">
+                {isEn
+                  ? "Every week, AI picks 3 marketing actions for your business — ready to copy and paste."
+                  : "AIがあなたの業種と今の悩みに合わせて、今週やるべき3つの集客施策をお届けします。"}
+              </p>
+              <Link
+                href="/onboarding/industry"
+                onClick={() => track("diagnosis_cta_click", { weakness })}
+                className="inline-block px-6 py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors"
+              >
+                {isEn ? "See my 3 actions this week →" : "今週やるべき3つを見る →"}
+              </Link>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+              <p className="text-amber-900 font-bold text-lg mb-2">
+                {isEn
+                  ? `Your "${weakness}" is fixable — here's how`
+                  : `「${weakness}」は直せます`}
+              </p>
+              <p className="text-amber-700 text-sm mb-4">
+                {isEn
+                  ? "Upgrade to Standard ($29/mo) to get 3 ready-to-use marketing actions every week, customized for your business."
+                  : "スタンダードプラン(¥3,000/月)で、あなたの業種と悩みに合わせた今週の集客施策が毎週届きます。"}
+              </p>
+              <Link
+                href="/upgrade"
+                onClick={() => track("diagnosis_cta_click", { weakness })}
+                className="inline-block px-6 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors"
+              >
+                {isEn ? "Upgrade to Standard ($29/mo) →" : "スタンダードにアップグレード →"}
+              </Link>
+            </div>
+          )}
 
         </div>
       </main>

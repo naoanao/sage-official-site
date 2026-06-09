@@ -44,7 +44,7 @@ export default function UpgradePage() {
     {
       key: "standard" as const,
       name: "Standard",
-      price: "$19",
+      price: "$29",
       period: "/mo",
       desc: "For solopreneurs who want marketing on autopilot every week",
       features: [
@@ -60,7 +60,7 @@ export default function UpgradePage() {
     {
       key: "pro" as const,
       name: "Pro",
-      price: "$49",
+      price: "$79",
       period: "/mo",
       desc: "For multi-location owners and agencies",
       features: [
