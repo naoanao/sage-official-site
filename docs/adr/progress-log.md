@@ -599,3 +599,16 @@ SNS 自動投稿が 2026-05-21 以降停止。スケジューラスレッド (`S
 - ローカルコンテンツプールから投稿生成 → Bluesky 投稿成功（URI 確認済み）
 - Instagram は graceful skip（`SAGE_ENABLE_INSTAGRAM=0` + モジュール不在）
 - 画像生成モジュール (`image_generation`) 不在も graceful skip
+
+---
+
+## 2026-06-09: AGENTS.md に SageOS Autonomy Ladder & Closeout Rules を追加
+
+### Root Cause
+OpenCrew（AlexAnys/opencrew）のリサーチ結果とSage Phase 4-5の設計思想（自律レベル・人間承認フロー）が合致したため、明示的な運用ルールとして体系化する必要があった。
+
+### Fix
+AGENTS.md の Completion gate 以降に SageOS Autonomy Ladder（L1-L3）と Closeout Rules を追記。
+
+### Abstract Lesson
+自律実行の範囲を「可逆性」で定義し、知識の圧縮をタスク完了の必須条件とすることで、AIの自律性と監査可能性を両立できる。
