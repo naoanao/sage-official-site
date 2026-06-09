@@ -494,6 +494,8 @@ Sage_Final_Unified/
 | 2026-06-09 | **欠落モジュール復元**: notion_content_pool, auto_regulator, instagram_integration, image_generation の4モジュールをworktreeから復元。BlogScheduler/AutonomousAdapter/Instagram/画像生成エラー解消 |
 | 2026-06-09 | **GA4タグ追加**: Growl layout.tsx にGoogle Analytics 4タグを追加（G-Y1B7VSVBDK）。Vercel Analyticsと併用 |
 | 2026-06-09 | **収益化マスター計画策定**: `backend/cognitive/monetization_master_plan.md` 作成。Phase1（値上げ+機能ゲート）・Phase2（流通内蔵）・Phase3（Meta広告）の3段階戦略 |
+| 2026-06-09 | **Phase1 収益化実装完了: 値上げ+診断有料ゲート**: Standard $19→$29、Pro $49→$79。診断結果の完全改善プランを有料ユーザーのみに。無料ユーザーはアップグレードCTA。全テスト通過 |
+| 2026-06-09 | **Vercel再設定+本番デプロイ**: RootDirectory修正 (. → ai-marketing-app→変更前)。Reconnect + Redeploy。`growl-app.vercel.app` に最新版反映確認済み |
 | 2026-06-09 | **Phase1 収益化実装**: Standard $19→$29, Pro $49→$79。診断結果に有料ゲート追加（無料→アップグレードCTA, 有料→オンボーディング）。Vercelデプロイ完了 |
 | 2026-06-09 | **Vercel Root Directory修正**: Vercelプロジェクト設定のRoot Directoryを `ai-marketing-app` → `.` に修正。デプロイ復旧 |
 
