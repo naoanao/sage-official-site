@@ -1353,7 +1353,38 @@ LangGraphOrchestrator, SageMemory, AutonomousAdapter, StrategyManager, ContentMa
 | 06-09 | 診断機能MVP / プロンプト磨き / スケジューラ頻度修正 |
 | 06-09 | Vercel Analytics 5イベント / SEO最適化 |
 | 06-09 | L3マージ・デプロイ・全86エンドポイントマッピング |
+| 06-09 | Dev.to記事公開 + devto_integration復旧 + Sage内容量に診断PR3件追加 |
+
+## 2026-06-09 追記④：市場分析と「私がまだできること」
+
+### 需要と供給の分析（Growl診断機能）
+
+診断クイズファネルは2026年現在、SaaSのリード獲得手法として**最も効果が実証されている手法の1つ**（TryInteract報告書：平均コンバージョン率40%、カテゴリ別クイズが最も高い）。Growlの診断は「5問・A〜E・無料・シェアボタン」という最小構成で、既に製品に内蔵されている。
+
+競合（Typeform $39/月、Interact $49/月、QFunnel $29/月）は別サービスとして提供しているが、Growlは**自社製品のファネルとして無料で内蔵**している点が差別化になる。
+
+### 86エンドポイントのうち、今のGrowlで使っているのは約10%
+
+Sageの86エンドポイントの大半はローカルFlaskサーバー上にあり、Growl（Vercel上のNext.js）とは独立している。Growlに直接関係あるのは `/api/diagnosis` のみ。Sageの他のエンドポイント（学術検索、画面RPA、ブラウザ操作、コンテンツCRUD、ノート管理等）はローカル運用ツールとして存在する。
+
+### 私にまだできること（コード変更・L1）
+
+| # | タスク | 根拠（どのエンドポイント使うか） |
+|---|-------|-------------------------------|
+| 1 | kanagawajapan（2アカウント目）の自動投稿有効化 | sns_daily_scheduler.py で2アカウント目未設定の可能性 |
+| 2 | ニッチ検証の簡易フロントエンド | `/api/niche/validate` |
+| 3 | SNSパフォーマンスサマリーページ | `GET /api/sns/performance_summary` |
+| 4 | 残り欠落モジュールのworktreeからの復元（notion_content_pool, auto_regulator, instagram_integration） | BlogScheduler / AutonomousAdapter / Instagramのエラー解消 |
+| 5 | Google Analytics 4 タグ追加 | 手動挿入 |
+
+### なおさんにしかできないこと（L3）
+
+| # | タスク | 理由 |
+|---|-------|------|
+| 1 | IH/HN/Redditへの投稿 | 外部サイト操作、ログイン必須 |
+| 2 | Meta広告の本番出稿 | 広告費発生 |
+| 3 | IHアカウントでbuild in public投稿 | 個人アカウント運用 |
 
 ---
 
-*最終更新: 2026-06-09 | 全成果: SNS復旧+診断ファネル+Vercel Analytics+自律ラダー+86APIマッピング+本番デプロイ*
+*最終更新: 2026-06-09 | 全成果: SNS復旧+診断ファネル+Vercel Analytics+自律ラダー+86APIマッピング+市場分析+本番デプロイ*

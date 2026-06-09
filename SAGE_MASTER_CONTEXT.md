@@ -483,6 +483,7 @@ Sage_Final_Unified/
 | 2026-06-09 | **診断プロンプト磨き**: 判定基準を行動ベースに具体化、シェア文を自虐的・正直に。質問文を会話調に。CTAを診断結果連動に |
 | 2026-06-09 | **SEO最適化**: 診断ページに構造化データ・動的タイトル追加。sitemap.tsに/diagnosis追加。両リモートにpush |
 | 2026-06-09 | **Vercel Analytics診断ファネル計測**: layoutに`<Analytics />`配置。5イベント（start/question_view/complete/share/cta_click）を診断ページに実装。`@vercel/analytics`導入 |
+| 2026-06-09 | **Dev.to記事公開 + devto_integration復旧**: 欠落モジュールを復元。診断ツール紹介記事を公開 (dev.to/naoanao/...)。SageのBluesky自動投稿に診断PR3件追加 |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 
