@@ -23,4 +23,5 @@ export async function GET(req: NextRequest) {
     `&scope=${encodeURIComponent(scope)}` +
     `&state=${state}`;
 
-  return NextRespo
+  return NextResponse.redirect(authUrl);
+}
