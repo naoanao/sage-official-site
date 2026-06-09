@@ -1254,4 +1254,20 @@ Ryze AI・Madgicx・Revalbot等は汎用ツールで中小飲食店・サロン�
 
 ---
 
-*最終更新: 2026-05-29 | 調査範囲: 全ソースコード・設定ファイル・ドキュメントを33回にわたり徹底精査 + Day 361-362 自律実行ログ追記*
+## 2026-06-09 追記
+
+### 変更点
+- **Playwright MCP導入**: `@playwright/mcp` v0.0.75 を OpenCode に設定（ブラウザ自動化確認が可能に）
+- **AGENTS.md 改定**: main直コミット禁止 + 隔離ブランチ運用 + Autonomy Ladder (L1-L3) + Closeout Rules を追加
+- **SNS自動化復旧**: `init_brain()` 起動時未呼出のバグ修正。SNSDailySchedulerの欠落モジュールフォールバック対応。Bluesky投稿動作確認済み
+- **OpenCrew調査**: AlexAnys/opencrew v0.3.0 を調査。多Agent自律協業モデルの知見をSage Phase 4-5設計に反映
+
+### 既知の未解決問題
+- `backend/modules/notion_content_pool.py` 不在 → BlogSchedulerが起動時にエラー（SNSDailySchedulerはローカルフォールバック対応済み）
+- `backend/integrations/instagram_integration.py` 不在 → Instagram投稿不可（SNSDailySchedulerはgraceful skip対応済み）
+- `backend/modules/auto_regulator.py` 不在 → AutonomousAdapterループがエラー
+- `backend/integrations/image_generation.py` 不在 → 画像生成スキップ（テキスト投稿のみ動作）
+
+---
+
+*最終更新: 2026-06-09 | 調査範囲: 全ソースコード・設定ファイル・ドキュメント + OpenCrew + Playwright MCP 設定*
