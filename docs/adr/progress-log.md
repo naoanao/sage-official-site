@@ -612,3 +612,18 @@ AGENTS.md の Completion gate 以降に SageOS Autonomy Ladder（L1-L3）と Clo
 
 ### Abstract Lesson
 自律実行の範囲を「可逆性」で定義し、知識の圧縮をタスク完了の必須条件とすることで、AIの自律性と監査可能性を両立できる。
+
+---
+
+## 2026-06-09: Vercel Analytics 診断ファネル計測 + 無料配布投稿準備
+
+### Root Cause
+診断ページのユーザー行動を可視化する必要があった。また、英語圏への無料トラフィック獲得のため、Indie Hackers / HN / Reddit への投稿文が必要だった。
+
+### Fix
+1. `@vercel/analytics` 導入。layout.tsx に `<Analytics />`、diagnosis/page.tsx に5イベント実装
+2. L3承認 → mainマージ → origin + growl両リモートへpush → Vercel自動デプロイ
+3. `backend/cognitive/distribution_posts.md` に3プラットフォーム向け投稿文を作成
+
+### Abstract Lesson
+製品に流通を内蔵できない場合、手動のコピペ投稿でも初期トラフィックを獲得できる。投稿文は「数字の正直さ」と「試せる無料ツール」が刺さる。ブラウザ自動投稿はChromeのプロファイル競合・リモートデバッグ制限により現環境では困難。
