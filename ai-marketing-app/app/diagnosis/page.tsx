@@ -257,6 +257,18 @@ export default function DiagnosisPage() {
             </div>
           </div>
 
+          {/* Rank share card (rank-A..E.svg, restored 2026-06-10) */}
+          <div className="mb-6">
+            <img
+              src={`/diagnosis/rank-${["A","B","C","D","E"].includes(rank) ? rank : "C"}.svg`}
+              alt={isEn ? `Growl SNS Diagnosis - Rank ${rank}` : `Growl SNS診断 ランク${rank}`}
+              className="w-full rounded-2xl border border-gray-100 shadow-sm"
+            />
+            <p className="text-center text-xs text-gray-400 mt-2">
+              {isEn ? "Save this card & share it on your story" : "この画像を保存してストーリーズ等でシェアできます"}
+            </p>
+          </div>
+
           {/* Share buttons */}
           <div className="flex gap-3 mb-8">
             <button
