@@ -37,6 +37,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
   const [result, setResult] = useState<{ message?: string; manager_url?: string; error?: string } | null>(null);
   const [budget, setBudget] = useState(500);
   const [newToken, setNewToken] = useState("");
+  const [adminSecret, setAdminSecret] = useState("");
   const [tokenSaving, setTokenSaving] = useState(false);
   const [tokenMsg, setTokenMsg] = useState("");
   // 広告強化データ
@@ -65,8 +66,8 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
     try {
       const res = await fetch("/api/admin/update-token", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: newToken }),
+        headers: { "Content-Type": "application/json", "x-admin-secret": adminSecret },
+        body: JSON.stringify({ token: newToken, secret: adminSecret }),
       });
       const data = await res.json();
       if (data.success) {
@@ -389,17 +390,22 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
               {isEn ? "Try again" : "もう一度試す"}
             </button>
             {result.error?.includes("credentials") && (
-              <button onClick={() => setStep("update-token")}
-                className="w-full bg-blue-100 text-blue-600 font-medium text-xs py-2 rounded-xl hover:bg-blue-200 transition-all">
-                🔑 {isEn ? "Update token" : "トークンを更新"}
-              </button>
+              <a
+                href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-app.vercel.app/api/meta-ads/oauth-callback")}&scope=ads_management,pages_manage_ads,pages_read_engagement&response_type=code&state=${deviceId || "global"}`}
+                className="block w-full bg-blue-100 text-blue-600 font-medium text-xs py-2 rounded-xl text-center hover:bg-blue-200 transition-all">
+                🔗 {isEn ? "Connect your Facebook account" : "Facebookアカウントを接続"}
+              </a>
             )}
           </div>
         )}
 
-        {/* update-token */}
+        {/* update-token（管理者専用フォールバック。通常ユーザーはOAuth接続を使う） */}
         {step === "update-token" && (
           <div className="space-y-3">
+            <p className="text-xs text-gray-500">{isEn ? "Admin only. Regular users: use \"Connect your Facebook account\" instead." : "管理者専用です。通常は「Facebookアカウントを接続」をご利用ください。"}</p>
+            <input type="password" value={adminSecret} onChange={e => setAdminSecret(e.target.value)}
+              placeholder={isEn ? "Admin secret" : "管理者シークレット"}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-400" />
             <p className="text-xs text-gray-600">{isEn ? "Paste your new Meta access token:" : "新しいMetaアクセストークンを貼り付けてください:"}</p>
             <textarea value={newToken} onChange={e => setNewToken(e.target.value)} rows={3}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-400 resize-none" />

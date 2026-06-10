@@ -8,7 +8,16 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { token } = await req.json();
+    // 管理者認証（フェイルクローズ）: ADMIN_SECRET 未設定なら必ず拒否し、
+    // x-admin-secret ヘッダーまたは body.secret が一致した場合のみ続行する。
+    const adminSecret = process.env.ADMIN_SECRET;
+    const body = await req.json();
+    const { token, secret } = body;
+    const provided = req.headers.get("x-admin-secret") || secret;
+
+    if (!adminSecret || !provided || provided !== adminSecret) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     if (!token || token.length < 20) {
       return NextResponse.json({ error: "Invalid token" }, { status: 400 });

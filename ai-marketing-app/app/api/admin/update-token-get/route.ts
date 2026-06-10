@@ -10,6 +10,14 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token");
 
+  // 管理者認証（フェイルクローズ）: ADMIN_SECRET 未設定なら必ず拒否し、
+  // ?secret= が一致した場合のみ続行する。
+  const adminSecret = process.env.ADMIN_SECRET;
+  const provided = searchParams.get("secret");
+  if (!adminSecret || !provided || provided !== adminSecret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   if (!token || token.length < 20) {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
   }

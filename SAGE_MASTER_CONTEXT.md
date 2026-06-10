@@ -402,6 +402,66 @@ Sage_Final_Unified/
 **発生ファイル（2026-05-23）**: report/page.tsx, learn/page.tsx, payment-success/page.tsx, product/page.tsx, marketing/page.tsx（合計16,000+ null bytes）  
 **注意**: `git show HEAD:file.tsx | python3 -c "import sys; d=sys.stdin.buffer.read(); print(d.count(b'\\x00'))"` でコミット内のnull bytes数を確認できる。修正済みでも再発する可能性あり。
 
+### 🧪 Growl全機能テスト結果（2026-06-11 実施・API直叩き＋UI）
+> AIへ: 数字の根拠はこのテスト。再テスト時はGroq無料枠のレート制限（毎分）に注意し、各LLM呼び出しは5秒以上あけること。
+
+| 機能 | 結果 | 備考 |
+|---|---|---|
+| /api/ping | 🟢 200 | ok:true |
+| /api/my-plan | 🟢 200 | free返却 |
+| /api/diagnosis (JA) | 🟢 200 | rank C/60点・弱点と今日の一手が具体的 |
+| /api/diagnosis (EN) | 🟢 200 | 英語のみ・言語混在なし |
+| /api/marketing/analyze 3c/pest/swot/vrio/stp/4p/ulssas/aeo | 🟢 全8種 単独では200 | **⚠️ 連続/並列で叩くとGroq無料枠の毎分レート制限で500「AI生成に失敗」。フレームキーは小文字（"3c","swot"等）。大文字だと400** |
+| /api/market-research | 🟢 200 | status/research/summary返却・約13秒 |
+| **/api/generate-actions（週3アクション・製品の心臓部）** | 🟢 **200・actions 3件・strategy_note正常（JA/EN両方）** | ✅**前回「空返り」は誤検出だった（2026-06-11 第2回テストで確定）**。レスポンスは `{session:{actions:[...], strategy_note}}` の入れ子構造。前回テストはトップレベル `.actions` を見て0件と誤判定していた。実際は `body.session.actions` に3件入る。JA=18.8s/EN=11.0sで正常生成。EN版は日本語混入なし。**心臓部は健在。バグではなかった。** |
+| /api/power v5 (JA/EN) | 🟢 200 | 実データ採点・証拠リンク・口コミ引用・Supabase保存・履歴ページ 検証済み |
+| /templates 51ページ | 🟢 | コピーボタン・CTA動作確認済み |
+| 動画(tiktok_v1/v3/auto) | 🟡 生成は正常(1080x1920) | **品質は世界トップ級ではない。v1/v3=黒背景テキストスライド(地味)、auto=アニメ美少女画像でブランド不一致＝公開非推奨** |
+| TikTok inbox投稿 | 🟢 API成功(SEND_TO_USER_INBOX) | **但しinbox方式はスマホアプリ専用。なおさんはPCのみ→受け取れない。PCで完結するにはSandbox審査通過→Direct Post有効化が必須** |
+
+#### 異常系・セキュリティ角度テスト（2026-06-11 第2回・追加検証）
+
+| テスト観点 | 結果 | 備考 |
+|---|---|---|
+| generate-actions 必須欠落(industry無し) | 🟢 400「必要な情報が不足」 | バリデーション正常 |
+| generate-actions 不正JSON | 🟡 500 | パースエラーメッセージをそのまま返す（情報漏洩は軽微だがエラー文を握り潰す方が望ましい） |
+| generate-actions GETメソッド | 🟢 405 | メソッド制限OK |
+| diagnosis 空ボディ | 🟢 400「All 5 answers are required」 | OK |
+| stripe webhook 署名なし | 🟢 401「Invalid signature」 | 署名検証OK |
+| my-plan 他人のdevice_id | 🟢 200 free返却 | device_idは推測可能だが返るのはプラン種別のみ（個人情報なし）。実害低 |
+| HTTPセキュリティヘッダー | 🟡 HSTSのみ | X-Frame-Options/CSP/X-Content-Type-Options が無い。クリックジャッキング対策に next.config で headers 追加推奨 |
+| **/api/admin/update-token 認証なし** | 🔴 **認証バイパス脆弱性** | **20文字以上の文字列を投げるだけで誰でもMeta広告トークン(app_config.meta_ads_access_token)を上書きできる。`{"token":"AAA...35文字"}` で `success:true` を確認。攻撃者が全ユーザー共有のMeta広告トークンを破壊(DoS)または乗っ取り可能。`/api/admin/*` に管理者シークレット(ADMIN_SECRET等のヘッダー照合)を追加すべき。最優先で塞ぐこと** |
+
+#### 次にやること（優先順）
+1. 🔴**/api/admin/update-token（+update-token-get）に認証を追加**（最優先・脆弱性）。誰でもMeta広告トークンを書き換え可能。
+2. generate-actionsの「空返りバグ」は誤検出だったため対応不要（上記で確定）。
+3. analyze系の連続実行レート制限対策（Geminiフォールバック復活 or リトライ/キュー）
+4. セキュリティヘッダー（CSP/X-Frame-Options）を next.config に追加
+5. TikTok Direct Post審査 or 動画戦略の見直し（品質・ブランド一致）
+
+### sync-001: サンドボックス↔Windowsのファイル同期遅延でコミットが末尾切断される（2026-06-10 発見・対処法確立）
+**症状**: ホスト側（Edit tool/Windows）でファイルを「サイズが増える方向」に編集した直後、サンドボックス(bash)からそのファイルを読むと**旧バイトサイズで末尾切断**されて見える。この状態でサンドボックスのgitがcommitすると、切断されたblobがリポジトリに入りVercelビルドが `Expected '</', got '<eof>'` 等で失敗する。`.git/index` 自体も壊れる（bad signature 0x00000000）。null-bytes-001の同族。  
+**実害（2026-06-10）**: 7d51ab9（stripe-config/upgrade/webhookが切断）、8aef066（前セッションの診断ランク画像コミット、diagnosis/page.tsxが325行で切断＝完全版は消失）  
+**対処法（確立済み・必須ルール）**:
+1. **コード変更のcommit/pushは必ずWindows側gitで行う**（pushのみ̪bat: `push_usd_pricing.bat` / 復旧テンプレ: `fix_usd_pricing2.bat` 方式）
+2. サンドボックスでファイルを作る場合は**新規ファイル名**で書く（新規ファイルは切断されない）→ Windows側batで `copy /Y` して配置
+3. batはASCIIのみ・CRLF必須（日本語コメントを入れるとcmd解析が壊れる）
+4. commit前検証: `git show HEAD:file | tail` で終端を確認。行数が「旧ファイルとほぼ同じ」なら切断を疑う
+5. `.git/index` 破損時: `rm .git/index && git reset` で再構築（HEAD.lock/ORIG_HEAD破損も同時に削除）
+
+### stripe-001: 表示価格とStripe実請求額の不一致（2026-06-10 発見 → ✅同日解決・本番反映済み dde9b12）
+**症状**: 3つの価格が混在。①LP(英語)「$19/mo」②/upgrade「$29/$79」③Stripe Payment Links実請求「¥3,000/¥8,000」（`lib/stripe-config.ts` の paymentLinkBase が旧リンクのまま）  
+**根本原因**: 2026-06-09のPhase1値上げ（$19→$29/$49→$79）は**UIのみ変更**で、Stripe側のPayment Link/Priceは未更新。LPの価格表も未更新。  
+**影響**: 英語圏ユーザーが「$29」を見てクリック→日本円(¥3,000)のチェックアウトが開く→通貨混乱で離脱。広告表示額と請求額の不一致は信頼を毀損する。  
+**解決手順**:
+1. なおさんがStripeダッシュボードでUSD建てPrice（$29/月・$79/月）+ Payment Link 2本を新規作成（10分・L3）
+2. AIが `lib/stripe-config.ts` の paymentLinkBase 2行を差し替え + LP価格表を$29に統一 → push（要許可）
+3. 暫定代替案: USD化を見送る場合、UI側を実請求額（¥3,000≒$19 / ¥8,000≒$49）に戻して統一する
+**補足**: /upgradeの決済ボタンは `window.open` でポップアップ起動。ポップアップブロッカーで無反応になる環境があるため、同タブ遷移（location.href）への変更推奨。
+**進捗（2026-06-10 USD化方針でコード修正済み・未commit/未push）**: ①stripe-config.tsに `usdPaymentLinkBase`（空なら円リンクへフォールバック）+ buildPaymentUrlにcurrency引数追加 ②upgrade/page.tsx: 英語ユーザーはUSDリンク・同タブ遷移に変更 ③LP・dashboardの$19表示→$29に統一 ④webhookのプラン判定を通貨対応（USDセント問題修正）。
+**2026-06-10 追記: Stripe API でUSD価格・決済リンク作成完了（.envのSTRIPE_SECRET_KEY使用）**: Standard $29 = price_1TgeYJILSrv644ukpHIKhr7m / buy.stripe.com/3cIcN69Es5Zb1Xh2KO93y0h、Pro $79 = price_1TgeYKILSrv644ukrtx1KnFv / buy.stripe.com/14A9AU8Ao87jatNgBE93y0i（決済後 /payment-success へリダイレクト設定済み）。
+**✅ 解決（2026-06-10）**: sync-001による切断コミット2回のビルド失敗を経て、dde9b12でVercel本番デプロイ成功（Ready 40s）。本番確認済み: LP英語版$29表示・英語ユーザーはUSDリンク・日本語ユーザーは従来の円リンク・WebhookはUSDセント対応。**副作用**: 8aef066の診断ランク画像機能は切断版しか存在せず1e441bd版に巻き戻し（rank-A〜E.svgは残存・再実装はdiagnosis/page.tsxへの組み込みのみ）。
+
 ### Vercel Root Directory設定修正（2026-06-09 追記）
 **根本原因**: Vercelプロジェクト(ai-marketing-app)のRoot Directory設定が `ai-marketing-app/` に固定されており、
 `npx vercel deploy --prod` でパスが二重になる。  
@@ -422,7 +482,26 @@ Sage_Final_Unified/
 **未解決**: Vercelに `META_ADS_ACCESS_TOKEN`（なおさんのFacebook長期トークン）と `META_AD_ACCOUNT_ID=act_1208555023132678` が未設定  
 **取得先**: https://developers.facebook.com/tools/explorer/ → sege3.0 選択 → ads_management スコープ追加 → アクセストークン生成  
 **設定先**: Vercel → naoanaos-projects → growl-app → Settings → Environment Variables  
-**注意**: 現在のsubmitルートは「なおさんの1つのトークンで全ユーザーの広告を作成」するアーキテクチャ。本来はOAuth（各ユーザーが自分のアカウントで出稿）が正しいが、OAuthルートのコードはgit reset --hardで消えた。再実装が必要な場合はOAuthフローを再構築すること。
+**注意（旧記述）**: 「OAuthルートのコードはgit reset --hardで消えた」とあったが、これは**古い。現在はOAuthが再構築済みで稼働している**（下記 meta-ads-002 参照）。
+
+### meta-ads-002: Meta広告をOAuthマルチテナント化（2026-06-11 確認・整備）
+**方針決定（なおさん）**: 「各ユーザーが自分のMetaを繋ぐOAuthに作り直す」= 共有1トークンではなく、各ユーザーが自分のFacebookを接続して自分のアカウントで出稿する正しいマルチテナント設計。
+**現状（調査で判明）**: OAuthフローは**すでにエンドツーエンドで実装・配線済み**だった。
+- `components/AdBoostCard.tsx` … 「Facebookアカウントを接続」ボタン → `facebook.com/dialog/oauth`（client_id=1228008508773411, scope=ads_management,pages_manage_ads,pages_read_engagement, state=device_id）
+- `app/api/meta-ads/oauth-callback/route.ts` … code→長期トークン交換、me/accounts・me/adaccounts取得、`user_meta_tokens`（device_id別）にupsert、複数ページ時は選択画面へ
+- `components/MetaPageSelectModal.tsx` + `app/api/meta-ads/select-page/route.ts` … ページ選択
+- `app/api/meta-ads/submit/route.ts` … `getUserMetaConfig(device_id)` で**ユーザー別トークンを優先**、無ければ app_config グローバルにフォールバック（後方互換）
+**2026-06-11 の修正**:
+1. 認証エラー時CTAを「手動トークン貼り付け（グローバル管理操作）」→「Facebookアカウントを接続（OAuth）」に変更。通常ユーザーは自分のアカウントを繋ぐ導線に統一。
+2. 手動貼り付けUI（update-token step）は管理者専用フォールバックに格下げ。管理者シークレット入力欄を追加。
+**残課題**: ①AdBoostCardのclient_id(1228008508773411)とupdate-tokenの`META_APP_ID`が別値の可能性 → Meta App IDの統一確認 ②Meta App審査（ads_management本番権限）の状態確認 ③`user_meta_tokens`テーブルがSupabaseに存在するかの確認。
+
+### sec-001: /api/admin/update-token に認証が無く誰でもMeta広告トークンを上書き可能（2026-06-11 発見→同日コード修正・未デプロイ）
+**症状**: `POST /api/admin/update-token` と `GET /api/admin/update-token-get` が認証なし。20文字以上の文字列を投げるだけで `app_config.meta_ads_access_token`（全ユーザー共有のフォールバックトークン）を上書きでき、`success:true` を実機確認。攻撃者が共有トークンを破壊（広告DoS）または乗っ取り可能。
+**修正済み（コード・要commit/push＋Vercel env設定）**:
+1. 両ルートに `ADMIN_SECRET` 照合を追加。**フェイルクローズ**（ADMIN_SECRET未設定なら常に401）。POSTは `x-admin-secret` ヘッダーまたは body.secret、GETは `?secret=`。
+2. `AdBoostCard.tsx` の手動貼り付けに管理者シークレット入力欄を追加し、ヘッダーで送信。
+**デプロイ前提**: VercelのEnvに `ADMIN_SECRET`（任意の長いランダム文字列）を設定すること。未設定でもOAuth経路は無影響・update-tokenは安全側で401になるだけ。
 
 ### vercel-001: bad commit b418d77 でVercelビルドがErrorになっていた
 **根本原因**: `commit_market_fix.bat` が `.git/index`（Windows側でロック・stale状態）を使いコミット → 全97ファイルが削除扱いになった。  
@@ -718,6 +797,57 @@ Sage_Final_Unified/
 *   **LINEのアクションステータス自動更新** (`line/webhook/route.ts`): ユーザーメッセージをトリガーにしたSupabaseアクション完了ステータス自動更新。(**英語圏対応によるLINE隠蔽・停止中**)
 *   **LINEの感情学習とプロフィール学習DB同期** (`line/webhook/route.ts`): 「フィードバック待機状態」遷移と、ユーザーからの成果（感情データ）のプロフィールDB自動保存・次回プロンプトへの動的注入。(**英語圏対応によるLINE隠蔽・停止中**)
 *   **脳型AI（Neuromorphic Brain）のスパイキングニューラルネットワーク (SNN)** (`neuromorphic_brain.py` v1.0): `snnTorch` や LIFモデル、STDP学習を用いた脳神経模倣ネットワーク。(**「非学習ループ」バグ解消のため廃止され、現在はMD5ハッシュ連想キャッシュメモリ v2.0.1 に進化・置換されています**)
+
+---
+
+## 8d. 収益化達成を確実にするための考察（2026-06-10 Claude策定・毎セッション必読）
+
+> ⚠️ AIへ: これは機能レポートではなく「なぜまだ売上0なのか」の構造分析。8a/8bの戦略と合わせて読み、毎セッションの作業判断の基準にすること。
+
+### 結論（1行）
+**製品はもう十分。足りないのは「見られる回数」と「見込み客と話す回数」。Day 375で売上0の原因は機能不足ではなく、トラフィックが実質ゼロのまま、人間にしかできない販売行動（投稿・DM・事例づくり）が滞留していること。**
+
+### 数式で見るボトルネック
+
+```
+売上 = 訪問数 × 診断/体験完了率 × 登録率 × 有料転換率 × 価格
+```
+
+- **訪問数が実質ゼロ**: Dev.to記事 <25 views、PH 3 upvotes、Bluesky 約30フォロワー。月間訪問は推定数十〜数百。
+- フリーミアムSaaSの有料転換率の相場は2〜5%。**月5件の有料を取るには月1,000〜5,000訪問が必要**。現状はその1/10以下。
+- つまり診断ゲート・値上げなどのCVR施策は、訪問数が立つまで**効果を測定することすらできない**。今のレバーは訪問数のみ。
+
+### 構造的リスク（正直な指摘・6点）
+
+1. **顧客ゼロでの値上げ（$19→$29 / $49→$79）**: 価格は検証データではなく仮説。1件も売れていない状態での値上げは「転換率の低さ」を価格のせいにできなくする。最初の10人は割引・手動オンボーディングでもいいので「実際に払う人」を見つけ、支払い意思から価格を逆算すること。
+2. **価格表記の不整合**: LP「¥0/¥3,000」、/upgrade「$29/$79」、Stripe Payment Links「¥3,000/¥8,000」が混在。決済直前の不信感はCVRを直撃する。即時統一が必要（L1・AI対応可）。
+3. **L3タスクの滞留が最大の実行ギャップ**: IH/HN/Reddit投稿（「コピペ1分」のまま数週間放置）、カスタムドメイン取得（$10〜15、これ1つでUneed/SaaSHub/BetaList登録の全ブロックが解除される）、Cold DM。AIができる作業ばかり進み、人間にしかできない販売行動が進まない非対称が続いている。
+4. **機能追加が「売る行動」の代替になっている**: 診断MVPもMeta広告リファクタも品質は高いが、ガードレール「新機能開発禁止」と矛盾した行動が繰り返されている。ドキュメント更新と開発は、売る恐怖から逃げる安全な作業になりやすい。
+5. **メール捕捉がない**: 診断完了者の連絡先を取得していないため、再訪導線がSNS頼み。診断結果ページに「結果をメールで受け取る」欄を追加すれば、唯一のリードリストが育ち始める（L1・AI対応可）。
+6. **社会的証明ゼロ**: 利用者の声・事例が1件もないLPは価格以前に転換しない。**無料モニター3店舗→2週間後に事例化→LP掲載**が、どのCVR施策より先。
+
+### 確実性を上げる30日プラン
+
+**Week 1（なおさん合計約90分＋AI）**
+| # | アクション | 担当 | 効果 |
+|---|---|---|---|
+| 1 | カスタムドメイン取得（$10〜15） | なおさん(15分) | ディレクトリ登録の全ブロック解除。単発作業でROI最高 |
+| 2 | IH/HN/Reddit投稿（distribution_posts.mdコピペ） | なおさん(60分) | 英語圏トラフィックの初弾 |
+| 3 | 価格表記の全面統一 | AI (L1) | 決済直前の不信感除去 |
+| 4 | 診断結果ページにメール登録欄 | AI (L1) | リードリスト構築開始 |
+
+**Week 2〜4（毎週繰り返し）**
+- Cold DM 週10件（リスト収集と文面生成はSage、送信はなおさん1日5分）
+- 無料モニター3店舗の獲得 → 2週間使ってもらい事例化 → LP掲載
+- 週次KPIレビュー: 訪問数 / 診断完了数 / メール登録数 / 有料数 / DM送付数 / 返信数 をSageが毎週月曜に自動集計・Telegram通知
+
+**判定ルール**: 4週で有料1件が取れなければ、既存ガードレール通り「価格またはターゲット」を変える。**機能は変えない。**
+
+### AIセッションへの運用ルール（追加）
+
+1. 毎セッション開始時に自問: 「この作業は今週、**訪問数を増やす**か**見込み客と接触する**ことに直結するか？」直結しない開発・リファクタ・ドキュメント整備は原則保留。
+2. なおさんのL3タスク（投稿・DM・ドメイン取得）が3日以上滞留していたら、セッション冒頭でリマインドすることをAIの責務とする。
+3. 動画パイプライン、Vision RPA、Moltbook等の埋蔵資産は「売れてから」レバレッジする資源。ゼロ→1の局面では触らない。
 
 ---
 
@@ -1111,6 +1241,50 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 - 大切なのは、上位国と同じく「全部AIに丸投げ」ではなく、**人間の判断・業務手順・成果データを先に構造化してAIへ渡すこと**。
 
 ---
+
+---
+
+## 12c. Cowork自律実行ログ（2026-06-10）— 収益化AI代行セッション
+
+### ✅ 完了（なおさんの手作業ゼロで実行）
+| # | アクション | 結果 | URL |
+|---|---|---|---|
+| 1 | 市場調査（米飲食店ツール価格帯・micro-SaaS初期顧客・note市場・AEO・Gumroad売れ筋） | ✅ | §8d考察に反映 |
+| 2 | Dev.to AEO比較記事公開「Best AI Marketing Tools for Independent Restaurants in 2026」 | ✅ 公開 | dev.to/naoanao/best-ai-marketing-tools-for-independent-restaurants-in-2026-tested-by-an-actual-restaurant-owner-3d0g |
+| 3 | 低価格商品作成: 50 AI Marketing Prompts for Restaurant Owners（PDF 4p生成→Gumroad出品・公開） | ✅ **販売中 $9.99** | naofumi3.gumroad.com/l/itawej |
+| 4 | 商品コンテンツ原本 | ✅ | backend/cognitive/PRODUCT_RESTAURANT_PROMPT_PACK_50.md |
+
+### ❌ 試行して不可だったこと（繰り返し禁止リスト追加）
+- **HN Show HN**: 「Show HN一時制限中。新規アカウントはまずコメントでコミュニティ参加を」と拒否される。→ なおさんがHNで数週間コメント活動してkarmaを積むまでShow HN不可
+- **Reddit**: Claude in Chrome拡張のセーフティ制限でreddit.comへのナビゲーション自体が不可。→ Reddit投稿は今後もなおさんの手動コピペのみ（REDDit_HN_POSTS_20260529.md使用）
+
+### ✅ TikTokパイプライン開通（2026-06-10 完了・再設定不要）
+| 項目 | 状態 |
+|---|---|
+| Sandbox接続 | ✅ なおさんのTikTok（go.onelovepeople / display: Go）がGrowlにOAuth接続済み。VercelのTIKTOK_CLIENT_KEY/SECRETは**Sandbox用**に差し替え済み（審査通過後に本番キーへ戻す） |
+| URL prefix検証 | ✅ https://growl-app.vercel.app/ 検証済み（tiktokeeZb2...txt。PULL_FROM_URL解禁） |
+| 投稿テスト | ✅ 成功（publish_id: v_inbox_url~v2.7649662013160900624 / tiktok_v1動画→inbox下書き） |
+| 動画ホスティング | ✅ growl-app.vercel.app/promo/tiktok_v1.mp4・tiktok_v2.mp4 |
+| 制限 | Sandbox中は下書き(inbox)のみ・接続可能なのはTarget Users登録者のみ。**次のステップ: App Review申請**（demo動画は登録済み、実動フローも完成したので録画して提出可能） |
+| 診断ランク画像 | ✅ 再実装完了（71657fe）。結果画面にシェアカード表示 |
+| **pSEO第1弾（0ba0c56）** | ✅ /templates 無料プロンプトライブラリ51ページ公開（FAQ JSON-LD+二段CTA）+ /diagnosis/r/A〜E シェア着地5ページ（ランク別OG画像でリンクプレビュー対応）+ sitemap56URL追加。第2弾（/guide 業種×悩み）はプレイブックのワンタイムキュー#6 |
+| **お店パワー診断 /power（017c277→81ad787）** | ✅ socialxup型の実データ診断を実装・本番稼働。店名入力→Tavily5系統並列検索（グルメサイト/SNS/公式/EC/一般）→5チャネル◯△✕採点（各20点）。E2Eテスト合格: さわやか=B82(食べログ3.65引用)・丸亀製麺=B82・架空店=E10で捏造なし。**既知欠陥**: ①店ごとのスコア判別力が弱い ②海外店は日本グルメサイト前提で誤検出 → **✅ v3（58a743c）で両方解消を確認**。EN対応（Yelp/TripAdvisor/OpenTable/DoorDash/Grubhub/Toast検索+英語出力+言語トグル）。検証結果: Joe's Pizza=B82(TripAdvisor4.5・Yelp4/5・口コミ3407件・DoorDash/Grubhub/UberEats引用・食べログ消滅)、Bouldin Creek Cafe=A87(IG実アカウント名・Toasttab引用)、さわやか=A85(食べログ3.65)、架空店=E10捏造なし。スコアパターンは店ごとに分散。残る限界: LLM採点ゆえ再実行で±数点ぶれる/SNSは存在検出まで（フォロワー数等は検索スニペット依存）/同名店の混同リスク |
+| **/power v4 データ堀（b6e69b6）** | ✅ 全診断をSupabase `power_diagnoses` に自動保存（テーブル+index+RLSはダッシュボード経由で作成済み）。公開履歴ページ /power/[slug] 稼働・E2E検証済み（丸亀製麺-新宿: 74→72の推移2行表示・SEOタイトル付き）。socialxup型「時間が堀になる」構造が2026-06-10から蓄積開始。`quotes` jsonb列も追加済み（v5用）。**✅ v5デプロイ完了（1493f2c）・E2E検証済み**: ダークヒーローカード+E〜Aゲージ+powered by Growl / 全チャネルに証拠URLの「開く→」チップ（実URL確認: TripAdvisor・Yelp・DoorDash・食べログ等）/ 「ネット上の実際の声」実引用2件（捏造なし確認）/ 3ステップローディング。quotes列に保存・履歴ページにも表示。残: P5軽微修正（weakness文言の癖・404） |
+| **戦略決定（2026-06-10 なおさん）** | **「英語圏で売れないと日本で売れない」— 英語圏ファースト原則**。/powerのEN対応（Yelp/TripAdvisor/OpenTable/DoorDash系ドメイン+英語出力）を最優先で実施 |
+| **E2Eテスト標準化** | リリース後は必ずユーザー操作で通しテスト（表示確認だけで完了としない）。今日の実例: コピーボタン動作・診断5問完走・シェアURL内容捕捉・実在店/架空店/海外店の3パターンAPI検証 |
+
+### 🔁 継続実行体制（2026-06-10 構築済み・再構築禁止）
+| 仕組み | 内容 |
+|---|---|
+| **スケジュールタスク `aeo-revenue-autopilot`** | 月・木 10:00 JST に自動実行。AEO記事執筆→Dev.to公開→コメント返信→Gumroad売上確認→ログ追記まで全自動 |
+| **プレイブック** | `backend/cognitive/MONETIZATION_AUTOPILOT_PLAYBOOK.md` — テーマキュー10本・記事の型・商品ロードマップ・禁止事項。毎回これを読んで実行する |
+| 既存タスクと共存 | devto-daily-article（毎日9:00）/ sage-note-auto-publish（毎日10:31）は別物。停止しないこと |
+
+### 次のAIセッションへ
+1. オートパイロットの実行結果はこの§12cに毎回1行ログが増える。重複作業をしないこと
+2. Gumroad新商品（itawej / $9.99）のPRをSageコンテンツプールに追加する（L1・未着手）
+3. 診断ページへのメール捕捉欄・価格表記統一は未着手（L1・着手可）
+4. 売上が1件でも発生したら、§8dの30日プラン判定（価格/ターゲット見直し）を更新する
 
 ---
 
