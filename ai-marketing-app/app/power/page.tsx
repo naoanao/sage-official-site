@@ -7,7 +7,7 @@ type Result = {
   found: boolean;
   score: number;
   rank: string;
-  axes: { g: number; r: number; s: number; w: number };
+  channels: { key: string; label: string; score: number; status: "good" | "weak" | "none"; note: string }[];
   good: string;
   weakness: string;
   advice: string;
@@ -27,13 +27,8 @@ const rankColor: Record<string, string> = {
 const rankLabel: Record<string, string> = {
   A: "圧倒的", B: "高い集客力", C: "伸びしろたっぷり", D: "改善のチャンス", E: "スタートライン",
 };
-const AXES: { key: "g" | "r" | "s" | "w"; label: string }[] = [
-  { key: "g", label: "評価の高さ（Google・食べログ等）" },
-  { key: "r", label: "口コミの量と新しさ" },
-  { key: "s", label: "SNSの存在感" },
-  { key: "w", label: "情報の見つけやすさ" },
-];
-const LOADING = ["お店の実データを検索中…", "口コミを読んでいます…", "SNSの存在感を確認中…", "採点しています…"];
+const STATUS_ICON: Record<string, string> = { good: "✅", weak: "⚠️", none: "❌" };
+const LOADING = ["お店の実データを検索中…", "口コミを読んでいます…", "SNS・公式サイト・ECを確認中…", "採点しています…"];
 
 function gtagEvent(name: string, params?: Record<string, unknown>) {
   if (typeof window !== "undefined" && typeof (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag === "function") {
@@ -119,14 +114,16 @@ export default function PowerPage() {
           </div>
 
           <div className="bg-gray-50 rounded-2xl p-5 mb-6">
-            {AXES.map((a) => (
-              <div key={a.key} className="mb-3 last:mb-0">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>{a.label}</span><span>{result.axes?.[a.key] ?? 0} / 25</span>
+            {(result.channels ?? []).map((c) => (
+              <div key={c.key} className="mb-4 last:mb-0">
+                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                  <span className="font-medium">{STATUS_ICON[c.status] ?? "⚠️"} {c.label}</span>
+                  <span>{c.score} / 20</span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${((result.axes?.[a.key] ?? 0) / 25) * 100}%` }} />
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden mb-1">
+                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(Math.max(0, Math.min(20, c.score)) / 20) * 100}%` }} />
                 </div>
+                {c.note && <p className="text-xs text-gray-400">{c.note}</p>}
               </div>
             ))}
           </div>
@@ -186,7 +183,7 @@ export default function PowerPage() {
         <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-3">無料・登録不要・実データ採点</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-3">お店パワー診断</h1>
         <p className="text-gray-500 text-sm mb-8">
-          店名を入れるだけ。Google・食べログ・SNSなどの<b>実在するWeb情報</b>をAIがその場で集めて、あなたのお店のネット集客力を100点満点で採点します。ライバル店の診断もできます。
+          店名を入れるだけ。Google・食べログ・SNSなどの<b>実在するWeb情報</b>をAIがその場で集めて、評価・口コミ・SNS・公式サイト・EC対応の5チャネルを100点満点で採点します。ライバル店の診断もできます。
         </p>
         {step === "error" && (
           <p className="text-sm text-red-500 mb-4">診断に失敗しました。少し時間をおいてもう一度お試しください。</p>
