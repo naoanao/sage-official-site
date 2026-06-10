@@ -17,6 +17,7 @@ type Result = {
   share_text: string;
   shop: string;
   area: string;
+  slug?: string;
   sources: { title: string; url: string }[];
 };
 
@@ -49,6 +50,16 @@ export default function PowerPage() {
   const [loadIdx, setLoadIdx] = useState(0);
   const [copied, setCopied] = useState(false);
   const LOADING = isEn ? LOADING_EN : LOADING_JA;
+
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const s = sp.get("shop"); const a = sp.get("area");
+      if (s) setShop(s);
+      if (a) setArea(a);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (step !== "loading") return;
@@ -168,6 +179,12 @@ export default function PowerPage() {
               {isEn ? "Share on 𝕏" : "𝕏 でシェア"}
             </button>
           </div>
+
+          {result.slug && (
+            <Link href={"/power/" + result.slug} className="block text-center text-xs text-indigo-400 underline mb-6">
+              {isEn ? "View this shop's score history page" : "この店の診断ページ（スコア履歴）を見る"}
+            </Link>
+          )}
 
           {result.sources?.length > 0 && (
             <details className="mb-8 text-xs text-gray-400">

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const maxDuration = 55;
 
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
   const area = typeof body.area === "string" ? body.area.trim().slice(0, 40) : "";
   const lang = body.lang === "en" ? "en" : "ja";
   if (!shop) return NextResponse.json({ error: "shop_required" }, { status: 400 });
+  const slug = (shop + (area ? "-" + area : "")).toLowerCase().replace(/[\s\u3000]+/g, "-").replace(/[^\p{L}\p{N}-]/gu, "").slice(0, 80) || "shop";
 
   const q = `"${shop}" ${area}`.trim();
   const [gourmet, sns, official, ec, generic] = await Promise.all([
@@ -123,13 +125,19 @@ ${evidence}
     let text: string = data.choices?.[0]?.message?.content ?? "{}";
     text = text.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(text);
-    return NextResponse.json({
-      ...parsed,
-      shop,
-      area,
-      lang,
-      sources: dedup.slice(0, 8).map((r) => ({ title: r.title, url: r.url })),
-    });
+    const sources = dedup.slice(0, 8).map((r) => ({ title: r.title, url: r.url }));
+    try {
+      const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+      await sb.from("power_diagnoses").insert({
+        slug, shop, area, lang,
+        score: parsed.score ?? null, rank: parsed.rank ?? null, found: parsed.found ?? null,
+        channels: parsed.channels ?? null, good: parsed.good ?? null, weakness: parsed.weakness ?? null,
+        advice: parsed.advice ?? null, share_text: parsed.share_text ?? null, sources,
+      });
+    } catch (e) {
+      console.warn("[power] save failed", e);
+    }
+    return NextResponse.json({ ...parsed, shop, area, lang, slug, sources });
   } catch (e) {
     console.error("[power]", e);
     return NextResponse.json({ error: "diagnosis_failed" }, { status: 500 });
