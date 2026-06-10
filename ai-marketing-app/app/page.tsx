@@ -228,7 +228,7 @@ export default function LandingPage() {
                 {isEn ? "Most popular" : "おすすめ"}
               </div>
               <p className="text-sm font-semibold text-indigo-600 mb-1">{isEn ? "Standard" : "スタンダード"}</p>
-              <p className="text-3xl font-bold text-gray-900 mb-4">{isEn ? "$19" : "¥3,000"}<span className="text-base font-normal text-gray-400">{isEn ? "/mo" : "/月"}</span></p>
+              <p className="text-3xl font-bold text-gray-900 mb-4">{isEn ? "$29" : "¥3,000"}<span className="text-base font-normal text-gray-400">{isEn ? "/mo" : "/月"}</span></p>
               <ul className="flex flex-col gap-2 text-sm text-gray-700 mb-6">
                 <li className="flex items-center gap-2"><span className="text-indigo-500">✓</span>{isEn ? "Unlimited analyses" : "分析回数は無制限"}</li>
                 <li className="flex items-center gap-2"><span className="text-indigo-500">✓</span><strong>{isEn ? "Meta Ads copy generator" : "Meta広告コピー自動生成"}</strong></li>

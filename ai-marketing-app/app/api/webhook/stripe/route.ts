@@ -38,8 +38,12 @@ async function verifyStripeSignature(
   }
 }
 
-function getPlanFromAmount(amountJpy: number): "standard" | "pro" {
-  return amountJpy >= 8000 ? "pro" : "standard";
+function getPlanFromAmount(amount: number, currency: string = "jpy"): "standard" | "pro" {
+  // JPY: 最小単位=円（¥8,000 → 8000）/ USD: 最小単位=セント（$79 → 7900）
+  if (currency.toLowerCase() === "usd") {
+    return amount >= 7900 ? "pro" : "standard";
+  }
+  return amount >= 8000 ? "pro" : "standard";
 }
 
 export async function POST(req: NextRequest) {
@@ -73,7 +77,8 @@ export async function POST(req: NextRequest) {
       const email = (obj as { customer_details?: { email?: string } })
         .customer_details?.email ?? null;
       const amountTotal = (obj.amount_total as number) ?? 0;
-      const plan = getPlanFromAmount(amountTotal);
+      const currency = ((obj.currency as string) ?? "jpy").toLowerCase();
+      const plan = getPlanFromAmount(amountTotal, currency);
 
       if (deviceId) {
         await updateUserPlan(deviceId, plan, email);
@@ -98,13 +103,4 @@ export async function POST(req: NextRequest) {
       type === "customer.subscription.paused"
     ) {
       const customerId = obj.customer as string;
-      await updateUserPlan(null, "free", null, customerId);
-      console.log(`⚠️ Growl plan downgraded: customer=${customerId} → free`);
-    }
-  } catch (err) {
-    console.error("Webhook handler error:", err);
-    // Stripeへは200を返す（再送を防ぐ）
-  }
-
-  return NextResponse.json({ received: true, type });
-}
+      await updateUserPlan(null, "free", nu
