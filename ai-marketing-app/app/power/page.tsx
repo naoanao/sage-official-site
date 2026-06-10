@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useLang } from "@/lib/i18n";
 import LangToggle from "@/components/LangToggle";
 
-type Channel = { key: string; label: string; score: number; status: "good" | "weak" | "none"; note: string };
+type Channel = { key: string; label: string; score: number; status: "good" | "weak" | "none"; note: string; url?: string | null };
 type Result = {
   found: boolean;
   score: number;
@@ -15,6 +15,7 @@ type Result = {
   weakness: string;
   advice: string;
   share_text: string;
+  quotes?: { text: string; source: string }[];
   shop: string;
   area: string;
   slug?: string;
@@ -63,12 +64,13 @@ export default function PowerPage() {
 
   useEffect(() => {
     if (step !== "loading") return;
-    const t = setInterval(() => setLoadIdx((i) => (i + 1) % 4), 2200);
+    const t = setInterval(() => setLoadIdx((i) => i + 1), 2200);
     return () => clearInterval(t);
   }, [step]);
 
   async function diagnose() {
     if (!shop.trim()) return;
+    setLoadIdx(0);
     setStep("loading");
     gtagEvent("power_start", { shop, lang });
     try {
@@ -108,12 +110,27 @@ export default function PowerPage() {
   }
 
   if (step === "loading") {
+    const steps = isEn ? ["Searching real data", "AI analysis", "Scoring"] : ["実データ検索", "AI分析", "採点"];
+    const cur = loadIdx < 3 ? 0 : loadIdx < 7 ? 1 : 2;
     return (
       <main className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
-        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-6" />
-        <p className="text-gray-600 font-medium">{LOADING[loadIdx]}</p>
+        <div className="flex items-start gap-3 mb-8">
+          {steps.map((s, i) => (
+            <div key={s} className="flex items-start gap-3">
+              <div className="flex flex-col items-center">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 ${i < cur ? "bg-indigo-500 border-indigo-500 text-white" : i === cur ? "border-indigo-500 text-indigo-500" : "border-gray-200 text-gray-300"}`}>
+                  {i < cur ? "✓" : i + 1}
+                </div>
+                <span className={`text-[10px] mt-1 ${i <= cur ? "text-indigo-500 font-medium" : "text-gray-300"}`}>{s}</span>
+              </div>
+              {i < steps.length - 1 && <div className={`w-8 h-0.5 mt-4 ${i < cur ? "bg-indigo-500" : "bg-gray-200"}`} />}
+            </div>
+          ))}
+        </div>
+        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4" />
+        <p className="text-gray-600 font-medium">{LOADING[loadIdx % LOADING.length]}</p>
         <p className="text-xs text-gray-400 mt-2">
-          {isEn ? "Scoring with real public web data only (about 20s)" : "実在するWeb情報だけで採点します（約20秒）"}
+          {isEn ? "Real public web data only (about 20s)" : "実在するWeb情報だけで採点します（約20秒）"}
         </p>
       </main>
     );
@@ -125,18 +142,29 @@ export default function PowerPage() {
     return (
       <main className="min-h-screen bg-white px-4 py-12">
         <div className="max-w-lg mx-auto">
-          <div className="text-center mb-8">
-            <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-3">
-              {isEn ? "Shop Power Check (real data)" : "お店パワー診断（実データ）"}
+          <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 text-white mb-6 shadow-xl">
+            <p className="text-[11px] font-medium text-indigo-300 uppercase tracking-widest mb-1">
+              {isEn ? "Shop Power Check — real data" : "お店パワー診断・実データ"}
             </p>
-            <p className="text-sm text-gray-500 mb-4">{result.shop}{result.area ? `（${result.area}）` : ""}</p>
-            <div className={`inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br ${rankColor[rank]} text-white text-5xl font-extrabold shadow-lg mb-3`}>
-              {rank}
+            <p className="text-sm text-slate-300 mb-5">{result.shop}{result.area ? `（${result.area}）` : ""}</p>
+            <div className="flex items-center gap-5 mb-6">
+              <div className={`flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br ${rankColor[rank]} text-white text-5xl font-extrabold shadow-lg shrink-0`}>
+                {rank}
+              </div>
+              <div>
+                <p className="text-lg font-semibold">{rLabel}</p>
+                <p className="text-4xl font-extrabold mt-1">{result.score}<span className="text-base font-normal text-slate-400"> / 100</span></p>
+              </div>
             </div>
-            <p className="text-lg text-gray-700 font-semibold">{rLabel}</p>
-            <p className="text-sm text-gray-400 mt-1">
-              {isEn ? "Online power score" : "ネット集客力スコア"}: {result.score} / 100
-            </p>
+            <div className="flex gap-1.5 items-end">
+              {["E", "D", "C", "B", "A"].map((g) => (
+                <div key={g} className="flex-1 text-center">
+                  <div className={`h-1.5 rounded-full mb-1 ${g === rank ? "bg-white" : "bg-slate-700"}`} />
+                  <span className={`text-[10px] ${g === rank ? "text-white font-bold" : "text-slate-500"}`}>{g}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-right text-[10px] text-slate-500 mt-4">powered by Growl</p>
           </div>
 
           <div className="bg-gray-50 rounded-2xl p-5 mb-6">
@@ -149,10 +177,31 @@ export default function PowerPage() {
                 <div className="h-2 bg-gray-200 rounded-full overflow-hidden mb-1">
                   <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(Math.max(0, Math.min(20, c.score)) / 20) * 100}%` }} />
                 </div>
-                {c.note && <p className="text-xs text-gray-400">{c.note}</p>}
+                <div className="flex items-center gap-2">
+                  {c.note && <p className="text-xs text-gray-400">{c.note}</p>}
+                  {c.url && (
+                    <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-400 underline shrink-0">
+                      {isEn ? "open →" : "開く →"}
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>
+
+          {result.quotes && result.quotes.length > 0 && (
+            <div className="bg-gray-50 rounded-2xl p-5 mb-6">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+                {isEn ? "Real voices found online" : "ネット上の実際の声"}
+              </p>
+              {result.quotes.map((q) => (
+                <blockquote key={q.text} className="border-l-2 border-indigo-300 pl-3 mb-3 last:mb-0">
+                  <p className="text-sm text-gray-700">“{q.text}”</p>
+                  <p className="text-xs text-gray-400 mt-1">— {q.source}</p>
+                </blockquote>
+              ))}
+            </div>
+          )}
 
           <div className="bg-gray-50 rounded-2xl p-6 mb-6">
             <div className="mb-4">

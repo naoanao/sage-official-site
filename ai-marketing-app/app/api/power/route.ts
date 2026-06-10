@@ -88,8 +88,10 @@ STRICT RULES:
 - rank: score>=85:A, >=65:B, >=45:C, >=25:D, else E.
 - advice = ONE concrete improvement for the weakest channel doable today in 30 minutes.
 - share_text = one honest line the owner would post (max 90 chars, no emoji, no ad-speak).
+- For each channel, if a directly relevant URL appears in the evidence, copy it EXACTLY into "url" (otherwise null). Never construct or guess URLs.
+- "quotes": up to 2 short real customer-review excerpts (max 120 chars each) copied verbatim from the evidence, "source" = site name (e.g. "Yelp", "TripAdvisor"). Empty array if none. Never fabricate quotes.
 - Output ONLY this JSON (all text in English):
-{"found":true,"score":0,"rank":"C","channels":[{"key":"rating","label":"Ratings (Google / review sites)","score":0,"status":"weak","note":""},{"key":"reviews","label":"Review volume & recency","score":0,"status":"weak","note":""},{"key":"sns","label":"Social media presence","score":0,"status":"none","note":""},{"key":"web","label":"Official website & info","score":0,"status":"none","note":""},{"key":"ec","label":"Online ordering / reservation","score":0,"status":"none","note":""}],"good":"","weakness":"","advice":"","share_text":""}`
+{"found":true,"score":0,"rank":"C","channels":[{"key":"rating","label":"Ratings (Google / review sites)","score":0,"status":"weak","note":"","url":null},{"key":"reviews","label":"Review volume & recency","score":0,"status":"weak","note":"","url":null},{"key":"sns","label":"Social media presence","score":0,"status":"none","note":"","url":null},{"key":"web","label":"Official website & info","score":0,"status":"none","note":"","url":null},{"key":"ec","label":"Online ordering / reservation","score":0,"status":"none","note":"","url":null}],"quotes":[{"text":"","source":""}],"good":"","weakness":"","advice":"","share_text":""}`
     : `あなたは日本のローカルビジネス専門のマーケティング診断AI。以下のチャネル別Web検索結果（実データ）だけを根拠に、店舗「${shop}」${area ? `（${area}）` : ""}のネット集客力をチャネル別に採点せよ。
 
 ${evidence}
@@ -104,8 +106,10 @@ ${evidence}
 - rank: score>=85:A, >=65:B, >=45:C, >=25:D, 未満:E。
 - adviceは最弱チャネルを今日30分で改善する具体策1つ。
 - share_textは店主が投稿したくなる正直な一言(60字以内、絵文字・宣伝なし)。
+- 各チャネルの"url": 検索結果に直接該当するURLがあればそのまま正確にコピー（なければnull）。URLの創作・推測は禁止。
+- "quotes": 検索結果の本文にある実際の口コミの一節を最大2つ（各80字以内・原文のまま）、"source"はサイト名（例:「食べログ」「Googleマップ」）。なければ空配列。捏造は絶対禁止。
 - 出力は次のJSONのみ（すべて日本語）:
-{"found":true,"score":0,"rank":"C","channels":[{"key":"rating","label":"評価（Google・グルメサイト）","score":0,"status":"weak","note":""},{"key":"reviews","label":"口コミの量と新しさ","score":0,"status":"weak","note":""},{"key":"sns","label":"SNS（Instagram・X・TikTok）","score":0,"status":"none","note":""},{"key":"web","label":"公式サイト・情報整備","score":0,"status":"none","note":""},{"key":"ec","label":"EC・予約・デリバリー","score":0,"status":"none","note":""}],"good":"","weakness":"","advice":"","share_text":""}`;
+{"found":true,"score":0,"rank":"C","channels":[{"key":"rating","label":"評価（Google・グルメサイト）","score":0,"status":"weak","note":"","url":null},{"key":"reviews","label":"口コミの量と新しさ","score":0,"status":"weak","note":"","url":null},{"key":"sns","label":"SNS（Instagram・X・TikTok）","score":0,"status":"none","note":"","url":null},{"key":"web","label":"公式サイト・情報整備","score":0,"status":"none","note":"","url":null},{"key":"ec","label":"EC・予約・デリバリー","score":0,"status":"none","note":"","url":null}],"quotes":[{"text":"","source":""}],"good":"","weakness":"","advice":"","share_text":""}`;
 
   try {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -133,6 +137,7 @@ ${evidence}
         score: parsed.score ?? null, rank: parsed.rank ?? null, found: parsed.found ?? null,
         channels: parsed.channels ?? null, good: parsed.good ?? null, weakness: parsed.weakness ?? null,
         advice: parsed.advice ?? null, share_text: parsed.share_text ?? null, sources,
+        quotes: parsed.quotes ?? null,
       });
     } catch (e) {
       console.warn("[power] save failed", e);

@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 
 type Row = {
   shop: string; area: string | null; lang: string; score: number | null; rank: string | null;
-  found: boolean | null; channels: { key: string; label: string; score: number; status: string; note: string }[] | null;
+  found: boolean | null; channels: { key: string; label: string; score: number; status: string; note: string; url?: string | null }[] | null;
+  quotes: { text: string; source: string }[] | null;
   good: string | null; weakness: string | null; advice: string | null; created_at: string;
 };
 
@@ -21,7 +22,7 @@ async function getRows(slug: string): Promise<Row[]> {
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     const { data } = await sb
       .from("power_diagnoses")
-      .select("shop,area,lang,score,rank,found,channels,good,weakness,advice,created_at")
+      .select("shop,area,lang,score,rank,found,channels,good,weakness,advice,quotes,created_at")
       .eq("slug", slug)
       .order("created_at", { ascending: false })
       .limit(20);
@@ -82,8 +83,29 @@ export default async function PowerSlugPage({ params }: { params: Promise<{ slug
                   <span className="font-medium">{STATUS_ICON[c.status] ?? "⚠️"} {c.label}</span>
                   <span>{c.score} / 20</span>
                 </div>
-                {c.note && <p className="text-xs text-gray-400">{c.note}</p>}
+                <div className="flex items-center gap-2">
+                  {c.note && <p className="text-xs text-gray-400">{c.note}</p>}
+                  {c.url && (
+                    <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-400 underline shrink-0">
+                      {isEn ? "open →" : "開く →"}
+                    </a>
+                  )}
+                </div>
               </div>
+            ))}
+          </div>
+        )}
+
+        {r.quotes && r.quotes.length > 0 && (
+          <div className="bg-gray-50 rounded-2xl p-5 mb-6">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+              {isEn ? "Real voices found online" : "ネット上の実際の声"}
+            </p>
+            {r.quotes.map((q) => (
+              <blockquote key={q.text} className="border-l-2 border-indigo-300 pl-3 mb-3 last:mb-0">
+                <p className="text-sm text-gray-700">“{q.text}”</p>
+                <p className="text-xs text-gray-400 mt-1">— {q.source}</p>
+              </blockquote>
             ))}
           </div>
         )}
