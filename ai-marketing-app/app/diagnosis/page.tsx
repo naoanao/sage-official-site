@@ -142,7 +142,8 @@ export default function DiagnosisPage() {
 
   function handleCopy() {
     if (!result) return;
-    const text = isEn ? result.share_text_en : result.share_text;
+    const text = (isEn ? result.share_text_en : result.share_text) +
+      "\nhttps://growl-app.vercel.app/diagnosis/r/" + result.rank;
     navigator.clipboard.writeText(text);
     setCopied(true);
     track("diagnosis_share", { platform: "copy" });
@@ -152,7 +153,7 @@ export default function DiagnosisPage() {
   function handleShareX() {
     if (!result) return;
     const text = encodeURIComponent(result.share_text_en);
-    const url = encodeURIComponent("https://growl-app.vercel.app/diagnosis");
+    const url = encodeURIComponent("https://growl-app.vercel.app/diagnosis/r/" + result.rank);
     track("diagnosis_share", { platform: "x" });
     window.open(`https://twitter.com/intent/tweet?text=${text}%0A${url}`, "_blank");
   }
