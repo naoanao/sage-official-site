@@ -39,7 +39,7 @@ async function verifyStripeSignature(
 }
 
 function getPlanFromAmount(amount: number, currency: string = "jpy"): "standard" | "pro" {
-  // JPY: 最小単位=円（¥8,000 → 8000）/ USD: 最小単位=セント（$79 → 7900）
+  // JPY: unit=yen (8000 = ¥8,000) / USD: unit=cents (7900 = $79)
   if (currency.toLowerCase() === "usd") {
     return amount >= 7900 ? "pro" : "standard";
   }
@@ -103,4 +103,13 @@ export async function POST(req: NextRequest) {
       type === "customer.subscription.paused"
     ) {
       const customerId = obj.customer as string;
-      await updateUserPlan(null, "free", nu
+      await updateUserPlan(null, "free", null, customerId);
+      console.log(`⚠️ Growl plan downgraded: customer=${customerId} → free`);
+    }
+  } catch (err) {
+    console.error("Webhook handler error:", err);
+    // Stripeへは200を返す（再送を防ぐ）
+  }
+
+  return NextResponse.json({ received: true, type });
+}

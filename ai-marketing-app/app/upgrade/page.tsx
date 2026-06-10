@@ -23,7 +23,6 @@ export default function UpgradePage() {
   function handlePlanClick(planKey: "free" | "standard" | "pro") {
     if (planKey === "free") return;
     const url = buildPaymentUrl(planKey, deviceId, isEn ? "usd" : "jpy");
-    // ポップアップブロッカーで無反応になるのを避けるため同タブ遷移
     window.location.href = url;
   }
 
@@ -222,4 +221,10 @@ export default function UpgradePage() {
             onClick={() => router.push("/dashboard")}
             className="text-sm text-gray-400 hover:text-indigo-500 transition-colors"
           >
-            {isEn ? "← Back to Dash
+            {isEn ? "← Back to Dashboard" : "← ダッシュボードに戻る"}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
