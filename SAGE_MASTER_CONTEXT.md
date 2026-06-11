@@ -496,7 +496,21 @@ Sage_Final_Unified/
 2. 手動貼り付けUI（update-token step）は管理者専用フォールバックに格下げ。管理者シークレット入力欄を追加。
 **残課題**: ①AdBoostCardのclient_id(1228008508773411)とupdate-tokenの`META_APP_ID`が別値の可能性 → Meta App IDの統一確認 ②Meta App審査（ads_management本番権限）の状態確認 ③`user_meta_tokens`テーブルがSupabaseに存在するかの確認。
 
-### rev-001: 🔴最重要収益バグ — オンボーディング未完了ユーザーが課金してもプランが反映されず無料のまま（2026-06-11 発見・コード修正済み・要push）
+### meta-ads-003: Meta広告 商品化レビュー（2026-06-11 検証＋修正）
+**良い点(確認済み)**: ①偽の成功は出ない（mock/失敗→エラーUI、「広告作成」はsuccess時のみ）②OAuth接続済みユーザーは実際にキャンペーン/広告セット/クリエイティブ/広告を**PAUSED**で作成（誤課金しない安全設計）。
+**発見した実害と対処**:
+1. 🔴**本番DB汚染（私の検証ゴミ）→✅削除済み**: sec-001検証時にupdate-tokenへ注入した `AAAA…attacker_controlled` が `app_config.meta_ads_access_token` に残存。submitのグローバルフォールバックがこれを使い全未接続ユーザーが「Malformed access token」で失敗していた。Supabase REST(service role)で当該行をDELETE済み（確認: 空）。
+2. 🔴**ターゲティングが用途不一致→✅修正**: 旧 `geo_locations.countries=[JP,US,GB,AU,CA]`（世界5カ国ばらまき=地元飲食店には広告費の無駄）。submitを「`geo_locations`を渡せばローカル(市区/緯度経度+半径)配信、無ければ言語から単一国(JP/US)」に変更。AdBoostCardは lang/currency を送るよう変更。
+3. 🟡**予算単位バグ→✅修正**: 旧 `daily_budget*10`（円でもセントでもない）。通貨対応に変更（JPY等ゼロ小数=×1、その他=×100）＋最低日予算(¥200/$1)を担保。
+4. 🟡**グローバル/envトークン フォールバック→✅撤廃(OAuth必須化)**: env `META_ADS_ACCESS_TOKEN` は6/2に期限切れだった。`getUserMetaConfig` を user_meta_tokens 専用にし、未接続なら token=null→正直に「Facebookを接続して」を返す。共有トークンへの誤出稿・汚染リスクを排除。
+5. 🟡**maxDuration 30→60**: FLUX画像生成＋Meta4回API呼び出しのタイムアウト対策。
+**🔴残る最大の出荷ブロッカー（なお対応・外部）**: **Meta App Review（ads_management 本番権限の審査）**。未通過だとアプリの開発者/テストユーザー以外は広告を作れない。一般ユーザーにOAuth接続させて出稿させるには審査通過が必須。次の一手はこれ。
+**未修正(任意)**: 広告の `link_url` がGrowl固定 → 本来は各店舗の予約/サイトURLにすべき（ad_copyや店舗設定から取る設計が望ましい）。
+**修正ファイル**: `app/api/meta-ads/submit/route.ts`, `components/AdBoostCard.tsx`（要push）。
+
+### rev-001: 🔴最重要収益バグ — オンボーディング未完了ユーザーが課金してもプランが反映されず無料のまま（2026-06-11 発見→同日 ✅本番デプロイ・解決確認済み commit f04f32b）
+**✅解決（2026-06-11）**: commit `f04f32b` を `git push growl main` → Vercel本番 Ready(43s)。本番 `/upgrade` で実機検証: `USER_KEY="ai_mkt_user_id"` を削除（新規ユーザー再現）→再読込→`ensureDeviceId()` が新UUIDを自動発行→決済URLに `client_reference_id=<uuid>`（空でない）が付与されることを確認。
+**注意（検証時の罠）**: device_idの実体キーは `ai_mkt_user_id`（`growl_device_id` は別物）。検証時はこのキーを見ること。
 **症状（コードで確定）**: 「払ったのに無料」。決済は成立するがプランが上がらない。
 **根本原因（3つの複合）**:
 1. `lib/store.ts` の `loadDeviceId()`(=loadUserId) は localStorage を読むだけで、無ければ **null を返す（device_idを生成しない）**。
@@ -1267,6 +1281,7 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 | 2 | Dev.to AEO比較記事公開「Best AI Marketing Tools for Independent Restaurants in 2026」 | ✅ 公開 | dev.to/naoanao/best-ai-marketing-tools-for-independent-restaurants-in-2026-tested-by-an-actual-restaurant-owner-3d0g |
 | 3 | 低価格商品作成: 50 AI Marketing Prompts for Restaurant Owners（PDF 4p生成→Gumroad出品・公開） | ✅ **販売中 $9.99** | naofumi3.gumroad.com/l/itawej |
 | 4 | 商品コンテンツ原本 | ✅ | backend/cognitive/PRODUCT_RESTAURANT_PROMPT_PACK_50.md |
+| 5 | 2026-06-11 autopilot: Dev.to記事#2公開（review replies）+レーンA Quora回答1件（AI tools chaos質問）+コメント0+Gumroad売上0。次回: テーマ#3+レーンB Medium転載 | ✅ | dev.to/naoanao/how-to-reply-to-negative-google-reviews-with-ai-templates-inside-3mf8 |
 
 ### ❌ 試行して不可だったこと（繰り返し禁止リスト追加）
 - **HN Show HN**: 「Show HN一時制限中。新規アカウントはまずコメントでコミュニティ参加を」と拒否される。→ なおさんがHNで数週間コメント活動してkarmaを積むまでShow HN不可

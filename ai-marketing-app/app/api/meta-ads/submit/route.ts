@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const META_API_VERSION = "v21.0";
 const BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
@@ -31,31 +31,26 @@ async function getUserMetaConfig(deviceId: string): Promise<{
     return {
       token: userToken.access_token,
       accountId,
-      pageId: userToken.page_id || process.env.META_PAGE_ID || null,
+      pageId: userToken.page_id || null,
     };
   }
 
-  // フォールバック: app_configのグローバルトークン（後方互換）
-  const { data: globalToken } = await supabase
-    .from("app_config")
-    .select("value")
-    .eq("key", "meta_ads_access_token")
-    .single();
-
-  const raw = process.env.META_AD_ACCOUNT_ID || "";
-  const accountId = raw ? (raw.startsWith("act_") ? raw : `act_${raw}`) : null;
-
-  return {
-    token: globalToken?.value || process.env.META_ADS_ACCESS_TOKEN || null,
-    accountId,
-    pageId: process.env.META_PAGE_ID || "173041465895454",
-  };
+  // OAuth必須: グローバル共有トークン/env フォールバックは廃止。
+  // 各ユーザーが自分のMetaアカウントを接続していない場合は未接続として扱い、
+  // 呼び出し側は「Facebookを接続してください」を返す（他人の口座への誤出稿・共有トークン汚染を防ぐ）。
+  return { token: null, accountId: null, pageId: null };
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { ad_copy, link_url, daily_budget = 500, page_id, device_id, image_prompt } = body;
+    const {
+      ad_copy, link_url, daily_budget = 500, page_id, device_id, image_prompt,
+      currency = "JPY",
+      country,            // 例: "JP"（未指定なら lang から推定）
+      lang,               // "ja" / "en"
+      geo_locations,      // 任意: ローカル配信用 { cities:[{key,radius,distance_unit}] } や { custom_locations:[{latitude,longitude,radius,distance_unit}] }
+    } = body;
 
     const { token: access_token, accountId: ad_account_id, pageId: resolvedPageId } =
       await getUserMetaConfig(device_id || "global");
@@ -89,6 +84,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: `Campaign creation failed: ${JSON.stringify(campaign)}` }, { status: 400 });
     }
 
+    // 予算: Metaは「アカウント通貨の最小単位」で渡す。JPYは最小単位=円(×1)、USDはセント(×100)。
+    // 旧コードの ×10 は通貨非対応のバグだったため、通貨別に正しく換算し最低額も担保する。
+    const cur = String(currency).toUpperCase();
+    const isZeroDecimal = ["JPY", "KRW", "VND", "CLP"].includes(cur); // 小数を持たない通貨
+    const minorPerUnit = isZeroDecimal ? 1 : 100;
+    const minDaily = isZeroDecimal ? 200 : 100; // 最低日予算の目安(¥200 / $1.00)
+    const budgetMinor = Math.max(minDaily, Math.round(Number(daily_budget) * minorPerUnit));
+
+    // ターゲティング: 地元の店舗向けにローカル配信。
+    // 1) 呼び出し側が geo_locations（市区 or 緯度経度+半径）を渡せばそれを使う（最も精度が高い）。
+    // 2) 無ければ言語/指定から単一国に絞る（旧コードの5カ国ばらまき＝広告費の無駄を廃止）。
+    const fallbackCountry = (country || (String(lang).toLowerCase().startsWith("en") ? "US" : "JP")).toUpperCase();
+    const targetingGeo = (geo_locations && typeof geo_locations === "object")
+      ? geo_locations
+      : { countries: [fallbackCountry] };
+
     // Step 2: 広告セット作成
     const adsetRes = await fetch(`${BASE_URL}/${ad_account_id}/adsets`, {
       method: "POST",
@@ -96,14 +107,12 @@ export async function POST(req: NextRequest) {
       body: new URLSearchParams({
         name: `Growl_AdSet_${new Date().toISOString().split("T")[0]}`,
         campaign_id: campaign.id,
-        daily_budget: String(daily_budget * 10), // セント単位
+        daily_budget: String(budgetMinor), // アカウント通貨の最小単位
         billing_event: "IMPRESSIONS",
         optimization_goal: "LINK_CLICKS",
         bid_strategy: "LOWEST_COST_WITHOUT_CAP",
         targeting: JSON.stringify({
-          // Metaのアルゴリズム（Andromeda）がクリエイティブでターゲティングするため
-          // geo_locationsは広くし、Metaに最適化を任せる
-          geo_locations: { countries: ["JP", "US", "GB", "AU", "CA"] },
+          geo_locations: targetingGeo, // ローカル配信（市区/半径）または単一国
           age_min: 18,
           age_max: 65,
           targeting_automation: { advantage_audience: 1 }, // Advantage+オーディエンスON

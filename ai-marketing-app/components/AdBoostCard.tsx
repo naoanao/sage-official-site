@@ -131,6 +131,8 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
           daily_budget: budget,
           device_id: deviceId || "global",
           image_prompt: adCopy.image_prompt_single || adCopy.image_prompt || null,
+          lang: isEn ? "en" : "ja",
+          currency: isEn ? "USD" : "JPY",
         }),
       });
       const data = await res.json();
