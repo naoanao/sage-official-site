@@ -496,7 +496,21 @@ Sage_Final_Unified/
 2. 手動貼り付けUI（update-token step）は管理者専用フォールバックに格下げ。管理者シークレット入力欄を追加。
 **残課題**: ①AdBoostCardのclient_id(1228008508773411)とupdate-tokenの`META_APP_ID`が別値の可能性 → Meta App IDの統一確認 ②Meta App審査（ads_management本番権限）の状態確認 ③`user_meta_tokens`テーブルがSupabaseに存在するかの確認。
 
-### sec-001: /api/admin/update-token に認証が無く誰でもMeta広告トークンを上書き可能（2026-06-11 発見→同日コード修正・未デプロイ）
+### rev-001: 🔴最重要収益バグ — オンボーディング未完了ユーザーが課金してもプランが反映されず無料のまま（2026-06-11 発見・コード修正済み・要push）
+**症状（コードで確定）**: 「払ったのに無料」。決済は成立するがプランが上がらない。
+**根本原因（3つの複合）**:
+1. `lib/store.ts` の `loadDeviceId()`(=loadUserId) は localStorage を読むだけで、無ければ **null を返す（device_idを生成しない）**。
+2. `saveUserId()`（device_id保存）は **オンボーディング最終ステップ `app/onboarding/goal/page.tsx` でしか呼ばれない**。LP価格表「スタンダードにする」(app/page.tsx:238)・診断結果(diagnosis:323)は `/upgrade` 直リンクで、オンボ未完了だと device_id が無い。
+3. `/upgrade` は deviceId 空でもガードせず `buildPaymentUrl(plan,"",...)` → `?client_reference_id=`（空）で決済。Webhookは空→emailフォールバック→`updateUserPlan` が **upsertでなくupdate** で該当行が無く0件更新（無言失敗）。さらに `my-plan` は device_id 照合のためemailで書けても紐付かない。
+→ 結果: 「LP/診断からいきなり課金」した新規ユーザーは**全員、課金しても無料のまま**。オンボ完了済みユーザー（device_idあり）は正常。
+**修正済み（コード・要 `git push growl main` でVercelデプロイ）**:
+1. `lib/store.ts`: `ensureDeviceId()` を追加（無ければ `crypto.randomUUID()` で発行・永続化）。
+2. `app/upgrade/page.tsx`: マウント時とクリック時に `ensureDeviceId()` を使用 → `client_reference_id` が空にならない。
+3. `lib/db.ts`: `updateUserPlan` を device_id で **upsert**（`onConflict:"device_id"`）に変更 → 行が無くても作成してプランを書き込む。
+**検証メモ**: 決済URL生成は `buildPaymentUrl`(lib/stripe-config.ts) の1箇所のみで、全導線が `/upgrade` 経由のため、`/upgrade` でdevice_idを保証すれば全経路カバー。tscはサンドボックスのsync-001切断表示で誤エラーを出すため、実検証はpush後のVercelビルドで行うこと。
+
+### sec-001: /api/admin/update-token に認証が無く誰でもMeta広告トークンを上書き可能（2026-06-11 発見→同日 ✅本番デプロイ・解決確認済み）
+**✅解決（2026-06-11）**: commit `7348abe`（4ファイル・切断なし）をWindows側batで `git push growl main` → Vercel本番デプロイ成功（Ready 44s）。本番で `POST/GET /api/admin/update-token(-get)` がともに **401 Unauthorized** を返すことを実機確認（修正前は200で誰でも上書き可能だった）。push先は `growl` リモート（growl-app）。既定upstreamの `origin` は別repo(sage-official-site)なので明示が必須だった。
 **症状**: `POST /api/admin/update-token` と `GET /api/admin/update-token-get` が認証なし。20文字以上の文字列を投げるだけで `app_config.meta_ads_access_token`（全ユーザー共有のフォールバックトークン）を上書きでき、`success:true` を実機確認。攻撃者が共有トークンを破壊（広告DoS）または乗っ取り可能。
 **修正済み（コード・要commit/push＋Vercel env設定）**:
 1. 両ルートに `ADMIN_SECRET` 照合を追加。**フェイルクローズ**（ADMIN_SECRET未設定なら常に401）。POSTは `x-admin-secret` ヘッダーまたは body.secret、GETは `?secret=`。

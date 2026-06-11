@@ -296,7 +296,10 @@ export async function updateUserPlan(
   if (stripeCustomerId) updateData.stripe_customer_id = stripeCustomerId;
 
   if (deviceId) {
-    await db.from("users").update(updateData).eq("device_id", deviceId);
+    // upsert: 該当行が無くても作成してプランを書き込む（“課金したのに無料のまま”を防ぐ）。
+    await db
+      .from("users")
+      .upsert({ device_id: deviceId, ...updateData }, { onConflict: "device_id" });
   } else if (email) {
     await db.from("users").update(updateData).eq("email", email);
   } else if (stripeCustomerId) {

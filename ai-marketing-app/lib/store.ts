@@ -125,6 +125,20 @@ export function loadUserId(): string | null {
   return localStorage.getItem(USER_KEY);
 }
 
+// device_id を必ず1つ確保する（無ければ生成して永続化）。
+// 課金時に client_reference_id が空になる事故を防ぐため、決済導線では必ずこれを使う。
+export function ensureDeviceId(): string {
+  if (typeof window === "undefined") return "";
+  let id = localStorage.getItem(USER_KEY);
+  if (!id) {
+    id = (typeof crypto !== "undefined" && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `dev_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(USER_KEY, id);
+  }
+  return id;
+}
+
 // alias for backwards-compatibility
 export const loadDeviceId = loadUserId;
 

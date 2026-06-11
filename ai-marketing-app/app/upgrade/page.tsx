@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buildPaymentUrl } from "@/lib/stripe-config";
-import { loadDeviceId } from "@/lib/store";
+import { ensureDeviceId } from "@/lib/store";
 import { isLimitReached } from "@/components/FreeProgressBar";
 import { useLang } from "@/lib/i18n";
 
@@ -16,13 +16,16 @@ export default function UpgradePage() {
   const [limitReached, setLimitReached] = useState(false);
 
   useEffect(() => {
-    setDeviceId(loadDeviceId() ?? "");
+    // device_id を必ず確保（無ければ発行）。これが空のまま決済されると課金が紐付かない。
+    setDeviceId(ensureDeviceId());
     setLimitReached(isLimitReached());
   }, []);
 
   function handlePlanClick(planKey: "free" | "standard" | "pro") {
     if (planKey === "free") return;
-    const url = buildPaymentUrl(planKey, deviceId, isEn ? "usd" : "jpy");
+    // クリック時にも保険で確保（useEffect未完了でも空を防ぐ）
+    const id = deviceId || ensureDeviceId();
+    const url = buildPaymentUrl(planKey, id, isEn ? "usd" : "jpy");
     window.location.href = url;
   }
 
