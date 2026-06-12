@@ -6,6 +6,8 @@ import { loadSession, loadOnboarding, updateActionComplete, StoredSession, clear
 import ActionCard from "@/components/ActionCard";
 import FreeProgressBar, { isPaidPlan } from "@/components/FreeProgressBar";
 import LangToggle from "@/components/LangToggle";
+import PlanBadge from "@/components/PlanBadge";
+import { useSubscription } from "@/lib/useSubscription";
 import dynamic from "next/dynamic";
 import { SafeSection } from "@/components/SafeSection";
 const AdBoostCard = dynamic(() => import("@/components/AdBoostCard"), { ssr: false });
@@ -16,7 +18,8 @@ export default function DashboardPage() {
   const router = useRouter();
     const { t, lang } = useLang();
       const isEn = lang === "en";
-        const [session, setSession] = useState<StoredSession | null>(null);
+        const { plan: subPlan } = useSubscription();
+  const [session, setSession] = useState<StoredSession | null>(null);
           const [onboarding, setOnboarding] = useState<ReturnType<typeof loadOnboarding>>({});
             const [completingIndex, setCompletingIndex] = useState<number | null>(null);
               const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -101,9 +104,10 @@ export default function DashboardPage() {
                                                                                                                                                                                                                                                                                                                                 <span>←</span><span>{t("nav.home")}</span>
                                                                                                                                                                                                                                                                                                                                           </button>
                                                                                                                                                                                                                                                                                                                                                     <div className="flex items-center gap-2">
-                                                                                                                                                                                                                                                                                                                                                                <LangToggle />
-                                                                                                                                                                                                                                                                                                                                                                            <span className="text-sm font-bold text-indigo-500 tracking-wide">Growl</span>
-                                                                                                                                                                                                                                                                                                                                                                                      </div>
+                                             <LangToggle />
+                                                         <span className="text-sm font-bold text-indigo-500 tracking-wide">Growl</span>
+                                                         <PlanBadge plan={subPlan} />
+                                                               </div>
                                                                                                                                                                                                                                                                                                                                                                                               </div>
                                                                                                                                                                                                                                                                                                                                                                                                       <div className="flex items-start justify-between mb-6">
                                                                                                                                                                                                                                                                                                                                                                                                                 <div>
