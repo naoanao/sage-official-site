@@ -68,20 +68,20 @@ export default function LandingPage() {
       )}
 
       {/* Hero */}
-      <section className="flex-1 flex flex-col items-center justify-center px-6 py-16 text-center">
-        <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 text-xs font-medium px-3 py-1.5 rounded-full mb-8">
+      <section className="relative flex-1 flex flex-col items-center justify-center px-6 py-16 text-center bg-black/60 backdrop-blur-sm">
+        <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 text-xs font-medium px-3 py-1.5 rounded-full mb-8 border border-indigo-500/20">
           <span>✨</span> {t("land.badge")}
         </div>
 
-        <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-4 max-w-xs">
+        <h1 className="text-4xl font-bold text-white leading-tight mb-4 max-w-xs">
           {isEn ? (
-            <>Just <span className="text-indigo-500">3 actions</span><br />this week.</>
+            <>Just <span className="text-indigo-400">3 actions</span><br />this week.</>
           ) : (
-            <>今週やること、<br /><span className="text-indigo-500">3つだけ。</span></>
+            <>今週やること、<br /><span className="text-indigo-400">3つだけ。</span></>
           )}
         </h1>
 
-        <p className="text-gray-500 text-base max-w-sm leading-relaxed mb-3">
+        <p className="text-gray-300 text-base max-w-sm leading-relaxed mb-3">
           {isEn
             ? "No more wondering 'what should I post this week?'. AI analyzes your business and delivers 3 ready-to-use pieces of content."
             : "「今週何を投稿しよう」と悩む時間、ゼロにしませんか。AIがあなたのビジネスを分析して、コピペするだけの完成文を3つ届けます。"}
@@ -96,7 +96,7 @@ export default function LandingPage() {
 
         <Link
           href="/onboarding/industry"
-          className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-lg px-8 py-4 rounded-2xl transition-colors shadow-lg shadow-indigo-200 active:scale-95"
+          className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-lg px-8 py-4 rounded-2xl transition-colors shadow-lg shadow-indigo-500/30 active:scale-95"
         >
           {isEn ? "Start free →" : "無料で始める →"}
         </Link>
@@ -107,7 +107,7 @@ export default function LandingPage() {
 
         <Link
           href="/diagnosis"
-          className="inline-block mt-3 text-sm text-indigo-500 hover:text-indigo-600 font-medium underline underline-offset-4 transition-colors"
+          className="inline-block mt-3 text-sm text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-4 transition-colors"
         >
           {t("diag.cta")}
         </Link>
@@ -115,17 +115,17 @@ export default function LandingPage() {
         {/* Stats */}
         <div className="flex gap-6 mt-10 text-center">
           <div>
-            <p className="text-2xl font-bold text-gray-800">{isEn ? "1 min" : "1分"}</p>
+            <p className="text-2xl font-bold text-white">{isEn ? "1 min" : "1分"}</p>
             <p className="text-xs text-gray-400">{isEn ? "to set up" : "入力にかかる時間"}</p>
           </div>
-          <div className="w-px bg-gray-100" />
+          <div className="w-px bg-gray-700" />
           <div>
-            <p className="text-2xl font-bold text-gray-800">{isEn ? "Weekly" : "毎週"}</p>
+            <p className="text-2xl font-bold text-white">{isEn ? "Weekly" : "毎週"}</p>
             <p className="text-xs text-gray-400">{isEn ? "AI auto-updates" : "AIが自動更新"}</p>
           </div>
-          <div className="w-px bg-gray-100" />
+          <div className="w-px bg-gray-700" />
           <div>
-            <p className="text-2xl font-bold text-gray-800">{isEn ? "3 tasks" : "週3つ"}</p>
+            <p className="text-2xl font-bold text-white">{isEn ? "3 tasks" : "週3つ"}</p>
             <p className="text-xs text-gray-400">{isEn ? "that's all" : "だけでいい"}</p>
           </div>
         </div>
