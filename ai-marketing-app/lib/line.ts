@@ -75,7 +75,7 @@ export function buildWeeklyNotificationText(
     lines.push(
       ``,
       `全文はアプリで確認 →`,
-      `${process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app"}`,
+      `${process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-ai.com"}`,
     );
   }
 

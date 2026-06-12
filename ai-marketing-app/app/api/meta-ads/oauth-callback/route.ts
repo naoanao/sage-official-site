@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://growl-app.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://growl-ai.com";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

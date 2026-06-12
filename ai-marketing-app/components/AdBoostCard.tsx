@@ -127,7 +127,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ad_copy: adCopy,
-          link_url: "https://growl-app.vercel.app",
+          link_url: "https://growl-ai.com",
           daily_budget: budget,
           device_id: deviceId || "global",
           image_prompt: adCopy.image_prompt_single || adCopy.image_prompt || null,
@@ -230,7 +230,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
               {isEn ? "✨ Generate Ad Copy" : "✨ 広告文を生成する"}
             </button>
             <a
-              href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-app.vercel.app/api/meta-ads/oauth-callback")}&scope=ads_management,pages_manage_ads,pages_read_engagement&response_type=code&state=${deviceId || "global"}`}
+              href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-ai.com/api/meta-ads/oauth-callback")}&scope=ads_management,pages_manage_ads,pages_read_engagement&response_type=code&state=${deviceId || "global"}`}
               className="block w-full bg-gray-100 text-gray-600 font-medium text-xs py-2 rounded-xl text-center hover:bg-gray-200 transition-all"
             >
               🔗 {isEn ? "Connect your Facebook account" : "Facebookアカウントを接続"}
@@ -393,7 +393,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
             </button>
             {result.error?.includes("credentials") && (
               <a
-                href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-app.vercel.app/api/meta-ads/oauth-callback")}&scope=ads_management,pages_manage_ads,pages_read_engagement&response_type=code&state=${deviceId || "global"}`}
+                href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-ai.com/api/meta-ads/oauth-callback")}&scope=ads_management,pages_manage_ads,pages_read_engagement&response_type=code&state=${deviceId || "global"}`}
                 className="block w-full bg-blue-100 text-blue-600 font-medium text-xs py-2 rounded-xl text-center hover:bg-blue-200 transition-all">
                 🔗 {isEn ? "Connect your Facebook account" : "Facebookアカウントを接続"}
               </a>

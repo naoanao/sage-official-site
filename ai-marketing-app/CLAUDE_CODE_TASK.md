@@ -101,7 +101,7 @@ vercel logs --follow
 
 ```bash
 # cronエンドポイントのヘルスチェック
-curl -s https://growl-app.vercel.app/api/ping
+curl -s https://growl-ai.com/api/ping
 ```
 
 200が返れば成功。

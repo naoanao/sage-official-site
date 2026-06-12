@@ -66,7 +66,7 @@ export default function DevPage() {
     <main className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <h1 className="text-white text-xl font-bold mb-1">🛠 開発者パネル</h1>
-        <p className="text-gray-500 text-xs mb-6">growl-app.vercel.app/dev</p>
+        <p className="text-gray-500 text-xs mb-6">growl-ai.com/dev</p>
 
         {/* 現在の状態 */}
         <div className="bg-gray-800 rounded-xl p-4 mb-6 text-xs text-gray-300 space-y-1">

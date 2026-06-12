@@ -86,7 +86,7 @@ export default function DiagnosisPage() {
       description: isEn
         ? "Answer 5 questions and get an A-E score for your small business social media marketing. Free, no signup."
         : "5問答えるだけであなたのビジネスのSNS集客力をA〜Eで診断。無料、登録不要。",
-      url: "https://growl-app.vercel.app/diagnosis",
+      url: "https://growl-ai.com/diagnosis",
       applicationCategory: "MarketingApplication",
       operatingSystem: "Web",
     });
@@ -143,7 +143,7 @@ export default function DiagnosisPage() {
   function handleCopy() {
     if (!result) return;
     const text = (isEn ? result.share_text_en : result.share_text) +
-      "\nhttps://growl-app.vercel.app/diagnosis/r/" + result.rank;
+      "\nhttps://growl-ai.com/diagnosis/r/" + result.rank;
     navigator.clipboard.writeText(text);
     setCopied(true);
     track("diagnosis_share", { platform: "copy" });
@@ -153,7 +153,7 @@ export default function DiagnosisPage() {
   function handleShareX() {
     if (!result) return;
     const text = encodeURIComponent(result.share_text_en);
-    const url = encodeURIComponent("https://growl-app.vercel.app/diagnosis/r/" + result.rank);
+    const url = encodeURIComponent("https://growl-ai.com/diagnosis/r/" + result.rank);
     track("diagnosis_share", { platform: "x" });
     window.open(`https://twitter.com/intent/tweet?text=${text}%0A${url}`, "_blank");
   }

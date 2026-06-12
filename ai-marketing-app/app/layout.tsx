@@ -3,7 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 import Script from "next/script";
 import "./globals.css";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-ai.com";
 const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID ?? "G-Y1B7VSVBDK";
 
 export const metadata: Metadata = {

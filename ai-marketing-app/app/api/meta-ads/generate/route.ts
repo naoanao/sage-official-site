@@ -295,7 +295,7 @@ Each card tells ONE angle. Together they build an irresistible case. Think Dyson
     {"card_headline": "Specific result or turning point — Example: 'Lost 9 lbs in 3 months' or 'Energy came back'", "card_body": "max 60 chars — one concrete proof point or benefit", "card_image_prompt": "English prompt only — specific after-state scene, genuine emotion, no text"},
     {"card_headline": "Address the expansion layer objection — Example: 'Only 2x/week. Fits mom life.' or 'First session free'", "card_body": "max 60 chars — removes the biggest objection or shows the offer", "card_image_prompt": "English prompt only — specific scene showing ease/accessibility/offer, no text"}
   ],
-  "image_prompt_single": "[Write a unique English image generation prompt for THIS product's after-state. Include: demographic matching target customer + specific emotional expression + specific setting + relevant clothing/context + lighting + no text overlay + aspect ratio. Do NOT copy this instruction — write a fresh custom prompt.]"
+  "image_prompt_single": "[Write a unique English image-generation prompt for THIS specific business. VISUAL GROUNDING (critical): the image MUST depict the actual product/business itself, not a generic person. For food & beverage / restaurants: show appetizing, photorealistic real food, the signature dish, or an inviting dining scene/storefront. For other businesses: show the product in authentic real-world use. BANNED: generic corporate stock imagery (people wearing call-center headsets, office handshakes, anonymous suited businesspeople) UNLESS the business literally is that. If people appear, match ethnicity to the locale and keep it natural. Include: subject + setting + lighting + mood + 'no text overlay' + aspect ratio. Do NOT copy this instruction — write a fresh custom prompt.]"
 }`
       : `あなたはNick Shackelford、Florind Metalla、SupersideクリエイティブチームをすべてあわせたMeta広告の世界最高クリエイターです。$1億以上の広告運用で4〜6倍ROASを達成してきた思考で広告を作ってください。
 
@@ -401,7 +401,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
     {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, emotion, no text"},
     {"card_headline": "...", "card_body": "...", "card_image_prompt": "English prompt only — specific scene, emotion, no text"}
   ],
-  "image_prompt_single": "[Write a custom English image generation prompt specific to THIS product's after-state. Format: '[ethnicity/age matching target] [specific emotional expression] [specific setting matching the product] [clothing/context relevant to product] [lighting] no text overlay [aspect ratio]'. Do NOT copy this instruction — write your own unique prompt.]"
+  "image_prompt_single": "[Write a custom English image-generation prompt specific to THIS business. VISUAL GROUNDING (critical): depict the actual product/business itself, not a generic person. For 飲食店/restaurants: show appetizing photorealistic real food, the signature dish, or an inviting dining scene/storefront. For other businesses: show the product in authentic use. BANNED: generic corporate stock (call-center headset people, office handshakes, anonymous businesspeople) unless the business literally is that. If people appear, match Japanese/local ethnicity and keep it natural. Format: subject + setting + lighting + mood + 'no text overlay' + aspect ratio. Output the prompt in English. Do NOT copy this instruction — write your own unique prompt.]"
 }`;
 
     // DeepSeek → Groq → Gemini フォールバック

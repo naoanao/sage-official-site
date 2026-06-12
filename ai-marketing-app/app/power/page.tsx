@@ -91,7 +91,7 @@ export default function PowerPage() {
 
   function shareUrl() {
     const r = result && ["A", "B", "C", "D", "E"].includes(result.rank) ? result.rank : "C";
-    return "https://growl-app.vercel.app/diagnosis/r/" + r;
+    return "https://growl-ai.com/diagnosis/r/" + r;
   }
   function handleCopy() {
     if (!result) return;

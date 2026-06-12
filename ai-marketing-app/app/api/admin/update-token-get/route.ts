@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       updated_at: new Date().toISOString(),
     });
 
-    return NextResponse.redirect("https://growl-app.vercel.app/dashboard?meta_connected=1");
+    return NextResponse.redirect("https://growl-ai.com/dashboard?meta_connected=1");
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

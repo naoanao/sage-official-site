@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { TEMPLATES } from "@/lib/templates-data";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-ai.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const core: MetadataRoute.Sitemap = [

@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ rank: str
   const { rank } = await params;
   const r = RANKS[rank];
   if (!r) return {};
-  const img = "https://growl-app.vercel.app/diagnosis/og-rank-" + rank + ".png";
+  const img = "https://growl-ai.com/diagnosis/og-rank-" + rank + ".png";
   return {
     title: "SNS Marketing Power: Rank " + rank + " (" + r.label + ") | Growl Diagnosis",
     description:

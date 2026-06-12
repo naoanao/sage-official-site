@@ -66,7 +66,7 @@ async function handleComplete(index: number) {
 | `LINE_CHANNEL_SECRET` | LINE Bot シークレット | ❌ **空** — ユーザーへ確認 |
 | `CRON_SECRET` | Vercel CRON認証 | ❌ **未設定** — 任意の文字列でOK |
 | `NEXT_PUBLIC_LINE_BOT_URL` | LINE友達追加URL | ❌ **未設定** — LINE公式アカウントのURL |
-| `NEXT_PUBLIC_APP_URL` | アプリURL | ✅ あり (https://growl-app.vercel.app) |
+| `NEXT_PUBLIC_APP_URL` | アプリURL | ✅ あり (https://growl-ai.com) |
 
 `LINE_CHANNEL_ACCESS_TOKEN` と `LINE_CHANNEL_SECRET` はLINE Developersコンソールから取得する必要がある。  
 ユーザーに確認するまでLINE関連機能はスキップしてよい。

@@ -5,7 +5,7 @@ import { Suspense, useState } from "react";
 import { loadSession } from "@/lib/store";
 import { useLang } from "@/lib/i18n";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-ai.com";
 
 function shareToX(text: string) {
   const encoded = encodeURIComponent(text);

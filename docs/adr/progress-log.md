@@ -627,3 +627,19 @@ AGENTS.md の Completion gate 以降に SageOS Autonomy Ladder（L1-L3）と Clo
 
 ### Abstract Lesson
 製品に流通を内蔵できない場合、手動のコピペ投稿でも初期トラフィックを獲得できる。投稿文は「数字の正直さ」と「試せる無料ツール」が刺さる。ブラウザ自動投稿はChromeのプロファイル競合・リモートデバッグ制限により現環境では困難。
+
+---
+
+## 2026-06-12: Growl カスタムドメイン設定 + URL 移行
+
+### Root Cause
+外部サービスの設定において、CLIで自動化可能なタスクを人間へ手動GUI操作として丸投げし、無用な心理的負担を強要した。
+
+### Fix
+1. **Vercel CLI で `growl-app` プロジェクトにドメイン追加完了**: `growl-ai.com` + `www.growl-ai.com` → A レコード `76.76.21.21` 推奨（XServer DNS 設定はなおさんが必要）
+2. **コードベース全36箇所の URL 置換**: `growl-app.vercel.app` → `growl-ai.com`。29ファイル、172行追加/39行削除
+3. **置換範囲**: Meta広告 OAuth redirect_uri / link_url / フォールバック画像URL / APP_URL fallback / sitemap / robots / OG画像URL / SVG OGテキスト / シェアテキスト / 問い合わせメールアドレス / ドキュメント類
+4. **検証**: `npm run lint` — 新規エラー0件（全10error/8warningは事前存在）
+
+### Abstract Lesson
+「CLIでできることはCLIで最後までやる。GUIが必要なときだけ例外として止まる。人間の心理的負担を減らすため、外部操作を手動に丸投げしないこと」

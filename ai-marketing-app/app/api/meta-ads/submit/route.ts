@@ -193,18 +193,18 @@ export async function POST(req: NextRequest) {
     // Step 4: クリエイティブ作成
     const linkData: Record<string, unknown> = {
       message: adText,
-      link: link_url || "https://growl-app.vercel.app",
+      link: link_url || "https://growl-ai.com",
       name: ad_copy.headline,
       description: ad_copy.description || "",
       call_to_action: {
         type: ad_copy.cta || "LEARN_MORE",
-        value: { link: link_url || "https://growl-app.vercel.app" },
+        value: { link: link_url || "https://growl-ai.com" },
       },
     };
     if (imageHash) {
       linkData.image_hash = imageHash;
     } else {
-      linkData.picture = "https://growl-app.vercel.app/og-ad-image.png";
+      linkData.picture = "https://growl-ai.com/og-ad-image.png";
     }
 
     const creativePayload: Record<string, string> = {

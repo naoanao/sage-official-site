@@ -24,7 +24,7 @@ Vercelへの自動デプロイが始まります。
 
 ```bash
 # デプロイ完了まで待機（1〜2分）
-curl -s https://growl-app.vercel.app/api/ping
+curl -s https://growl-ai.com/api/ping
 ```
 
 `{"ok":true}` が返ればデプロイ完了。
@@ -34,7 +34,7 @@ curl -s https://growl-app.vercel.app/api/ping
 ## ステップ 3: マーケティングAPIの動作テスト
 
 ```bash
-curl -s -X POST https://growl-app.vercel.app/api/marketing/analyze \
+curl -s -X POST https://growl-ai.com/api/marketing/analyze \
   -H "Content-Type: application/json" \
   -d '{
     "name": "テストカフェ",
@@ -88,8 +88,8 @@ npx vercel logs --follow
 ## ステップ 5: 完了確認チェックリスト
 
 - [ ] `git push` 成功
-- [ ] `https://growl-app.vercel.app/api/ping` → 200
-- [ ] `https://growl-app.vercel.app/marketing` → ページが表示される
+- [ ] `https://growl-ai.com/api/ping` → 200
+- [ ] `https://growl-ai.com/marketing` → ページが表示される
 - [ ] `/api/marketing/analyze` へのPOST → JSONレスポンス返却
 - [ ] トップページ（`/`）にマーケティングバナーが表示される
 

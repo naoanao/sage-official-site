@@ -70,7 +70,7 @@
   <text x="370" y="290" font-family="'Hiragino Sans', 'Yu Gothic', Arial, sans-serif"
         font-size="19" fill="white" opacity="0.85">あなたの診断はどのランク？</text>
   <text x="370" y="316" font-family="Arial, sans-serif"
-        font-size="14" fill="#34D399" opacity="0.9">growl-app.vercel.app/diagnosis →</text>
+        font-size="14" fill="#34D399" opacity="0.9">growl-ai.com/diagnosis →</text>
 
   <!-- Bottom Growl branding -->
   <rect x="0" y="380" width="800" height="40" rx="0" fill="black" opacity="0.25"/>

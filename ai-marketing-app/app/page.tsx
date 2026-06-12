@@ -273,7 +273,7 @@ export default function LandingPage() {
           <a href="/terms" className="hover:text-gray-500 transition-colors">
             {isEn ? "Terms" : "利用規約"}
           </a>
-          <a href="mailto:contact@growl-app.vercel.app" className="hover:text-gray-500 transition-colors">
+          <a href="mailto:contact@growl-ai.com" className="hover:text-gray-500 transition-colors">
             {isEn ? "Contact" : "お問い合わせ"}
           </a>
         </div>

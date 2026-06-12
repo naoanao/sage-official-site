@@ -16,7 +16,7 @@
 
 ```diff
 - const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ai-marke-bucho.vercel.app";
-+ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
++ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-ai.com";
 ```
 
 ---
@@ -201,7 +201,7 @@ export default function NotFound() {
 +   <div className="flex items-center justify-center gap-4 mb-2">
 +     <a href="/privacy" className="hover:text-gray-500 transition-colors">プライバシーポリシー</a>
 +     <a href="/terms" className="hover:text-gray-500 transition-colors">利用規約</a>
-+     <a href="mailto:contact@growl-app.vercel.app" className="hover:text-gray-500 transition-colors">お問い合わせ</a>
++     <a href="mailto:contact@growl-ai.com" className="hover:text-gray-500 transition-colors">お問い合わせ</a>
 +   </div>
 +   © 2026 Growl
 + </footer>
@@ -311,7 +311,7 @@ git push origin main
 - [ ] `/marketing` でフォーム修正ボタン → situation/fw選択がリセットされる
 - [ ] `/onboarding/goal` に直接アクセス → `/onboarding/industry` にリダイレクト
 - [ ] `/onboarding/business` に直接アクセス → `/onboarding/industry` にリダイレクト
-- [ ] `/complete/[id]` のシェアテキストに `growl-app.vercel.app` が含まれる
+- [ ] `/complete/[id]` のシェアテキストに `growl-ai.com` が含まれる
 - [ ] SWOT分析結果にCOVID-19が登場しない（2026年トレンドが反映される）
 - [ ] 存在しないURL → カスタム404ページが表示される
 - [ ] `/privacy`、`/terms` → ページが表示される

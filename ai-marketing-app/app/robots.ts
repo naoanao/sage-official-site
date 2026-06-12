@@ -1,6 +1,6 @@
 import { MetadataRoute } from "next";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-app.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-ai.com";
 
 export default function robots(): MetadataRoute.Robots {
   return {
