@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { loadSession } from "@/lib/store";
 import LangToggle from "@/components/LangToggle";
 import { useLang } from "@/lib/i18n";
+import SpaceBackground from "@/components/SpaceBackground";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -44,6 +45,7 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-white flex flex-col">
+      <SpaceBackground />
 
       {/* Language toggle */}
       <div className="flex justify-end px-4 py-3">
