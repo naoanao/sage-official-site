@@ -11,6 +11,52 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// 出稿前コンプライアンス事前審査（2026 Metaポリシー準拠）
+// 個人属性の暗示 / 非現実的成果・保証 / 制限カテゴリ / 根拠なき最上級 を検査。
+// blocked=true の場合は出稿を中止する（アカウントBAN・却下・信頼毀損を防ぐ）。
+type PreflightIssue = { level: "block" | "warn"; reason: string };
+function preflightCompliance(ad_copy: Record<string, unknown> | null | undefined): { blocked: boolean; issues: PreflightIssue[] } {
+  const ac = ad_copy || {};
+  const cards = Array.isArray((ac as { carousel_cards?: unknown }).carousel_cards)
+    ? ((ac as { carousel_cards: Array<Record<string, unknown>> }).carousel_cards)
+    : [];
+  const parts: unknown[] = [
+    ac.headline, ac.primary_text, (ac as Record<string, unknown>).primary_text_short,
+    (ac as Record<string, unknown>).primary_text_full, ac.description,
+    ...cards.flatMap((c) => [c?.card_headline, c?.card_body]),
+  ];
+  const text = parts.filter(Boolean).map(String).join(" \n ");
+  const issues: PreflightIssue[] = [];
+
+  const personalAttr: RegExp[] = [
+    /(diabet|blood sugar|depress|anxiet|overweight|obes|\bstd\b|hiv|cancer|addict|bankrupt|in debt|divorc|infertil|erectile)/i,
+    /(糖尿|血糖|うつ病|不安障害|肥満|多額の借金|自己破産|離婚|不妊|薄毛|ＥＤ|ed治療)/,
+    /(for people (with|managing|dealing)|those (with|dealing|struggling)|do you (have|suffer))/i,
+    /(でお悩みの(あなた|方)|に悩んでいるあなた|な人のための|あなたは.*(ですか|でしょうか))/,
+  ];
+  if (personalAttr.some((r) => r.test(text))) issues.push({ level: "block", reason: "個人属性の暗示(健康/金銭/関係性)はMetaのPersonal Attributesポリシー違反になりやすい。一般的な訴求に書き換える。" });
+
+  const unrealistic: RegExp[] = [
+    /(guarantee|guaranteed|100%\s|risk[- ]?free|lose \d+\s?(kg|lbs|pounds)|in \d+\s?(days|hours)\b|double your|triple your|get rich|passive income|make \$?\d+[k]?\s*(a|per)?\s*(day|week|month))/i,
+    /(必ず|確実に|100%|不労所得|誰でも稼げ|月収?\s*\d+\s*万|\d+日で痩|倍になる|絶対に)/,
+  ];
+  if (unrealistic.some((r) => r.test(text))) issues.push({ level: "block", reason: "非現実的な成果・保証・一攫千金の表現は誇大広告として制限対象。期待値を現実的にする。" });
+
+  const restricted: RegExp[] = [
+    /(crypto|bitcoin|\bnft\b|forex|\bcbd\b|cannabis|\bweed\b|gambl|casino|betting|weapon|\bgun\b|ammo|tobacco|\bvape\b|escort)/i,
+    /(仮想通貨|暗号資産|ＦＸ|fx取引|カジノ|ギャンブル|大麻|武器|タバコ|アダルト)/,
+  ];
+  if (restricted.some((r) => r.test(text))) issues.push({ level: "block", reason: "制限/禁止カテゴリ(金融・薬物・ギャンブル・武器・タバコ等)は別途認可・審査が必要。" });
+
+  const superlatives: RegExp[] = [
+    /\b(best|cheapest|no\.?\s?1|#1|number one|world'?s best)\b/i,
+    /(日本一|業界no\.?\s?1|最安値?|世界一|最高の)/,
+  ];
+  if (superlatives.some((r) => r.test(text))) issues.push({ level: "warn", reason: "根拠のない最上級(最安/No.1/日本一)は要証拠。証拠が無ければ表現を和らげる。" });
+
+  return { blocked: issues.some((i) => i.level === "block"), issues };
+}
+
 // device_idごとのトークン・ページ・広告アカウントを取得
 async function getUserMetaConfig(deviceId: string): Promise<{
   token: string | null;
@@ -66,6 +112,17 @@ export async function POST(req: NextRequest) {
       }, { status: 200 });
     }
 
+    // 出稿前コンプライアンス審査（BlockならMetaに何も作らず中止）
+    const preflight = preflightCompliance(ad_copy);
+    if (preflight.blocked) {
+      return NextResponse.json({
+        success: false,
+        blocked: true,
+        message: "広告ポリシー違反の可能性が高いため、出稿を中止しました。コピーを修正してください。",
+        issues: preflight.issues,
+      }, { status: 200 });
+    }
+
     // Step 1: キャンペーン作成
     const campaignRes = await fetch(`${BASE_URL}/${ad_account_id}/campaigns`, {
       method: "POST",
@@ -90,7 +147,8 @@ export async function POST(req: NextRequest) {
     const isZeroDecimal = ["JPY", "KRW", "VND", "CLP"].includes(cur); // 小数を持たない通貨
     const minorPerUnit = isZeroDecimal ? 1 : 100;
     const minDaily = isZeroDecimal ? 200 : 100; // 最低日予算の目安(¥200 / $1.00)
-    const budgetMinor = Math.max(minDaily, Math.round(Number(daily_budget) * minorPerUnit));
+    const maxDaily = 50000; // 暴走防止のハード上限(¥50,000 / $500 相当/日)。急な大予算はMetaの不正検知も誘発する
+    const budgetMinor = Math.min(maxDaily, Math.max(minDaily, Math.round(Number(daily_budget) * minorPerUnit)));
 
     // ターゲティング: 地元の店舗向けにローカル配信。
     // 1) 呼び出し側が geo_locations（市区 or 緯度経度+半径）を渡せばそれを使う（最も精度が高い）。
@@ -247,6 +305,8 @@ export async function POST(req: NextRequest) {
       status: "PAUSED",
       message: "広告を作成しました（一時停止中）。Meta広告マネージャーで確認・有効化してください。",
       manager_url: `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${ad_account_id.replace("act_", "")}`,
+      warnings: preflight.issues.filter((i) => i.level === "warn"),
+      daily_budget_applied: budgetMinor,
     });
 
   } catch (err) {

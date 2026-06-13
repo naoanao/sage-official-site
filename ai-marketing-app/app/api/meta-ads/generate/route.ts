@@ -136,6 +136,39 @@ UGCスタイルの広告は、ほぼ全ての商品カテゴリでブランド�
 
 最適な軸を選び、選んだ理由を "framework" フィールドに明記すること。全てのコピーをその軸で一貫させること。`;
 
+    // 個人事業主・中小企業 全業態適応プレイブック — 2026各業種ベストプラクティスより
+    const localBusinessGuide = isEn
+      ? `## SMB PLAYBOOK — first CLASSIFY the business type, then write to that type
+This serves sole proprietors & small businesses across ALL categories. Pick the ONE best-matching type from the brief and apply its objective + CTA + angle.
+
+A) IN-PERSON LOCAL (restaurant, cafe, salon, gym, clinic, retail, repair): GOAL = a VISIT/booking this week from nearby people. Hook = sensory/craving (food) or visible result (salon/gym) or relief (clinic/repair) + the neighborhood. CTA = BOOK_NOW / GET_DIRECTIONS / "come by this week".
+B) LOCAL SERVICE / TRADES (cleaning, pest control, plumber, contractor, mobile services): GOAL = a LEAD/quote (short cycle). Hook = the urgent problem + fast, trusted response (licensed/local/years). CTA = GET_QUOTE / CONTACT_US.
+C) EXPERT / PROFESSIONAL SERVICE (consultant, coach, lawyer, accountant, designer, freelancer): GOAL = a qualified INQUIRY/consultation. Hook = a specific outcome or a costly mistake they're making; authority + specificity; the person's face/credibility. Offer = free consult/audit/guide. CTA = BOOK_NOW / CONTACT_US.
+D) E-COMMERCE / ONLINE PRODUCT (physical or digital goods): GOAL = a PURCHASE. Hook = product-in-use / transformation / social proof; benefit + offer + light urgency. CTA = SHOP_NOW.
+E) DIGITAL / SAAS / COURSE / SUBSCRIPTION: GOAL = signup / free trial. Hook = the pain of the status quo → the "after" with the tool; specific. CTA = SIGN_UP / LEARN_MORE.
+F) B2B SERVICE: GOAL = a LEAD/demo (long cycle, higher CPL). Hook = ROI/authority/specificity. CTA = GET_QUOTE / CONTACT_US.
+
+UNIVERSAL (all types):
+- Match the CTA to the action that creates value (call→lead, buy→purchase, visit→booking). Don't default to LEARN_MORE.
+- REAL photos beat stock/AI (owner's product, real before/after, real staff faces) — 2-3x more clicks. If a real photo is provided, write copy that honors what is shown.
+- One SPECIFIC offer if price_or_offer is provided; otherwise an honest low-friction CTA. NEVER fabricate a discount, price, or number (compliance).
+- Trust = specificity + honesty + a human face, not corporate hype.`
+      : `## 個人事業主・中小企業プレイブック — まず業態を分類し、その型で書く
+あらゆる業種の個人事業主・小規模事業者向け。ブリーフから最も合う型を1つ選び、その目的・CTA・訴求を適用する。
+
+A) 実店舗・対面（飲食/カフェ/サロン/ジム/クリニック/小売/修理）：目的＝近隣の人を今週の来店/予約へ。ホック＝食欲・五感（飲食）/見える成果（サロン・ジム）/安心（クリニック・修理）＋地元の具体性。CTA＝BOOK_NOW / GET_DIRECTIONS /「今週ぜひ」。
+B) 地域サービス・職人（清掃/害虫/水道/工務店/出張系）：目的＝リード/見積（短サイクル）。ホック＝緊急の困りごと＋迅速で信頼できる対応（資格/地元/実績年数）。CTA＝GET_QUOTE / CONTACT_US。
+C) 専門・士業（コンサル/コーチ/弁護士/税理士/デザイナー/フリーランス）：目的＝質の高い問い合わせ/相談。ホック＝具体的な成果、または相手が犯している高コストな失敗。権威＋具体性＋本人の顔/信頼。オファー＝無料相談/診断/ガイド。CTA＝BOOK_NOW / CONTACT_US。
+D) EC・オンライン商品（物販/デジタル）：目的＝購入。ホック＝使用シーン/変化/社会的証明。ベネフィット＋オファー＋軽い緊急性。CTA＝SHOP_NOW。
+E) デジタル/SaaS/講座/サブスク：目的＝登録/無料体験。ホック＝現状の痛み→導入後の変化を具体的に。CTA＝SIGN_UP / LEARN_MORE。
+F) B2Bサービス：目的＝リード/デモ（長サイクル・高CPL）。ホック＝ROI/権威/具体性。CTA＝GET_QUOTE / CONTACT_US。
+
+共通（全業態）：
+- CTAは「価値が生まれる行動」に合わせる（電話→リード、購入→購入、来店→予約）。汎用LEARN_MOREに逃げない。
+- 実写真がストック/AIに勝つ（店主の商品・実物のビフォーアフター・スタッフの顔）＝クリック2-3倍。実写真があれば、写っているものを尊重したコピーに。
+- price_or_offer があれば具体オファーを1つ。無ければ正直で摩擦の低いCTA。**割引・価格・数字を捏造しない（コンプラ）**。
+- 信頼＝具体性＋正直さ＋人間の顔。企業的誇張はしない。`;
+
     // ロケール別文化的コンテキスト（2026年 2.8M広告分析より）
     const localeContext: Record<string, string> = {
       us: `LOCALE: United States 🇺🇸
@@ -232,6 +265,8 @@ Default to CONSIDERATION copy unless the product/service is completely unknown i
 ${targetDesign}
 
 ${creativeAxisGuide}
+
+${localBusinessGuide}
 
 ## PRODUCT BRIEF
 Business: ${safe(business_desc, "a local small business")}
@@ -338,6 +373,8 @@ primary_text_full はコア層に向けて書く。carousel_cards は拡張層�
 ${targetDesign}
 
 ${creativeAxisGuide}
+
+${localBusinessGuide}
 
 ## 商品情報
 業種: ${safe(industry, "小規模店舗")}
