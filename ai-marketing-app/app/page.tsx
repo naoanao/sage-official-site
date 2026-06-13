@@ -112,6 +112,13 @@ export default function LandingPage() {
           {t("diag.cta")}
         </Link>
 
+        <Link
+          href="/agency"
+          className="inline-block mt-3 text-sm text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-4 transition-colors"
+        >
+          {isEn ? "Or: let AI run your ads for you →" : "または、広告運用をAIにまるごとおまかせ →"}
+        </Link>
+
         {/* Stats */}
         <div className="flex gap-6 mt-10 text-center">
           <div>
