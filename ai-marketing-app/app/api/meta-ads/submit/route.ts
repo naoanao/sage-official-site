@@ -54,6 +54,14 @@ function preflightCompliance(ad_copy: Record<string, unknown> | null | undefined
   ];
   if (superlatives.some((r) => r.test(text))) issues.push({ level: "warn", reason: "根拠のない最上級(最安/No.1/日本一)は要証拠。証拠が無ければ表現を和らげる。" });
 
+  // 根拠なき数値の成果主張（例「30%効果アップ」「売上2倍」）。捏造statを検知してWARN(自動ONを保留)。
+  const unsupportedStats: RegExp[] = [
+    /\d+\s*[%％]\s*(以上|アップ|UP|向上|改善|増加|増|削減|減|オフ|OFF|還元)/i,
+    /(売上|集客|効果|成約|reach|sales|CV|cvr|roi|roas)[^。\n]{0,8}\d+\s*(倍|割|%|％)/i,
+    /\b\d+%\s*(more|increase|boost|growth|higher|faster|cheaper|off)\b/i,
+  ];
+  if (unsupportedStats.some((r) => r.test(text))) issues.push({ level: "warn", reason: "数値の成果主張(〇%アップ/〇倍等)は実データの裏付けが必須。実績が無ければ削除し一般的な表現にする(虚偽広告・アカウントBAN回避)。" });
+
   return { blocked: issues.some((i) => i.level === "block"), issues };
 }
 
