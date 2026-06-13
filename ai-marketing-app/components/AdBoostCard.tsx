@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { loadProofData, saveProofData, loadUserId } from "@/lib/store";
+import { buildAgencyUrl } from "@/lib/stripe-config";
 
 interface AdCopy {
   headline: string;
@@ -171,8 +172,10 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
         body: JSON.stringify({ device_id: deviceId, email: reqEmail.trim(), note: reqNote.trim() || undefined, ad_copy: adCopy, session, budget, lang }),
       });
       const data = await res.json();
-      if (data.success) { setStep("requested"); }
-      else { setReqErr(String(data.error || "Failed")); }
+      if (data.success) {
+        // 申込を保存できたら決済ページへ（支払い→AIが自動で広告を配信）
+        window.location.href = buildAgencyUrl(deviceId || "global");
+      } else { setReqErr(String(data.error || "Failed")); }
     } catch (e) { setReqErr(String(e)); }
     setReqBusy(false);
   }
@@ -349,7 +352,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
             {/* 主CTA: おまかせ代行（接続不要・推奨） */}
             <button onClick={() => setStep("request")}
               className="w-full bg-indigo-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-200">
-              🚀 {isEn ? "Have Growl launch & manage it (free)" : "おまかせで配信を依頼（無料相談）"}
+              🚀 {isEn ? "Have Growl launch & manage it (¥2,980/mo)" : "おまかせで配信（月¥2,980）"}
             </button>
             <div className="flex gap-2">
               <button onClick={() => setStep("idle")}
@@ -429,9 +432,9 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
         {/* request: おまかせ代行の申込フォーム */}
         {step === "request" && (
           <div className="space-y-3">
-            <p className="text-sm font-bold text-gray-900">{isEn ? "Let Growl run it for you" : "Growlにおまかせで配信"}</p>
+            <p className="text-sm font-bold text-gray-900">{isEn ? "Let Growl run it for you" : "Growlにおまかせで配信（月¥2,980）"}</p>
             <p className="text-xs text-gray-500">
-              {isEn ? "We launch, optimize and manage this ad for you — no Facebook setup needed. Leave your email and we'll be in touch." : "この広告の配信・最適化・運用をGrowlが代行します（Facebookの接続作業は不要）。メールを残していただければご連絡します。"}
+              {isEn ? "Growl launches, optimizes and manages this ad for you — ¥2,980/mo, no Facebook setup. Enter your email and continue to secure payment; then AI starts running it." : "この広告の配信・最適化・運用をGrowlが代行します（月¥2,980・Facebookの接続作業は不要）。メールを入力して進むと、お支払いページへ。お支払い後にAIが配信を開始します。"}
             </p>
             <input type="email" value={reqEmail} onChange={(e) => setReqEmail(e.target.value)}
               placeholder={isEn ? "your@email.com" : "メールアドレス"}
@@ -447,7 +450,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
               </button>
               <button onClick={handleRequest} disabled={reqBusy}
                 className="flex-1 bg-indigo-600 text-white font-bold text-sm py-2.5 rounded-xl hover:bg-indigo-700 disabled:bg-gray-200 active:scale-95 transition-all">
-                {reqBusy ? "..." : (isEn ? "Request" : "依頼する")}
+                {reqBusy ? "..." : (isEn ? "Continue to payment" : "お支払いへ進む")}
               </button>
             </div>
           </div>

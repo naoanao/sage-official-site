@@ -60,6 +60,14 @@ export async function POST(req: NextRequest) {
       if (e2) return NextResponse.json({ success: false, error: String(e2.message || e2) }, { status: 500 });
     }
 
+    // 支払い検知(webhook)が device_id で最新の申込を引き当てられるよう、別キーにも保存（上書き）
+    if (record.device_id) {
+      await supabase.from("app_config").upsert({
+        key: `agency_pending_${record.device_id}`,
+        value: JSON.stringify(record),
+      });
+    }
+
     return NextResponse.json({
       success: true,
       request_id: key,

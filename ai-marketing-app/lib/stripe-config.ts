@@ -22,9 +22,22 @@ export const STRIPE_PLANS = {
     // USD $79/mo (price_1TgeYKILSrv644ukrtx1KnFv, created via API 2026-06-10)
     usdPaymentLinkBase: "https://buy.stripe.com/14A9AU8Ao87jatNgBE93y0i",
   },
+  // AI広告代行（ベータ）¥2,980/月。API作成 2026-06-14。支払い後 /payment-success?plan=agency
+  agency: {
+    name: "AI広告代行（ベータ）",
+    price: "¥2,980/月",
+    priceId: "price_1Ti0GoILSrv644ukbbmEbJV8",
+    productId: "prod_UhP40GfvdPcikT",
+    paymentLinkBase: "https://buy.stripe.com/3cI5kEaIw73f9pJetw93y0j",
+  },
 } as const;
 
-export type PlanKey = "free" | "standard" | "pro";
+export type PlanKey = "free" | "standard" | "pro" | "agency";
+
+/** 代行プランの決済URL（client_reference_id=deviceId 付き）。支払い検知→AI自動配信に使う。 */
+export function buildAgencyUrl(deviceId: string): string {
+  return `${STRIPE_PLANS.agency.paymentLinkBase}?client_reference_id=${encodeURIComponent(deviceId)}`;
+}
 
 /** deviceId を client_reference_id として埋め込んだ決済URLを生成。currency="usd"でUSDリンク使用（未設定なら円にフォールバック） */
 export function buildPaymentUrl(plan: "standard" | "pro", deviceId: string, currency: "jpy" | "usd" = "jpy"): string {

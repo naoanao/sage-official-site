@@ -1,5 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateUserPlan, savePurchaseEvent } from "@/lib/db";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://growl-ai.com";
+
+// 代行(agency)の支払いを受けたら、保存済みの申込からAIが自動で広告を構築・配信する。
+// なおの代行口座(nao-agency)・自動ON(auto_activate)・予算は安全上限内。二重実行防止つき。
+async function handleAgencyPayment(deviceId: string, email: string | null, amount: number) {
+  const { data: row } = await supabase
+    .from("app_config").select("value").eq("key", `agency_pending_${deviceId}`).single();
+  let pending: Record<string, unknown> | null = null;
+  if (row?.value) { try { pending = JSON.parse(row.value); } catch {} }
+
+  // 売上記録（代行）
+  try {
+    await savePurchaseEvent({
+      deviceId, email: email ?? (pending?.email as string) ?? null,
+      stripeSessionId: null, plan: "agency", amountJpy: amount,
+    });
+  } catch {}
+
+  if (pending && pending.status === "fulfilled") return; // 二重実行防止
+
+  let result: Record<string, unknown> = {};
+  if (pending && pending.ad_copy) {
+    try {
+      const res = await fetch(`${APP_URL}/api/meta-ads/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: "nao-agency",
+          ad_copy: pending.ad_copy,
+          link_url: (pending.business as { booking_url?: string } | null)?.booking_url || `${APP_URL}/start`,
+          daily_budget: 1000, currency: "jpy", country: "JP", lang: "ja",
+          auto_activate: true,
+        }),
+      });
+      result = await res.json();
+    } catch (e) { result = { error: String(e) }; }
+  }
+
+  if (pending) {
+    pending.status = "fulfilled";
+    pending.paid_at = new Date().toISOString();
+    pending.fulfillment = {
+      campaign_id: result.campaign_id ?? null,
+      status: result.status ?? null,
+      note: result.activation_note ?? result.error ?? null,
+    };
+    await supabase.from("app_config").upsert({ key: `agency_pending_${deviceId}`, value: JSON.stringify(pending) });
+  }
+}
 
 // Stripe署名検証 — Web Crypto API使用（npm不要、Sage実装と同じ方式）
 async function verifyStripeSignature(
@@ -78,6 +133,13 @@ export async function POST(req: NextRequest) {
         .customer_details?.email ?? null;
       const amountTotal = (obj.amount_total as number) ?? 0;
       const currency = ((obj.currency as string) ?? "jpy").toLowerCase();
+
+      // 代行(agency, ¥2,980)の支払い → AIが自動で広告を構築・配信（SaaSプラン更新ではない）
+      if (currency === "jpy" && amountTotal === 2980 && deviceId) {
+        await handleAgencyPayment(deviceId, email, amountTotal);
+        return NextResponse.json({ received: true, type, agency: true });
+      }
+
       const plan = getPlanFromAmount(amountTotal, currency);
 
       if (deviceId) {
