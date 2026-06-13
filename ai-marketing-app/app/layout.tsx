@@ -5,6 +5,8 @@ import "./globals.css";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://growl-ai.com";
 const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID ?? "G-Y1B7VSVBDK";
+// Meta Pixel: コンバージョン計測用。NEXT_PUBLIC_META_PIXEL_ID が設定された時のみ有効化（未設定なら無害）。
+const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "";
 
 export const metadata: Metadata = {
   title: "Growl — Just 3 actions this week",
@@ -55,6 +57,11 @@ export default function RootLayout({
         <Script id="ga4-init" strategy="afterInteractive">
           {`window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${GA4_ID}');`}
         </Script>
+        {META_PIXEL_ID ? (
+          <Script id="meta-pixel" strategy="afterInteractive">
+            {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${META_PIXEL_ID}');fbq('track','PageView');`}
+          </Script>
+        ) : null}
         {/* Fazier badge */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <div style={{position:'fixed' as const,bottom:'16px',right:'16px',zIndex:9999}}>

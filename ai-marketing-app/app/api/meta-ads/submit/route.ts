@@ -97,12 +97,19 @@ export async function POST(req: NextRequest) {
       lang,               // "ja" / "en"
       geo_locations,      // 任意: ローカル配信用 { cities:[{key,radius,distance_unit}] } や { custom_locations:[{latitude,longitude,radius,distance_unit}] }
       auto_activate = false, // true: AI自動審査を通過し安全上限内なら自動でONにする（手作業ゼロ運用）
+      pixel_id,           // 任意: Meta Pixel ID。あればコンバージョン最適化に切替（クリックでなく登録/CVを買う）
+      conversion_event = "LEAD", // pixel使用時の最適化イベント
     } = body;
 
     const { token: access_token, accountId: ad_account_id, pageId: resolvedPageId } =
       await getUserMetaConfig(device_id || "global");
 
     const effectivePageId = page_id || resolvedPageId;
+
+    // コンバージョン最適化: Pixelが設定されていれば「クリック」でなく「CV(登録など)」を買う。
+    // 未設定なら従来のトラフィック最適化に安全フォールバック（Pixel未導入でも壊れない）。
+    const pixelId = pixel_id || process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || null;
+    const useConversion = !!pixelId;
 
     if (!access_token || !ad_account_id) {
       return NextResponse.json({
@@ -130,7 +137,7 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         name: `Growl_${new Date().toISOString().split("T")[0]}`,
-        objective: "OUTCOME_TRAFFIC",
+        objective: useConversion ? "OUTCOME_LEADS" : "OUTCOME_TRAFFIC",
         status: "PAUSED",
         special_ad_categories: "[]",
         is_adset_budget_sharing_enabled: "false",
@@ -168,8 +175,11 @@ export async function POST(req: NextRequest) {
         campaign_id: campaign.id,
         daily_budget: String(budgetMinor), // アカウント通貨の最小単位
         billing_event: "IMPRESSIONS",
-        optimization_goal: "LINK_CLICKS",
+        // Pixelあり=コンバージョン最適化(登録などを買う) / なし=リンククリック最適化
+        optimization_goal: useConversion ? "OFFSITE_CONVERSIONS" : "LINK_CLICKS",
         bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+        // コンバージョン最適化時は計測対象(pixel+イベント)を指定
+        ...(useConversion ? { promoted_object: JSON.stringify({ pixel_id: pixelId, custom_event_type: conversion_event }) } : {}),
         targeting: JSON.stringify({
           geo_locations: targetingGeo, // ローカル配信（市区/半径）または単一国
           age_min: 18,
