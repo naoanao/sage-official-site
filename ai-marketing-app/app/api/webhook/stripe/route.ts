@@ -37,7 +37,9 @@ async function handleAgencyPayment(deviceId: string, email: string | null, amoun
           ad_copy: pending.ad_copy,
           link_url: (pending.business as { booking_url?: string } | null)?.booking_url || `${APP_URL}/start`,
           daily_budget: 1000, currency: "jpy", country: "JP", lang: "ja",
-          auto_activate: true,
+          // 立替ゼロ方針: 入金後はPAUSEDで広告を用意するだけ。配信ON(=広告費発生)は
+          // クライアント広告費の手当て後に行う(なおが/admin/leadsで確認→1タップ、または将来の広告費先払いで自動化)。
+          auto_activate: false,
         }),
       });
       result = await res.json();
