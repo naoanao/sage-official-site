@@ -127,7 +127,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ad_copy: adCopy,
-          link_url: "https://growl-ai.com",
+          link_url: "https://growl-ai.com/start",
           daily_budget: budget,
           device_id: deviceId || "global",
           image_prompt: adCopy.image_prompt_single || adCopy.image_prompt || null,
@@ -168,8 +168,8 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
         </div>
         <p className="text-xs text-gray-500 mb-4">
           {isEn
-            ? "AI generates ad copy from your business info → submit to Facebook/Instagram ads"
-            : "あなたの事業情報からAIが広告文を生成→Facebook/Instagram広告に出稿"}
+            ? "AI generates your ad — then Growl can launch & manage it for you (done-for-you)."
+            : "AIがあなたの広告を生成。配信・運用までGrowlにおまかせ（代行）も可能です。"}
         </p>
 
         {/* idle: 生成ボタン */}
@@ -229,12 +229,11 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
             >
               {isEn ? "✨ Generate Ad Copy" : "✨ 広告文を生成する"}
             </button>
-            <a
-              href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-ai.com/api/meta-ads/oauth-callback")}&scope=ads_management,pages_manage_ads,pages_read_engagement&response_type=code&state=${deviceId || "global"}`}
-              className="block w-full bg-gray-100 text-gray-600 font-medium text-xs py-2 rounded-xl text-center hover:bg-gray-200 transition-all"
-            >
-              🔗 {isEn ? "Connect your Facebook account" : "Facebookアカウントを接続"}
-            </a>
+            <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+              {isEn
+                ? "Generating is free. Want it launched & optimized for you? Growl runs it on your behalf — no setup needed."
+                : "生成は無料。配信・最適化までおまかせしたい方へ → Growlが代わりに運用します（接続作業は不要）。"}
+            </p>
           </div>
         )}
 
@@ -393,9 +392,9 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
             </button>
             {result.error?.includes("credentials") && (
               <a
-                href={`https://www.facebook.com/dialog/oauth?client_id=1228008508773411&redirect_uri=${encodeURIComponent("https://growl-ai.com/api/meta-ads/oauth-callback")}&scope=ads_management,pages_manage_ads,pages_read_engagement&response_type=code&state=${deviceId || "global"}`}
-                className="block w-full bg-blue-100 text-blue-600 font-medium text-xs py-2 rounded-xl text-center hover:bg-blue-200 transition-all">
-                🔗 {isEn ? "Connect your Facebook account" : "Facebookアカウントを接続"}
+                href={`mailto:contact@growl-ai.com?subject=${encodeURIComponent(isEn ? "Run my ad for me (Growl)" : "広告の配信代行を希望（Growl）")}&body=${encodeURIComponent((adCopy?.headline ? `Headline: ${adCopy.headline}\n` : "") + (isEn ? "Please launch and manage this ad for me." : "この広告の配信・運用をおまかせしたいです。"))}`}
+                className="block w-full bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl text-center hover:bg-indigo-700 transition-all">
+                🚀 {isEn ? "Have Growl launch & manage it for you" : "配信はGrowlにおまかせ（代行を依頼）"}
               </a>
             )}
           </div>
