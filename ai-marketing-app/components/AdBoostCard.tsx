@@ -32,7 +32,11 @@ interface AdBoostCardProps {
 }
 
 export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCardProps) {
-  const [step, setStep] = useState<"idle" | "generating" | "preview" | "submitting" | "done" | "error" | "update-token">("idle");
+  const [step, setStep] = useState<"idle" | "generating" | "preview" | "submitting" | "done" | "error" | "update-token" | "request" | "requested">("idle");
+  const [reqEmail, setReqEmail] = useState("");
+  const [reqNote, setReqNote] = useState("");
+  const [reqBusy, setReqBusy] = useState(false);
+  const [reqErr, setReqErr] = useState("");
   const [adCopy, setAdCopy] = useState<AdCopy | null>(null);
   const [result, setResult] = useState<{ message?: string; manager_url?: string; error?: string } | null>(null);
   const [budget, setBudget] = useState(500);
@@ -154,6 +158,23 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
       setResult({ error: String(e) });
       setStep("error");
     }
+  }
+
+  // 「おまかせ代行」リクエスト送信（接続不要・なおが受注対応）
+  async function handleRequest() {
+    if (!reqEmail.includes("@")) { setReqErr(isEn ? "Enter a valid email." : "有効なメールを入力してください。"); return; }
+    setReqBusy(true); setReqErr("");
+    try {
+      const res = await fetch("/api/agency/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId, email: reqEmail.trim(), note: reqNote.trim() || undefined, ad_copy: adCopy, session, budget, lang }),
+      });
+      const data = await res.json();
+      if (data.success) { setStep("requested"); }
+      else { setReqErr(String(data.error || "Failed")); }
+    } catch (e) { setReqErr(String(e)); }
+    setReqBusy(false);
   }
 
   return (
@@ -325,18 +346,23 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
               </div>
             </div>
 
+            {/* 主CTA: おまかせ代行（接続不要・推奨） */}
+            <button onClick={() => setStep("request")}
+              className="w-full bg-indigo-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-200">
+              🚀 {isEn ? "Have Growl launch & manage it (free)" : "おまかせで配信を依頼（無料相談）"}
+            </button>
             <div className="flex gap-2">
               <button onClick={() => setStep("idle")}
                 className="flex-1 bg-gray-100 text-gray-600 font-medium text-sm py-2.5 rounded-xl hover:bg-gray-200 transition-all">
                 {isEn ? "Regenerate" : "作り直す"}
               </button>
               <button onClick={handleSubmit}
-                className="flex-1 bg-blue-600 text-white font-bold text-sm py-2.5 rounded-xl hover:bg-blue-700 active:scale-95 transition-all">
-                {isEn ? "Submit Ad (Paused)" : "広告を作成する"}
+                className="flex-1 bg-white border border-blue-200 text-blue-600 font-medium text-sm py-2.5 rounded-xl hover:bg-blue-50 active:scale-95 transition-all">
+                {isEn ? "Run it myself (Paused)" : "自分で出す（停止）"}
               </button>
             </div>
             <p className="text-xs text-gray-400 text-center">
-              {isEn ? "Ad will be created in PAUSED state. Activate in Meta Ads Manager." : "一時停止状態で作成されます。Meta広告マネージャーで有効化してください。"}
+              {isEn ? "Recommended: let Growl run it for you. Or run it yourself in Meta Ads Manager." : "おすすめは「おまかせ」。自分で出す場合はMeta広告マネージャーで有効化します。"}
             </p>
           </div>
         )}
@@ -397,6 +423,50 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
                 🚀 {isEn ? "Have Growl launch & manage it for you" : "配信はGrowlにおまかせ（代行を依頼）"}
               </a>
             )}
+          </div>
+        )}
+
+        {/* request: おまかせ代行の申込フォーム */}
+        {step === "request" && (
+          <div className="space-y-3">
+            <p className="text-sm font-bold text-gray-900">{isEn ? "Let Growl run it for you" : "Growlにおまかせで配信"}</p>
+            <p className="text-xs text-gray-500">
+              {isEn ? "We launch, optimize and manage this ad for you — no Facebook setup needed. Leave your email and we'll be in touch." : "この広告の配信・最適化・運用をGrowlが代行します（Facebookの接続作業は不要）。メールを残していただければご連絡します。"}
+            </p>
+            <input type="email" value={reqEmail} onChange={(e) => setReqEmail(e.target.value)}
+              placeholder={isEn ? "your@email.com" : "メールアドレス"}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
+            <textarea value={reqNote} onChange={(e) => setReqNote(e.target.value)} rows={2}
+              placeholder={isEn ? "Anything we should know? (optional)" : "ご要望など（任意）"}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-400 resize-none" />
+            {reqErr && <p className="text-xs text-red-500">{reqErr}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => setStep("preview")}
+                className="flex-1 bg-gray-100 text-gray-600 font-medium text-sm py-2.5 rounded-xl hover:bg-gray-200 transition-all">
+                {isEn ? "Back" : "戻る"}
+              </button>
+              <button onClick={handleRequest} disabled={reqBusy}
+                className="flex-1 bg-indigo-600 text-white font-bold text-sm py-2.5 rounded-xl hover:bg-indigo-700 disabled:bg-gray-200 active:scale-95 transition-all">
+                {reqBusy ? "..." : (isEn ? "Request" : "依頼する")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* requested: 受付完了 */}
+        {step === "requested" && (
+          <div className="space-y-3">
+            <div className="bg-green-50 rounded-xl p-4 border border-green-200 text-center">
+              <p className="text-2xl mb-1">🎉</p>
+              <p className="text-sm font-bold text-green-700">{isEn ? "Request received!" : "ご依頼を受け付けました！"}</p>
+              <p className="text-xs text-green-600 mt-1">
+                {isEn ? "We'll review your ad and get back to you. Growl handles the rest." : "内容を確認し、ご連絡します。あとはGrowlにおまかせください。"}
+              </p>
+            </div>
+            <button onClick={() => { setStep("idle"); setReqEmail(""); setReqNote(""); }}
+              className="w-full bg-gray-100 text-gray-600 font-medium text-sm py-2 rounded-xl hover:bg-gray-200 transition-all">
+              {isEn ? "Done" : "閉じる"}
+            </button>
           </div>
         )}
 
