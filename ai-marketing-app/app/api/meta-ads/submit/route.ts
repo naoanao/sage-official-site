@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
       country,            // 例: "JP"（未指定なら lang から推定）
       lang,               // "ja" / "en"
       geo_locations,      // 任意: ローカル配信用 { cities:[{key,radius,distance_unit}] } や { custom_locations:[{latitude,longitude,radius,distance_unit}] }
+      auto_activate = false, // true: AI自動審査を通過し安全上限内なら自動でONにする（手作業ゼロ運用）
     } = body;
 
     const { token: access_token, accountId: ad_account_id, pageId: resolvedPageId } =
@@ -296,16 +297,57 @@ export async function POST(req: NextRequest) {
       ad_id = ad.id;
     }
 
+    // Step 5: AI自動審査→自動ON（auto_activate時のみ）。
+    // 安全ガード: ①コンプラBlockなし ②警告(warn)ゼロ ③広告要素が揃っている
+    // ④日予算が自動ON上限以内、を全て満たした場合のみ ACTIVE 化する。
+    // それ以外はPAUSEDのまま保留し理由を返す（＝怪しいものだけ人が見る運用）。
+    // 注: ACTIVE化してもMeta側の広告審査を通るまで配信は始まらない（二重チェック）。
+    const AUTO_ACTIVATE_MAX = isZeroDecimal ? 1000 : 1000; // 自動ON時の日予算ハード上限(¥1,000 / $10相当)
+    let finalStatus = "PAUSED";
+    let auto_activated = false;
+    let activation_note = "";
+    const warnList = preflight.issues.filter((i) => i.level === "warn");
+    if (auto_activate && ad_id && creative.id) {
+      const structureOk = !!(ad_copy.headline && (ad_copy.primary_text_full || ad_copy.primary_text) && link_url);
+      if (warnList.length > 0) {
+        activation_note = "警告があるため自動ONせず保留しました（要確認）。";
+      } else if (budgetMinor > AUTO_ACTIVATE_MAX) {
+        activation_note = `日予算が自動ON上限(${AUTO_ACTIVATE_MAX})を超えるため保留しました。`;
+      } else if (!structureOk) {
+        activation_note = "広告要素(見出し/本文/リンク)が不足のため保留しました。";
+      } else {
+        try {
+          await fetch(`${BASE_URL}/${campaign.id}`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ status: "ACTIVE", access_token }) });
+          await fetch(`${BASE_URL}/${adset.id}`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ status: "ACTIVE", access_token }) });
+          const actRes = await fetch(`${BASE_URL}/${ad_id}`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ status: "ACTIVE", access_token }) });
+          const act = await actRes.json();
+          if (act && act.error) {
+            activation_note = `自動ON失敗: ${act.error.message}（PAUSEDのままです）`;
+          } else {
+            finalStatus = "ACTIVE";
+            auto_activated = true;
+            activation_note = "AI自動審査を通過したため自動ONしました（Meta側の広告審査を通過後に配信開始）。";
+          }
+        } catch (e) {
+          activation_note = `自動ON処理でエラー: ${String(e)}（PAUSEDのままです）`;
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       campaign_id: campaign.id,
       adset_id: adset.id,
       creative_id: creative.id,
       ad_id,
-      status: "PAUSED",
-      message: "広告を作成しました（一時停止中）。Meta広告マネージャーで確認・有効化してください。",
+      status: finalStatus,
+      auto_activated,
+      activation_note,
+      message: auto_activated
+        ? "AI審査通過→自動ONしました。Meta審査を通れば配信されます。"
+        : "広告を作成しました（一時停止中）。" + (activation_note || "Meta広告マネージャーで確認・有効化してください。"),
       manager_url: `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${ad_account_id.replace("act_", "")}`,
-      warnings: preflight.issues.filter((i) => i.level === "warn"),
+      warnings: warnList,
       daily_budget_applied: budgetMinor,
     });
 
