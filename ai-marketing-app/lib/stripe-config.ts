@@ -22,21 +22,34 @@ export const STRIPE_PLANS = {
     // USD $79/mo (price_1TgeYKILSrv644ukrtx1KnFv, created via API 2026-06-10)
     usdPaymentLinkBase: "https://buy.stripe.com/14A9AU8Ao87jatNgBE93y0i",
   },
-  // AI広告代行（ベータ）¥2,980/月。API作成 2026-06-14。支払い後 /payment-success?plan=agency
+  // AI広告代行（ベータ・管理のみ）¥2,980/月。支払い後はPAUSEDで広告用意（立替ゼロ）。
   agency: {
-    name: "AI広告代行（ベータ）",
+    name: "AI広告代行（管理のみ）",
     price: "¥2,980/月",
     priceId: "price_1Ti0GoILSrv644ukbbmEbJV8",
     productId: "prod_UhP40GfvdPcikT",
     paymentLinkBase: "https://buy.stripe.com/3cI5kEaIw73f9pJetw93y0j",
   },
+  // フルおまかせ（管理＋広告費込み）¥9,800/月。支払い後に自動配信ON（広告費先払い済＝立替ゼロ）。
+  agencyFull: {
+    name: "フルおまかせ（広告費込み）",
+    price: "¥9,800/月",
+    priceId: "price_1Ti0cJILSrv644ukkgIkiTlI",
+    productId: "prod_UhPRldjQNbs6al",
+    paymentLinkBase: "https://buy.stripe.com/4gMbJ203SbjvatNfxA93y0k",
+  },
 } as const;
 
-export type PlanKey = "free" | "standard" | "pro" | "agency";
+export type PlanKey = "free" | "standard" | "pro" | "agency" | "agencyFull";
 
-/** 代行プランの決済URL（client_reference_id=deviceId 付き）。支払い検知→AI自動配信に使う。 */
+/** 管理のみ代行(¥2,980)の決済URL（支払い後PAUSED）。 */
 export function buildAgencyUrl(deviceId: string): string {
   return `${STRIPE_PLANS.agency.paymentLinkBase}?client_reference_id=${encodeURIComponent(deviceId)}`;
+}
+
+/** フルおまかせ(¥9,800・広告費込み)の決済URL（支払い後に自動配信ON）。 */
+export function buildAgencyFullUrl(deviceId: string): string {
+  return `${STRIPE_PLANS.agencyFull.paymentLinkBase}?client_reference_id=${encodeURIComponent(deviceId)}`;
 }
 
 /** deviceId を client_reference_id として埋め込んだ決済URLを生成。currency="usd"でUSDリンク使用（未設定なら円にフォールバック） */

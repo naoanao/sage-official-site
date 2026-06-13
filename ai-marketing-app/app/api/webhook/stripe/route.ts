@@ -36,10 +36,10 @@ async function handleAgencyPayment(deviceId: string, email: string | null, amoun
           device_id: "nao-agency",
           ad_copy: pending.ad_copy,
           link_url: (pending.business as { booking_url?: string } | null)?.booking_url || `${APP_URL}/start`,
-          daily_budget: 1000, currency: "jpy", country: "JP", lang: "ja",
-          // 立替ゼロ方針: 入金後はPAUSEDで広告を用意するだけ。配信ON(=広告費発生)は
-          // クライアント広告費の手当て後に行う(なおが/admin/leadsで確認→1タップ、または将来の広告費先払いで自動化)。
-          auto_activate: false,
+          // ¥9,800(全部込み)=広告費先払い済 → 自動ON(¥250/日)。¥2,980(管理のみ)=立替ゼロでPAUSED。
+          daily_budget: amount >= 9800 ? 250 : 1000,
+          currency: "jpy", country: "JP", lang: "ja",
+          auto_activate: amount >= 9800,
         }),
       });
       result = await res.json();
@@ -136,8 +136,8 @@ export async function POST(req: NextRequest) {
       const amountTotal = (obj.amount_total as number) ?? 0;
       const currency = ((obj.currency as string) ?? "jpy").toLowerCase();
 
-      // 代行(agency, ¥2,980)の支払い → AIが自動で広告を構築・配信（SaaSプラン更新ではない）
-      if (currency === "jpy" && amountTotal === 2980 && deviceId) {
+      // 代行の支払い → AIが自動で広告を構築（¥2,980=管理のみPAUSED / ¥9,800=全部込み自動ON）
+      if (currency === "jpy" && (amountTotal === 2980 || amountTotal === 9800) && deviceId) {
         await handleAgencyPayment(deviceId, email, amountTotal);
         return NextResponse.json({ received: true, type, agency: true });
       }

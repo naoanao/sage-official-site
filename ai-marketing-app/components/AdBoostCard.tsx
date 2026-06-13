@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { loadProofData, saveProofData, loadUserId } from "@/lib/store";
-import { buildAgencyUrl } from "@/lib/stripe-config";
+import { buildAgencyUrl, buildAgencyFullUrl } from "@/lib/stripe-config";
 
 interface AdCopy {
   headline: string;
@@ -162,19 +162,20 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
   }
 
   // 「おまかせ代行」リクエスト送信（接続不要・なおが受注対応）
-  async function handleRequest() {
+  async function handleRequest(plan: "full" | "mgmt") {
     if (!reqEmail.includes("@")) { setReqErr(isEn ? "Enter a valid email." : "有効なメールを入力してください。"); return; }
     setReqBusy(true); setReqErr("");
     try {
       const res = await fetch("/api/agency/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId, email: reqEmail.trim(), note: reqNote.trim() || undefined, ad_copy: adCopy, session, budget, lang }),
+        body: JSON.stringify({ device_id: deviceId, email: reqEmail.trim(), note: reqNote.trim() || undefined, ad_copy: adCopy, session, budget, lang, plan }),
       });
       const data = await res.json();
       if (data.success) {
-        // 申込を保存できたら決済ページへ（支払い→AIが自動で広告を配信）
-        window.location.href = buildAgencyUrl(deviceId || "global");
+        // 申込を保存できたらプラン別の決済ページへ（支払い→AIが自動で広告を配信）
+        const id = deviceId || "global";
+        window.location.href = plan === "full" ? buildAgencyFullUrl(id) : buildAgencyUrl(id);
       } else { setReqErr(String(data.error || "Failed")); }
     } catch (e) { setReqErr(String(e)); }
     setReqBusy(false);
@@ -432,9 +433,9 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
         {/* request: おまかせ代行の申込フォーム */}
         {step === "request" && (
           <div className="space-y-3">
-            <p className="text-sm font-bold text-gray-900">{isEn ? "Let Growl run it for you" : "Growlにおまかせで配信（月¥2,980）"}</p>
+            <p className="text-sm font-bold text-gray-900">{isEn ? "Let Growl run it for you" : "Growlにおまかせで配信"}</p>
             <p className="text-xs text-gray-500">
-              {isEn ? "Growl launches, optimizes and manages this ad for you — ¥2,980/mo, no Facebook setup. Enter your email and continue to secure payment; then AI starts running it." : "この広告の配信・最適化・運用をGrowlが代行します（月¥2,980・Facebookの接続作業は不要）。メールを入力して進むと、お支払いページへ。お支払い後にAIが配信を開始します。"}
+              {isEn ? "Enter your email, then pick a plan. Full auto includes the ad budget and starts automatically after payment; management-only is cheaper but you provide the ad budget. No Facebook setup needed." : "メールを入力してプランを選んでください。『全自動』は広告費込みで、支払い後すぐAIが配信を開始。『管理だけ』は安価ですが広告費は別途。Facebookの接続作業は不要です。"}
             </p>
             <input type="email" value={reqEmail} onChange={(e) => setReqEmail(e.target.value)}
               placeholder={isEn ? "your@email.com" : "メールアドレス"}
@@ -443,16 +444,18 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
               placeholder={isEn ? "Anything we should know? (optional)" : "ご要望など（任意）"}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-400 resize-none" />
             {reqErr && <p className="text-xs text-red-500">{reqErr}</p>}
-            <div className="flex gap-2">
-              <button onClick={() => setStep("preview")}
-                className="flex-1 bg-gray-100 text-gray-600 font-medium text-sm py-2.5 rounded-xl hover:bg-gray-200 transition-all">
-                {isEn ? "Back" : "戻る"}
-              </button>
-              <button onClick={handleRequest} disabled={reqBusy}
-                className="flex-1 bg-indigo-600 text-white font-bold text-sm py-2.5 rounded-xl hover:bg-indigo-700 disabled:bg-gray-200 active:scale-95 transition-all">
-                {reqBusy ? "..." : (isEn ? "Continue to payment" : "お支払いへ進む")}
-              </button>
-            </div>
+            <button onClick={() => handleRequest("full")} disabled={reqBusy}
+              className="w-full bg-indigo-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-indigo-700 disabled:bg-gray-200 active:scale-95 transition-all shadow-lg shadow-indigo-200">
+              {reqBusy ? "..." : (isEn ? "Full auto — ad budget included (¥9,800/mo)" : "全自動でおまかせ（広告費込み・月¥9,800）")}
+            </button>
+            <button onClick={() => handleRequest("mgmt")} disabled={reqBusy}
+              className="w-full bg-white border border-indigo-200 text-indigo-700 font-medium text-sm py-2.5 rounded-xl hover:bg-indigo-50 disabled:opacity-50 transition-all">
+              {isEn ? "Management only (¥2,980/mo — you fund the ad budget)" : "管理だけ（月¥2,980・広告費は別途）"}
+            </button>
+            <button onClick={() => setStep("preview")}
+              className="w-full text-gray-500 font-medium text-xs py-2 rounded-xl hover:bg-gray-100 transition-all">
+              {isEn ? "Back" : "戻る"}
+            </button>
           </div>
         )}
 
