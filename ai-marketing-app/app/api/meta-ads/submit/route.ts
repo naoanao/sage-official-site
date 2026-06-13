@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       ad_copy, link_url, daily_budget = 500, page_id, device_id, image_prompt,
+      image_url,          // 任意: 顧客の実写真URL。あればAI画像より優先してクリエイティブに使う
       currency = "JPY",
       country,            // 例: "JP"（未指定なら lang から推定）
       lang,               // "ja" / "en"
@@ -208,9 +209,20 @@ export async function POST(req: NextRequest) {
     try {
       let imageBytes: Buffer | null = null;
 
-      // A) image_promptがあればFLUX.1-schnell（HuggingFace）で商品特化画像を生成
+      // A0) 顧客の実写真(image_url)があれば最優先で使う（実写真>AI画像＝クリック2-3倍）
+      if (image_url && typeof image_url === "string") {
+        try {
+          const imgRes = await fetch(image_url);
+          if (imgRes.ok) {
+            const ab = await imgRes.arrayBuffer();
+            if (ab.byteLength > 0) imageBytes = Buffer.from(ab);
+          }
+        } catch {}
+      }
+
+      // A) 実写真が無ければ image_promptからFLUX.1-schnell（HuggingFace）でAI画像を生成
       const prompt = image_prompt || ad_copy.image_prompt_single;
-      if (prompt && process.env.HF_TOKEN) {
+      if (!imageBytes && prompt && process.env.HF_TOKEN) {
         try {
           const hfRes = await fetch(
             "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",

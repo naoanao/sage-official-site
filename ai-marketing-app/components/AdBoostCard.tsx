@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { loadProofData, saveProofData, loadUserId } from "@/lib/store";
 import { buildAgencyUrl, buildAgencyFullUrl } from "@/lib/stripe-config";
 
@@ -38,6 +38,30 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
   const [reqNote, setReqNote] = useState("");
   const [reqBusy, setReqBusy] = useState(false);
   const [reqErr, setReqErr] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imgBusy, setImgBusy] = useState(false);
+
+  // 顧客の実写真をアップロード→imgbb URL取得（広告画像の主素材に）
+  async function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImgBusy(true);
+    try {
+      const b64: string = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result));
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const resp = await fetch("/api/upload-image", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_base64: b64 }),
+      });
+      const data = await resp.json();
+      if (data.success) setImageUrl(data.url);
+    } catch { /* ignore */ }
+    setImgBusy(false);
+  }
   const [adCopy, setAdCopy] = useState<AdCopy | null>(null);
   const [result, setResult] = useState<{ message?: string; manager_url?: string; error?: string } | null>(null);
   const [budget, setBudget] = useState(500);
@@ -136,6 +160,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
           daily_budget: budget,
           device_id: deviceId || "global",
           image_prompt: adCopy.image_prompt_single || adCopy.image_prompt || null,
+          image_url: imageUrl || undefined,
           lang: isEn ? "en" : "ja",
           currency: isEn ? "USD" : "JPY",
         }),
@@ -169,7 +194,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
       const res = await fetch("/api/agency/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId, email: reqEmail.trim(), note: reqNote.trim() || undefined, ad_copy: adCopy, session, budget, lang, plan }),
+        body: JSON.stringify({ device_id: deviceId, email: reqEmail.trim(), note: reqNote.trim() || undefined, ad_copy: adCopy, session, budget, lang, plan, image_url: imageUrl || undefined }),
       });
       const data = await res.json();
       if (data.success) {
@@ -248,6 +273,18 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
                 </div>
               </div>
             )}
+            {/* 実写真アップロード（あればAI画像より優先＝クリック2-3倍） */}
+            <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+              <label className="text-xs font-bold text-amber-700">
+                📷 {isEn ? "Your real photo (recommended — 2-3x more clicks)" : "実物の写真（推奨・クリック2-3倍）"}
+              </label>
+              <input type="file" accept="image/*" onChange={handlePhoto} className="mt-1 block w-full text-xs text-gray-600" />
+              {imgBusy && <p className="text-xs text-amber-600 mt-1">{isEn ? "Uploading..." : "アップロード中..."}</p>}
+              {imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl} alt="uploaded" className="mt-2 rounded-lg max-h-24 object-cover" />
+              )}
+            </div>
             <button
               onClick={handleGenerate}
               className="w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-blue-700 active:scale-95 transition-all"

@@ -15,7 +15,7 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { device_id, email, note, ad_copy, session, budget, lang } = body || {};
+    const { device_id, email, note, ad_copy, session, budget, lang, image_url } = body || {};
 
     // 連絡先は最低限必要（受注対応のため）
     if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       note: note ? String(note).slice(0, 1000) : null,
       budget: budget ?? null,
       lang: lang || null,
+      image_url: image_url || null,
       business: session
         ? {
             industry: session.industry ?? null,
