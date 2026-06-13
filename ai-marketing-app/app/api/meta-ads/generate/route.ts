@@ -9,7 +9,12 @@ export async function POST(req: NextRequest) {
       industry, business_desc, customer_desc, main_problem, product, goal, lang, locale,
       proof_numbers, before_state, after_state, competitor_diff, price_or_offer, customer_quote,
       booking_url,  // ユーザーのウェブサイトURL（あれば内容をスクレイプして参考にする）
+      hook_hint,    // 任意: 複数バリアントテスト用。指定フックタイプ(質問型/数字型/逆説型/一人称型/FOMO型 等)で書かせる
     } = body;
+    // バリアント生成用: フックタイプ指定があれば最優先指示として注入（別アングルのコピーを得る）
+    const hookSuffix = hook_hint
+      ? `\n\n## 🅰️最優先指示（バリアントテスト）: フックタイプは必ず「${String(hook_hint)}」で、全コピー(headline/primary_text)をその切り口に統一して書くこと。他案と差別化された角度にすること。`
+      : "";
 
     // ウェブサイトURL → テキスト抽出（最大2000文字、失敗しても続行）
     let siteContent = "";
@@ -456,7 +461,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
         },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
-          messages: [{ role: "user", content: prompt }],
+          messages: [{ role: "user", content: prompt + hookSuffix }],
           max_tokens: 3000,
           response_format: { type: "json_object" },
         }),
@@ -483,7 +488,7 @@ primary_text_short（125文字以内）：「もっと見る」前のフック�
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt + "\n\nRespond with valid JSON only." }] }],
+              contents: [{ parts: [{ text: prompt + hookSuffix + "\n\nRespond with valid JSON only." }] }],
               generationConfig: { temperature: 0.7, maxOutputTokens: 3000 },
             }),
           }
