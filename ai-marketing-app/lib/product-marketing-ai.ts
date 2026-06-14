@@ -142,7 +142,7 @@ async function callOnce(prompt: string): Promise<string> {
 
 // リトライ付き呼び出し（一過性のレート制限・空応答・ネットワーク失敗に強くする）。
 // 既定で最大3回（バックオフ 0.6s, 1.2s）。これで「生成に失敗しました」の頻発を防ぐ。
-async function callAI(prompt: string, retries = 2): Promise<string> {
+async function callAI(prompt: string, retries = 1): Promise<string> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -473,13 +473,19 @@ function parseJSON<T>(text: string, section = "不明"): T {
 export async function generateProductMarketingPlan(
   product: ProductProfile
 ): Promise<ProductMarketingPlan> {
-  // 4つのプロンプトを並列実行（速度最適化）
-  const [aeoResult, funnelResult, retentionResult, weekResult] = await Promise.allSettled([
-    callAI(buildAEOPrompt(product)),
-    callAI(buildFunnelPrompt(product)),
-    callAI(buildRetentionPrompt(product)),
-    callAI(buildWeekActionsPrompt(product)),
-  ]);
+  // 4つのプロンプトを「逐次＋throttle」で実行する。
+  // 並列だと1回の生成で4本のAI呼び出しが同時に飛び、無料枠のレート制限に当たって
+  // 「○○の生成に失敗しました」が頻発していた。1本ずつ＋間隔でこれを回避する（信頼性優先）。
+  const settleSeq = async (fn: () => Promise<string>): Promise<PromiseSettledResult<string>> => {
+    try { return { status: "fulfilled", value: await fn() }; }
+    catch (reason) { return { status: "rejected", reason } as PromiseRejectedResult; }
+  };
+  const gap = () => new Promise((r) => setTimeout(r, 500));
+
+  const aeoResult = await settleSeq(() => callAI(buildAEOPrompt(product))); await gap();
+  const funnelResult = await settleSeq(() => callAI(buildFunnelPrompt(product))); await gap();
+  const retentionResult = await settleSeq(() => callAI(buildRetentionPrompt(product))); await gap();
+  const weekResult = await settleSeq(() => callAI(buildWeekActionsPrompt(product)));
 
   // 各セクションを個別にパース（1つ失敗しても他は表示できる）
   const getRaw = (result: PromiseSettledResult<string>, section: string): string => {
