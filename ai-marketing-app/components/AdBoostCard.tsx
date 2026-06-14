@@ -62,6 +62,27 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
     } catch { /* ignore */ }
     setImgBusy(false);
   }
+
+  // 半径ターゲティング（任意・ローカル配信）
+  const [geoQuery, setGeoQuery] = useState("");
+  const [geoResults, setGeoResults] = useState<Array<{ key: string; label: string }>>([]);
+  const [geoKey, setGeoKey] = useState("");
+  const [geoLabel, setGeoLabel] = useState("");
+  const [radiusKm, setRadiusKm] = useState(5);
+
+  async function searchGeo(q: string) {
+    setGeoQuery(q); setGeoKey("");
+    if (q.trim().length < 2) { setGeoResults([]); return; }
+    try {
+      const r = await fetch(`/api/geo-search?q=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      setGeoResults(d.results || []);
+    } catch { setGeoResults([]); }
+  }
+  function pickGeo(key: string, label: string) {
+    setGeoKey(key); setGeoLabel(label); setGeoResults([]); setGeoQuery(label);
+  }
+  const geoLocations = geoKey ? { cities: [{ key: geoKey, radius: radiusKm, distance_unit: "kilometer" }] } : undefined;
   const [adCopy, setAdCopy] = useState<AdCopy | null>(null);
   const [result, setResult] = useState<{ message?: string; manager_url?: string; error?: string } | null>(null);
   const [budget, setBudget] = useState(500);
@@ -161,6 +182,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
           device_id: deviceId || "global",
           image_prompt: adCopy.image_prompt_single || adCopy.image_prompt || null,
           image_url: imageUrl || undefined,
+          geo_locations: geoLocations,
           lang: isEn ? "en" : "ja",
           currency: isEn ? "USD" : "JPY",
         }),
@@ -194,7 +216,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
       const res = await fetch("/api/agency/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId, email: reqEmail.trim(), note: reqNote.trim() || undefined, ad_copy: adCopy, session, budget, lang, plan, image_url: imageUrl || undefined }),
+        body: JSON.stringify({ device_id: deviceId, email: reqEmail.trim(), note: reqNote.trim() || undefined, ad_copy: adCopy, session, budget, lang, plan, image_url: imageUrl || undefined, geo_locations: geoLocations }),
       });
       const data = await res.json();
       if (data.success) {
@@ -283,6 +305,27 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
               {imageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imageUrl} alt="uploaded" className="mt-2 rounded-lg max-h-24 object-cover" />
+              )}
+            </div>
+            {/* 半径ターゲティング（任意・ローカル配信） */}
+            <div className="bg-green-50 rounded-xl p-3 border border-green-100">
+              <label className="text-xs font-bold text-green-700">📍 {isEn ? "Local targeting (optional)" : "地域を絞る（任意・近隣配信）"}</label>
+              <input type="text" value={geoQuery} onChange={(e) => searchGeo(e.target.value)}
+                placeholder={isEn ? "City / area" : "市区町村・エリア名"}
+                className="mt-1 w-full border border-green-200 rounded-lg px-2 py-1.5 text-xs bg-white outline-none focus:border-green-400" />
+              {geoResults.length > 0 && (
+                <div className="mt-1 bg-white border border-green-100 rounded-lg max-h-32 overflow-auto">
+                  {geoResults.map((g) => (
+                    <button key={g.key} onClick={() => pickGeo(g.key, g.label)} className="block w-full text-left px-2 py-1 text-xs hover:bg-green-50">{g.label}</button>
+                  ))}
+                </div>
+              )}
+              {geoKey && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-green-700 shrink-0">半径</span>
+                  <input type="range" min={1} max={50} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className="flex-1" />
+                  <span className="text-xs font-bold w-10 text-right">{radiusKm}km</span>
+                </div>
               )}
             </div>
             <button

@@ -38,6 +38,7 @@ async function handleAgencyPayment(deviceId: string, email: string | null, amoun
           device_id: "nao-agency",
           ad_copy: pending.ad_copy,
           image_url: (pending.image_url as string) || undefined,
+          geo_locations: pending.geo_locations || undefined,
           link_url: (pending.business as { booking_url?: string } | null)?.booking_url || `${APP_URL}/start`,
           // ¥9,800(全部込み)=広告費先払い済 → 自動ON(¥250/日)。¥2,980(管理のみ)=立替ゼロでPAUSED。
           daily_budget: amount >= 9800 ? 250 : 1000,
