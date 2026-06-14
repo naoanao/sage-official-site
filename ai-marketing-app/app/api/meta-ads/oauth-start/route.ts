@@ -16,14 +16,14 @@ export async function GET(req: NextRequest) {
 
   // Meta App の Valid OAuth Redirect URI と完全一致させる（.../oauth/callback）
   const redirectUri = `${APP_URL}/api/meta-ads/oauth/callback`;
-  // 広告作成/管理(write)・成果取得(read)・BM・ページ選択・リード取得
+  // 広告作成/管理(write)・成果取得(read)・BM・ページ選択。
+  // leads_retrieval は Lead Ads 有効化後に追加（未有効だと "Invalid Scopes" でダイアログが弾かれるため除外）。
   const scope = [
     "ads_management",
     "ads_read",
     "business_management",
     "pages_show_list",
     "pages_read_engagement",
-    "leads_retrieval",
   ].join(",");
 
   const authUrl =
