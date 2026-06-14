@@ -502,10 +502,18 @@ export async function generateProductMarketingPlan(
   };
   const gap = () => new Promise((r) => setTimeout(r, 250));
 
-  const aeoResult = await settleSeq(() => callAI(buildAEOPrompt(product))); await gap();
-  const funnelResult = await settleSeq(() => callAI(buildFunnelPrompt(product))); await gap();
-  const retentionResult = await settleSeq(() => callAI(buildRetentionPrompt(product))); await gap();
-  const weekResult = await settleSeq(() => callAI(buildWeekActionsPrompt(product)));
+  // 「2本ずつ並列」で実行する（同時実行を2に抑えてレート制限を避けつつ、所要時間を約半分に）。
+  // 4本全並列だと無料枠のレート制限に当たり、4本逐次だとGroq枠切れ時にDeepSeekへ回って約50秒で
+  // serverless制限に近づく。2本ずつ＝両者のバランス（信頼性＋速度）。
+  const [aeoResult, funnelResult] = await Promise.all([
+    settleSeq(() => callAI(buildAEOPrompt(product))),
+    settleSeq(() => callAI(buildFunnelPrompt(product))),
+  ]);
+  await gap();
+  const [retentionResult, weekResult] = await Promise.all([
+    settleSeq(() => callAI(buildRetentionPrompt(product))),
+    settleSeq(() => callAI(buildWeekActionsPrompt(product))),
+  ]);
 
   // 各セクションを個別にパース（1つ失敗しても他は表示できる）
   const getRaw = (result: PromiseSettledResult<string>, section: string): string => {
