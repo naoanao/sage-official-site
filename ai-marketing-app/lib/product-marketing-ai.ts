@@ -160,9 +160,9 @@ async function callOnce(prompt: string): Promise<string> {
   throw new Error("empty response from all providers (groq/deepseek/gemini)");
 }
 
-// リトライ付き呼び出し（一過性のレート制限・空応答・ネットワーク失敗に強くする）。
-// 既定で最大3回（バックオフ 0.6s, 1.2s）。これで「生成に失敗しました」の頻発を防ぐ。
-async function callAI(prompt: string, retries = 1): Promise<string> {
+// 呼び出し（既定はリトライ0＝3プロバイダのフォールバックが冗長性を担う）。
+// retriesを上げると遅くなり serverless 制限(60s)に当たりやすいので、堅牢性はフォールバックで確保する。
+async function callAI(prompt: string, retries = 0): Promise<string> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -500,7 +500,7 @@ export async function generateProductMarketingPlan(
     try { return { status: "fulfilled", value: await fn() }; }
     catch (reason) { return { status: "rejected", reason } as PromiseRejectedResult; }
   };
-  const gap = () => new Promise((r) => setTimeout(r, 500));
+  const gap = () => new Promise((r) => setTimeout(r, 250));
 
   const aeoResult = await settleSeq(() => callAI(buildAEOPrompt(product))); await gap();
   const funnelResult = await settleSeq(() => callAI(buildFunnelPrompt(product))); await gap();
