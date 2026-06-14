@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateUserPlan, savePurchaseEvent } from "@/lib/db";
 import { createClient } from "@supabase/supabase-js";
+import { notify } from "@/lib/notify";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://growl-ai.com";
+const ADMIN_EMAIL = process.env.NOTIFY_ADMIN_EMAIL || "naofumi0930@gmail.com";
 
 // 代行(agency)の支払いを受けたら、保存済みの申込からAIが自動で広告を構築・配信する。
 // なおの代行口座(nao-agency)・自動ON(auto_activate)・予算は安全上限内。二重実行防止つき。
@@ -57,6 +59,16 @@ async function handleAgencyPayment(deviceId: string, email: string | null, amoun
     };
     await supabase.from("app_config").upsert({ key: `agency_pending_${deviceId}`, value: JSON.stringify(pending) });
   }
+
+  // なおへ即通知（入金＋広告状況）。資格情報が無ければ自動スキップ。
+  try {
+    await notify({
+      locale: "jp",
+      subject: "💰 Growl 代行 入金",
+      email: ADMIN_EMAIL,
+      message: `代行の入金がありました。\n金額: ¥${amount}\nメール: ${email || (pending?.email as string) || "-"}\nプラン: ${amount >= 9800 ? "全部込み(自動配信)" : "管理のみ(PAUSED)"}\n広告: ${(result.status as string) || "作成"}${result.activation_note ? " / " + result.activation_note : ""}\n→ /admin/leads`,
+    });
+  } catch { /* 通知失敗は無視 */ }
 }
 
 // Stripe署名検証 — Web Crypto API使用（npm不要、Sage実装と同じ方式）

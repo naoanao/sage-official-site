@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notify } from "@/lib/notify";
+
+const ADMIN_EMAIL = process.env.NOTIFY_ADMIN_EMAIL || "naofumi0930@gmail.com";
 
 export const maxDuration = 20;
 
@@ -68,6 +71,16 @@ export async function POST(req: NextRequest) {
         value: JSON.stringify(record),
       });
     }
+
+    // なおへ即通知（新規申込）。資格情報が無ければ自動スキップ。
+    try {
+      await notify({
+        locale: "jp",
+        subject: "🧲 Growl 新規 代行申込",
+        email: ADMIN_EMAIL,
+        message: `新規の代行申込が入りました。\nメール: ${record.email}\n業種: ${record.business?.industry || "-"}\n予算: ${record.budget ?? "-"}\nメモ: ${record.note || "-"}\n→ /admin/leads で確認`,
+      });
+    } catch { /* 通知失敗は本処理に影響させない */ }
 
     return NextResponse.json({
       success: true,
