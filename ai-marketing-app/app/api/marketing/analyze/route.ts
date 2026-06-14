@@ -888,7 +888,7 @@ export async function POST(req: NextRequest) {
 
     const promptFn = FRAMEWORK_PROMPTS[framework];
     if (!promptFn) {
-      return NextResponse.json({ error: "不明なフレームワークです" }, { status: 400 });
+      return NextResponse.json({ error: lang === "en" ? "Unknown framework." : "不明なフレームワークです" }, { status: 400 });
     }
 
     // URLがあれば実際にサイトを取得（失敗しても分析は続行）

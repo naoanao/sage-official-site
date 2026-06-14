@@ -241,7 +241,7 @@ export default function ProductMarketingPanel({ industry }: { industry?: string 
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{isEn ? "Price (¥) *" : "価格（¥） *"}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{isEn ? "Price ($) *" : "価格（¥） *"}</label>
               <input
                 name="price"
                 type="number"

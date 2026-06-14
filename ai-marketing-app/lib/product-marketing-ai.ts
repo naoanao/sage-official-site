@@ -127,12 +127,32 @@ async function callGemini(prompt: string): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-async function callAI(prompt: string): Promise<string> {
+// 1回分: Groq→Geminiフォールバック。空応答は失敗扱いにして上位でリトライさせる。
+async function callOnce(prompt: string): Promise<string> {
   try {
-    return await callGroq(prompt);
+    const r = await callGroq(prompt);
+    if (r && r.trim()) return r;
+    throw new Error("empty groq response");
   } catch {
-    return await callGemini(prompt);
+    const r = await callGemini(prompt);
+    if (r && r.trim()) return r;
+    throw new Error("empty response from both providers");
   }
+}
+
+// リトライ付き呼び出し（一過性のレート制限・空応答・ネットワーク失敗に強くする）。
+// 既定で最大3回（バックオフ 0.6s, 1.2s）。これで「生成に失敗しました」の頻発を防ぐ。
+async function callAI(prompt: string, retries = 2): Promise<string> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await callOnce(prompt);
+    } catch (e) {
+      lastErr = e;
+      if (attempt < retries) await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 // ─────────────────────────────────────────────────────────────
