@@ -127,17 +127,37 @@ async function callGemini(prompt: string): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-// 1回分: Groq→Geminiフォールバック。空応答は失敗扱いにして上位でリトライさせる。
+// DeepSeek（Groqがダメ／無料枠切れのときの移行先。Sageと同じ deepseek-chat）。
+async function callDeepSeek(prompt: string): Promise<string> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) throw new Error("DeepSeek: API key not set");
+  const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: 4000,
+    }),
+  });
+  if (!res.ok) throw new Error(`DeepSeek ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+// 1回分: Groq → DeepSeek → Gemini の順でフォールバック。
+// Groqが無料枠切れ/レート制限/障害のときは DeepSeek に移行（なお指示）。Geminiは429に弱いので最後。
+// 空応答も失敗扱いにして次のプロバイダ／上位リトライへ。
 async function callOnce(prompt: string): Promise<string> {
-  try {
-    const r = await callGroq(prompt);
-    if (r && r.trim()) return r;
-    throw new Error("empty groq response");
-  } catch {
-    const r = await callGemini(prompt);
-    if (r && r.trim()) return r;
-    throw new Error("empty response from both providers");
-  }
+  // 1) Groq（一次・高速・無料）
+  try { const r = await callGroq(prompt); if (r && r.trim()) return r; } catch { /* fall through */ }
+  // 2) DeepSeek（Groqがダメ・無料枠切れの移行先）
+  try { const r = await callDeepSeek(prompt); if (r && r.trim()) return r; } catch { /* fall through */ }
+  // 3) Gemini（最後の砦）
+  const r = await callGemini(prompt);
+  if (r && r.trim()) return r;
+  throw new Error("empty response from all providers (groq/deepseek/gemini)");
 }
 
 // リトライ付き呼び出し（一過性のレート制限・空応答・ネットワーク失敗に強くする）。
