@@ -351,6 +351,33 @@ export async function getAllUsersForCron() {
   return data ?? [];
 }
 
+// メール配信の購読者を取得（英語圏ユーザー向け・LINE代替）。
+// 新テーブル不要: app_config の emailsub_{device_id} = {email, lang} に保存している。
+export async function getEmailSubscriptions(): Promise<Record<string, { email: string; lang: "ja" | "en" }>> {
+  const db = getServer();
+  const map: Record<string, { email: string; lang: "ja" | "en" }> = {};
+  try {
+    const { data } = await db.from("app_config").select("key,value").like("key", "emailsub_%");
+    for (const r of data ?? []) {
+      try {
+        const v = JSON.parse((r as { value: string }).value);
+        const dev = (r as { key: string }).key.replace("emailsub_", "");
+        if (v?.email) map[dev] = { email: String(v.email), lang: v.lang === "ja" ? "ja" : "en" };
+      } catch { /* skip malformed */ }
+    }
+  } catch { /* table missing → empty */ }
+  return map;
+}
+
+// メール購読を保存（device_id単位・上書き）。
+export async function saveEmailSubscription(deviceId: string, email: string, lang: "ja" | "en"): Promise<void> {
+  const db = getServer();
+  await db.from("app_config").upsert({
+    key: `emailsub_${deviceId}`,
+    value: JSON.stringify({ email, lang, created_at: new Date().toISOString() }),
+  });
+}
+
 export async function getWeeklySessionForUser(userId: string, weekStart: string) {
   const db = getServer();
   const { data, error } = await db

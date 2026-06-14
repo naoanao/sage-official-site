@@ -15,6 +15,30 @@ export default function LineOnboardingPage() {
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
 
+  // 英語圏ユーザー向け: メール配信の登録（LINEの代替チャネル）
+  const [email, setEmail] = useState("");
+  const [subEmailBusy, setSubEmailBusy] = useState(false);
+  const [subEmailDone, setSubEmailDone] = useState(false);
+  const [subEmailErr, setSubEmailErr] = useState("");
+
+  async function subscribeEmail() {
+    setSubEmailErr("");
+    if (!email.includes("@")) { setSubEmailErr("Please enter a valid email."); return; }
+    setSubEmailBusy(true);
+    try {
+      const deviceId = localStorage.getItem("growl_device_id") || "global";
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId, email: email.trim(), lang: "en" }),
+      });
+      const data = await res.json();
+      if (data.success) setSubEmailDone(true);
+      else setSubEmailErr(String(data.error || "Failed"));
+    } catch (e) { setSubEmailErr(String(e)); }
+    setSubEmailBusy(false);
+  }
+
   const LINE_ADD_URL = process.env.NEXT_PUBLIC_LINE_BOT_URL ?? "https://line.me/R/ti/p/@growl";
 
   useEffect(() => {
@@ -61,24 +85,48 @@ export default function LineOnboardingPage() {
     }
   }
 
-  // English users: LINE is Japan-only — show a clear "go to dashboard" screen instead
+  // English users: LINE is Japan-only. Offer EMAIL delivery instead (region-appropriate channel).
   if (isEn) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
-          <div className="text-5xl mb-4">🚀</div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">You&apos;re all set!</h1>
-          <p className="text-sm text-gray-500 leading-relaxed mb-8">
-            Your profile is ready. Head to your dashboard to generate<br />
-            AI-powered marketing actions for your business.
-          </p>
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl transition-colors"
-          >
-            Go to Dashboard →
-          </button>
+          {subEmailDone ? (
+            <>
+              <div className="text-5xl mb-4">📬</div>
+              <h1 className="text-xl font-bold text-gray-900 mb-2">You&apos;re subscribed!</h1>
+              <p className="text-sm text-gray-500 leading-relaxed mb-8">
+                We&apos;ll email your 3 ready-to-use marketing actions every Monday.
+              </p>
+              <button type="button" onClick={() => router.push("/dashboard")}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 rounded-2xl transition-colors">
+                Go to Dashboard →
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-5xl mb-4">📧</div>
+              <h1 className="text-xl font-bold text-gray-900 mb-2">Get your 3 actions by email</h1>
+              <p className="text-sm text-gray-500 leading-relaxed mb-5">
+                Every Monday, we&apos;ll email ready-to-use marketing actions tailored to your business. No app to install.
+              </p>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 mb-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+              {subEmailErr && <p className="text-xs text-red-500 mb-2">{subEmailErr}</p>}
+              <button type="button" onClick={subscribeEmail} disabled={subEmailBusy}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white font-semibold py-4 rounded-2xl transition-colors">
+                {subEmailBusy ? "..." : "Email me weekly →"}
+              </button>
+              <button type="button" onClick={() => router.push("/dashboard")}
+                className="w-full mt-3 text-gray-400 hover:text-gray-600 text-sm py-2">
+                Skip — just go to dashboard
+              </button>
+            </>
+          )}
         </div>
       </main>
     );

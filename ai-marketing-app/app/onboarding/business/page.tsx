@@ -17,7 +17,7 @@ const EXAMPLES_JA: Record<string, string> = {
 };
 
 const EXAMPLES_EN: Record<string, string> = {
-  restaurant: "We run a small yakitori izakaya as a couple in our neighborhood",
+  restaurant: "We run a cozy neighborhood Italian restaurant serving handmade pasta",
   salon: "I do eyelash extensions and eyebrow design from my home salon",
   ec: "I sell handmade accessories on Etsy and Shopify",
   professional: "I'm a freelance accountant helping self-employed individuals with tax returns",

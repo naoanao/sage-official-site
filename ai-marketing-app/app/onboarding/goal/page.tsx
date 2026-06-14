@@ -139,7 +139,7 @@ export default function GoalPage() {
             type="button"
             onClick={() => router.push("/onboarding/problem")}
             className="text-gray-400 hover:text-indigo-500 transition-colors p-1 -ml-1 mr-2"
-            aria-label="前のステップに戻る"
+            aria-label={t("ob.back")}
           >
             {t("ob.back")}
           </button>

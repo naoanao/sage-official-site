@@ -36,7 +36,7 @@ export default function ProofPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <ProgressBar step={5} total={6} />
+        <ProgressBar current={5} total={5} />
 
         <div className="text-center mb-6 mt-4">
           <span className="text-4xl">✨</span>
