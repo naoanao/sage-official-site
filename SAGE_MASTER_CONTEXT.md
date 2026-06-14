@@ -3,7 +3,7 @@
 > Sageシステムの全体構造・なおさんのアイデンティティ・既知問題と解決策を含む。  
 > 「2ヶ月に一回同じことを繰り返す」を防ぐためのシステムメモリ。
 
-最終更新: 2026-06-09（Phase1 収益化実装完了・全欠落モジュール復元・Vercel再設定・GA4+Vercel Analytics・本番デプロイ）
+最終更新: 2026-06-14（AI広告代行モデル + 英語圏対応 + メール基盤/リスト/一斉配信 + Resend有効化 + GROQ鍵修正。詳細は §3a-3）
 
 ---
 
@@ -48,7 +48,7 @@ Claude Code / Cowork などの外部AIツールは、SageというAI分身の**�
 | プロダクト | 役割 | URL / 場所 |
 |---|---|---|
 | **Sage AI** | 自動SNS投稿システム（Bluesky + Instagram + YouTube Shorts） | kanagawatable / kanagawajapan |
-| **Growl** | AIマーケ総合ツール（週次アクション生成・商品マーケAI・フレームワーク分析） | growl-app.vercel.app |
+| **Growl** | AIマーケ総合ツール（週次アクション生成・商品マーケAI・フレームワーク分析） | growl-ai.com（旧: growl-app.vercel.app） |
 | **LearnAI** | AI学習支援ツール（Growl内 /learn にも統合済み） | LearnAI.html (local) |
 
 ### SNSアカウント
@@ -116,6 +116,49 @@ Claude Code / Cowork などの外部AIツールは、SageというAI分身の**�
 - `ai-marketing-app/app/dashboard/page.tsx` — Meta広告をisPaidPlan()でゲート
 - `ai-marketing-app/app/complete/[id]/page.tsx` — 支援バナー追加
 - `ai-marketing-app/lib/stripe-config.ts` — Stripe設定（変更なし・参照のみ）
+
+---
+
+## 3a-3. AI広告代行 ＋ 英語圏対応 ＋ メール基盤 実装ログ（2026-06-13〜14）
+
+> ⚠️ AIへ: ここが直近の大きな変更点。次回はまずここを読むこと。
+
+### A. AI広告代行（done-for-you）モデル（6/13〜14）
+セルフサーブ(OAuth)ではなく「AIが全部やる代行」に方針転換。非技術系SMB向けに最高の顧客体験。
+- 入口: `/agency` LP（ピッチ＋2プラン）、トップに導線。`/start` 専用LP。
+- 流れ: AdBoostCardで広告生成 → 「おまかせ」選択 → Stripe決済 → webhookがAIで広告自動構築。
+- 2プラン: **管理のみ**（¥2,980/$19・支払い後PAUSED・広告費は客負担＝立替ゼロ）/ **フルおまかせ**（¥9,800/$79・広告費込み・支払い後 auto_activate）。
+- 安全機構: コンプラ事前審査(preflight)、予算ハード上限、数値主張のハルシネーション警告、Sage番人(`/api/cron/ad-guardian`)が浪費adsetをPAUSE＋勝者を+20%スケール。
+- Meta接続: System User無期限トークンを `/admin/connect` で登録（OAuth不要）。device_id=`nao-agency`。
+- 客向けレポート: `/api/admin/report`（spend/CTR/CPC/CPA）。申込管理: `/admin/leads`。
+- 実写真アップロード(imgbb)、地域(半径)ターゲティング(geo-search)対応。
+
+### B. 英語圏対応（6/14）
+- `/agency`・`/start` をバイリンガル化（`useLang`）。新規英語ユーザーは既定で英語表示。
+- 代行プランの**USD決済リンク**作成（$19=price_1Ti87J... / $79=price_1Ti87J...）。`buildAgencyUrl/buildAgencyFullUrl(deviceId, currency)` で通貨自動切替。webhookはJPY(¥2,980/¥9,800)とUSD($19/$79=1900/7900セント)両対応。
+- オンボーディングのLINEステップ: 英語ユーザーには非表示 → 代わりに**メール登録**画面（地域対応）。
+- 英語QA(実機)で確認OK: トップ/LP/オンボ全5/ダッシュボード3アクション/市場分析(/marketing)/Learn/月次レポート(/report)/価格(/upgrade $0/$29/$79)/Meta広告生成API — すべて英語で動作。
+
+### C. メール基盤（6/14）
+- 通知ユーティリティ `lib/notify.ts`（Resend / Telegram / LINE、地域適応）。
+- 英語ユーザー向け**週次メール配信**（LINE代替）: `/api/subscribe` で購読保存、`cron/notify` が `getEmailSubscriptions()` を見て英語ユーザーへ英語メール送信。
+- **全メールリスト統合** `lib/subscribers.ts` + `/api/admin/subscribers`（weekly/agency/customer/waitlist/user を重複排除、`?format=csv` でエクスポート）。
+- **一斉配信(ローンチ)** `/api/admin/broadcast`（dry_run既定・test_to・言語/収集元セグメント・テストデータ除外）。将来の新機能告知用。
+
+### D. インフラ/運用（6/14・重要）
+- **Resend鍵をVercelに追加** → メール実送信が有効化（notify-test=ok確認済み）。届け先は `naofumi0930@gmail.com`。
+- **GROQ_API_KEYをVercelで更新**（5月1日の古い鍵が無効で、Product Marketingの4並列生成がGemini 429へフォールバックして失敗していた。.envの現行鍵に更新して解消）。
+  - 📌 重要な学び: AI生成が「○○の生成に失敗しました」で落ちるときは、まずVercelの GROQ_API_KEY が .env と一致しているか確認する。
+- Product Marketing生成を並列→**逐次＋throttle＋リトライ**化（レート制限耐性）。それでも無料枠TPMが重いので、連続生成は失敗しうる（単発はOK）。
+- Cowork定期タスク `growl-agency-leads-check`（毎日18時に新規代行申込をチェックしてなおへ通知）。
+
+### ⚠️ 中途半端・未完・既知の制限（次にやる候補）
+- **Product Marketing**: ✅堅牢化済み（2026-06-14）。フォールバック **Groq → DeepSeek → Gemini**（`callOnce`）＋セクションを**2本ずつ並列**実行で、serverless 60s内に安定生成（実測〜37s・2回連続成功）。📌 Vercelの GROQ_API_KEY は .env と一致必須（古いと全部Gemini 429へ落ちる）。DEEPSEEK_API_KEY も同様に有効性を保つこと。
+- **通知Telegram**: Vercel未設定（Email稼働・LINE稼働。Telegramは任意）。
+- **セルフサーブOAuth（Meta/TikTok）**: サンドボックス/未承認。実ユーザーは連携不可（代行フローで回避中）。タスク#24-27ペンディング。
+- **テストデータ清掃**: ✅完了（2026-06-14）。Supabase 8件削除（`/api/admin/cleanup-test`）。Metaテスト広告14件アーカイブ（`/api/admin/campaigns` POST ids=...）。残置=pilot 120248484516140389 と なおの旧実広告2件（春の転職大応援/春のメルマガ）。新エンドポイント: `/api/admin/campaigns`（GET一覧・POST ids=でARCHIVED）, `/api/admin/cleanup-test`。
+- **軽微な英語の粗**: 一部API失敗時のエラー文が日本語固定（通常は出ない）。
+- **将来の効率化**: Vercel APIトークンを発行して.envに置けば、今後の環境変数追加・更新をAIが代行可能（鍵入力欄への貼付だけは安全上AIができないため、これで手作業ゼロ化）。
 
 ---
 
@@ -605,6 +648,19 @@ Sage_Final_Unified/
 | 2026-06-09 | **Vercel再設定+本番デプロイ**: RootDirectory修正 (. → ai-marketing-app→変更前)。Reconnect + Redeploy。`growl-app.vercel.app` に最新版反映確認済み |
 | 2026-06-09 | **Phase1 収益化実装**: Standard $19→$29, Pro $49→$79。診断結果に有料ゲート追加（無料→アップグレードCTA, 有料→オンボーディング）。Vercelデプロイ完了 |
 | 2026-06-09 | **Vercel Root Directory修正**: Vercelプロジェクト設定のRoot Directoryを `ai-marketing-app` → `.` に修正。デプロイ復旧 |
+| 2026-06-12 | **カスタムドメイン growl-ai.com 追加**: Vercel CLI で growl-app プロジェクトに追加。コードベース全36箇所のURL置換。本番デプロイ完了 |
+| 2026-06-12 | **サブスクリプションゲート部品移植**: saas-template から PlanBadge / useSubscription / verify-subscription API を移植。ダッシュボードヘッダーにプランバッジ表示 |
+| 2026-06-12 | **SpaceBackground + dark hero**: Sage 旧管理画面の Canvas 星空背景を Growl に移植。LP hero セクションを dark 化 |
+| 2026-06-12 | **管理画面移植計画策定**: docs/adr/dashboard-migration-plan.md 作成。全6エンドポイント中3つが broken であることを特定 |
+| 2026-06-12 | **dev.to自動投稿を収益化向けに一本化**: dev.to投稿源が3系統重複（Cowork `devto-daily-article`毎日 + Cowork `aeo-revenue-autopilot`月木 + Flask `BlogScheduler`毎日）し、毎朝2本ばらまき・閲覧<25・売上0だった。最適化: ①`devto-daily-article`を停止 ②`aeo-revenue-autopilot`を月木→**月水金（週3）**に増強し収益軸に集中 ③`blog_scheduler.py`の`_post_devto`をコメントアウトしdev.to二重投稿を停止（ブログ生成・SNSキューは継続）。**要Sage再起動で③反映**。 |
+| 2026-06-12 | **ブログCTAを動的化（Growl優先）**: 旧 `_generate_article` のCTAは「Sage 3.0 Developer Blueprint $49（開発者向け・売上0）」固定でGrowl(飲食店SaaS)と不一致だった。トピック判定で出し分けに変更: 飲食店/マーケ寄り or 曖昧→**Growl**(growl-app.vercel.app)、明確に開発/自動化のみ→Blueprint。「迷ったらGrowl」重みづけ。実装: `blog_scheduler.py` `_generate_article` に `growl_cta`/`blueprint_cta` + キーワード判定 `cta` を追加し、プロンプト末尾を `{cta}` に。 |
+| 2026-06-12 | **🔴BlogScheduler crash修正（欠落モジュール notion_agent）**: 再起動で発覚。`BlogScheduler`→`notion_content_pool`(import NotionAgent)→`backend/modules/notion_agent.py`が欠落しImportErrorでスレッドがstartup crash。**＝Flask側ブログ自動化は実は一度も動いていなかった**（dev.to投稿はCowork側タスクの分のみ）。対処: `.claude/worktrees/*/backend/modules/notion_agent.py`(4つとも同一md5)から `backend/modules/notion_agent.py` へ復元→再起動で `[BLOG] BlogScheduler initialized dry_run=False` を確認。**教訓**: 「欠落モジュール問題」は再発する（過去にnotion_content_pool等も同様に復元済）。BlogScheduler等が動かない時は flask_stderr.log の `Thread Error: No module named` を確認し worktree から復元すること。 |
+| 2026-06-12 | **Sage再起動運用メモ**: `restart_sage_now.bat`（=`run_sage.ps1`）で python全kill→Flask/ngrok/Vite再起動。起動完了まで約70〜90秒。死活は ngrok公開URL(pending-ngrok-start問題で当てにならない)でなく `logs/flask_stderr.log` の `GET /health ... 200` と `BlogScheduler initialized` で確認するのが確実。backend変更（blog_scheduler.py/notion_agent.py）はローカルのみ・Vercel/push不要・git未コミット。 |
+| 2026-06-13 | **🟢growl-ai.com DNS復旧（lame delegation）**: SERVFAILの原因はXServerで「ネームサーバー未有効化」。XServer Domain管理→ネームサーバー設定→「**XServer Domain**」を選択(「その他のサービス」でNS=www.growl-ai.comになっていたのが誤り)→ns1-3.xdomain.ne.jp に委任。数分でapex/www とも解決(216.198.79.1 / vercel-dns)、Vercelで3つ✅Valid。OAuth/Meta接続/App審査デモの前提が開通。参考: zenn.dev/mirai015/articles/36b07d95917554 |
+| 2026-06-13 | **Vercel二重プロジェクト整理**: `growl-app`(本命・growl-ai.com所有)と`ai-marketing-app`(←sage-official-site repo・重複)が併存。ai-marketing-appはgrowl-ai.com未所有(競合なし)だったが残骸のため**Git連携を解除**(自動デプロイ停止・設定は保持で再接続可)。push先リモートは現 `origin`=growl-app(旧`growl`から改名)、`sage`=sage-official-site。run_sageはoriginのみpush。 |
+| 2026-06-13 | **連携の一般ユーザー可否確認**: ✅LINE=誰でも可(公式@growl友だち追加+6桁コード方式・審査不要、link/status本番200) ／ ❌TikTok=Sandboxで登録テスターのみ(App Review必要・redirect既定が旧URL) ／ ❌Meta広告=ads_management「テスト準備完了」(Standard)でAdvanced未取得・なお管理者のみ(App Review必要)。 |
+| 2026-06-13 | **🔴Meta App Review = Tech Provider化が必要(取り消し不可)と判明**: ads_managementをApp Reviewに追加するには「Tech Provider」になる必要があり、ビジネス認証+アクセス認証+厳格データ要件+取り消し不可。個人事業主には重い。→**代替: なお自身の広告アカウントで「AI全自動・広告代行(done-for-you)」モデル**(Tech Provider/審査/初期費用不要・顧客が広告予算先払い)を採用方針に。設計書 `GROWL_AI_AD_AGENCY_BLUEPRINT.md`・リサーチ `GROWL_MONETIZATION_RESEARCH_2026-06-12.md`。 |
+| 2026-06-13 | **広告代行AIの基盤実装(commit c8c29e0 → growl-app)**: ①generateに**全業態適応SMBプレイブック**(実店舗/地域サービス/士業/EC/デジタル/B2Bの6型で目的・CTA・訴求を切替。飲食店専用から脱却) ②submitに**コンプラ事前審査**(個人属性暗示/非現実成果/制限カテゴリ→出稿Block・最上級→警告。node検証済) ③**予算ハード上限**(¥50,000/$500/日)。全広告PAUSED作成は維持。 |
 
 ## 8c. 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定） 精緻な部分的詳細機能の動作状況チェック（2026-05-28 策定）
 
@@ -701,7 +757,7 @@ Sage_Final_Unified/
 - **売上：0円**（PH Launch Day 当日。Stripe稼働中、AppSumo申請済み）
 - **note**：4本投稿済み。週1ペースで継続中。
 - **Bluesky**：2アカウント自動投稿稼働中（1〜2投稿/日）
-- **Growl**：growl-app.vercel.app で課金受付中（¥3,000/¥8,000）
+- **Growl**：growl-ai.com で課金受付中（¥3,000/¥8,000）
 - **Sage Blueprint**：Gumroad $49。販売文リライト済み。売上0。
 
 ### 大原則
@@ -742,7 +798,7 @@ Sage_Final_Unified/
 - **週1投稿**ペースを維持（Sage自動生成 + なおさんが確認・公開）
 - **文体**: 場面先行。断言調。フレームワーク後出し。（n6c8621f787a2スタイルを基準とする）
 - **ハッシュタグ**: #マーケティング #中小企業 #個人事業主 #AI活用 を毎回付ける
-- **CTA**: 末尾1行のみ。Gumroadかgrowl-app.vercel.appへのリンク（なくてもいい）
+- **CTA**: 末尾1行のみ。Gumroadかgrowl-ai.comへのリンク（なくてもいい）
 - **記事資産**: `backend/data/note_article_assets.json` を参照。AIDA/STP/3C/SWOT/PESTの流れ、公開URL、文体メモ、次回接続メモを保存済み。
 - **公開記事解析**: `python -m backend.modules.note_article_analyzer <note_url>` でnote本文・文字数・文体特徴を取得できる。次の記事生成前に直近記事を必ず確認する。
 - **基本シリーズ**: 過去の現場経験を、今マーケターとして復習・言語化する。記事内では「当時から理論で実行していた」と言わず、「あとから振り返ると近かった」と書く。
@@ -1282,6 +1338,7 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 | 3 | 低価格商品作成: 50 AI Marketing Prompts for Restaurant Owners（PDF 4p生成→Gumroad出品・公開） | ✅ **販売中 $9.99** | naofumi3.gumroad.com/l/itawej |
 | 4 | 商品コンテンツ原本 | ✅ | backend/cognitive/PRODUCT_RESTAURANT_PROMPT_PACK_50.md |
 | 5 | 2026-06-11 autopilot: Dev.to記事#2公開（review replies）+レーンA Quora回答1件（AI tools chaos質問）+コメント0+Gumroad売上0。次回: テーマ#3+レーンB Medium転載 | ✅ | dev.to/naoanao/how-to-reply-to-negative-google-reviews-with-ai-templates-inside-3mf8 |
+| 6 | 2026-06-12 autopilot: **⚠️ プレイブック消失**（backend/cognitive/MONETIZATION_AUTOPILOT_PLAYBOOK.md がディスクに存在せず・git未コミットで復元不可）。記事執筆・レーンBはテーマキュー/禁止事項を確認できないためスキップ（捏造回避）。実行できた分: Dev.toコメント0件（返信不要）・Gumroad売上0。**なおさん対応必要: プレイブックを復元or再作成（§12cログから再構築可、AIに依頼可）** | ⚠️ 部分実行 | — |
 
 ### ❌ 試行して不可だったこと（繰り返し禁止リスト追加）
 - **HN Show HN**: 「Show HN一時制限中。新規アカウントはまずコメントでコミュニティ参加を」と拒否される。→ なおさんがHNで数週間コメント活動してkarmaを積むまでShow HN不可
@@ -1343,7 +1400,7 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 
 #### 現在の動作確認済み状態（2026-06-04）
 
-- **Growlダッシュボード** → `growl-app.vercel.app` で稼働中
+- **Growlダッシュボード** → `growl-ai.com` で稼働中
 - **Meta広告生成API** → `/api/meta-ads/generate` 正常動作
 - **Meta広告出稿API** → `/api/meta-ads/submit` 正常動作（PAUSED状態で作成）
 - **user_meta_tokens テーブル** → Supabase に存在・RLS有効
@@ -1396,39 +1453,221 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 | 3 | Quora回答「What is the best way to promote a restaurant?」 | ✅ 投稿済み | 179答え・285フォロワーの人気質問に追加 |
 | 4 | Gumroad `apvbzh` 販売文 | ✅ 確認済み | 「I'm a restaurant owner in Japan...」で始まる新コピー適用済み |
 | 5 | Uneed.best Growl提出 | ❌ **vercel.appドメイン不可** | カスタムドメイン取得後に再挑戦 |
-| 6 | SaaSHub登録 | ❌ **アカウント作成必要** | なおさんがnaofumi0930@gmail.comで登録→DISTRIBUTION_SUBMISSION_KIT.md参照 |
-| 7 | Show HN | ❌ **HNアカウントのログイン必要** | REDDIT_HN_POSTS_20260529.mdにテキスト完成済み |
-| 8 | Fazier Growl登録 | ⏳ **バッジ検証待ち** | 3コメント完了・layout.tsxにバッジ追加・git push完了（917cb43）。Vercelデプロイ後「Verify Badge」要 |
-| 9 | CLAUDE.mdに究極ビジョン追加 | ✅ 完了 | 「人とAIで、地球環境の保全、育成、活用し、この地球すべての生き物の楽園を創造する」を最上部に強調表示 |
-| 10 | Dev.to トラフィック確認 | ✅ 確認 | 3本 < 25views。昨日投稿のため正常。SEOは2〜4週で効き始める |
-
-### Fazier残作業（次のAIセッションで確認）
-1. growl-app.vercel.appにバッジが表示されているか確認（git push 917cb43で追加済み）
-2. https://fazier.com/launch にアクセス → 「Verify Badge」をクリック → 登録完了
-
-### 繰り返し禁止リスト（既に試したが不可）
-- **Uneed.best** → vercel.appドメイン不可。カスタムドメイン必要
-- **Reddit** → ブラウザセキュリティで遮断。なおさんが手動でREDDIT_HN_POSTS_20260529.mdからコピペ
-- **SaaSHub/AlternativeTo** → アカウント作成が必要（私には不可）
-
-*このファイルはSage AIが自律的に更新する（Tier 1アクション）*  
-*新しい問題解決・発見があるたびに該当セクションを更新すること*
-
+| 6 | SaaSHub登録 | ❌ **アカウント作成�
 ---
 
-## Sage Execution Contract
-### Operating principles
-Sage は「賢い応答」より「再起動可能な実務OS」であることを優先する。毎回の作業は、起動の固定 → 実行の分離 → 停止と再開 の3段階で回す。
+## 13. Meta広告代行：自分の広告アカウント接続＆検証完了（2026-06-13）
 
-### Non-negotiables
-- セッション開始時に `AGENTS.md` と `docs/adr/progress-log.md` を確認する。
-- Plan / Build / Verify を混ぜない。
-- 1セッションで扱う対象は1タスクに絞る。
-- 変更後は必ず検証し、緑なら止まる。
-- 重大な依存変更や挙動変更は、先に characterization tests を追加する。
+### ✅ 達成（agency-001）— 「お客さんの広告をAIが作って入稿」の土台が動作
+- **接続方式の確定**: OAuthボタン(60日・ブロック頻発)でなく **Business Manager の System User トークン** で接続。
+  - System User `growl-agency` (ID:61590753811739, Adminロール) を作成 → 広告アカウント `act_1917298491960086`(全権限) と FBページ2件(広告/コンテンツ/インサイト) を割当 → アプリ `sege3.0`(ID:1228008508773411) に system user を追加(アプリを管理) → トークン生成(スコープ: ads_management / pages_show_list / pages_manage_ads / pages_read_engagement)。
+  - ⚠️ **新Business Suite UIは「無期限」を出さず60日 or 1回限りのみ**。→ 60日で運用し、**期限前にSageが自動再発行**する方針(実質無期限を自動化で実現)。【未実装の次タスク = auto-refresh-001】
+- **登録経路**: 管理者用フォーム `growl-ai.com/admin/connect`(ADMIN_SECRETゲート, fail-closed) にトークンを貼る → サーバが60日長期トークンに交換 → `user_meta_tokens`(device_id=`nao-agency`) に保存。ADMIN_SECRET は Vercel env に設定済(値は別管理)。
+- **エンドツーエンド検証(本番 growl-ai.com)**:
+  - 正常系: device_id=nao-agency でPAUSEDテスト広告作成成功(campaign 120248483518890389 ほか / 予算300円正しく換算 / 警告なし)。
+  - 異常系: 違反コピー(個人属性「糖尿病」/「必ず月収100万」/「100%」/「7日で痩」/「日本一」)は **blocked=true で出稿中止**。安全ガード作動を確認。
+- **残課題**: ①Sageによるトークン自動再発行(auto-refresh-001) ②接続ページが pages[0]=「Solutions Engineering Team」固定→本番では正しいページに切替必要 ③テスト用PAUSEDキャンペーン(120248483518890389)は要削除(任意)。
 
-### Performance strategy
-- 同期HTTPで重いAI処理を抱え込まない。
-- 長い処理は job_id 付き非同期ジョブに逃がす。
-- 軽量タスクと重いタスクでモデル階層を分ける。
-- フリーズや遅延は、モデルの賢さではなくハーネスで制御する。
+### 🔁 追記(2026-06-13): トークンは実際には「無期限」だった（auto-refresh-001 解決）
+- `/api/admin/refresh-meta-token`(ADMIN_SECRET必須, GET/POST, device_id指定可) をデプロイ(commit 2508d22)。System User再発行→fb_exchange_tokenフォールバック→debug_tokenで期限確認→user_meta_tokens更新。
+- **本番テスト結果**: `{method:"fb_exchange_token", old_expires_at:0, new_expires_at:0, never_expires:true}`。
+- ⇒ **接続済みトークンは expires_at=0 ＝ 無期限**。新Business Suite UIの「60日」表示は選択肢の話で、アプリ経由で交換した実トークンは失効しない。なおさんの「一度きり・無期限」は達成済み。
+- 月次の自動再発行は「安全網」として保持（必須ではない）。スケジュール自動実行は未設定（無期限のため不要・希望時に追加可）。
+
+### 追記(2026-06-13): 掲載ページ切替＆初回パイロット広告(Growl自社宣伝)を本番作成
+- `/api/admin/set-page`(commit 6179966) デプロイ。page一覧: Solutions Engineering Team(173041465895454) / クリエイティブコンテンツLab(100969749629377)。
+- nao-agency の page_id を **クリエイティブコンテンツLab(100969749629377)** に切替（広告主表示ページ）。
+- 初回本番キャンペーン = **Growl自体の宣伝**（見込み客=中小事業者の獲得→将来のパイロット顧客に繋げる）。AI生成→PAUSEDで入稿成功。campaign 120248484516140389 / ¥500/日 / 警告なし。配信方針=PAUSEDで確認→なおが手動ON。
+- テスト用PAUSEDキャンペーン 120248483518890389 は削除予定(P3, Adsで手動)。
+
+### 追記(2026-06-13): 手作業ゼロ運用の核 — AI自動承認→自動ON＋Sage番人(commit be50350)
+- **運用モデル方針**: 完全セルフサーブ(=Meta App Review必須・数週間)は後回し。当面は「代行＋AI自動チェック→自動ON」で手作業ほぼゼロ運用。App Reviewは有料顧客がついて伸びが見えてから。
+- **submit に auto_activate オプション追加**: ①コンプラBlockなし ②警告ゼロ ③広告要素充足 ④日予算≤自動ON上限(¥1,000) を全て満たす時のみ ACTIVE化。1つでも欠ければPAUSED保留＋理由返却(=怪しいものだけ人が見る)。ACTIVE化してもMeta側広告審査を通るまで配信されない(二重チェック)。
+- **/api/cron/ad-guardian (ADMIN_SECRET必須)**: 配信中広告を点検し、(a)spend≥waste_spendでリンククリック0=無駄遣い (b)CPC>目標×1.5 (c)累計spend>hard_stop(¥20,000)=暴走 を自動PAUSE。毎日実行想定。
+- **本番テスト**: 予算¥3000(上限超)→自動ONせずPAUSED保留(ゲート作動・実費0)を確認。guardianは正常応答(checked0/paused0)。
+- **要片付け(P3)**: テスト用PAUSEDキャンペーン 120248483518890389 と 120248484809730389 は削除可。パイロット 120248484516140389 は保持。
+- **未実施**: guardianの毎日自動実行スケジュール(Cowork定期 or Vercel cron)。広告がライブになってから設定で可。
+
+### 🧭 2026-06-13 セッション総括（このセッションで何をしたか・未完了リスト）
+**完了して本番デプロイ＆動作確認済み:**
+1. ADMIN_SECRET を Vercel(growl-app) に設定＋再デプロイ。
+2. Meta接続=System Userトークン方式を確立 → `user_meta_tokens(device_id=nao-agency)` に保存。トークンは expires_at=0 ＝**無期限**を確認。
+3. 管理エンドポイント3本デプロイ: `/api/admin/connect-account`(接続)・`/api/admin/refresh-meta-token`(自動再発行)・`/api/admin/set-page`(掲載ページ切替)。全てADMIN_SECRETゲート。
+4. 掲載ページを **クリエイティブコンテンツLab(100969749629377)** に設定。
+5. パイロット広告(Growl自社宣伝)をAI生成→PAUSEDで入稿: campaign `120248484516140389` / ¥500・日 / クリエイティブコンテンツLab / 警告なし。
+6. submit に **auto_activate**(AI自動承認→自動ON, 上限¥1,000・警告ゼロ時のみ)を追加。
+7. **/api/cron/ad-guardian**(無駄/不調/暴走を自動PAUSE)を追加。
+8. コンプラ自動審査(違反ブロック)・自動ONゲート(予算超で保留)・guardian、いずれも本番テスト合格。
+
+**未完了/保留(中途半端ではなく意図的な保留・なお待ち):**
+- [なお手動] テスト用PAUSEDキャンペーン削除: `120248483518890389`, `120248484809730389`（パイロット `120248484516140389` は残す）。
+- [なお手動] パイロット `120248484516140389` を Ads Manager で確認→ON（要・支払い方法登録／実費発生）。
+- [保留] guardian の毎日自動実行スケジュール → 広告がライブになってから設定。
+- [保留] auto_activate の「上限内→実際にACTIVE化」happy pathは実費回避のため未実行検証（ゲート保留側は検証済・ロジックは単純なPOST status=ACTIVE）。
+- [後回し・要数週間] 完全セルフサーブ=Meta App Review＋ビジネス認証（有料顧客がついてから）。tasks: セルフサーブ①〜④。
+- [無害な残骸] デスクトップに cmd ウィンドウ複数／repo直下に push_refresh_token.bat・push_set_page.bat・push_auto_guardian.bat（未追跡・デプロイには無関係）。
+
+### 📈 追記(2026-06-13): トップマーケター視点の改善 — IMP1 CV計測＋IMP2 専用LP 完了(commit a4fd44b)
+- **背景**: パイロット評価で「目的がOUTCOME_TRAFFIC=クリック最適化(客でなく安いクリックを買う)」「遷移先がトップページ」「Pixel無し=計測ゼロ」を最大の弱点と特定。
+- **IMP2 専用LP `/start`**: 広告メッセージ一致・アウトカム先行見出し「広告は、AIに3分で作らせる時代。」・単一CTA(→/onboarding/industry)・CTAでPixel `Lead` 発火。本番表示OK。
+- **IMP1 Meta Pixel**: `app/layout.tsx` に NEXT_PUBLIC_META_PIXEL_ID 駆動でPixel設置(PageView)。`/start`のCTAで `Lead` 発火。
+- **Pixel ID = 371800622515161**（既存 `/api/admin/ensure-pixel` で取得）。Vercel env `NEXT_PUBLIC_META_PIXEL_ID` に設定(公開値・非Sensitive)→再デプロイ済。
+- **submit をCV対応**: Pixelありなら objective=OUTCOME_LEADS / optimization_goal=OFFSITE_CONVERSIONS / promoted_object={pixel_id, custom_event_type:LEAD}。無ければ従来トラフィックに安全フォールバック。
+- **本番検証**: fbq稼働=true・PixelID in HTML=true・CV最適化入稿 success（campaign 120248487917640389 ※テスト, 要片付けに追加）。
+- **残り = IMP3**: 複数クリエイティブ生成→複数広告で同時テスト→guardianを「負け速攻kill＋勝ちに+20-30%スケール＋疲労差し替え」に拡張（=PDCA/OODAの自動化）。未着手。
+- 片付け対象キャンペーン追加: `120248487917640389`(CV検証), `120248484809730389`(ゲート検証)。本命パイロットは `120248484516140389`。
+
+### 🔁 追記(2026-06-13): IMP3 完了 — 番人の自動スケール＋複数クリエイティブA/B(commit 5adf8fb)
+- **ad-guardian を広告セット単位のPDCA/OODAエンジンに刷新**: 【Kill】暴走/無駄遣い/CPC非効率→PAUSE 【Scale】十分なデータ&効率良→日予算+20%(scale_max上限まで・小刻み)。本番テスト=エラーなく稼働(summary{paused,scaled})。配信データが無いため実スケールは未発火(ライブ後に作動)。
+- **generate に hook_hint 追加**: フックタイプ(質問型/数字型/逆説型/一人称型/FOMO型)を指定して別アングルのコピーを生成→submitをN回でA/Bテスト可能。本番で2案生成→クリーンな1案をPAUSED入稿(campaign 120248488166030389)。
+- **🔴重要な発見(リスク)**: hook_hint=「数字型」を実データ(proof_numbers)無しで指定すると、AIが「30%以上効果アップ」と**数字を捏造**(ハルシネーション)。現preflightの正規表現では捕捉できず通過した。→ **対策(次タスク improve-001)**: ①オーケストレーション側で「数字型」は実績データがある時だけ使う ②preflightに「根拠なき数値performance主張(\d+%…アップ/向上/改善等)」のWARN/ブロックを追加。今回は該当案を入稿せず人間判断で除外した。
+- 片付け対象キャンペーン更新: 120248483518890389 / 120248484809730389 / 120248487917640389 / 120248488166030389(=テスト群)。本命パイロット=120248484516140389。
+
+### ✅ 当面の到達点（手作業ゼロ代行 MVP・トップマーケター改善3点 反映済み）
+生成(AI)→自動コンプラ審査→CV最適化入稿→自動承認/自動ON(上限内)→専用LP(計測)→番人が毎日Kill/Scale。残: guardian毎日スケジュール接続・数字型ハルシ対策・テストCP削除・(後回し)App Reviewでセルフサーブ公開。
+
+### 🔎 追記(2026-06-13): 全体監査＋モデル決定「AI代行(done-for-you)」一本化＋AdBoostCard統合(commit 94eeba6)
+**監査の主要発見:**
+- アプリは2層: ①本線(生きてる)=診断クイズ→オンボーディング→「今週の3アクション」(generate-actions)＋LINE/TikTok＋Stripe課金。 ②Meta広告=ダッシュボードの `components/AdBoostCard.tsx`(generate→preview→submit)。
+- 🔴 一般ユーザーは広告を出せなかった: AdBoostCardはユーザー自身のdevice_id(未接続)で送信→「未接続」→壊れたOAuthへ誘導(行き止まり)。動くのはnao-agencyのみ。
+- 🔴 今日の改善がUI未配線だった: link_urlがトップ固定(新LP未使用)/auto_activate未送信/hook_hint未使用。CV最適化(Pixel)はenv経由で効いていた。
+- 🔁 重複: 私の `/api/admin/set-page`(admin) と既存 `/api/meta-ads/select-page`(user OAuth用,無認証)。役割違い・機能重複。
+- 孤立: 新LP `/start` がUI未リンクだった。新admin系(connect-account/refresh/set-page/ensure-pixel)はSage/管理者専用(意図的)。
+- 既存の多数機能(power/templates/learn/marketing/product-marketing/revenue-report/market-scan/waitlist等)は現役/遺物の棚卸し未実施。
+
+**決定:** 主客(広告に弱い・時間ない中小事業者)の体験は **AI代行(done-for-you)** が最良 → これを本命に一本化。セルフサーブ(App Review必須)は将来のハイブリッド拡張に降格。
+
+**実施した統合(AdBoostCard):** ①link_url→`/start`(メッセージ一致) ②壊れたOAuthの行き止まりを撤去 ③未接続時は「Growlにおまかせ(代行依頼)」CTA(mailto:contact@growl-ai.com に生成コピーを載せる)に。 ④コピーを代行前提に。デプロイ済・ビルド健全。
+
+**残(一貫化の続き):** ①代行intakeの正式化(mailto→申込フォーム/Supabase保存＋Sage通知) ②set-page/select-pageの役割整理(機能上の競合は無し) ③残骸片付け(push_*.bat・cmd窓・テストCP) ④既存機能の棚卸し(現役/廃止) ⑤多テナント代行(クライアント別口座接続=私のconnect-accountをdevice_id別運用)。
+
+### 🧲 追記(2026-06-13): 代行intake正式化 完了(commit e78bb81) — 広告生成→見込み客捕捉
+- **`/api/agency/request`(POST)**: email必須・device_id/事業情報/生成ad_copy/budget/noteを受け、`app_config` に `agency_req_{ts}` = JSON(status:new) で保存(新テーブル不要)。本番テスト=正常保存(success/request_id)、email無しは400。
+- **AdBoostCard に「おまかせで配信を依頼」フロー追加**: preview→主CTA「🚀おまかせで配信を依頼(無料相談)」→email+任意メモ→保存→受付完了画面。「自分で出す(停止)」は副CTAに降格。＝done-for-yピボットがUIで一貫。
+- ⚠️ **残る要対応**: 保存したリードの可視化/通知が未実装(今はapp_configに溜まるだけ)。→ 次: 簡易admin閲覧 or Sage日次でagency_req_*を集約しなお通知(Telegram/メール)。これが無いとリード取りこぼし。
+- 片付け対象batに push_integrate.bat / push_intake.bat / push_imp_a.bat / push_imp3.bat も追加(未追跡・無害)。
+
+### 💰 追記(2026-06-13): 代行の価格モデル決定（競合調査ベース）
+- **競合相場(2026)**: 従来代行=管理料$500〜5,000/月(中小$500-1,500 or 広告費15-25%)＋広告費別。DIY AIツール=$29〜499/月(自分で作業)。AIで運用費60-80%削減可。
+- **勝ち筋**: 「代理店の成果を、ツールの値段で、作業ゼロで」(おまかせ×激安×即・縛りなし)。
+- **決定価格**: ベータ=**先着10名 ¥2,980/月(料金ロック)** ＋広告費別・客先払い → 10名後/実績後 **¥9,800/月** → 段階的に上げる。広告費は客がStripeで先払い=なお持ち出しゼロ。
+- **入金/ゲート**: Stripe決済が「人の代わりのゲート」。申込→自動受付→Stripe決済リンク→支払い検知(webhook)→AIが自動で広告構築/自動ON/番人最適化/レポート。なおは週次ダイジェストのみ(毎回確認不要)。安全=「払った人だけ自動で進む」で悪用/暴走/持ち出しを防ぐ。
+- **出稿口座(MVP)**: なおの代行口座で即配信(客は接続ゼロ=最高CX)→将来クライアント別口座/ページに拡張。
+- **実装の外部依存**: ①Stripeに商品(¥2,980/月サブスク)を1つ作成(なおのStripe・私がガイド) ②受付メール送信手段。これらの後、webhook→auto-run(submit auto_activate)を配線すれば自動ループ完成。intake(/api/agency/request)は実装済。
+
+### 👀 追記(2026-06-13): 申込リード閲覧画面 完了(commit 65e4d62)
+- **`/admin/leads` ＋ `/api/admin/leads`**(ADMIN_SECRET必須): app_configの `agency_req_*` を集約し、メール/事業/希望広告/予算/メモ/日時/statusを新着順で表示。本番テスト=テスト申込1件を正しく表示。
+- これで「申込が来たのを知る手段」の穴を解消。なおは `growl-ai.com/admin/leads` で確認可能。
+- **収益化の残り(唯一)**: Stripeの¥2,980決済リンクを1本作る(Chrome安全制限&鍵なしで私は作成不可→なおが5分、最初の客が出た時でOK)。リンクができれば webhook→auto-run 配線で自動課金ループ完成。
+- ⚠️ 既知: payment-success の agency 対応編集が特定ファイル同期グリッチでgit未反映(ホストは編集済)。次回 agency 本配線とまとめて再デプロイ予定。新規ファイルのデプロイは正常。
+
+### 🌙 セッション終了ハンドオフ(2026-06-14) — 翌朝の唯一のアクション
+**収益化(AI代行)はあと「決済リンク1本」で繋がる状態。** Lead捕捉・Lead閲覧(/admin/leads)・AI広告エンジン(生成/コンプラ/自動ON/番人)・専用LP・Pixelは全て本番稼働。
+
+**⭐ なおさんの唯一の宿題(翌朝)**: フォルダ直下の **`run_agency_link.bat` をダブルクリック** → ローカルの`.env`のSTRIPE_SECRET_KEYを使い、Stripe APIで「¥2,980/月」の支払いリンクを自動生成 → 出力の `PAYMENT_LINK_URL = https://buy.stripe.com/...` をClaudeに貼る。
+- なぜローカル実行: VercelにStripe秘密鍵が無い(良いセキュリティ)＋Chromeが安全制限でStripe管理画面ブロック＋私は秘密鍵を扱わない方針。鍵は`.env`(本リポジトリ直下)にあるのでローカルnodeで実行=USDリンクと同じ方式。
+- 作成済みファイル: `create_agency_link.mjs`(node script) ＋ `run_agency_link.bat`(実行用)。未commit(ローカル専用)。
+
+**URLをもらった後にClaudeがやること(配線・1回)**:
+1. `lib/stripe-config.ts` に agency プラン(¥2,980, そのPayment Link)を追加。
+2. `webhook/stripe` を拡張: 入金 amount=2980(JPY) を検知 → client_reference_id(device_id) で `agency_pending_{device_id}`(app_config)を引き当て → `/api/meta-ads/submit` を device_id=nao-agency・auto_activate=true で呼ぶ(=AIが自動で広告構築→自動ON→番人最適化)。重複防止に fulfilled フラグ。
+3. AdBoostCardの「おまかせ依頼」→ 申込保存後にこの決済リンクへ誘導(client_reference_id付き)。
+4. デプロイ＆PAUSEDで一周テスト。
+
+**今セッションの環境メモ(翌朝の前提)**: bash VM停止中・Chromeはread tier&Stripeブロック・Explorer経由のbat実行が不安定(focus)・payment-success の agency 表示は本番で確認済(動いている)。
+**片付け(任意)**: テストCP(120248483518890389/484809730389/487917640389/488166030389、本命は484516140389は保持)、repo直下 push_*.bat 群。
+**価格戦略**: ベータ先着10名¥2,980(料金ロック)→¥9,800→段階値上げ。出稿はMVPでnao-agency口座。将来クライアント別口座&App Reviewでセルフサーブ公開。
+
+### ✅ 完了(2026-06-14): 代行の「支払い→AI自動配信」ループ 全配線デプロイ(commit 2960ffa)
+- **決済リンク作成**: ローカルで `node create_agency_link.mjs` 実行(.envのsk_live使用)→ Stripe APIで作成。
+  - PAYMENT_LINK = `https://buy.stripe.com/3cI5kEaIw73f9pJetw93y0j` / price_1Ti0GoILSrv644ukbbmEbJV8 / prod_UhP40GfvdPcikT (¥2,980/月)。
+  - 教訓: VercelにSTRIPE_SECRET_KEY無し→ローカル実行が正解。bat内の日本語は文字化け→**batはASCII限定**。
+- **配線(4ファイル)**: stripe-config に agency＋buildAgencyUrl / agency/request が `agency_pending_{device_id}` も保存 / **webhook**: 入金¥2,980(JPY)検知→`handleAgencyPayment`→agency_pending引当→`/api/meta-ads/submit`(device_id=nao-agency, auto_activate=true, 予算¥1000/日)→売上記録→fulfilled印(二重防止) / AdBoostCard「おまかせ(月¥2,980)」→申込保存→決済リンクへリダイレクト。
+- **顧客フロー(全部本番)**: サイト→AI広告生成→「おまかせ¥2,980」→メール→Stripe決済→**入金で自動: 広告構築・自動ON・番人最適化**→/payment-success?plan=agency で受付表示。なおは/admin/leadsで有料リード確認＆Stripe入金。
+- **検証**: 申込→保存→リダイレクト動作確認。⚠️ 実決済→webhook自動配信の通しは「実際の¥2,980支払い」発生時に確定(署名検証ありで疑似不可)。コード上は成立。
+- **🟡要判断(重要)**: 現状 auto_activate=true ＝ 入金後すぐ配信開始し**なおが広告費を立替(¥1,000/日上限/件・番人で暴走防止)**。なおは資金少と言っていたため、PAUSED作成(立替ゼロ・なおが1タップでON or クライアント広告費先払い導入)に切替も可。flag1つ。
+
+### ✅ 完了(2026-06-14): 2段プラン化＋全自動(広告費込み) — 立替ゼロで収益が立つ形に
+- **方針変更**: 管理のみ(¥2,980)は **支払い後PAUSED**(立替ゼロ・commit 994fe6a)。
+- **全自動プラン追加**: **フルおまかせ ¥9,800/月（管理＋広告費込み）**。API作成: `https://buy.stripe.com/4gMbJ203SbjvatNfxA93y0k` / price_1Ti0cJILSrv644ukkgIkiTlI / prod_UhPRldjQNbs6al。支払い検知→**auto_activate=true・¥250/日で自動配信**(広告費は先払い済＝立替ゼロ)。commit aa52327。
+- **webhook分岐**: ¥2,980→PAUSED(daily¥1000設定だが停止) / ¥9,800→自動ON(daily¥250)。両方 client_reference_id=device_id で agency_pending 引当→submit(nao-agency)→fulfilled印。
+- **UI(AdBoostカード)**: 「おまかせ」→メール→**2択ボタン**「全自動¥9,800(広告費込み)」/「管理だけ¥2,980」→各決済リンクへ。
+- **収益**: 入金は全額なおのStripe。¥9,800のうち広告費約¥7,500(¥250×30)はMeta課金で相殺、管理料相当が利益。¥2,980は管理料=ほぼ利益。**いずれも持ち出しゼロ**。
+- **preflight強化**(commit 933dc24): 根拠なき数値成果主張(〇%アップ/〇倍)をWARN。
+- **残**: ①代行オファーの導線/発見性(今はダッシュボードのAdBoostカード内のみ→トップ/LPから見つけられるように) ②Sage日次の番人実行&入金/申込通知のスケジュール ③テストCP/残骸片付け ④数字型hook_hintは実績データ時のみ使う(orchestration)。
+
+### ✅ 完了(2026-06-14): 発見性 — /agency 紹介LP＋ホーム導線(commit 8547952)
+- **`/agency`**: 「広告、AIに丸ごとおまかせしませんか？」＋3ステップ＋なぜGrowl＋料金2プラン(¥9,800全自動おすすめ/¥2,980管理のみ・先着10名料金ロック)＋CTA→/onboarding/industry。Pixel計測(AgencyLP_View/Lead)。本番表示OK。
+- **ホーム導線**: トップのヒーローに「広告運用をAIにまるごとおまかせ →」リンク追加→/agency。
+- **これで収益ファネルが一本化・発見可能に**: トップ→/agency(訴求+料金)→無料で広告作成→onboarding→AdBoostカードで生成→2プラン選択→Stripe決済→¥9,800自動配信 or ¥2,980 PAUSED→番人最適化。全部本番。
+- **残(軽め)**: Sage日次自動(番人実行＋入金/申込通知)、テストCP/push_*.bat片付け、実決済での通し確認(初回支払い時)。
+
+### ✅ 完了(2026-06-14): Sage日次自動運用タスク作成 — 手間ゼロが完全に閉じた
+- **scheduled-tasks: `growl-daily-ops`**(毎日9時, cron "0 9 * * *", notifyOnCompletion=true)。保存先 C:\Users\nao\Documents\Claude\Scheduled\growl-daily-ops\SKILL.md。
+- 内容: 毎朝 (1)`/api/cron/ad-guardian?secret=...`をGET=番人で自動最適化(無駄停止/勝ち増額) (2)`/api/admin/leads?secret=...`をGET=申込/入金確認 (3)なおさんへ日本語で簡潔報告(新規申込・入金・番人アクション・要対応:入金済なのにPAUSEDの広告等)。secretは報告に含めない・捏造禁止と明記。
+- ⚠️ 初回は「Run now」で手動実行してツール(web_fetch)権限を事前承認推奨(以降の自動実行が権限待ちで止まらない)。
+- **これで一連が無人運用に**: 集客(/agency)→販売(Stripe)→配信(自動/PAUSED)→最適化(番人)→日次報告(Sage)。なおは朝の報告を読むだけ。
+- **検証(2026-06-14)**: /agency表示OK・申込フロー(全自動/管理 両方)成功・リード保存4件・/admin/leads表示OK。実決済通しは初回支払い時に確定。
+
+### ✅ 完了(2026-06-14): 実写真アップロード(設計図F-4) — 最大の品質レバー(commit f100dcd)
+- **`/api/upload-image`**(imgbb): base64受領→imgbbへアップ→公開URL返却。本番テスト=テスト画像アップ成功(i.ibb.co URL)。IMGBB_API_KEYはVercel env済。
+- **submit**: `image_url` を受け、**AI画像より最優先**で取得→Metaへアップ→クリエイティブに使用(無ければFLUX→キャッシュにフォールバック)。
+- **AdBoostカード**: 「📷実物の写真(推奨・クリック2-3倍)」アップロードUI追加→/api/upload-image→URL保持→generate/submit/request に image_url を渡す。
+- **agency/request**: image_urlをrecord/agency_pendingに保存。**webhook**: pending.image_url→submitへ渡す(支払い後の自動配信でも実写真が使われる)。
+- → 設計図C「クリエイティブ:顧客実写真を主」達成。残りの設計図未実装: 半径ターゲティング/店別自動レポート/マルチチャネル即時通知/顧客連絡AI文面。
+
+### ✅ 完了(2026-06-14): 店別自動成果レポート(設計図C/フェーズ2)(commit 84c3388)
+- **`/api/admin/report`**(ADMIN_SECRET, GET): device_id＋since(既定last_7d)で Meta insights を取得→ total{spend,impressions,reach,clicks,conversions,ctr,cpc,cpa}＋campaigns[]別 を返す。CV=actions(lead/purchase/offsite_conversion等)から集計。
+- **日次タスク `growl-daily-ops` を更新**: 番人実行＋**成果レポート(7日)取得**＋申込/入金確認→なおさんへ「📊成果/🛡番人/🧲申込入金/⚠️要対応」を毎朝報告。
+- 残りの設計図未実装: **マルチチャネル即時リード通知(LINE/Telegram)** / **半径ターゲティング** / 顧客連絡AI文面。
+
+### 🚨 重要訂正・確定(2026-06-14): マルチチャネル即時リード通知(LINE/Telegram)の“正確な事実”
+過去に「Telegramは既にSageに入っていてすぐ使える」と言ったが、**これは不正確だった**。コードを精読した確定事実:
+- **Telegramは実質動かない**: 通知枠組み `backend/modules/market_scan_notifier.py` は Slack/Telegram/Notion へ送る設計だが、本体 `backend/integrations/telegram_bot.py` は**ファイルが存在しない**(Globで見つからない＝importは失敗)。さらに `SAGE_ENABLE_TELEGRAM=1` でゲートされ既定オフ。用途も「市場スキャン通知」で代行リードではない。要 env: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID。
+- **LINE は本物・クラウド側で稼働可能**: Webアプリ(Vercel)に `LINE_CHANNEL_ACCESS_TOKEN`＋`/api/line/webhook`＋6桁コード紐付けがあり、プッシュ送信が実際に可能。リードが発生するクラウド側にあるため、代行通知に最も現実的。
+- **Slack** は SlackAgent(SLACK_WEBHOOK_URL)で動く可能性が高い(バックエンド側)。
+- **そもそも“リード”という単位が無い**: 現在の広告は「サイト誘導」型。リード即通知を成立させるには **Meta Lead Ads(フォーム広告)＋leadgen Webhook** が必要(=リード発生源を作る)。
+- **結論/正しい順序**: ①Lead Ads でリード発生源を作る → ②LINE即通知(クラウド・現実的)を本実装 → (Telegramは欠落モジュール再構築＋トークン設定が要るので後)。**現状この機能は未実装・要B→A**。
+
+### 🔧 追加発見・訂正(2026-06-14): 通知チャネルの“使える資産”を .env で再確認（地域適応）
+**ユーザー指摘: 英語圏はLINEよりWhatsApp/Telegram。地域適応で設計すべき。** .env を確認した結果、思ったより作れる:
+- ✅ **`RESEND`(メール送信)が .env にある** → クラウドからメール送信可能。**Email＝万国共通ベースライン（英語圏もカバー）**。一番先に作るべき本命チャネル。
+- ✅ **`TELEGRAM_BOT_TOKEN` が .env にある** → Sageのtelegram_bot.py本体は欠落でも、**クラウドアプリから Telegram の sendMessage API を直接叩けば送れる**（モジュール不要・chat_idは紐付けで取得）。英語圏/グローバル向けに使える。
+- ✅ **LINE**（クラウド・トークン＋6桁紐付け）= 日本向け。
+- ⚠️ **WhatsApp**: .envにキー無し。最普及だが Meta WhatsApp Business のオンボーディング＋テンプレ審査が重い → 後追加（設計図でも「後追加」）。
+- **地域適応の既定**: 日本→LINE / 英語圏・その他→**Email＋Telegram** / Email は全地域ベースライン。オーナーが選択可。
+- **作る順序(確定)**: (1)地域適応 notifyユーティリティ(Email=Resend / Telegram / LINE) (2)まず代行の新規申込・入金を**なおへ即通知**(Email等)で実用化 (3)Meta Lead Ads でクライアント広告のリード発生源を作り、同じnotify層でオーナーへ地域適応通知。WhatsAppは最後。
+- ⚠️ **重要な前提(env所在)**: `RESEND_API_KEY`(行196)・`TELEGRAM_BOT_TOKEN`(45)・`TELEGRAM_CHAT_ID`(46) は**ルート .env=Sageバックエンド側**にある。**Vercelアプリ側envには未確認/恐らく無い**(Stripe秘密鍵と同様)。→ クラウド(webhook/request)から即通知するには、これらを **Vercel env に追加**するか、Sage(ローカル)から送る必要がある。LINEはVercel側にある(JP・要紐付け)。WhatsAppはキー無し。
+- **依存まとめ**: 即通知の実装には ①notify層(コード・私が作る) ②Vercelにキー追加(なお/私で) ③リード発生源=Meta Lead Ads、が要る。現状この機能は未着手。
+
+### ✅ 実装(2026-06-14): 地域適応 通知層＋申込/入金の即通知(commit 01c7e1a) — 有効化は鍵投入待ち
+- **`lib/notify.ts`**: sendEmail(Resend)/sendTelegram(token+chat)/sendLine(token)＋`notify({locale,...})`=日本→LINE/他→Telegram＋Email常時。資格情報無ければ安全スキップ。
+- **`/api/admin/notify-test`**(ADMIN_SECRET): 各チャネルの到達テスト。
+- **配線**: `/api/agency/request`=新規申込で🧲なおへ即通知 / `webhook`=入金で💰なおへ即通知(金額/プラン/広告状況)。recipient=NOTIFY_ADMIN_EMAIL or naofumi0930@gmail.com。
+- **本番テスト結果(2026-06-14)**: notify-test → email/telegram とも **skipped(no key)**。＝コードは動くが**Vercelに鍵未投入**。
+- **⭐有効化に必要(Vercel envへ追加)**: `RESEND_API_KEY`/`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`（値はルート.envにある=なおがコピペ。LINEは投入済）。追加後 notify-test で ok 確認。
+- WhatsAppは未(鍵無し・審査重)。クライアント広告のリード通知は Meta Lead Ads 実装後に同notify層で。
+
+### ✅ 実装(2026-06-14): 半径ターゲティング(設計図F-4)(commit ed1e4d2)
+- **`/api/geo-search?q=`**: Metaの adgeolocation 検索(city/region/subcity)→ {key,name,label} を返す(nao-agencyトークン使用)。本番テスト=「渋谷」→東京都渋谷区(key 1211264) 取得OK。
+- **AdBoostカード**: 「📍地域を絞る」エリア入力→候補から選択→半径スライダー(1-50km)→ `geo_locations={cities:[{key,radius,distance_unit:kilometer}]}` を submit/request に渡す。
+- request/webhook も geo_locations を保存・引き渡し(支払い後の自動配信でも近隣配信が効く)。submitは元々geo_locations対応。
+
+### 🏁 現状サマリー(2026-06-14): 代行プラットフォームは“機能ほぼ完成”
+**実装済(本番)**: 集客LP(/agency)＋ホーム導線／オンボーディング／AI生成(コピー・実写真優先・AI画像)／コンプラ自動審査(強化)／予算ガード／**半径ターゲティング**／CV最適化(Pixel)／自動承認→自動ON or PAUSED／番人(Kill+Scale)／Stripe2プラン(¥2,980管理・¥9,800全部込み)→支払いで自動配信／成果レポート(/api/admin/report)／申込intake＋/admin/leads／地域適応通知層(コード)／**日次自動運用(朝夕2回・要対応を先頭に報告)**。
+**未(意図的・要設定 or 後回し)**: ①通知の有効化=Vercelに RESEND/TELEGRAM キー投入(任意・日次報告で代替中) ②Meta Lead Ads(leads_retrieval権限＋リード規約承認=なお設定要→英語圏の即時リード通知はこれ待ち) ③WhatsApp(鍵無し・審査重) ④顧客連絡AI文面 ⑤テストCP/push_*.bat片付け。
+**→ 本質的な次の一手は“追加実装”でなく“ローンチ(集客)”**: パイロット広告ON(実費・なお承認) or 既存Sageの無料コンテンツを/agencyへ誘導。プロダクトは売れる状態。
+
+### 🧭 「マルチチャネル通知の設計」以降にやったこと(まとめ) — 2026-06-13〜14
+あの設計発言(=設計図にPhase2として記載した時点)以降、**マルチチャネル通知“以外”の代行システムを丸ごと実装**した:
+- Meta接続(System User・無期限トークン)/接続フォーム/refresh/set-page/ensure-pixel
+- 広告エンジン: generate(コピー)/コンプラ事前審査(強化)/予算ハード上限/ローカル配信/auto_activate自動ON/番人(Kill+Scale)
+- CV最適化(Pixel・OUTCOME_LEADS)/専用LP(/start)/IMP1-3
+- 全体監査→「AI代行(done-for-you)」へモデル一本化
+- 申込intake(/api/agency/request)＋リード閲覧(/admin/leads)
+- Stripe決済リンク(¥2,980管理/¥9,800全部込み)＋支払い→自動配信 webhook配線
+- 代行紹介LP(/agency)＋ホーム導線
+- 日次自動タスク(growl-daily-ops: 番人+成果レポート+申込/入金→毎朝報告)
+- 実写真アップロード(/api/upload-image, AI画像より優先)
+- 店別自動成果レポート(/api/admin/report)
+→ つまり「マルチチャネル即時リード通知」だけが、設計図で残った主要未実装(かつ前提に誤りがあった)項目。
