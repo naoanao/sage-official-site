@@ -152,6 +152,13 @@ Claude Code / Cowork などの外部AIツールは、SageというAI分身の**�
 - Product Marketing生成を並列→**逐次＋throttle＋リトライ**化（レート制限耐性）。それでも無料枠TPMが重いので、連続生成は失敗しうる（単発はOK）。
 - Cowork定期タスク `growl-agency-leads-check`（毎日18時に新規代行申込をチェックしてなおへ通知）。
 
+### E. セルフサーブ足回り（2026-06-15 追加）
+- **データ削除ページ** `/data-deletion`（＋`/api/data-deletion`）本番稼働。App Review必須要件を充足。バイリンガル・記録・通知・受付確認メール。
+- **Meta OAuth セルフサーブ配線完成**: 欠けていた開始ルート `/api/meta-ads/oauth-start` を追加（既存 `/api/meta-ads/oauth-callback` と接続）。本番で 307→FB OAuth(client_id=META_APP_ID 設定済)を確認。接続ハブ `/connect`（Facebook/TikTok）も新設。
+  - 残作業（なお側）: ①Meta Appの Valid OAuth Redirect URIs に `https://growl-app.vercel.app/api/meta-ads/oauth-callback` を登録 ②テスター/開発者で接続テスト ③Business Verification＋App Review（App_Review_提出パッケージ.md 参照）。
+- **App Review提出パッケージ**: `App_Review_提出パッケージ.md`（権限justification・台本・チェックリスト）。
+- **デプロイ一本化**: 今後は `deploy.bat`（ASCII・1ファイル）をダブルクリックするだけ。pushはなおの認証が必要なため代行不可、それ以外は全部AI。
+
 ### ⚠️ 中途半端・未完・既知の制限（次にやる候補）
 - **Product Marketing**: ✅堅牢化済み（2026-06-14）。フォールバック **Groq → DeepSeek → Gemini**（`callOnce`）＋セクションを**2本ずつ並列**実行で、serverless 60s内に安定生成（実測〜37s・2回連続成功）。📌 Vercelの GROQ_API_KEY は .env と一致必須（古いと全部Gemini 429へ落ちる）。DEEPSEEK_API_KEY も同様に有効性を保つこと。
 - **通知Telegram**: Vercel未設定（Email稼働・LINE稼働。Telegramは任意）。

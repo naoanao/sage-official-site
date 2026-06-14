@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "META_APP_ID not configured" }, { status: 500 });
   }
 
-  const redirectUri = `${APP_URL}/api/meta-ads/oauth-callback`;
+  // Meta App の Valid OAuth Redirect URI と完全一致させる（.../oauth/callback）
+  const redirectUri = `${APP_URL}/api/meta-ads/oauth/callback`;
   // 広告作成/管理(write)・成果取得(read)・BM・ページ選択・リード取得
   const scope = [
     "ads_management",
