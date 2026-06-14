@@ -222,7 +222,8 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
       if (data.success) {
         // 申込を保存できたらプラン別の決済ページへ（支払い→AIが自動で広告を配信）
         const id = deviceId || "global";
-        window.location.href = plan === "full" ? buildAgencyFullUrl(id) : buildAgencyUrl(id);
+        const cur = isEn ? "usd" : "jpy";
+        window.location.href = plan === "full" ? buildAgencyFullUrl(id, cur) : buildAgencyUrl(id, cur);
       } else { setReqErr(String(data.error || "Failed")); }
     } catch (e) { setReqErr(String(e)); }
     setReqBusy(false);
@@ -433,7 +434,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
             {/* 主CTA: おまかせ代行（接続不要・推奨） */}
             <button onClick={() => setStep("request")}
               className="w-full bg-indigo-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-200">
-              🚀 {isEn ? "Have Growl launch & manage it (¥2,980/mo)" : "おまかせで配信（月¥2,980）"}
+              🚀 {isEn ? "Have Growl launch & manage it (from $19/mo)" : "おまかせで配信（月¥2,980）"}
             </button>
             <div className="flex gap-2">
               <button onClick={() => setStep("idle")}
@@ -526,11 +527,11 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
             {reqErr && <p className="text-xs text-red-500">{reqErr}</p>}
             <button onClick={() => handleRequest("full")} disabled={reqBusy}
               className="w-full bg-indigo-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-indigo-700 disabled:bg-gray-200 active:scale-95 transition-all shadow-lg shadow-indigo-200">
-              {reqBusy ? "..." : (isEn ? "Full auto — ad budget included (¥9,800/mo)" : "全自動でおまかせ（広告費込み・月¥9,800）")}
+              {reqBusy ? "..." : (isEn ? "Full auto — ad budget included ($79/mo)" : "全自動でおまかせ（広告費込み・月¥9,800）")}
             </button>
             <button onClick={() => handleRequest("mgmt")} disabled={reqBusy}
               className="w-full bg-white border border-indigo-200 text-indigo-700 font-medium text-sm py-2.5 rounded-xl hover:bg-indigo-50 disabled:opacity-50 transition-all">
-              {isEn ? "Management only (¥2,980/mo — you fund the ad budget)" : "管理だけ（月¥2,980・広告費は別途）"}
+              {isEn ? "Management only ($19/mo — you fund the ad budget)" : "管理だけ（月¥2,980・広告費は別途）"}
             </button>
             <button onClick={() => setStep("preview")}
               className="w-full text-gray-500 font-medium text-xs py-2 rounded-xl hover:bg-gray-100 transition-all">

@@ -12,7 +12,16 @@ const ADMIN_EMAIL = process.env.NOTIFY_ADMIN_EMAIL || "naofumi0930@gmail.com";
 
 // 代行(agency)の支払いを受けたら、保存済みの申込からAIが自動で広告を構築・配信する。
 // なおの代行口座(nao-agency)・自動ON(auto_activate)・予算は安全上限内。二重実行防止つき。
-async function handleAgencyPayment(deviceId: string, email: string | null, amount: number) {
+async function handleAgencyPayment(deviceId: string, email: string | null, amount: number, currency: string = "jpy") {
+  const isUsd = currency.toLowerCase() === "usd";
+  // フル判定: JPY ¥9,800以上 / USD $79以上(7900 cents)。それ未満=管理のみ(PAUSED)。
+  const isFull = isUsd ? amount >= 7900 : amount >= 9800;
+  // 自動配信の日予算: フル=JPY ¥250 / USD $2(200 cents)。管理のみはPAUSEDなので未使用(1000)。
+  const dailyBudget = isFull ? (isUsd ? 200 : 250) : 1000;
+  const adLang = isUsd ? "en" : "ja";
+  const adCountry = isUsd ? "US" : "JP";
+  const cur = isUsd ? "$" : "¥";
+
   const { data: row } = await supabase
     .from("app_config").select("value").eq("key", `agency_pending_${deviceId}`).single();
   let pending: Record<string, unknown> | null = null;
@@ -40,10 +49,10 @@ async function handleAgencyPayment(deviceId: string, email: string | null, amoun
           image_url: (pending.image_url as string) || undefined,
           geo_locations: pending.geo_locations || undefined,
           link_url: (pending.business as { booking_url?: string } | null)?.booking_url || `${APP_URL}/start`,
-          // ¥9,800(全部込み)=広告費先払い済 → 自動ON(¥250/日)。¥2,980(管理のみ)=立替ゼロでPAUSED。
-          daily_budget: amount >= 9800 ? 250 : 1000,
-          currency: "jpy", country: "JP", lang: "ja",
-          auto_activate: amount >= 9800,
+          // フル(全部込み)=広告費先払い済 → 自動ON。管理のみ=立替ゼロでPAUSED。
+          daily_budget: dailyBudget,
+          currency: isUsd ? "usd" : "jpy", country: adCountry, lang: adLang,
+          auto_activate: isFull,
         }),
       });
       result = await res.json();
@@ -64,10 +73,10 @@ async function handleAgencyPayment(deviceId: string, email: string | null, amoun
   // なおへ即通知（入金＋広告状況）。資格情報が無ければ自動スキップ。
   try {
     await notify({
-      locale: "jp",
+      locale: isUsd ? "en" : "jp",
       subject: "💰 Growl 代行 入金",
       email: ADMIN_EMAIL,
-      message: `代行の入金がありました。\n金額: ¥${amount}\nメール: ${email || (pending?.email as string) || "-"}\nプラン: ${amount >= 9800 ? "全部込み(自動配信)" : "管理のみ(PAUSED)"}\n広告: ${(result.status as string) || "作成"}${result.activation_note ? " / " + result.activation_note : ""}\n→ /admin/leads`,
+      message: `代行の入金がありました。\n金額: ${cur}${amount}${isUsd ? " (USD cents)" : ""}\nメール: ${email || (pending?.email as string) || "-"}\nプラン: ${isFull ? "全部込み(自動配信)" : "管理のみ(PAUSED)"}\n広告: ${(result.status as string) || "作成"}${result.activation_note ? " / " + result.activation_note : ""}\n→ /admin/leads`,
     });
   } catch { /* 通知失敗は無視 */ }
 }
@@ -150,9 +159,13 @@ export async function POST(req: NextRequest) {
       const amountTotal = (obj.amount_total as number) ?? 0;
       const currency = ((obj.currency as string) ?? "jpy").toLowerCase();
 
-      // 代行の支払い → AIが自動で広告を構築（¥2,980=管理のみPAUSED / ¥9,800=全部込み自動ON）
-      if (currency === "jpy" && (amountTotal === 2980 || amountTotal === 9800) && deviceId) {
-        await handleAgencyPayment(deviceId, email, amountTotal);
+      // 代行の支払い → AIが自動で広告を構築
+      //   JPY: ¥2,980=管理のみPAUSED / ¥9,800=全部込み自動ON
+      //   USD: $19(1900c)=管理のみPAUSED / $79(7900c)=全部込み自動ON
+      const isAgencyJpy = currency === "jpy" && (amountTotal === 2980 || amountTotal === 9800);
+      const isAgencyUsd = currency === "usd" && (amountTotal === 1900 || amountTotal === 7900);
+      if ((isAgencyJpy || isAgencyUsd) && deviceId) {
+        await handleAgencyPayment(deviceId, email, amountTotal, currency);
         return NextResponse.json({ received: true, type, agency: true });
       }
 

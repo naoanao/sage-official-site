@@ -29,6 +29,8 @@ export const STRIPE_PLANS = {
     priceId: "price_1Ti0GoILSrv644ukbbmEbJV8",
     productId: "prod_UhP40GfvdPcikT",
     paymentLinkBase: "https://buy.stripe.com/3cI5kEaIw73f9pJetw93y0j",
+    // USD $19/mo (price_1Ti87JILSrv644ukZh2i8ivB, created via API 2026-06-14)
+    usdPaymentLinkBase: "https://buy.stripe.com/6oUbJ2eYM5ZbgSb4SW93y0l",
   },
   // フルおまかせ（管理＋広告費込み）¥9,800/月。支払い後に自動配信ON（広告費先払い済＝立替ゼロ）。
   agencyFull: {
@@ -37,19 +39,25 @@ export const STRIPE_PLANS = {
     priceId: "price_1Ti0cJILSrv644ukkgIkiTlI",
     productId: "prod_UhPRldjQNbs6al",
     paymentLinkBase: "https://buy.stripe.com/4gMbJ203SbjvatNfxA93y0k",
+    // USD $79/mo (price_1Ti87JILSrv644ukpE1mpMKE, created via API 2026-06-14)
+    usdPaymentLinkBase: "https://buy.stripe.com/cNi28seYM0ER7hBclo93y0m",
   },
 } as const;
 
 export type PlanKey = "free" | "standard" | "pro" | "agency" | "agencyFull";
 
-/** 管理のみ代行(¥2,980)の決済URL（支払い後PAUSED）。 */
-export function buildAgencyUrl(deviceId: string): string {
-  return `${STRIPE_PLANS.agency.paymentLinkBase}?client_reference_id=${encodeURIComponent(deviceId)}`;
+/** 管理のみ代行(¥2,980 / $19)の決済URL（支払い後PAUSED）。currency="usd"でUSDリンク。 */
+export function buildAgencyUrl(deviceId: string, currency: "jpy" | "usd" = "jpy"): string {
+  const p = STRIPE_PLANS.agency;
+  const base = currency === "usd" && p.usdPaymentLinkBase ? p.usdPaymentLinkBase : p.paymentLinkBase;
+  return `${base}?client_reference_id=${encodeURIComponent(deviceId)}`;
 }
 
-/** フルおまかせ(¥9,800・広告費込み)の決済URL（支払い後に自動配信ON）。 */
-export function buildAgencyFullUrl(deviceId: string): string {
-  return `${STRIPE_PLANS.agencyFull.paymentLinkBase}?client_reference_id=${encodeURIComponent(deviceId)}`;
+/** フルおまかせ(¥9,800 / $79・広告費込み)の決済URL（支払い後に自動配信ON）。currency="usd"でUSDリンク。 */
+export function buildAgencyFullUrl(deviceId: string, currency: "jpy" | "usd" = "jpy"): string {
+  const p = STRIPE_PLANS.agencyFull;
+  const base = currency === "usd" && p.usdPaymentLinkBase ? p.usdPaymentLinkBase : p.paymentLinkBase;
+  return `${base}?client_reference_id=${encodeURIComponent(deviceId)}`;
 }
 
 /** deviceId を client_reference_id として埋め込んだ決済URLを生成。currency="usd"でUSDリンク使用（未設定なら円にフォールバック） */
