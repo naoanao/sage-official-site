@@ -9,8 +9,8 @@ export const STRIPE_PLANS = {
     productId: "prod_UTX9hVKUtxyztQ",
     // 支払い後に /payment-success?plan=standard にリダイレクト
     paymentLinkBase: "https://buy.stripe.com/aFa14og2QgDP7hB2KO93y0d",
-    // USD $29/mo (price_1TgeYJILSrv644ukpHIKhr7m, created via API 2026-06-10)
-    usdPaymentLinkBase: "https://buy.stripe.com/3cIcN69Es5Zb1Xh2KO93y0h",
+    // USD $29/mo — ENGLISH product (created 2026-06-15, English checkout description)
+    usdPaymentLinkBase: "https://buy.stripe.com/8x27sMg2Q3R30Td5X093y0n",
   },
   pro: {
     name: "プロ",
@@ -19,8 +19,8 @@ export const STRIPE_PLANS = {
     productId: "prod_UTX9MQ5QxfiMIf",
     // 支払い後に /payment-success?plan=pro にリダイレクト
     paymentLinkBase: "https://buy.stripe.com/dRm4gAdUI73fdFZfxA93y0e",
-    // USD $79/mo (price_1TgeYKILSrv644ukrtx1KnFv, created via API 2026-06-10)
-    usdPaymentLinkBase: "https://buy.stripe.com/14A9AU8Ao87jatNgBE93y0i",
+    // USD $79/mo — ENGLISH product (created 2026-06-15, English checkout description)
+    usdPaymentLinkBase: "https://buy.stripe.com/6oUdRa03SdrDeK3clo93y0o",
   },
   // AI広告代行（ベータ・管理のみ）¥2,980/月。支払い後はPAUSEDで広告用意（立替ゼロ）。
   agency: {
@@ -29,8 +29,8 @@ export const STRIPE_PLANS = {
     priceId: "price_1Ti0GoILSrv644ukbbmEbJV8",
     productId: "prod_UhP40GfvdPcikT",
     paymentLinkBase: "https://buy.stripe.com/3cI5kEaIw73f9pJetw93y0j",
-    // USD $19/mo (price_1Ti87JILSrv644ukZh2i8ivB, created via API 2026-06-14)
-    usdPaymentLinkBase: "https://buy.stripe.com/6oUbJ2eYM5ZbgSb4SW93y0l",
+    // USD $19/mo — ENGLISH product (created 2026-06-15, English checkout description)
+    usdPaymentLinkBase: "https://buy.stripe.com/3cI5kE17WgDP8lF2KO93y0p",
   },
   // フルおまかせ（管理＋広告費込み）¥9,800/月。支払い後に自動配信ON（広告費先払い済＝立替ゼロ）。
   agencyFull: {
@@ -39,8 +39,8 @@ export const STRIPE_PLANS = {
     priceId: "price_1Ti0cJILSrv644ukkgIkiTlI",
     productId: "prod_UhPRldjQNbs6al",
     paymentLinkBase: "https://buy.stripe.com/4gMbJ203SbjvatNfxA93y0k",
-    // USD $79/mo (price_1Ti87JILSrv644ukpE1mpMKE, created via API 2026-06-14)
-    usdPaymentLinkBase: "https://buy.stripe.com/cNi28seYM0ER7hBclo93y0m",
+    // USD $79/mo — ENGLISH product (created 2026-06-15, English checkout description)
+    usdPaymentLinkBase: "https://buy.stripe.com/8x2cN603SdrDfO771493y0q",
   },
 } as const;
 
