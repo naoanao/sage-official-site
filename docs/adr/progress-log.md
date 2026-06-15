@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-15: Fix LearnAI Gemini→DeepSeek フロー停止問題
+
+### 問題
+LearnAI のプロバイダープール（deepseek→cerebras→...→gemini）において、Geminiがクールダウン中に最大210秒間 `_sleep()` でUIがブロックされ「固まる」問題があった。また `doA2Manual`（手動画像取込）が常に `gemini()` を経由してGemini Visionを強制しており、DeepSeek等の非Geminiプロバイダー選択が無視されていた。
+
+### 修正内容（LearnAI.html）
+1. **Geminiクールダウン待機の短縮**: `callAI()` (L3401) と `callVisionAI()` (L3891) の最大待機時間を210秒→10秒に短縮。10秒以上はスキップメッセージを表示して即次へ。
+2. **非Visionプロバイダー通知**: `callVisionAI()` の先頭にDeepSeek/Perplexity選択時の通知トーストを追加（L3793-3798）。
+3. **`doA2Manual` の画像ルーティング改善**: 単一画像は `callVisionAI()`（VisionPoolで複数プロバイダー試行）、複数画像のみ `callGemini()`（Gemini Vision）を使用するよう変更（L5422-5430）。
+4. **`gemini()` エントリポイントの改善**: 単一画像は直接 `callVisionAI()` へルーティング。関数コメントを明確化（L4137-4153）。
+
+### 根拠
+- 210秒の `_sleep` はJavaScriptメインスレッドを完全にブロックし、ユーザー操作が不可能になる
+- `gemini()` 関数名が実態（全プロバイダー対応の統合エントリポイント）と乖離していた
+- DeepSeek等の非Visionプロバイダー選択時もVisionタスクは黙って他のプロバイダーにフォールバックしていたが、ユーザーに通知がなかった
+
+### リスク
+- `callVisionAI()` を `doA2Manual` から呼ぶことで、Groq/OpenRouter/GitHubのAPIキーがない場合はGemini（従来と同じ）にフォールバックするため挙動不変
+- 複数画像は引き続きGemini固定（callVisionAIが単画像のみ対応のため）
+
 ## 2026-06-04: Phase 1 完了 — flask_server.py システムルート分割
 
 ### 決定
