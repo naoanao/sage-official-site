@@ -5235,14 +5235,21 @@ async function doCapture(force = false) {
     // ── Step2: 変化あり / 図解スライド → Vision API + OCRフォールバック ─
     // Vision API(Gemini/Groq/OpenRouter等) → 失敗時はOCR + テキストLLMへ
     const _runOCR = async () => {
+      console.log('[doCapture] _runOCR started (vision failed → OCR + text LLM)');
       const ocrInput = _ocrReadable
         ? _ocrPreCheck
         : `（OCRテキスト取得不可 / 図解・グラフ・画像中心のスライドと推定）`;
       const ocrPrompt = _buildOCRPrompt(
         ocrInput, isStructured, videoTopic, audioTranscript, prevCaptures, ts, diagramRules
       );
-      r = await callAI(ocrPrompt, false, null);
+      try {
+        r = await callAI(ocrPrompt, false, null);
+      } catch(ocrErr) {
+        console.error('[doCapture] _runOCR callAI failed:', ocrErr.message);
+        throw ocrErr;
+      }
       r = `[OCR取込]\n${r}`;
+      console.log('[doCapture] _runOCR OK, length:', r.length);
     };
     if (hasVisionKey) {
       const provName = apiKey ? 'Gemini' : groqKey ? 'Groq' : orKey ? 'OpenRouter' : 'GitHub';
@@ -5258,6 +5265,8 @@ async function doCapture(force = false) {
       toast('⚠ Vision APIキー未設定 → OCRで代替中（Geminiキー設定で大幅改善）');
       await _runOCR();
     }
+    // DEBUG: どのパスを通ったか確認
+    console.log('[doCapture] result type:', typeof r, r ? r.slice(0,60) : 'EMPTY');
     const savedLabel = audioTranscript ? `${label} 🎵` : label;
 
     // ── 重複コンテンツチェック（前の取込と95%以上同じなら保存スキップ） ──
@@ -5277,6 +5286,7 @@ async function doCapture(force = false) {
     const msg = (e.message || '');
     const msgLow = msg.toLowerCase();
     // 画像解析全失敗 → accumに記録しない（類似度チェックを汚染しないため）・キャプチャは継続
+    console.error('[doCapture] error:', msg, e.stack?.slice(0,300));
     const isAllFailed = msg.includes('全て失敗') || msg.includes('画像解析');
     const isAuthErr = !isAllFailed && (msgLow.includes('401') || msgLow.includes('403') || msgLow.includes('unauthorized') || msgLow.includes('未設定'));
     if (isAllFailed) {
