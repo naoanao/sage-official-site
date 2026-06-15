@@ -37,7 +37,7 @@ export default function UpgradePage() {
       period: "/mo",
       desc: "Try it out — no signup needed",
       features: [
-        "Up to 5 generations per month",
+        "Up to 10 generations per month",
         "Copy-ready content",
         "6 industry types supported",
       ],
@@ -83,7 +83,7 @@ export default function UpgradePage() {
       period: "/月",
       desc: "まずは試してみる",
       features: [
-        "月5回まで生成（お試し）",
+        "月10回まで生成（お試し）",
         "コンテンツコピー機能",
         "6業種対応",
       ],
@@ -143,8 +143,8 @@ export default function UpgradePage() {
         {limitReached && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-xs text-amber-800 text-center">
             {isEn
-              ? <>You&apos;ve used all 5 free generations this month. The free plan resets on the 1st of each month.{" "}<span className="font-bold">Consider upgrading to keep going.</span></>
-              : <>今月の無料分5回を使い切りました。無料プランは毎月1日にリセットされます。<span className="font-bold">それまで使い続けるには下記のプランをご検討ください。</span></>}
+              ? <>You&apos;ve used all 10 free generations this month. The free plan resets on the 1st of each month.{" "}<span className="font-bold">Consider upgrading to keep going.</span></>
+              : <>今月の無料分10回を使い切りました。無料プランは毎月1日にリセットされます。<span className="font-bold">それまで使い続けるには下記のプランをご検討ください。</span></>}
           </div>
         )}
 

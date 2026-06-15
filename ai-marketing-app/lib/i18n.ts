@@ -297,9 +297,14 @@ export function useLang() {
   const [lang, setLang] = useState<Lang>("en");
 
   useEffect(() => {
-    // 初期ロード: localStorage から言語を読む
+    // 初期ロード: 1) 保存済みの選択 2) 無ければブラウザ言語で自動判定（日本語環境は日本語）
+    // これで日本のユーザーは最初から日本語UIで開く＝生成も日本語になり、英日混在を防ぐ。
     const saved = localStorage.getItem("growl_lang") as Lang | null;
-    if (saved === "en" || saved === "ja") setLang(saved);
+    if (saved === "en" || saved === "ja") {
+      setLang(saved);
+    } else if (typeof navigator !== "undefined" && (navigator.language || "").toLowerCase().startsWith("ja")) {
+      setLang("ja");
+    }
 
     // 他のコンポーネントの toggleLang() が発火したときに同期する
     function onLangChange(e: Event) {
@@ -331,5 +336,8 @@ export function useLang() {
 export function getLang(): Lang {
   if (typeof window === "undefined") return "ja";
   const v = localStorage.getItem("growl_lang");
-  return v === "ja" ? "ja" : "en";
+  if (v === "ja" || v === "en") return v;
+  // 未選択ならブラウザ言語で判定（日本語環境は日本語）
+  if (typeof navigator !== "undefined" && (navigator.language || "").toLowerCase().startsWith("ja")) return "ja";
+  return "en";
 }

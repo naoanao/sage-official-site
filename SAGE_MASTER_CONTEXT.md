@@ -176,6 +176,14 @@ Claude Code / Cowork などの外部AIツールは、SageというAI分身の**�
 - **30日プラン初手（なお手動・約90分）**：独自ドメイン(取得済 growl-ai.com／ディレクトリ登録のブロック解除)＋ distribution_posts.md のコピペ投稿60分。
 - **結論**：機能・課金は売れる状態。残ボトルネックは「集客（実需）」。次は機能でなく集客に進む。
 
+### G. UX改善 ＆ なおフィードバック対応（2026-06-15 第2弾）
+なおの指摘: ①無料枠がタイト ②課金ウォールが早い ③英日混在（生成は日本語なのにUI見出し/ラベルが英語）④Stripe決済が日本語。
+- ✅ **英日混在の根本対策**：`lib/i18n.ts` の既定言語を**ブラウザ言語で自動判定**（navigator.language が ja → 日本語UIで開く）。これで日本のユーザーは最初から日本語UI→生成も日本語→混在しない。`useLang` と `getLang` 両方修正。※既存の混在は「アプリが英語モード(growl_lang=en)のまま日本語入力で生成」が主因。多くのラベル(ActionCard/marketing report)は既にisEn対応済み。
+- ✅ **無料枠を緩和**：`FreeProgressBar` の MONTHLY_LIMIT 5→**10**。表示文(homepage/upgrade/FreeProgressBar)も全て「10」に統一（価値を感じる前にウォールに当たる問題＝なお指摘②を緩和）。
+- ⏳ **Stripe決済の英語化（穴塞ぎ・最優先）**：USD用に**英語の商品＋価格＋決済リンク**を作る必要あり（同一商品だと日本語も巻き込むため）。スクリプト `create_usd_english_products.mjs`＋`run_usd_english.bat` 用意済み。AIのサンドボックスが停止中でStripe API直叩き不可のため、**実行はなお側(OpenCode/bat)**→出力URLをAIが受け取り stripe-config の usdPaymentLinkBase に反映＆deploy。
+- 📌 残フィードバック（未対応・任意）：①顧客ゼロでの値上げは据え置き継続 ③地域の細かいニュアンス（小田原の城下町/観光等）はプロンプト強化で改善余地。
+- 集客キット `distribution_posts.md` 作成済み（X/IG/LinkedIn/Reddit/ディレクトリ・英日）。投稿はなお手動（約60分）。
+
 ### ⚠️ 中途半端・未完・既知の制限（次にやる候補）
 - **Product Marketing**: ✅堅牢化済み（2026-06-14）。フォールバック **Groq → DeepSeek → Gemini**（`callOnce`）＋セクションを**2本ずつ並列**実行で、serverless 60s内に安定生成（実測〜37s・2回連続成功）。📌 Vercelの GROQ_API_KEY は .env と一致必須（古いと全部Gemini 429へ落ちる）。DEEPSEEK_API_KEY も同様に有効性を保つこと。
 - **通知Telegram**: Vercel未設定（Email稼働・LINE稼働。Telegramは任意）。

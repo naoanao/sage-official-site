@@ -223,7 +223,7 @@ export default function LandingPage() {
               <p className="text-sm font-semibold text-gray-500 mb-1">{isEn ? "Free" : "フリー"}</p>
               <p className="text-3xl font-bold text-gray-900 mb-4">{isEn ? "$0" : "¥0"}<span className="text-base font-normal text-gray-400">{isEn ? "/mo" : "/月"}</span></p>
               <ul className="flex flex-col gap-2 text-sm text-gray-600 mb-6">
-                <li className="flex items-center gap-2"><span className="text-green-500">✓</span>{isEn ? "5 analyses per month" : "月5回まで分析"}</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span>{isEn ? "10 analyses per month" : "月10回まで分析"}</li>
                 <li className="flex items-center gap-2"><span className="text-green-500">✓</span>{isEn ? "All 10 frameworks (3C, SWOT, STP...)" : "全10フレームワーク（3C・SWOT・STPなど）"}</li>
                 <li className="flex items-center gap-2"><span className="text-green-500">✓</span>{isEn ? "No signup required" : "登録不要"}</li>
               </ul>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadUserId } from "@/lib/store";
 
-const MONTHLY_LIMIT = 5;
+const MONTHLY_LIMIT = 10; // 5→10: 価値を感じる前に課金ウォールに当たる問題を緩和（なおの指摘）
 const STORAGE_KEY = "growl_monthly_usage";
 const PLAN_CACHE_KEY = "growl_plan";
 
@@ -109,7 +109,7 @@ export default function FreeProgressBar() {
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 mb-5">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-base">✅</span>
-          <p className="text-sm font-bold text-amber-900">You&apos;ve used all 5 free analyses this month</p>
+          <p className="text-sm font-bold text-amber-900">You&apos;ve used all 10 free analyses this month</p>
         </div>
         <p className="text-xs text-amber-700 mb-3">Feeling the value? Upgrade to get unlimited analyses and weekly actions delivered automatically.</p>
         <div className="w-full bg-amber-200 rounded-full h-1.5 mb-4">
