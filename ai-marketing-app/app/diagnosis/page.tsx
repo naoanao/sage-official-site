@@ -57,6 +57,30 @@ export default function DiagnosisPage() {
   const startedRef = useRef(false);
   const [isPaid, setIsPaid] = useState(false);
 
+  // 診断結果でのメール捕捉（未課金でもリードを残す＝リスク⑤対策）
+  const [capEmail, setCapEmail] = useState("");
+  const [capBusy, setCapBusy] = useState(false);
+  const [capDone, setCapDone] = useState(false);
+  const [capErr, setCapErr] = useState("");
+
+  async function captureEmail() {
+    setCapErr("");
+    if (!capEmail.includes("@")) { setCapErr(isEn ? "Please enter a valid email." : "有効なメールアドレスを入力してください。"); return; }
+    setCapBusy(true);
+    try {
+      const deviceId = typeof window !== "undefined" ? (localStorage.getItem("growl_device_id") || "global") : "global";
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId, email: capEmail.trim(), lang: isEn ? "en" : "ja" }),
+      });
+      const data = await res.json();
+      if (data.success) { setCapDone(true); try { track("diagnosis_email_capture"); } catch {} }
+      else setCapErr(String(data.error || "Failed"));
+    } catch (e) { setCapErr(String(e)); }
+    setCapBusy(false);
+  }
+
   useEffect(() => { setIsPaid(isPaidPlan()); }, []);
 
   // Dynamic page title for SEO
@@ -326,6 +350,44 @@ export default function DiagnosisPage() {
               >
                 {isEn ? "Upgrade to Standard ($29/mo) →" : "スタンダードにアップグレード →"}
               </Link>
+            </div>
+          )}
+
+          {/* メール捕捉: 未課金でもリードを残す（リスク⑤対策） */}
+          {!isPaid && (
+            <div className="mt-6 bg-white border border-gray-200 rounded-2xl p-5 text-center">
+              {capDone ? (
+                <p className="text-sm font-semibold text-green-700">
+                  {isEn ? "📬 Thanks! We'll email you free weekly marketing tips." : "📬 ありがとうございます！毎週の集客ヒントをメールでお届けします。"}
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-gray-900 mb-1">
+                    {isEn ? "Get free weekly marketing tips by email" : "毎週の集客ヒントを無料でメール受け取る"}
+                  </p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    {isEn ? "No spam. Unsubscribe anytime." : "売り込みなし・いつでも解除できます。"}
+                  </p>
+                  <div className="flex gap-2 max-w-sm mx-auto">
+                    <input
+                      type="email"
+                      value={capEmail}
+                      onChange={(e) => setCapEmail(e.target.value)}
+                      placeholder={isEn ? "your@email.com" : "メールアドレス"}
+                      className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={captureEmail}
+                      disabled={capBusy}
+                      className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
+                    >
+                      {capBusy ? "..." : (isEn ? "Get tips" : "受け取る")}
+                    </button>
+                  </div>
+                  {capErr && <p className="text-xs text-red-500 mt-2">{capErr}</p>}
+                </>
+              )}
             </div>
           )}
 

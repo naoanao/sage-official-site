@@ -155,9 +155,26 @@ Claude Code / Cowork などの外部AIツールは、SageというAI分身の**�
 ### E. セルフサーブ足回り（2026-06-15 追加）
 - **データ削除ページ** `/data-deletion`（＋`/api/data-deletion`）本番稼働。App Review必須要件を充足。バイリンガル・記録・通知・受付確認メール。
 - **Meta OAuth セルフサーブ配線完成**: 欠けていた開始ルート `/api/meta-ads/oauth-start` を追加（既存 `/api/meta-ads/oauth-callback` と接続）。本番で 307→FB OAuth(client_id=META_APP_ID 設定済)を確認。接続ハブ `/connect`（Facebook/TikTok）も新設。
-  - 残作業（なお側）: ①Meta Appの Valid OAuth Redirect URIs に `https://growl-app.vercel.app/api/meta-ads/oauth-callback` を登録 ②テスター/開発者で接続テスト ③Business Verification＋App Review（App_Review_提出パッケージ.md 参照）。
+  - ✅ redirect URIはMeta App登録済み（`.../api/meta-ads/oauth/callback`＝スラッシュ）。コードもこのパスに統一（コールバックを `app/api/meta-ads/oauth/callback/route.ts` に作成、oauth-startのredirect_uriも一致）。
+  - ✅ scopeから `leads_retrieval` 除外（未有効で "Invalid Scopes" になるため。Lead Ads有効化後に再追加）。現scope: ads_management, ads_read, business_management, pages_show_list, pages_read_engagement。
+  - ✅ 2026-06-15 管理者アカウントでセルフサーブ接続テスト**成功**（device_id=global にトークン保存、report APIがMeta実データ取得を確認）。
+  - 残作業（なお側）: 一般ユーザー向けに開くには Business Verification＋App Review（App_Review_提出パッケージ.md 参照）。それまでは管理者/テスターのみ接続可。
 - **App Review提出パッケージ**: `App_Review_提出パッケージ.md`（権限justification・台本・チェックリスト）。
 - **デプロイ一本化**: 今後は `deploy.bat`（ASCII・1ファイル）をダブルクリックするだけ。pushはなおの認証が必要なため代行不可、それ以外は全部AI。
+
+### F. 収益化検証 ＆ 6リスク対応（2026-06-15）
+- ✅ **課金導線を実機検証**：英語ユーザーで /upgrade →「Start Standard」→ **Stripe決済画面 $29.00/月 が正常表示**（URL に client_reference_id 付き＝webhookでユーザー特定可）。マーチャント=KANAGAWA。代行$19/$79も同一仕組み。→ **収益化は本番で機能する状態**。
+- ⚠️ 私(AI)のブラウザツールは決済ドメイン(buy.stripe.com)をブロックされるため、**Stripe画面の目視・実課金はなおさんのブラウザのみ可**（顧客の利用には無関係）。実課金1件は未実施。
+- 🟡 **Stripe商品説明が日本語のまま**（USDプランでも "毎週AI…LINE通知…" と表示）。金額・導線は正しい。英語化はUSD用に別商品作成が必要（未対応）。
+- **6リスク対応状況:**
+  1. 顧客ゼロでの値上げ → 据え置き方針（ベータ価格維持。客が付くまで上げない）＝戦略判断。
+  2. 価格表記の不整合 → ✅修正（FreeProgressBarの「¥3,000/mo」ハードコードを英語ブロックに合わせ「$29/mo」へ。他はロケール連動で整合）。
+  3. L3タスク滞留（App Review/ビジネス認証）→ 認証は書類で要件未充足のため保留（収益に非必須）。
+  4. 機能追加が売る行動の代替化 → ⚠️認識。以後は機能追加より**集客優先**に切替。
+  5. メール捕捉なし → ✅診断ページ(/diagnosis)結果に**メール捕捉欄**追加（未課金でも /api/subscribe でリード保存）。オンボーディング(英)＋購読リストは既存。
+  6. 社会的証明ゼロ → トップに体験談あり（要・実顧客で差し替え）。最初の顧客獲得で解消。
+- **30日プラン初手（なお手動・約90分）**：独自ドメイン(取得済 growl-ai.com／ディレクトリ登録のブロック解除)＋ distribution_posts.md のコピペ投稿60分。
+- **結論**：機能・課金は売れる状態。残ボトルネックは「集客（実需）」。次は機能でなく集客に進む。
 
 ### ⚠️ 中途半端・未完・既知の制限（次にやる候補）
 - **Product Marketing**: ✅堅牢化済み（2026-06-14）。フォールバック **Groq → DeepSeek → Gemini**（`callOnce`）＋セクションを**2本ずつ並列**実行で、serverless 60s内に安定生成（実測〜37s・2回連続成功）。📌 Vercelの GROQ_API_KEY は .env と一致必須（古いと全部Gemini 429へ落ちる）。DEEPSEEK_API_KEY も同様に有効性を保つこと。
@@ -1346,6 +1363,7 @@ GrowlがSMB（飲食・サロン・講座）の広告を自動運用
 | 4 | 商品コンテンツ原本 | ✅ | backend/cognitive/PRODUCT_RESTAURANT_PROMPT_PACK_50.md |
 | 5 | 2026-06-11 autopilot: Dev.to記事#2公開（review replies）+レーンA Quora回答1件（AI tools chaos質問）+コメント0+Gumroad売上0。次回: テーマ#3+レーンB Medium転載 | ✅ | dev.to/naoanao/how-to-reply-to-negative-google-reviews-with-ai-templates-inside-3mf8 |
 | 6 | 2026-06-12 autopilot: **⚠️ プレイブック消失**（backend/cognitive/MONETIZATION_AUTOPILOT_PLAYBOOK.md がディスクに存在せず・git未コミットで復元不可）。記事執筆・レーンBはテーマキュー/禁止事項を確認できないためスキップ（捏造回避）。実行できた分: Dev.toコメント0件（返信不要）・Gumroad売上0。**なおさん対応必要: プレイブックを復元or再作成（§12cログから再構築可、AIに依頼可）** | ⚠️ 部分実行 | — |
+| 7 | 2026-06-15 autopilot: **プレイブック§12cから再構築完了**（backend/cognitive/MONETIZATION_AUTOPILOT_PLAYBOOK.md）。Dev.to記事#3公開（restaurant social media captions / AI templates）+Dev.toコメント0件（返信不要）+レーンB Medium転載完了（review replies記事）+Gumroad売上0。次回: テーマ#4+レーンC Hashnode転載 | ✅ | dev.to/naoanao/how-to-write-restaurant-social-media-captions-with-ai-templates-real-workflow-jk5 / medium.com/p/0c3d7f98fa20 |
 
 ### ❌ 試行して不可だったこと（繰り返し禁止リスト追加）
 - **HN Show HN**: 「Show HN一時制限中。新規アカウントはまずコメントでコミュニティ参加を」と拒否される。→ なおさんがHNで数週間コメント活動してkarmaを積むまでShow HN不可

@@ -122,7 +122,7 @@ export default function FreeProgressBar() {
             onClick={() => router.push("/upgrade")}
             className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-bold py-2.5 rounded-xl transition-all"
           >
-            Upgrade to Standard Plan (¥3,000/mo) →
+            Upgrade to Standard Plan ($29/mo) →
           </button>
         </div>
       </div>
