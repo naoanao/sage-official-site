@@ -313,7 +313,7 @@ function buildUserPrompt(user: UserProfile): string {
   return lines.join("\n");
 }
 
-async function callGroqModel(apiKey: string, model: string, systemPrompt: string, userPrompt: string): Promise<string> {
+async function callGroqModel(apiKey: string, model: string, systemPrompt: string, userPrompt: string, timeoutMs: number = 8000): Promise<string> {
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -328,6 +328,7 @@ async function callGroqModel(apiKey: string, model: string, systemPrompt: string
       ],
       temperature: 0.3,
     }),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -356,6 +357,7 @@ async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<s
       temperature: 0.3,
       max_tokens: 3000,
     }),
+    signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -369,15 +371,15 @@ async function callGroq(systemPrompt: string, userPrompt: string): Promise<strin
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("Groq: API key not set");
 
-  // 70B優先（高品質）→ 429/503時は8B-instantにフォールバック（RPM 6000と高い）
+  // 70B優先（高品質）→ 429/503/Timeout時は8B-instantにフォールバック（RPM 6000と高い）
   try {
-    return await callGroqModel(apiKey, "llama-3.3-70b-versatile", systemPrompt, userPrompt);
+    return await callGroqModel(apiKey, "llama-3.3-70b-versatile", systemPrompt, userPrompt, 8000);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const isRateLimit = msg.includes("429") || msg.includes("503");
+    const isRateLimit = msg.includes("429") || msg.includes("503") || msg.includes("TimeoutError") || msg.includes("AbortError");
     if (!isRateLimit) throw e;
-    console.warn("[Groq] 70B rate-limited, falling back to 8B-instant");
-    return await callGroqModel(apiKey, "llama-3.1-8b-instant", systemPrompt, userPrompt);
+    console.warn("[Groq] 70B rate-limited or timed out, falling back to 8B-instant");
+    return await callGroqModel(apiKey, "llama-3.1-8b-instant", systemPrompt, userPrompt, 5000);
   }
 }
 
@@ -395,6 +397,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
         contents: [{ parts: [{ text: userPrompt }] }],
         generationConfig: { temperature: 0.3 },
       }),
+      signal: AbortSignal.timeout(10000),
     }
   );
   if (!res.ok) {
