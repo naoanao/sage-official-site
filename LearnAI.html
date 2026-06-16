@@ -5233,40 +5233,28 @@ async function doCapture(force = false) {
     if (_ocrReadable) _prevOcrText = _ocrPreCheck; // 次回比較用に保存
 
     // ── Step2: 変化あり / 図解スライド → Vision API + OCRフォールバック ─
-    // Vision API(Gemini/Groq/OpenRouter等) → 失敗時はOCR + テキストLLMへ
-    const _runOCR = async () => {
-      console.log('[doCapture] _runOCR started (vision failed → OCR + text LLM)');
-      const ocrInput = _ocrReadable
-        ? _ocrPreCheck
-        : `（OCRテキスト取得不可 / 図解・グラフ・画像中心のスライドと推定）`;
-      const ocrPrompt = _buildOCRPrompt(
-        ocrInput, isStructured, videoTopic, audioTranscript, prevCaptures, ts, diagramRules
-      );
-      try {
-        r = await callAI(ocrPrompt, false, null);
-      } catch(ocrErr) {
-        console.error('[doCapture] _runOCR callAI failed:', ocrErr.message);
-        throw ocrErr;
-      }
-      r = `[OCR取込]\n${r}`;
-      console.log('[doCapture] _runOCR OK, length:', r.length);
-    };
+    // Vision API全滅時はOCR(Tesseract.js) + テキストLLM(DeepSeek等)へカスケード
     if (hasVisionKey) {
       const provName = apiKey ? 'Gemini' : groqKey ? 'Groq' : orKey ? 'OpenRouter' : 'GitHub';
       try {
         toast(`📸 ${provName} Vision で画面解析中…`);
         r = await callVisionAI(capturePrompt, b64);
-      } catch(visErr) {
-        // Vision全滅 → OCR + テキストLLM（DeepSeek等）へフォールバック
-        toast(`⚠ ${provName} Vision → OCR+テキストAIで代替`, 'err');
-        await _runOCR();
+      } catch(e) {
+        toast(`⚠ ${provName} → OCR+テキストAIで代替`, 'err');
+        const ocrTxt = await callLocalOCR(b64);
+        const inp = ocrTxt && ocrTxt.length > 20 ? ocrTxt : `（OCR未取得）`;
+        const p = _buildOCRPrompt(inp, isStructured, videoTopic, audioTranscript, prevCaptures, ts, diagramRules);
+        r = await callAI(p, false, null);
+        r = `[OCR取込]\n${r}`;
       }
     } else {
       toast('⚠ Vision APIキー未設定 → OCRで代替中（Geminiキー設定で大幅改善）');
-      await _runOCR();
+      const ocrTxt = await callLocalOCR(b64);
+      const inp = ocrTxt && ocrTxt.length > 20 ? ocrTxt : `（OCR未取得）`;
+      const p = _buildOCRPrompt(inp, isStructured, videoTopic, audioTranscript, prevCaptures, ts, diagramRules);
+      r = await callAI(p, false, null);
+      r = `[OCR取込]\n${r}`;
     }
-    // DEBUG: どのパスを通ったか確認
-    console.log('[doCapture] result type:', typeof r, r ? r.slice(0,60) : 'EMPTY');
     const savedLabel = audioTranscript ? `${label} 🎵` : label;
 
     // ── 重複コンテンツチェック（前の取込と95%以上同じなら保存スキップ） ──
