@@ -147,7 +147,7 @@ export default function GoalPage() {
             <LangToggle />
           </div>
         </div>
-        <ProgressBar current={5} total={5} />
+        <ProgressBar current={6} total={6} />
         <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 mb-6">
           <p className="text-indigo-600 text-xs font-medium">{t("ob.goal.title")} ✨</p>
         </div>
