@@ -734,3 +734,22 @@ Vercelのルートで \maxDuration: 60\ に延長したものの、複数APIプ�
 ### Abstract Lesson
 「全体のリクエストタイムアウト（maxDuration）に依存するのではなく、ネットワークリクエスト単位での個別タイムアウト（AbortSignal.timeout）を導入して早期フェイルファストを実装することで、長時間のブロッキングを防ぎつつ安全で高速なフォールバック・チェーンを確立できる」
 
+
+
+---
+
+## 2026-06-16: UX改善（SSR時のHydrationバグ修正、店舗名のAI生成最適化、TikTok OAuth）
+
+### Root Cause
+1. **プレースホルダーの英語残存**: Next.jsのSSRにおいて、proof/page.tsx内でisEn変数を直接用いて三項演算子でプレースホルダーを切り替えていたため、初期サーバーレンダリング時（言語未判定・デフォルトen）の英語DOMがクライアント側でHydration後も残存するReact特有のバグが発生していた。
+2. **AIの店舗名「〇〇」問題**: オンボーディング情報に「店舗名・屋号」が明示的に存在しなかったため、AIが架空の記号「〇〇」を出力していた。
+3. **TikTok OAuthエラー**: Vercel環境変数の NEXT_PUBLIC_APP_URL が growl-app.vercel.app などの動的プレビューURLを参照してしまい、TikTok側に登録された本番用のコールバックURI（growl-ai.com）と不一致を起こしていた。
+
+### Fix
+1. **lib/i18n.ts & proof/page.tsx**: プレースホルダーの文字列をすべて i18n.ts 側に移譲し、一元化された 	() 関数を介して呼び出す仕様に変更。これによりSSR・Hydration時の不整合を解消。
+2. **lib/types.ts & usiness/page.tsx & gemini.ts**: OnboardingData に store_name を追加し、ユーザーが入力できるようにUIを改修。入力された店舗名をGemini APIのシステムプロンプトに動的に注入することで、正確な店舗名の出力を担保。
+3. **pi/auth/tiktok/route.ts**: コールバックURLのベースドメインを生成する際、環境に応じた本番ドメインへの固定化（前回対応済み）によりリダイレクトURI不一致を解消。
+
+### Abstract Lesson
+「Next.js（SSR）においてUIコンポーネント内で直接言語切り替えの論理評価を行うとHydration不整合を招くため、必ずi18n辞書レイヤーで吸収させること。また、AIへの入力パラメータに暗黙の仮定（店舗名など）を残すとハルシネーションの温床になるため、明示的なデータ取得・注入フローを確立すること」
+
