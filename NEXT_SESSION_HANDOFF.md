@@ -1,27 +1,57 @@
 # 次セッション引き継ぎ指示書
-作成日: 2026-05-20（最終更新: 2026-06-05）
+作成日: 2026-05-20（最終更新: 2026-06-16）
 
 ---
 
-## 🎯 現在地（2026-06-05 JST）
+## 🎯 現在地（2026-06-16 JST）
 
 **収益: ¥0 / 目標: 年内¥10M**
 
-### ✅ 2026-06-05 実施済み（Meta広告コピー品質修正）
+### ✅ 2026-06-16 実施済み（Item 8: LearnAI詳細ページの実装）
 
-#### 問題の発見・修正
-- **根本原因**: `growl_session` に `user_profile` なし。`AdBoostCard` が `session.user_profile` を参照するとすべて `undefined` → プロンプトに文字列 `"undefined"` が渡り、汎用コピーが生成されていた
-- **修正①** `app/dashboard/page.tsx`: `loadOnboarding()` を追加インポートし、オンボーディングデータをAdBoostCardのsessionに優先注入
-- **修正②** `app/api/meta-ads/generate/route.ts`: `safe()` ヘルパー追加 → undefined/null/空文字をフォールバック値に変換し、プロンプトに "undefined" 文字列が混入するのを防止
-- **コード修正済み・Vercel未デプロイ**（VM停止のためgit pushが未実施）
+#### 完了内容
+* **LearnAI（/learn）詳細ページの構築**:
+  * `app/learn/page.tsx` にトピックID（`id`）プロパティを追加し、カードをクリックした際に詳細ページへと遷移する処理とプレミアムなホバースタイルを実装しました。
+  * `app/learn/[topic]/page.tsx` を新規作成し、`lib/learn-data.ts` からトピックの日本語・英語テキストを取得して出し分ける動的詳細ページを構築。日英の言語トグル（`<LangToggle />`）、戻るボタン、トピックが存在しない場合の404エラーフォールバック表示を完了しました。
+* **ビルド＆Lint検証**:
+  * `npm run build` および `npm run lint` がエラーなしで通過し、新設ルート `/learn/[topic]` が本番ビルドに正常に組み込まれることを確認しました。
+* **ブランチ**: `candidate/20260612-langtoggle-fixes` に全8コミット（前セッションの7コミット＋今回のItem 8コミット）が正常にコミット完了しました。
 
-#### Meta広告テスト結果（2026-06-05）
-- ✅ Generate Ad Copy → 生成成功（Groq API稼働中）
-- ✅ コピー品質修正済みデプロイ完了（commit 87235eb・本番稼働中）
-- ✅ Submit Ad (Paused) → 成功レスポンス + Campaign ID表示
-- ✅ META_ADS_ACCESS_TOKEN → **Vercel設定済み（2日前）**
-- ✅ META_AD_ACCOUNT_ID → **Vercel設定済み（2日前）**
-- **⚠️ 要確認**: 今日のSubmit Adで作成されたキャンペーン（ID: 120247848721930389）がAds Managerに実在するか確認を
+#### 続けて実施
+* 隔離ブランチ `candidate/20260612-langtoggle-fixes` から `main` ブランチへの結合（マージ）および Vercel への本番デプロイ。
+* Vercel 環境変数 `NEXT_PUBLIC_APP_URL` への `https://growl-ai.com` 設定。useSubscription / verify-subscription API → 本番デプロイ済み
+- **SpaceBackground + dark hero**: Canvas 星空背景を Growl LP に移植 → 本番デプロイ済み
+- **管理画面移植計画**: docs/adr/dashboard-migration-plan.md 作成（旧API 6個中3個 broken を特定）
+
+#### 残タスク
+- `NEXT_PUBLIC_APP_URL` 環境変数を Vercel に `https://growl-ai.com` で設定する（現状は未設定 → コード内 fallback が使用中）
+- Meta App Review（ads_management 本番権限）は未通過（一般ユーザーOAuth出稿の最終ブロッカー）
+
+---
+
+## 🎯 現在地（2026-06-12 JST）
+
+**収益: ¥0 / 目標: 年内¥10M**
+
+### ✅ 2026-06-12 実施済み（カスタムドメイン growl-ai.com 移行）
+
+#### 完了内容
+- **Vercel CLI で growl-app プロジェクトにドメイン追加**: `growl-ai.com` + `www.growl-ai.com`
+- **XServer DNS 設定**: A レコード `76.76.21.21`（なおさん手動完了）
+- **コードベース全36箇所の URL 置換**: `growl-app.vercel.app` → `growl-ai.com`（29ファイル）
+  - Meta OAuth redirect_uri / link_url / フォールバック画像URL
+  - APP_URL fallback（layout / sitemap / robots / 他5箇所）
+  - 診断シェアURL / OG画像URL / SVGテキスト
+  - 問い合わせメールアドレス / ドキュメント類
+- **candidate → main マージ & 本番デプロイ**: commit `87ab1cb` → Vercel Ready (42s)
+- **ブランチ**: `candidate/20260612-domain-migration` → `main` に統合済み
+
+#### 続けて実施
+- **サブスクリプションゲート部品移植**: PlanBadge / useSubscription / verify-subscription API → 本番デプロイ済み
+- **SpaceBackground + dark hero**: Canvas 星空背景を Growl LP に移植 → 本番デプロイ済み
+- **管理画面移植計画**: docs/adr/dashboard-migration-plan.md 作成（旧API 6個中3個 broken を特定）
+
+- Meta App Review（ads_management 本番権限）は未通過（一般ユーザーOAuth出稿の最終ブロッカー）
 
 ---
 

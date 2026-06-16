@@ -2447,8 +2447,9 @@ function _currentGeminiKey() {
 //   OpenRouter : 無料は50 req/day と少ない → 最後尾のみ
 // ※ 旧順: cerebras→gemini→groq→... → Cerebras失敗で即Gemini(250/日)消費が問題
 // ※ 新順: Geminiをgroq/github/sambanovaの後ろへ → Gemini温存・終日動作を実現
-const POOL_CHAT = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
-const POOL_GEN  = ['deepseek', 'cerebras', 'groq', 'github', 'sambanova', 'gemini', 'openrouter'];
+// 優先順: Groq(高速) → Gemini(多キー) → Cerebras → GitHub → SambaNova → OpenRouter → DeepSeek(最終)
+const POOL_CHAT = ['groq', 'gemini', 'cerebras', 'github', 'sambanova', 'openrouter', 'deepseek'];
+const POOL_GEN  = ['groq', 'gemini', 'cerebras', 'github', 'sambanova', 'openrouter', 'deepseek'];
 
 /** キー設定済み・冷却中でないプロバイダーのみを返す */
 function _buildProviderPool(type = 'chat') {
@@ -2565,7 +2566,9 @@ let ghKey = getAllowKeySave() ? localStorage.getItem('learnai_gh') : null;
 let cerebrasKey = getAllowKeySave() ? localStorage.getItem('learnai_cerebras') : null;
 let sambaKey = getAllowKeySave() ? localStorage.getItem('learnai_samba') : null;
 let hfKey = getAllowKeySave() ? localStorage.getItem('learnai_hf') : null;
+if (!hfKey) { hfKey = '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'; if (getAllowKeySave()) localStorage.setItem('learnai_hf', hfKey); }
 let dsKey = getAllowKeySave() ? localStorage.getItem('learnai_ds') : null;
+if (!dsKey) { dsKey = 'sk-99662e8da279421580e8b9b6ffe73011'; if (getAllowKeySave()) localStorage.setItem('learnai_ds', dsKey); }
 
 let proxyBaseUrl = getAllowKeySave()
   ? (localStorage.getItem('learnai_proxy_base') || 'http://localhost:8000/')
@@ -3202,9 +3205,13 @@ const OR_VISION_FALLBACKS = [
   // 自動でVision対応の無料モデルを選ぶ。モデル廃止の影響を受けない最も堅牢な選択。
   'openrouter/free',
   // 個別モデル（スマートルーターが失敗した場合のフォールバック）
-  'qwen/qwen-2.5-vl-7b-instruct:free',          // Qwen2.5-VL 7B（Vision対応・存在確認済み）
+  'qwen/qwen2.5-vl-72b-instruct:free',          // Qwen2.5-VL 72B（Vision最強クラス・無料）
+  'mistralai/pixtral-12b:free',                  // Mistral Pixtral 12B（Vision対応・無料）
+  'qwen/qwen-2.5-vl-7b-instruct:free',           // Qwen2.5-VL 7B（軽量・無料）
   'meta-llama/llama-4-maverick-17b-128e-instruct:free', // Llama4 Maverick
   'meta-llama/llama-4-scout-17b-16e-instruct:free',     // Llama4 Scout
+  'google/gemma-4-27b-it:free',                  // Gemma 4 27B（Google製・無料）
+  'microsoft/phi-4-multimodal-instruct:free',    // Phi-4 Vision（Microsoft製・無料）
 ];
 const PPLX_MODELS = [
   { value: 'sonar',            label: 'Sonar（高速・Web検索）' },
@@ -3324,8 +3331,8 @@ async function callAI(prompt, useHist = true, sysOverride = null) {
   if (currentProvider() === 'perplexity' && pplxKey) {
     return await callPerplexity(prompt, useHist, sys);
   }
-  // 固定優先度: Cerebras → Groq → GitHub → SambaNova → Gemini → OpenRouter
-  // Geminiを後方に移動: 2.5-flash選択時は250/日制限のためVision用に温存
+  // 固定優先度: Groq → Gemini(複数キーローテーション) → Cerebras → GitHub → SambaNova → OpenRouter → DeepSeek
+  // Geminiは複数キーがある場合に強い。全滅したらDeepSeekまで自動フォールバック
   // 冷却中のプロバイダーだけをスキップし、常に先頭から試す
   const pool = _buildProviderPool('chat');
   let lastErr = null;
@@ -3398,34 +3405,8 @@ async function callAI(prompt, useHist = true, sysOverride = null) {
     // Proxima未起動またはpingタイムアウト → スキップ
   }
 
-  // ── Geminiがクールダウン中（RPM）なら待機してリトライ ────────────
-  // 他プロバイダーが全滅してGeminiだけ生き残っている時に自動で待機・再試行する
-  // 閾値: 210秒（3分30秒）= Geminiデフォルトクールダウン3分 + バッファ
-  const _gemCoolUntil = _providerCooldown['gemini'];
-  if (apiKey && _gemCoolUntil) {
-    const _waitMs = _gemCoolUntil - Date.now();
-    if (_waitMs > 0 && _waitMs < 210000) {
-      const _waitSec = Math.ceil(_waitMs / 1000);
-      toast(`⏳ Gemini 制限中… ${_waitSec}秒後に自動リトライ`, '');
-      setApiStatus('wait', `Gemini ${_waitSec}秒待機中`);
-      await _sleep(_waitMs + 500);
-      try {
-        const _retryModel = 'gemini-2.0-flash-lite';
-        const _retryResult = await callGeminiModel(prompt, [], useHist, _retryModel, sys);
-        toast('✅ Gemini（自動リトライ成功）', '');
-        return _retryResult;
-      } catch(_retryErr) {
-        // リトライも失敗 → 日次制限の可能性（RPMなら数分後に再試行を）
-        const _isDaily = _retryErr?.message?.toLowerCase?.().includes('resource_exhausted') ||
-                         _retryErr?.message?.includes('quota');
-        if (_isDaily) {
-          // 日次枯渇の可能性 → 長期クールダウンをセット（同じページセッション内は使わない）
-          _setProviderCooldown('gemini', 60 * 60 * 1000); // 1時間
-          toast('⚠️ Gemini 日次制限の可能性。本日はしばらく使えません', 'err');
-        }
-      }
-    }
-  }
+  // Geminiクールダウン中の自動待機は廃止（UIフリーズの原因のため）
+  // → Gemini制限時は即座に次のプロバイダーへ。全滅時はエラーを返してユーザーに再送信を促す。
 
   if (pool.length === 0) {
     if (!isCap) openApiModal();
@@ -3640,13 +3621,16 @@ async function transcribeAudio(seconds = 20) {
 
 // 日次上限エラーかどうかを判定
 function _isVisionDailyLimit(msg) {
-  return msg && (
+  if (!msg) return false;
+  // 真の日次上限のみ判定（一時的なrate limitや高負荷エラーは含めない）
+  return (
     msg.includes('tokens per day') ||
     msg.includes('TPD') ||
-    msg.includes('per day') ||          // "X tokens per day" 形式
-    msg.includes('per-day') ||          // OR: "free-models-per-day" 形式（ハイフン）
-    msg.includes('daily') ||            // "daily limit" 等
-    msg.includes('exceeded') && msg.includes('free')  // OR: "Rate limit exceeded: free-models-per-day"
+    msg.includes('free-models-per-day') ||   // OpenRouter固有
+    (msg.includes('exceeded') && msg.includes('free-models-per-day')) ||
+    msg.includes('RESOURCE_EXHAUSTED') ||    // Gemini日次上限の公式エラーコード
+    (msg.includes('quota') && msg.includes('exhausted'))
+    // ※ 'daily' 単体・'high demand'・'Rate limit reached' は一時エラーのため除外
   );
 }
 // 一般的なレートリミット（分・時間単位）か判定
@@ -3791,7 +3775,7 @@ async function callVisionAI(prompt, b64) {
   const errs = [];
   const OR_HEADERS = { 'HTTP-Referer': location.href, 'X-Title': 'LearnAI' };
 
-  // ── 1. 現在選択中プロバイダー & vision対応モデルを最優先 ──────────
+  // ── 0. 現在選択中プロバイダー & vision対応モデルを最優先 ──────────
   if (p === 'groq' && groqKey && VISION_MODELS.has(m) && !_groqVisionDailyBlocked) {
     try {
       return await callOpenAICompatVision(
@@ -3814,7 +3798,19 @@ async function callVisionAI(prompt, b64) {
     } catch(e) { errs.push(`GitHub(${m}): ${e.message}`); }
   }
 
-  // ── 2. Groq Vision（最優先・Geminiクォータ消費ゼロ）────────────────
+  // ── 1. Gemini Vision（最高精度・7キーローテーション）────────────────
+  // 精度最優先。7本のキーを順番に試す。全滅時のみ次へ。
+  if (apiKey && !_isProviderCooling('gemini')) {
+    try {
+      const r = await callGemini(prompt, [{ mimeType: 'image/jpeg', data: b64 }], false);
+      if (p !== 'gemini') toast('📷 画像解析: Gemini Vision', '');
+      return r;
+    } catch(e) { errs.push(`Gemini: ${e.message.slice(0,80)}`); }
+  } else if (apiKey) {
+    errs.push('Gemini: クールダウン中（スキップ）');
+  }
+
+  // ── 2. Groq Vision（高速・良精度）───────────────────────────────────
   if (groqKey && !_groqVisionDailyBlocked && !(p === 'groq' && VISION_MODELS.has(m))) {
     try {
       const r = await callOpenAICompatVision(
@@ -3828,7 +3824,17 @@ async function callVisionAI(prompt, b64) {
     }
   }
 
-  // ── 3. OpenRouter 無料Visionモデル ────────────────────────────────
+  // ── 3. GitHub GPT-4o（高精度・キーがある場合）────────────────────────
+  if (ghKey && !(p === 'github' && VISION_MODELS.has(m))) {
+    try {
+      const r = await callOpenAICompatVision(
+        'https://models.inference.ai.azure.com/chat/completions', ghKey, 'GitHub Models', 'gpt-4o', prompt, b64);
+      toast('📷 画像解析: GitHub GPT-4o', '');
+      return r;
+    } catch(e) { errs.push(`GitHub(gpt-4o): ${e.message.slice(0,60)}`); }
+  }
+
+  // ── 4. OpenRouter 無料Visionモデル（Qwen72B/Pixtral等・精度順）──────
   if (orKey && !_orVisionDailyBlocked) {
     for (const vm of OR_VISION_FALLBACKS) {
       if (p === 'openrouter' && vm === m) continue;
@@ -3839,7 +3845,7 @@ async function callVisionAI(prompt, b64) {
         return r;
       } catch(e) {
         if (_isVisionDailyLimit(e.message)) {
-          _orVisionDailyBlocked = true; // 日次制限 → 残りモデルもスキップ
+          _orVisionDailyBlocked = true;
           errs.push(`OR: 日次制限（free-models-per-day）`);
           break;
         }
@@ -3850,61 +3856,16 @@ async function callVisionAI(prompt, b64) {
     errs.push('OpenRouter: 本日の無料Vision上限済み（スキップ）');
   }
 
-  // ── 4. Gemini（Groq/OR失敗時のみ・クールダウン中はスキップ）────────
-  if (apiKey && !_isProviderCooling('gemini')) {
-    try {
-      const r = await callGemini(prompt, [{ mimeType: 'image/jpeg', data: b64 }], false);
-      if (p !== 'gemini') toast('📷 画像解析: Gemini', '');
-      return r;
-    } catch(e) { errs.push(`Gemini: ${e.message.slice(0,60)}`); }
-  } else if (apiKey) {
-    errs.push('Gemini: クールダウン中（スキップ）');
-  }
-
-  // ── 6. GitHub GPT-4o ─────────────────────────────────────────────
-  if (ghKey) {
-    try {
-      const r = await callOpenAICompatVision(
-        'https://models.inference.ai.azure.com/chat/completions', ghKey, 'GitHub Models', 'gpt-4o', prompt, b64);
-      toast('📷 画像解析: GitHub GPT-4o', '');
-      return r;
-    } catch(e) { errs.push(`GitHub(gpt-4o): ${e.message.slice(0,60)}`); }
-  }
-
-  // ── 7. Hugging Face Vision（完全無料・クレカ不要）────────────────
+  // ── 5. HuggingFace Qwen2.5-VL-72B（無制限・高精度オープンモデル）────
+  // 他が全て失敗した時の最終手段。Qwen72BはOCR精度が高くGPT-4o相当。
   if (hfKey) {
     try {
       const r = await callOpenAICompatVision(
         `${proxyBaseUrl.replace(/\/$/, '')}/api/huggingface/v1/chat/completions`, hfKey, 'HuggingFace',
-        'Qwen/Qwen2-VL-7B-Instruct', prompt, b64);
-      toast('📷 画像解析: HuggingFace Llama Vision', '');
+        'Qwen/Qwen2.5-VL-72B-Instruct', prompt, b64);
+      toast('📷 画像解析: HuggingFace Qwen2.5-VL-72B', '');
       return r;
-    } catch(e) { errs.push(`HuggingFace: ${e.message.slice(0,60)}`); }
-  }
-
-  // ── Geminiがクールダウン中（RPM）なら待機してリトライ ────────────
-  // Groq/OR/HFが全滅してGeminiだけ生き残っている時に自動で待機・再試行する
-  // 閾値: 210秒（3分30秒）= Geminiデフォルトクールダウン3分 + バッファ
-  const gemCoolUntil = _providerCooldown['gemini'];
-  if (apiKey && gemCoolUntil) {
-    const waitMs = gemCoolUntil - Date.now();
-    if (waitMs > 0 && waitMs < 210000) {
-      const waitSec = Math.ceil(waitMs / 1000);
-      toast(`⏳ Gemini 制限中… ${waitSec}秒後に自動リトライ（Vision）`, '');
-      setApiStatus('wait', `Gemini ${waitSec}秒待機中`);
-      await _sleep(waitMs + 500);
-      try {
-        const r = await callGemini(prompt, [{ mimeType: 'image/jpeg', data: b64 }], false);
-        toast('📷 画像解析: Gemini（自動リトライ成功）', '');
-        return r;
-      } catch(e) {
-        errs.push(`Gemini(retry): ${e.message.slice(0,60)}`);
-        // 日次枯渇の可能性 → 長期クールダウン
-        if (e.message?.toLowerCase().includes('resource_exhausted') || e.message?.includes('quota')) {
-          _setProviderCooldown('gemini', 60 * 60 * 1000); // 1時間
-        }
-      }
-    }
+    } catch(e) { errs.push(`HuggingFace(Qwen72B): ${e.message.slice(0,60)}`); }
   }
 
   // ── すべて失敗 → throw（doCapture側でフレームをスキップ）─────────
@@ -3930,7 +3891,8 @@ function isGeminiRetryableError(msg) {
   const m = msg.toLowerCase();
   return m.includes('rate') || m.includes('429') || m.includes('quota') ||
          m.includes('resource_exhausted') || m.includes('timeout') ||
-         m.includes('503') || m.includes('overloaded') || m.includes('unavailable');
+         m.includes('503') || m.includes('overloaded') || m.includes('unavailable') ||
+         m.includes('high demand') || m.includes('server error') || m.includes('internal');
 }
 
 // Gemini（テキスト or 画像）
@@ -4006,6 +3968,12 @@ async function callGeminiModel(prompt, images, useHist, model, sysOverride = nul
           }
           lastErr = new Error(`Gemini key ${keyIdx + 1} quota/rate超過`);
           continue; // ← throw しない。次のキーへ
+        }
+        // 一時エラー（高負荷・503等）→ 次のキーへ
+        if (res.status === 503 || errMsg.toLowerCase().includes('high demand') ||
+            errMsg.toLowerCase().includes('overloaded') || errMsg.toLowerCase().includes('unavailable')) {
+          lastErr = new Error(`Gemini key ${keyIdx + 1}: ${errMsg.slice(0, 60)}`);
+          continue; // 次のキーで再試行
         }
         // その他エラー（モデル不明など）はそのまま throw
         throw new Error(errMsg);
@@ -5871,7 +5839,7 @@ async function sendChat() {
       queryWithCtx = `以下は私がこのセッションで蓄積した学習メモです。これらを参照しながら質問に答えてください。\n\n【学習メモ】\n${ctx}\n\n【質問】\n${v}`;
     }
 
-    const r = await gemini(queryWithCtx, [], true, dynSys);
+    const r = await callAI(queryWithCtx, true, dynSys);
 
     updateBubble(ai, r);
     addFeedbackButtons(ai);
@@ -6912,4 +6880,62 @@ async function saveToNotionDB() {
       ...(memo    ? { 'メモ': { rich_text: [{ text: { content: memo.slice(0, 2000) } }] } } : {}),
     },
     children: [{
-  
+      object: 'block', type: 'paragraph',
+      paragraph: { rich_text: [{ text: { content: content.slice(0, 2000) } }] }
+    }]
+  };
+
+  try {
+    // ── server.py プロキシ経由で保存 ──────────────────
+    const res  = await fetch(notionProxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.id) {
+      resultEl.textContent = '✅ Notionに保存しました！';
+      resultEl.className   = 'nm-result ok';
+      toast('📓 Notionに保存しました ✓', 'ok');
+      setTimeout(() => closeNotionModal(), 1800);
+    } else {
+      throw new Error(data.message || data.error || `HTTP ${res.status}`);
+    }
+  } catch(e) {
+    resultEl.textContent = `❌ 保存に失敗：${e.message.slice(0, 80)}`;
+    resultEl.className   = 'nm-result err';
+    toast('Notion保存に失敗しました', 'err');
+  }
+  btn.disabled = false; btn.textContent = '📓 Notionに保存';
+}
+
+function clearAll() {
+  if (isCap) { stopCapture(); }
+  accum    = [];
+  chatHist = [];
+  noteOut  = '';
+  pendImgs = [];
+  voiceText = '';
+  _flashcards = [];
+  document.getElementById('flashcardSection').style.display = 'none';
+  const accumList = document.getElementById('accumList');
+  if (accumList) accumList.innerHTML = '';
+  document.getElementById('accumBadge').textContent = '0件';
+  const chatMsgs = document.getElementById('chatMsgs');
+  if (chatMsgs) chatMsgs.innerHTML = '<div class="msg msg-ai"><div class="avatar">🤖</div><div class="bubble">こんにちは！今日は何を学びましたか？<br>気になったことや疑問点があれば何でも話しかけてください。</div></div>';
+  const outBox = document.getElementById('outBox');
+  if (outBox) { outBox.classList.add('empty'); outBox.textContent = 'ここにコンテンツが生成されます…'; }
+  document.getElementById('outActions')?.classList.add('hidden');
+  syncGenSource();
+  renderAccum();
+  toast('クリアしました', 'ok');
+}
+
+function updateCinCount() {
+  const v = document.getElementById('cin').value;
+  const el = document.getElementById('cinCount');
+  if (el) el.textContent = v.length + '文字';
+}
+</script>
+</body>
+</html>

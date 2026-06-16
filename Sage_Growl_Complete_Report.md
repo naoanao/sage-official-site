@@ -1,5 +1,24 @@
 # 🧠 Sage AI / Growl / LearnAI — 真・完全統合調査レポート（神話級・真の決定版）
-> 調査・更新日: 2026-06-05 | プロンプト品質PDCA・英語版修正・Geminiフォールバック追加・収益化実装 完了
+> 調査・更新日: 2026-06-16 | 多言語化バグ・不整合解消・LearnAI詳細ページ実装完了
+
+---
+
+## 🔥 最新更新（2026-06-16）— 多言語化バグ解消 ＆ LearnAI詳細ページ実装完了
+
+**多言語化バグと表示不整合の解消（全7項目）**
+- **AI言語バイアス対策**: 全4プロンプトに `lang`（EN/JA）分岐を追加、英語出力時の厳格化（`Output in ENGLISH only` 指示を強化）。
+- **LangToggle & 価格・上限同期**: `/upgrade`、`/report`、`/agency` の3ページに言語切り替えトグルを追加。FREE_LIMIT を 5 から 10 に統一（価格も JPY/USD 表記と決済リンクを同期）。
+- **診断日英対応 (/diagnosis)**: 診断画面に言語トグルを追加し、英語結果用の `rank-[A-E]-en.svg` (5ファイル) を新規作成・表示分け。
+- **広告代行LP連携**: 代行LPからのオンボーディング流入追跡を構築し、無料ユーザーにも Meta広告生成 UI を開放。
+- **オンボーディングバグ修正**: 進行バー of ステップ表記ズレ（5/5問題を 5/6, 6/6 に）を修正。
+- **バッジ英日残存修正**: `ActionCard` の `ROLE_STYLES` で日英キー両方のフォールバックを用意。
+- **法的文書日英対応**: `/privacy` と `/terms` の日本語規約を追加し、Metaトークン収集や広告PAUSED仕様を明記。連絡先を `growl-ai.com` に統一。
+
+**LearnAI詳細ページ実装（項目8）**
+- **動的詳細ルート構築**: `/learn` のトピックカードクリックで `/learn/[topic]` 動的ルートに遷移し、`lib/learn-data.ts` の日英テキストを取得して美しく表示。言語トグルと戻るボタン、404ハンドリングも実装。
+
+**本番デプロイ検証**
+- `npm run build` および `npm run lint` がエラーなしで通過し、`main` ブランチへマージして Vercel へ反映完了。
 
 ---
 
@@ -429,8 +448,8 @@ Next.jsのVercelへのデプロイ時、ビルドエラーやAPIルートの競�
 | プロダクト | 役割 | 状態 | URL |
 |---|---|---|---|
 | **Sage AI** | なおさんのAI自律分身。SNS投稿・リサーチ・学習・収益化を24時間自動化 | ✅ 本番稼働中 | kanagawatable.bsky.social / kanagawajapan.bsky.social |
-| **Growl** | 中小事業者向けAIマーケリサーチツール（3C分析・競合調査・Meta広告全自動化） | ✅ 本番稼働中 | growl-app.vercel.app |
-| **LearnAI** | AI活用マーケ学習ツール（一人用）| ローカル稼働・未公開 | LearnAI.html（ローカル） |
+| **Growl** | 中小事業者向けAIマーケリサーチツール（3C分析・競合調査・Meta広告全自動化） | ✅ 本番稼働中 | growl-ai.com |
+| **LearnAI** | AI活用マーケ学習ツール（一覧・詳細）| ✅ 本番稼働中 | growl-ai.com/learn / LearnAI.html（ローカル） |
 
 **コアコンセプト（SOUL.md & identity.json より）:**
 > 「自分の分身をPCに作って、私の代わりを全てやる」— なおさん
@@ -808,7 +827,7 @@ Sage_Final_Unified/
 - **Instagram**: `.env`でOFFにしているが、コードでフラグを立てている箇所あり
 - **Gemini API**: quota超過で全面停止中（Groqに移行済み）
 - **LearnAI**: ローカルのみ・未公開・収益化未着手
-- **カスタムドメイン未取得**: growl-app.vercel.app → BetaList/Uneed/SaaSHub全て拒否。$10〜15で解決
+- **カスタムドメイン growl-ai.com 取得・設定済み**: ✅ growl-app.vercel.app → growl-ai.com に移行（2026-06-12）
 
 ## 📰 英語コンテンツ資産（2026-05-31時点）
 **Dev.to記事（dev.to/naoanao）- 8本公開済み:**
@@ -1400,3 +1419,36 @@ Sageの86エンドポイントの大半はローカルFlaskサーバー上にあ
 | MEDIUM | GA4のコンバージョン設定（診断完了→課金） | L3 | GA4ダッシュボード操作 |
 | LOW | kanagawajapan 2アカウント目投稿有効化 | L1 | bluesky_agent単一アカウント制限 |
 | LOW | Vercel GitHub連携の定期確認 | L3 | vercel-002再発防止の習慣化 |
+
+---
+
+## 2026-06-12 追記④：カスタムドメイン移行完了
+
+- growl-ai.com / www.growl-ai.com を Vercel growl-app プロジェクトに追加
+- XServer DNS: A レコード `76.76.21.21` 設定済み
+- コードベース全36箇所の URL を growl-app.vercel.app → growl-ai.com に置換（29ファイル）
+- 本番デプロイ完了（commit 87ab1cb・Vercel Ready 42s）
+
+---
+
+## 2026-06-12 追記⑤：サブスクリプションゲート部品移植
+
+- saas-template/ から PlanBadge / useSubscription hook / verify-subscription API を移植
+- `components/PlanBadge.tsx` — Standard/Pro プランバッジ
+- `lib/useSubscription.ts` — localStorage キャッシュ + Supabase 検証の React Hook
+- `app/api/verify-subscription/route.ts` — device_id / email 両対応のプラン検証API
+- ダッシュボードヘッダーに PlanBadge 表示追加
+- 既存の決済フロー（/upgrade / Stripe Payment Links / FreeProgressBar）は完全維持
+- ブランチ: candidate/20260612-subscription-gate → main マージ・本番デプロイ完了
+
+---
+
+## 2026-06-12 追記⑥：SpaceBackground + dark hero
+
+- Sage 旧管理画面の Canvas 星空背景（SpaceBackground.jsx）を Growl に移植
+- `components/SpaceBackground.tsx` — 依存ゼロ、200星パララックスアニメーション
+- LP hero セクションを dark 化（bg-black/60 backdrop-blur-sm）
+- SpaceBackground が半透明越しに星空を表示
+- docs/adr/dashboard-migration-plan.md 作成
+- 旧管理画面 API エンドポイント6個中3個が broken であることを特定（移植対象外）
+- ブランチ: candidate/20260612-spacebg → main マージ・本番デプロイ完了

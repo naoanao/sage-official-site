@@ -9,10 +9,10 @@ import LangToggle from "@/components/LangToggle";
 import PlanBadge from "@/components/PlanBadge";
 import { useSubscription } from "@/lib/useSubscription";
 export const dynamic = "force-dynamic";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { SafeSection } from "@/components/SafeSection";
-const AdBoostCard = dynamic(() => import("@/components/AdBoostCard"), { ssr: false });
-const MetaPageSelectModal = dynamic(() => import("@/components/MetaPageSelectModal"), { ssr: false });
+const AdBoostCard = nextDynamic(() => import("@/components/AdBoostCard"), { ssr: false });
+const MetaPageSelectModal = nextDynamic(() => import("@/components/MetaPageSelectModal"), { ssr: false });
 import { useLang } from "@/lib/i18n";
 
 export default function DashboardPage() {

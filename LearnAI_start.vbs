@@ -43,7 +43,7 @@ For i = 0 To UBound(tryCmds)
 Next
 
 If serverOK Then
-  oShell.Run "http://localhost:8000/LearnAI.html"
+  oShell.Run "http://localhost:8000/LearnAI.html?t=" & Now()
 Else
   oShell.Run """" & sDir & "\LearnAI.html"""
 End If
