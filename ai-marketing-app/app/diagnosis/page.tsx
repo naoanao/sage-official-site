@@ -5,6 +5,7 @@ import Link from "next/link";
 import { track } from "@vercel/analytics";
 import { useLang } from "@/lib/i18n";
 import { isPaidPlan } from "@/components/FreeProgressBar";
+import LangToggle from "@/components/LangToggle";
 
 type Step = "quiz" | "loading" | "result";
 type Answer = string;
@@ -188,6 +189,9 @@ export default function DiagnosisPage() {
 
     return (
       <main className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
+        <div className="flex justify-end w-full max-w-lg mb-2">
+          <LangToggle />
+        </div>
         <div className="w-full max-w-lg">
           {/* Progress bar */}
           <div className="mb-8">
@@ -251,6 +255,9 @@ export default function DiagnosisPage() {
 
     return (
       <main className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
+        <div className="flex justify-end w-full max-w-lg mb-2">
+          <LangToggle />
+        </div>
         <div className="w-full max-w-lg">
 
           {/* Rank circle */}
@@ -285,7 +292,7 @@ export default function DiagnosisPage() {
           {/* Rank share card (rank-A..E.svg, restored 2026-06-10) */}
           <div className="mb-6">
             <img
-              src={`/diagnosis/rank-${["A","B","C","D","E"].includes(rank) ? rank : "C"}.svg`}
+              src={`/diagnosis/rank-${["A","B","C","D","E"].includes(rank) ? rank : "C"}${isEn ? "-en" : ""}.svg`}
               alt={isEn ? `Growl SNS Diagnosis - Rank ${rank}` : `Growl SNS診断 ランク${rank}`}
               className="w-full rounded-2xl border border-gray-100 shadow-sm"
             />

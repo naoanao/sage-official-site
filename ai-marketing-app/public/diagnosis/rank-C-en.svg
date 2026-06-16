@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" width="800" height="420">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#0C4A6E"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="420" fill="url(#bg)" rx="24"/>
+
+  <!-- Subtle dot pattern -->
+  <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+    <circle cx="20" cy="20" r="1.5" fill="white" opacity="0.07"/>
+  </pattern>
+  <rect width="800" height="420" fill="url(#dots)" rx="24"/>
+
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="6" height="420" fill="#38BDF8" rx="3" opacity="0.9"/>
+
+  <!-- Rank circle (left side) -->
+  <circle cx="200" cy="210" r="130" fill="white" opacity="0.05"/>
+  <circle cx="200" cy="210" r="110" fill="none" stroke="url(#ring)" stroke-width="4" opacity="0.6"/>
+  <circle cx="200" cy="210" r="88" fill="white" opacity="0.08"/>
+
+  <!-- Rank letter -->
+  <text x="200" y="235" text-anchor="middle" font-family="'Arial Black', Arial, sans-serif"
+        font-size="120" font-weight="900" fill="#38BDF8" filter="url(#glow)" opacity="0.95">C</text>
+
+  <!-- Emoji -->
+  <text x="200" y="310" text-anchor="middle" font-size="36">📈</text>
+
+  <!-- Divider line -->
+  <line x1="340" y1="60" x2="340" y2="360" stroke="white" stroke-width="1" opacity="0.15"/>
+
+  <!-- Right content -->
+  <!-- Score badge -->
+  <rect x="370" y="60" width="180" height="38" rx="19" fill="#38BDF8" opacity="0.2"/>
+  <rect x="370" y="60" width="180" height="38" rx="19" fill="none" stroke="#38BDF8" stroke-width="1.5" opacity="0.6"/>
+  <text x="460" y="84" text-anchor="middle" font-family="Arial, sans-serif" font-size="15"
+        font-weight="700" fill="#38BDF8">Score 45〜64</text>
+
+  <!-- Label JP -->
+  <text x="370" y="145" font-family="'Hiragino Sans', 'Yu Gothic', Arial, sans-serif"
+        font-size="34" font-weight="700" fill="white" opacity="0.95">伸び代たっぷり</text>
+
+  <!-- Label EN -->
+  <text x="370" y="188" font-family="Arial, sans-serif"
+        font-size="18" font-weight="400" fill="white" opacity="0.55">Room to Grow</text>
+
+  <!-- Divider -->
+  <line x1="370" y1="210" x2="740" y2="210" stroke="white" stroke-width="1" opacity="0.12"/>
+
+  <!-- SNS集客力診断 label -->
+  <text x="370" y="250" font-family="'Hiragino Sans', 'Yu Gothic', Arial, sans-serif"
+        font-size="13" fill="white" opacity="0.45">SNS Marketing Diagnosis · Growl</text>
+
+  <!-- CTA text -->
+  <text x="370" y="290" font-family="'Hiragino Sans', 'Yu Gothic', Arial, sans-serif"
+        font-size="19" fill="white" opacity="0.85">What is your marketing rank?</text>
+  <text x="370" y="316" font-family="Arial, sans-serif"
+        font-size="14" fill="#38BDF8" opacity="0.9">growl-ai.com/diagnosis →</text>
+
+  <!-- Bottom Growl branding -->
+  <rect x="0" y="380" width="800" height="40" rx="0" fill="black" opacity="0.25"/>
+  <rect x="0" y="380" width="800" height="40" fill="none"/>
+  <!-- Growl wordmark -->
+  <circle cx="40" cy="400" r="12" fill="#38BDF8" opacity="0.9"/>
+  <text x="40" y="405" text-anchor="middle" font-family="'Arial Black', Arial, sans-serif"
+        font-size="11" font-weight="900" fill="#0C4A6E">G</text>
+  <text x="60" y="406" font-family="'Arial Black', Arial, sans-serif"
+        font-size="14" font-weight="900" fill="white" opacity="0.9">Growl</text>
+  <text x="115" y="406" font-family="Arial, sans-serif"
+        font-size="12" fill="white" opacity="0.4">— AI Marketing Copilot</text>
+
+  <!-- Rank badge bottom right -->
+  <text x="760" y="408" text-anchor="end" font-family="'Arial Black', Arial, sans-serif"
+        font-size="22" font-weight="900" fill="#38BDF8" opacity="0.7">Rank C</text>
+</svg>
