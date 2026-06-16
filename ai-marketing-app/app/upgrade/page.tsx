@@ -6,6 +6,7 @@ import { buildPaymentUrl } from "@/lib/stripe-config";
 import { ensureDeviceId } from "@/lib/store";
 import { isLimitReached } from "@/components/FreeProgressBar";
 import { useLang } from "@/lib/i18n";
+import LangToggle from "@/components/LangToggle";
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -125,6 +126,9 @@ export default function UpgradePage() {
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10">
+      <div className="flex justify-end px-0 py-0 mb-2">
+        <LangToggle />
+      </div>
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-8">
           <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-2">

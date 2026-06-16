@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useLang } from "@/lib/i18n";
+import LangToggle from "@/components/LangToggle";
 
 // 代行サービスの紹介LP（/agency）。英語/日本語バイリンガル。
 declare global { interface Window { fbq?: (...a: unknown[]) => void } }
@@ -41,7 +42,10 @@ export default function AgencyLandingPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white">
-      <div className="max-w-2xl mx-auto px-5 pt-12 pb-24">
+      <div className="flex justify-end px-5 pt-4">
+        <LangToggle />
+      </div>
+      <div className="max-w-2xl mx-auto px-5 pt-4 pb-24">
         <div className="flex items-center gap-2 mb-8">
           <span className="text-lg font-extrabold text-indigo-600">Growl</span>
           <span className="text-xs text-gray-400">{isEn ? "AI Ad Management" : "AI広告運用代行"}</span>
