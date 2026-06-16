@@ -24,6 +24,7 @@ export const INDUSTRY_ICONS: Record<Industry, string> = {
 
 export interface OnboardingData {
   industry: Industry | "";
+  store_name?: string;
   business_desc: string;
   customer_desc: string;
   main_problem: string;

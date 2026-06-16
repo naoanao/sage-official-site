@@ -16,7 +16,7 @@ function getMondayOfCurrentWeek(): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { industry, business_desc, customer_desc, main_problem, final_goal, booking_url, device_id, lang } = body;
+    const { industry, business_desc, customer_desc, main_problem, final_goal, booking_url, store_name, device_id, lang } = body;
 
     if (!industry || !business_desc || !customer_desc || !main_problem || !final_goal) {
       return NextResponse.json({ error: "必要な情報が不足しています" }, { status: 400 });
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
     const user: UserProfile = {
       industry, business_desc, customer_desc, main_problem, final_goal,
       booking_url: booking_url || undefined,
+      store_name: store_name || undefined,
       market_signal,
       learning_history,
       lang: lang === "en" ? "en" : "ja",

@@ -82,6 +82,8 @@ const translations = {
     "ob.goal.hint": "具体的な数字や状態があると、より精度の高い提案ができます",
     "ob.goal.analyzing": "AIが分析中...",
     "ob.goal.wait": "業種・悩み・目標をもとに施策を生成中です（約10〜20秒）",
+    "ob.proof.num.placeholder": "Googleで★4.8・500名以上のお客様...",
+    "ob.proof.quote.placeholder": "ここを超えるバーガーはない！毎週末来ています...",
 
     // ── ダッシュボード ──
     "dash.badge": "今週のマーケプラン",
@@ -221,6 +223,8 @@ const translations = {
     "ob.goal.hint": "Specific numbers or outcomes help generate more precise recommendations",
     "ob.goal.analyzing": "AI is analyzing...",
     "ob.goal.wait": "Generating your 3 actions based on industry, challenges, and goals (takes ~10–20 sec)",
+    "ob.proof.num.placeholder": "500+ happy customers, 4.8 stars on Google...",
+    "ob.proof.quote.placeholder": "Best burger I've had in Kanagawa! We come every weekend now.",
 
     // ── Dashboard ──
     "dash.badge": "This Week's Marketing Plan",

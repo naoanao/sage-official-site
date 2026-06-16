@@ -15,6 +15,7 @@ export interface UserProfile {
   main_problem: string;
   final_goal: string;
   booking_url?: string;
+  store_name?: string;
   learning_history?: Array<{ week: string; action: string; result: string }>;
   market_signal?: string;
   /** 出力言語: "ja"（デフォルト）または "en"（英語モード） */
@@ -228,6 +229,7 @@ function buildUserPrompt(user: UserProfile): string {
       "",
       "USER PROFILE:",
       "Industry: " + user.industry,
+      (user.store_name ? "Store Name: " + user.store_name : "Store Name: not provided (never fake a store name — if not provided, use generic terms)"),
       "Business: " + user.business_desc,
       "Customers: " + user.customer_desc,
       "Main challenge: " + user.main_problem,
@@ -283,6 +285,7 @@ function buildUserPrompt(user: UserProfile): string {
     "",
     "【ユーザー情報】",
     "業種: " + user.industry,
+    (user.store_name ? "店舗名・屋号: " + user.store_name : "店舗名・屋号: 未設定（仮名の「〇〇」は禁止・店舗名を推測して書かないこと）"),
     "仕事の内容: " + user.business_desc,
     "お客さんの特徴: " + user.customer_desc,
     "今一番困っていること: " + user.main_problem,

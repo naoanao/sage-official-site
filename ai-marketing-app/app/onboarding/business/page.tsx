@@ -30,6 +30,7 @@ export default function BusinessPage() {
   const router = useRouter();
   const { t, lang } = useLang();
   const [value, setValue] = useState("");
+  const [storeName, setStoreName] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
   const [example, setExample] = useState("");
   const [inputError, setInputError] = useState("");
@@ -54,7 +55,7 @@ export default function BusinessPage() {
       return;
     }
     setInputError("");
-    saveOnboarding({ business_desc: value.trim(), booking_url: bookingUrl.trim() || undefined });
+    saveOnboarding({ business_desc: value.trim(), booking_url: bookingUrl.trim() || undefined, store_name: storeName.trim() || undefined });
     router.push("/onboarding/customer");
   }
 
@@ -74,6 +75,22 @@ export default function BusinessPage() {
         <AgencyGuidanceBadge />
         <ProgressBar current={2} total={5} />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">{t("ob.business.title")}</h1>
+        {/* Store name */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-600 mb-1">
+            {lang === "en" ? "Store / Business Name" : "店舗名・屋号"} <span className="text-gray-400 font-normal">({lang === "en" ? "optional" : "任意"})</span>
+          </label>
+          <input
+            type="text"
+            value={storeName}
+            onChange={(e) => setStoreName(e.target.value)}
+            placeholder={lang === "en" ? "e.g. Uncle Sam's Burger" : "例：がじゅまるカリー"}
+            className="w-full border-2 border-gray-200 focus:border-indigo-400 rounded-2xl px-4 py-3 text-gray-800 text-base outline-none transition-colors"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            {lang === "en" ? "Your store name will be used in AI-generated posts instead of placeholder text" : "店舗名を設定すると、AIが生成する投稿に実際の店名が使われるようになります"}
+          </p>
+        </div>
         <p className="text-gray-500 text-sm mb-8">{lang === "en" ? `e.g. "${example}"` : `e.g. 「${example}」`}</p>
         <textarea
           className="w-full border-2 border-gray-200 focus:border-indigo-400 rounded-2xl p-4 text-gray-800 text-base resize-none outline-none transition-colors"
