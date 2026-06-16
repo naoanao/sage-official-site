@@ -8,7 +8,7 @@ import LangToggle from "@/components/LangToggle";
 // 代行サービスの紹介LP（/agency）。英語/日本語バイリンガル。
 declare global { interface Window { fbq?: (...a: unknown[]) => void } }
 
-const CTA = "/onboarding/industry";
+const CTA = "/onboarding/industry?source=agency";
 
 export default function AgencyLandingPage() {
   const { lang } = useLang();

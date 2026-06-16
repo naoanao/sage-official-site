@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { saveOnboarding, clearOnboarding, setFlowActive } from "@/lib/store";
 import { Industry, INDUSTRY_ICONS } from "@/lib/types";
 import ProgressBar from "@/components/ProgressBar";
@@ -10,19 +11,23 @@ import { useLang } from "@/lib/i18n";
 
 const industries: Industry[] = ["restaurant", "salon", "ec", "professional", "construction", "health", "education", "other"];
 
-export default function IndustryPage() {
+function IndustryContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLang();
 
   function select(industry: Industry) {
-    // フリーミアム上限チェック
     if (isLimitReached()) {
       router.push("/upgrade");
       return;
     }
-    clearOnboarding(); // 前回データ・フローフラグを完全リセット
+    // agency source tracking: 広告代行LP経由のユーザーはダッシュボードでAdBoostCard開放
+    if (searchParams.get("source") === "agency") {
+      if (typeof window !== "undefined") localStorage.setItem("growl_onboarding_source", "agency");
+    }
+    clearOnboarding();
     saveOnboarding({ industry });
-    setFlowActive(); // 新しいフローが開始されたことをマーク
+    setFlowActive();
     router.push("/onboarding/business");
   }
 
@@ -49,5 +54,13 @@ export default function IndustryPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function IndustryPage() {
+  return (
+    <Suspense>
+      <IndustryContent />
+    </Suspense>
   );
 }
