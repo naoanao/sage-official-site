@@ -196,7 +196,8 @@ function buildSystemConstraint(user: UserProfile): string {
     "",
     "━━ 出力ルール ━━",
     "",
-    "- 重要: すべての出力（strategy_note, actionsのtitle, detail, content）は必ず日本語で作成してください。英語での出力は厳禁です。",
+    "【絶対遵守】あなたの出力は100%日本語（Japanese）でなければなりません。英単語の羅列や英語の文章を含めないでください。",
+    "- すべての出力（strategy_note, actionsのtitle, detail, content）は必ず日本語で作成してください。英語での出力は厳禁です。",
     "- ユーザーからの入力情報（ビジネス説明、ゴール、顧客特徴など）に英語が含まれていても、出力はすべて自然な日本語に翻訳して作成してください。",
     "- Markdownの記号は一切使わない（プレーンテキストのみ）",
     "- アクションはちょうど3つ。役割を明確に差別化する",
@@ -305,8 +306,8 @@ function buildUserPrompt(user: UserProfile): string {
     "",
     "【出力形式（JSONのみ、コードブロック不要、actionsは必ず3要素）】",
     "- strategy_noteは今週なぜこの3つを選んだか経営者目線で2文以内で説明。専門用語禁止。",
-    "- 出力JSON内のテキスト（strategy_note, title, detail, content）はすべて日本語で記述してください。",
-    '{"strategy_note":"理由2文以内","actions":[{"role":"共感獲得","title":"15文字以内","detail":"60文字以内","content_type":"Instagram投稿文","content":"コピペ用完成文章"},{"role":"行動促進","title":"...","detail":"...","content_type":"...","content":"..."},{"role":"信頼構築","title":"...","detail":"...","content_type":"...","content":"..."}]}',
+    "- 【絶対遵守】出力JSON内のテキスト（strategy_note, title, detail, content）はすべて日本語で記述してください。英単語を日本語に混ぜないでください。",
+    '{"_language":"ja","strategy_note":"理由2文以内","actions":[{"role":"共感獲得","title":"15文字以内","detail":"60文字以内","content_type":"Instagram投稿文","content":"コピペ用完成文章"},{"role":"行動促進","title":"...","detail":"...","content_type":"...","content":"..."},{"role":"信頼構築","title":"...","detail":"...","content_type":"...","content":"..."}]}',
   ];
 
   return lines.join("\n");

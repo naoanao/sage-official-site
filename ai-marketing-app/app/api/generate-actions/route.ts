@@ -1,5 +1,5 @@
 // Edge runtimeはSupabase Node.jsクライアントと非互換のためNodejsに変更
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from "next/server";
 import { generateWeeklyActions, UserProfile } from "@/lib/gemini";

@@ -65,7 +65,7 @@ export default function ProofPage() {
               type="text"
               value={proofNumbers}
               onChange={(e) => setProofNumbers(e.target.value)}
-              placeholder={isEn ? "300+ clients, 3x average ROI..." : "300社導入、平均CVR3倍..."}
+              placeholder={isEn ? "500+ happy customers, 4.8 stars on Google..." : "Googleで★4.8・500名以上のお客様..."}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
@@ -83,7 +83,7 @@ export default function ProofPage() {
             <textarea
               value={customerQuote}
               onChange={(e) => setCustomerQuote(e.target.value)}
-              placeholder={isEn ? "In their own words..." : "お客様の実際の言葉..."}
+              placeholder={isEn ? "Best burger I've had in Kanagawa! We come every weekend now." : "ここを超えるバーガーはない！毎週末来ています..."}
               rows={2}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-400 transition-colors resize-none"
             />
