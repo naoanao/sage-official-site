@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const APP_URL = process.env.TIKTOK_APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ai-marketing-app-blush.vercel.app";
+const APP_URL = process.env.TIKTOK_APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://growl-ai.com";
 const CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY!;
 
 export async function GET(req: NextRequest) {

@@ -666,15 +666,19 @@ AGENTS.md の Completion gate 以降に SageOS Autonomy Ladder（L1-L3）と Clo
 
 ---
 
-## 2026-06-16: Item 8 — LearnAI 詳細ページの実装と多言語化完了
+## 2026-06-16: Item 8 実装 & 多言語化・フロー不整合の完全解消
 
 ### Root Cause
-LearnAI（`/learn`）において、14個のマーケティングトピックカードが表示されているものの、各カードをクリックして詳細解説テキスト（`lib/learn-data.ts` に準備済み）を表示するための詳細ページおよび遷移処理が未実装だった。
+LearnAI（`/learn`）のトピック詳細ページ（Item 8）が未実装だった。また、多言語切替時のラベル不整合（ActionCardでの英語残存、FreeProgressBarの英語固定）、TikTok連携URLの古いVercelドメイン指定、診断シェアページ（`/diagnosis/r/[rank]`）の英語固定およびSVGの出し分け漏れ、広告代行LPから入ったユーザーへのガイダンス不足、などの細部UI・連携フローの不整合が残存していた。
 
 ### Fix
-1. **`app/learn/page.tsx` の改修**: `TOPICS_EN` および `TOPICS_JA` の各項目にトピックID（`id`）を追加し、カードに `onClick` とホバーエフェクト等のインタラクションスタイルを付与。
-2. **`app/learn/[topic]/page.tsx` の新規作成**: トピックIDに応じて `lib/learn-data.ts` から解説テキストを取得し表示する動的詳細ページを作成。日英の言語トグル（`<LangToggle />`）と戻るボタン、トピックが存在しない場合の404フォールバックを実装。
-3. **ビルド検証**: `npm run build` が正常に通過し、`/learn/[topic]` が動的ルートとして正しくビルドされることを確認。
+1. **LearnAI詳細ページの実装**: `app/learn/page.tsx` にトピックIDを追加してクリック遷移可能にし、動的詳細ページ `app/learn/[topic]/page.tsx` を新規作成。日英切替、404ハンドリング、戻るボタンを完備。
+2. **アクションカード & 無料枠メーターの日英翻訳の徹底**: `components/ActionCard.tsx` にロール・コンテンツタイプの日英相互翻訳マップを導入。`components/FreeProgressBar.tsx` に `useLang` による多言語切替を組み込み、残り枠や警告テキストを完全多言語化。
+3. **診断シェアページの完全ローカライズ**: `/diagnosis/r/[rank]/page.tsx` を `headers()` からの `Accept-Language` 検出に対応させ、英語時は `rank-[A-E]-en.svg` (英語用SVG)を表示し、テキストも日英で出し分けるよう改修。
+4. **広告代行ガイダンスの追加**: `AgencyGuidanceBadge.tsx` コンポーネントを新規作成し、`localStorage` から `source=agency` 流入を検知した場合に、オンボーディング全5ステップで「代行用の広告案を作成している旨」を示すバッジガイダンスを表示。
+5. **法的文書の日本語対応網羅**: `privacy/page.tsx`, `terms/page.tsx` の日本語ブロックに、英語版に存在する重要項目（Metaプラットフォームの免責事項やデータ共有ポリシー）を漏れなく追記。
+6. **TikTok連携URL修正**: `app/api/auth/tiktok/route.ts` 内のデフォルトURLを `https://growl-ai.com` に修正。
+7. **LINE/メール併記化**: アップグレード画面の「LINEで届く」表記を「LINEまたはメールで届く」とし、CTAも「自動受け取りを開始する」へ汎用化。
 
 ### Abstract Lesson
-「複数の個別詳細ページを必要とする解説コンテンツは、動的ルーティングと静的な辞書型データを組み合わせることで、最小限のコード設計で一元管理された日英切り替えとエラーハンドリングを実現できる」
+「リリース前の細部の磨き込みにおいては、AIの出力バイアスを制御する翻訳レイヤー（マップ）の導入と、流入経路に応じたコンテキストバッジの提示によって、ユーザーの混乱とUIの不整合をゼロにできる」

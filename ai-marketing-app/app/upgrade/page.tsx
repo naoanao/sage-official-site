@@ -98,13 +98,13 @@ export default function UpgradePage() {
       period: "/月",
       desc: "毎週自動でマーケを回したい方に",
       features: [
-        "毎週月曜8時、今週の施策がLINEで届く",
+        "毎週月曜8時、今週の施策がLINEまたはメールで届く",
         "生成回数は無制限（何度でもやり直せる）",
         "月次レポートで「何が効いたか」が見える",
         "業種・地域に合わせた詳細カスタマイズ",
         "過去の結果をAIが学習して提案精度が上がる",
       ],
-      cta: "LINEで自動受け取りにする",
+      cta: isEn ? "Start Standard" : "自動受け取りを開始する",
       highlight: true,
     },
     {

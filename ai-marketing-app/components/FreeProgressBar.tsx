@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadUserId } from "@/lib/store";
+import { useLang } from "@/lib/i18n";
 
 const MONTHLY_LIMIT = 10; // 5→10: 価値を感じる前に課金ウォールに当たる問題を緩和（なおの指摘）
 const STORAGE_KEY = "growl_monthly_usage";
@@ -64,6 +65,8 @@ export function isDevMode(): boolean {
 
 export default function FreeProgressBar() {
   const router = useRouter();
+  const { lang } = useLang();
+  const isEn = lang === "en";
   const [usage, setUsage] = useState<UsageData>({ month: getCurrentMonth(), count: 0 });
   const [plan, setPlan] = useState<"free" | "standard" | "pro">("free");
 
@@ -109,20 +112,20 @@ export default function FreeProgressBar() {
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 mb-5">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-base">✅</span>
-          <p className="text-sm font-bold text-amber-900">You&apos;ve used all 10 free analyses this month</p>
+          <p className="text-sm font-bold text-amber-900">{isEn ? "You&apos;ve used all 10 free analyses this month" : "今月の無料分析を10回すべて使い切りました"}</p>
         </div>
-        <p className="text-xs text-amber-700 mb-3">Feeling the value? Upgrade to get unlimited analyses and weekly actions delivered automatically.</p>
+        <p className="text-xs text-amber-700 mb-3">{isEn ? "Feeling the value? Upgrade to get unlimited analyses and weekly actions delivered automatically." : "価値を感じていただけましたか？アップグレードすると分析・アクションが無制限に使えます。"}</p>
         <div className="w-full bg-amber-200 rounded-full h-1.5 mb-4">
           <div className="h-1.5 rounded-full bg-amber-400 w-full" />
         </div>
         <div className="bg-white rounded-xl border border-indigo-100 p-4">
-          <p className="text-xs font-semibold text-indigo-700 mb-1">Auto-deliver every Monday</p>
-          <p className="text-xs text-gray-500 mb-3">With Standard Plan, your weekly marketing actions are delivered every Monday at 8am. Unlimited. Zero effort.</p>
+          <p className="text-xs font-semibold text-indigo-700 mb-1">{isEn ? "Auto-deliver every Monday" : "毎週月曜に自動配信"}</p>
+          <p className="text-xs text-gray-500 mb-3">{isEn ? "With Standard Plan, your weekly marketing actions are delivered every Monday at 8am. Unlimited. Zero effort." : "スタンダードプランなら、毎週月曜8時に今週の施策が自動配信されます。無制限。努力ゼロ。"}</p>
           <button
             onClick={() => router.push("/upgrade")}
             className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-bold py-2.5 rounded-xl transition-all"
           >
-            Upgrade to Standard Plan ($29/mo) →
+            {isEn ? "Upgrade to Standard Plan ($29/mo) →" : "スタンダードプランにアップグレード（¥3,000/月）→"}
           </button>
         </div>
       </div>
@@ -137,7 +140,7 @@ export default function FreeProgressBar() {
     >
       <div className="flex justify-between items-center mb-2">
         <p className={`text-sm font-medium ${isNearLimit ? "text-amber-800" : "text-gray-600"}`}>
-          {`${remaining} free ${remaining === 1 ? "analysis" : "analyses"} left this month`}
+                    {isEn ? `${remaining} free ${remaining === 1 ? "analysis" : "analyses"} left this month` : `今月の残り無料回数: ${remaining}回`}
         </p>
       </div>
       <div className="w-full bg-gray-100 rounded-full h-1.5">
@@ -150,12 +153,12 @@ export default function FreeProgressBar() {
       </div>
       {isNearLimit && (
         <p className="text-xs text-amber-600 mt-2">
-          Last free analysis this month.{" "}
+          {isEn ? "Last free analysis this month." : "今月最後の無料分析です。"}{" "}
           <button
             onClick={() => router.push("/upgrade")}
             className="underline font-medium"
           >
-            Upgrade to Standard Plan →
+            {isEn ? "Upgrade to Standard Plan →" : "スタンダードプランへ →"}
           </button>
         </p>
       )}

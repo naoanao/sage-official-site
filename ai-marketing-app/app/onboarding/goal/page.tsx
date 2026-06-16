@@ -6,6 +6,7 @@ import { saveOnboarding, loadOnboarding, saveUserId, saveSession, isFlowActive, 
 import { incrementUsage } from "@/components/FreeProgressBar";
 import ProgressBar from "@/components/ProgressBar";
 import LangToggle from "@/components/LangToggle";
+import AgencyGuidanceBadge from "@/components/AgencyGuidanceBadge";
 import { useLang, getLang } from "@/lib/i18n";
 
 const EXAMPLES_JA: Record<string, string> = {
@@ -186,3 +187,4 @@ export default function GoalPage() {
     </main>
   );
 }
+

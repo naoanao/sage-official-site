@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 
 const RANKS: Record<string, { label: string; labelJa: string }> = {
   A: { label: "Outstanding", labelJa: "圧倒的" },
@@ -31,20 +32,28 @@ export default async function RankSharePage({ params }: { params: Promise<{ rank
   const { rank } = await params;
   const r = RANKS[rank];
   if (!r) notFound();
+  const hdrs = await headers();
+  const acceptLang = hdrs.get("accept-language") || "";
+  const isEn = !acceptLang.startsWith("ja");
+  const svgSuffix = isEn ? "-en" : "";
+  const rankLabel = isEn ? r.label : r.labelJa;
+
   return (
     <main className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg text-center">
-        <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-4">Shared diagnosis result</p>
+        <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest mb-4">{isEn ? "Shared diagnosis result" : "診断結果のシェア"}</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={"/diagnosis/rank-" + rank + ".svg"} alt={"SNS diagnosis rank " + rank} className="w-full rounded-2xl border border-gray-100 shadow-sm mb-6" />
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">This person scored Rank {rank} — {r.label}</h1>
+        <img src={`/diagnosis/rank-${rank}${svgSuffix}.svg`} alt={`SNS diagnosis rank ${rank}`} className="w-full rounded-2xl border border-gray-100 shadow-sm mb-6" />
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{isEn ? `This person scored Rank ${rank} — ${rankLabel}` : `この人はRank ${rank}（${rankLabel}）でした`}</h1>
         <p className="text-gray-500 mb-8">
-          The Growl SNS diagnosis scores your social media marketing in 5 questions. Free, 1 minute, no signup.
+          {isEn
+            ? "The Growl SNS diagnosis scores your social media marketing in 5 questions. Free, 1 minute, no signup."
+            : "GrowlのSNS診断は5問の質問でSNS集客力を判定します。無料・1分・登録不要。"}
         </p>
         <Link href="/diagnosis" className="inline-block bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-lg px-8 py-4 rounded-2xl transition-colors shadow-lg shadow-indigo-200 active:scale-95">
-          Find out your rank &rarr;
+          {isEn ? "Find out your rank →" : "あなたのランクを診断する →"}
         </Link>
-        <p className="text-gray-400 text-xs mt-4">5 questions - free - no signup</p>
+        <p className="text-gray-400 text-xs mt-4">{isEn ? "5 questions - free - no signup" : "5問の質問 - 無料 - 登録不要"}</p>
       </div>
     </main>
   );

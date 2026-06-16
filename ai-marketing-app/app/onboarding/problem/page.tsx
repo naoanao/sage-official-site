@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveOnboarding, loadOnboarding, isFlowActive } from "@/lib/store";
 import ProgressBar from "@/components/ProgressBar";
 import LangToggle from "@/components/LangToggle";
+import AgencyGuidanceBadge from "@/components/AgencyGuidanceBadge";
 import { useLang } from "@/lib/i18n";
 
 const EXAMPLES_JA: Record<string, string> = {
@@ -73,6 +74,7 @@ export default function ProblemPage() {
           </button>
           <div className="ml-auto"><LangToggle /></div>
         </div>
+        <AgencyGuidanceBadge />
         <ProgressBar current={4} total={5} />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">{t("ob.problem.title")}</h1>
         <p className="text-gray-500 text-sm mb-8">{lang === "en" ? `e.g. "${example}"` : `e.g. 「${example}」`}</p>
@@ -94,3 +96,4 @@ export default function ProblemPage() {
     </main>
   );
 }
+
