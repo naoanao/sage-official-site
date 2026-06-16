@@ -1,6 +1,65 @@
+"use client";
+
+import { useLang } from "@/lib/i18n";
+import LangToggle from "@/components/LangToggle";
+
+const JA_CONTENT = {
+  title: "プライバシーポリシー",
+  updated: "最終更新日: 2026年6月3日",
+  sections: [
+    {
+      h: "1. Growlについて",
+      p: "Growlは小規模事業者向けのAIマーケティングツールです。本プライバシーポリシーは、お客様の情報の収集・利用・保護について説明します。",
+    },
+    {
+      h: "2. 収集する情報",
+      items: [
+        "お客様が提供する事業情報（業種、事業説明、ターゲット顧客）",
+        "利用データ（完了したアクション、アプリ操作履歴）",
+        "Metaアカウント接続時の情報：アクセストークン、広告アカウントID、ページID — これらはお客様の代理で広告を作成する目的のみに使用します",
+        "ブラウザのローカルストレージに保存されるデバイス識別子",
+      ],
+    },
+    {
+      h: "3. 情報の利用目的",
+      p: "収集した情報は、AIによるマーケティングアクションの生成、Meta広告の作成・管理、サービスの改善のために使用します。",
+    },
+    {
+      h: "4. データの保存と削除",
+      p: "データはSupabase（クラウドデータベース）に保存されます。アカウント削除をご希望の場合は、contact@growl-ai.comまでご連絡ください。",
+    },
+    {
+      h: "5. お問い合わせ",
+      p: "contact@growl-ai.com",
+    },
+  ],
+};
+
 export default function PrivacyPage() {
+  const { isEn } = useLang();
+
+  if (!isEn) {
+    return (
+      <main className="min-h-screen bg-white px-6 py-16 max-w-2xl mx-auto">
+        <div className="flex justify-end mb-4"><LangToggle /></div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{JA_CONTENT.title}</h1>
+        <p className="text-sm text-gray-400 mb-10">{JA_CONTENT.updated}</p>
+        <section className="space-y-8 text-gray-700 text-sm leading-relaxed">
+          {JA_CONTENT.sections.map((s, i) => (
+            <div key={i}>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">{s.h}</h2>
+              {s.p && <p>{s.p}</p>}
+              {s.items && <ul className="list-disc pl-5 space-y-1">{s.items.map((item, j) => <li key={j}>{item}</li>)}</ul>}
+            </div>
+          ))}
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-white px-6 py-16 max-w-2xl mx-auto">
+      <div className="flex justify-end mb-4"><LangToggle /></div>
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
       <p className="text-sm text-gray-400 mb-10">Last updated: June 3, 2026</p>
       <section className="space-y-8 text-gray-700 text-sm leading-relaxed">
@@ -28,11 +87,11 @@ export default function PrivacyPage() {
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">5. Data Deletion</h2>
-          <p>Use the "Start over" button to clear your session. To delete server data, email: kanagawatable@gmail.com</p>
+           <p>Use the "Start over" button to clear your session. To delete server data, email: contact@growl-ai.com</p>
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">6. Contact</h2>
-          <p>kanagawatable@gmail.com</p>
+          <p>contact@growl-ai.com</p>
         </div>
       </section>
       <div className="mt-12 border-t border-gray-100 pt-6">
