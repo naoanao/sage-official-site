@@ -69,7 +69,7 @@ export default function ProofPage() {
               type="text"
               value={proofNumbers}
               onChange={(e) => setProofNumbers(e.target.value)}
-              placeholder={t("ob.proof.num.placeholder")}
+              placeholder={isEn ? "500+ happy customers, 4.8 stars on Google..." : "Googleで★4.8・500名以上のお客様..."}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
@@ -87,7 +87,7 @@ export default function ProofPage() {
             <textarea
               value={customerQuote}
               onChange={(e) => setCustomerQuote(e.target.value)}
-              placeholder={t("ob.proof.quote.placeholder")}
+              placeholder={isEn ? "Best burger I've had in Kanagawa! We come every weekend now." : "ここを超えるバーガーはない！毎週末来ています..."}
               rows={2}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-400 transition-colors resize-none"
             />
@@ -107,8 +107,7 @@ export default function ProofPage() {
               type="text"
               value={priceOrOffer}
               onChange={(e) => setPriceOrOffer(e.target.value)}
-              placeholder={t("ob.proof.price.placeholder")}
-
+              placeholder={isEn ? "Lunch set from ¥980, Takeout available..." : "ランチセット980円〜、テイクアウト可..."}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
@@ -132,4 +131,3 @@ export default function ProofPage() {
     </main>
   );
 }
-
