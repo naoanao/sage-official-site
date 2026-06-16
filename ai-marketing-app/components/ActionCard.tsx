@@ -115,6 +115,9 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
   const [expanded, setExpanded] = useState(true);
 
   const ROLE_STYLES = isEn ? ROLE_STYLES_EN : ROLE_STYLES_JA;
+  // 言語間ロール名のフォールバック（AIがJA名をENモードで返す、または逆の場合も表示可能に）
+  const ALL_ROLES = { ...ROLE_STYLES_JA, ...ROLE_STYLES_EN };
+  function getRoleStyle(role: string) { return ROLE_STYLES[role] || ALL_ROLES[role]; }
   const DIRECTLY_USABLE_TYPES = isEn ? DIRECTLY_USABLE_TYPES_EN : DIRECTLY_USABLE_TYPES_JA;
   const ATTRIBUTION = isEn ? ATTRIBUTION_EN : ATTRIBUTION_JA;
 
@@ -149,11 +152,11 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
         <div className="flex items-start gap-3">
           <span className="text-2xl mt-0.5 shrink-0">{NUMBER_EMOJIS[index]}</span>
           <div className="flex-1 min-w-0">
-            {action.role && ROLE_STYLES[action.role] && (
-              <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1 ${ROLE_STYLES[action.role].bg} ${ROLE_STYLES[action.role].text}`}>
-                {ROLE_STYLES[action.role].label}
+            {action.role && (() => { const rs = getRoleStyle(action.role); return rs ? (
+              <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1 ${rs.bg} ${rs.text}`}>
+                {rs.label}
               </span>
-            )}
+            ) : null; })()}
             <p className="font-bold text-gray-800 text-base leading-snug">{String(action.title ?? "")}</p>
             <p className="text-sm text-gray-500 mt-1 leading-relaxed">{String(action.detail ?? "")}</p>
           </div>

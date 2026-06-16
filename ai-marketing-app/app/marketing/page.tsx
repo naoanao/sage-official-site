@@ -538,7 +538,7 @@ export default function MarketingPage() {
                     <p className="text-xs text-emerald-700">{c.weakness}</p>
                   </div>
                 </div>
-                {c.ad_count && <p className="text-xs text-gray-400 mt-1">Ads: {c.ad_count}</p>}
+                {c.ad_count && <p className="text-xs text-gray-400 mt-1">{isEn ? "Ads:" : "広告数:"} {c.ad_count}</p>}
               </div>
             ))}
             {r.competitor.ad_landscape && (
