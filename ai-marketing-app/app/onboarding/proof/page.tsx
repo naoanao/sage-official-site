@@ -103,7 +103,8 @@ export default function ProofPage() {
               type="text"
               value={priceOrOffer}
               onChange={(e) => setPriceOrOffer(e.target.value)}
-              placeholder={isEn ? "Free trial, $29/mo..." : "初月無料、月額980円..."}
+              placeholder={t("ob.proof.price.placeholder")}
+
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-400 transition-colors"
             />
           </div>

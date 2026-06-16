@@ -84,6 +84,7 @@ const translations = {
     "ob.goal.wait": "業種・悩み・目標をもとに施策を生成中です（約10〜20秒）",
     "ob.proof.num.placeholder": "Googleで★4.8・500名以上のお客様...",
     "ob.proof.quote.placeholder": "ここを超えるバーガーはない！毎週末来ています...",
+    "ob.proof.price.placeholder": "ランチセット980円〜、テイクアウト可...",
 
     // ── ダッシュボード ──
     "dash.badge": "今週のマーケプラン",
@@ -225,6 +226,7 @@ const translations = {
     "ob.goal.wait": "Generating your 3 actions based on industry, challenges, and goals (takes ~10–20 sec)",
     "ob.proof.num.placeholder": "500+ happy customers, 4.8 stars on Google...",
     "ob.proof.quote.placeholder": "Best burger I've had in Kanagawa! We come every weekend now.",
+    "ob.proof.price.placeholder": "Lunch set from ¥980, Takeout available...",
 
     // ── Dashboard ──
     "dash.badge": "This Week's Marketing Plan",
@@ -298,7 +300,7 @@ type TranslationKey = keyof typeof translations.ja;
 const LANG_EVENT = "growl:lang-change";
 
 export function useLang() {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("ja"); // SSR/Hydration時は日本語をデフォルトに（英語表示の初期フラッシュを防止）
 
   useEffect(() => {
     // 初期ロード: 1) 保存済みの選択 2) 無ければブラウザ言語で自動判定（日本語環境は日本語）

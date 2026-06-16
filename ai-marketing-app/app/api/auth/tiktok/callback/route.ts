@@ -6,7 +6,8 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://growl-ai.com";
+    const APP_URL = process.env.TIKTOK_APP_URL ?? "https://growl-ai.com";
+
     const CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY!;
     const CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET!;
 
