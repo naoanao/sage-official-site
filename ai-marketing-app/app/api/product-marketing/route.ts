@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { name, category, price, description, target, usp, purchase_url, industry,
-            social_proof, limited_offer, competitor_diff } = body;
+            social_proof, limited_offer, competitor_diff, lang } = body;
 
     // バリデーション
     if (!name || !category || !price || !description || !target || !usp || !industry) {
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       social_proof: social_proof || undefined,
       limited_offer: limited_offer || undefined,
       competitor_diff: competitor_diff || undefined,
+      lang: lang === "en" ? "en" : "ja",
     };
 
     const plan = await generateProductMarketingPlan(product);

@@ -125,7 +125,7 @@ function buildSystemConstraint(user: UserProfile): string {
       "",
       "━━ OUTPUT RULES ━━",
       "",
-      "- Output in ENGLISH only",
+      "- CRITICAL: OUTPUT ALL RESPONSES IN ENGLISH ONLY. Translate any Japanese inputs (business descriptions, goals, etc.) to English during generation. NEVER output Japanese characters.",
       "- No Markdown symbols (plain text only)",
       "- Exactly 3 actions with clearly differentiated roles",
       "- title: max 10 words, action-oriented (e.g. 'Post a behind-the-scenes reel')",

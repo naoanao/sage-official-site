@@ -30,6 +30,7 @@ export interface ProductProfile {
   social_proof?: string;   // お客様の声・実績（あれば）
   limited_offer?: string;  // 限定オファー（あれば）
   competitor_diff?: string; // 競合との違い（一言で）
+  lang?: "ja" | "en";     // 出力言語（ja=日本語 / en=英語）
 }
 
 export interface StepEmail {
@@ -180,6 +181,43 @@ async function callAI(prompt: string, retries = 0): Promise<string> {
 // ─────────────────────────────────────────────────────────────
 
 function buildAEOPrompt(p: ProductProfile): string {
+  const isEn = p.lang === "en";
+  if (isEn) {
+    return `
+You are an AEO (Answer Engine Optimization) and GEO (Generative Engine Optimization) specialist.
+Generate content that will be cited and ranked by ChatGPT, Perplexity, Gemini, and Google AI Overviews.
+
+CRITICAL: OUTPUT ALL RESPONSES IN ENGLISH ONLY. Translate any Japanese input to English during generation. NEVER output Japanese characters.
+
+【Product Info】
+Name: ${p.name}
+Category: ${p.category}
+Price: ${p.price} JPY
+Description: ${p.description}
+Target: ${p.target}
+USP: ${p.usp}
+${p.competitor_diff ? `Competitive difference: ${p.competitor_diff}` : ""}
+
+【AEO/GEO Principles】
+1. Direct Response: Answer each question within the first 40-60 characters
+2. Only use numbers explicitly provided in Product Info. Never create percentages, counts, certifications, or awards.
+3. Use Q&A structure for clarity
+4. Show original expertise — product-specific knowledge, not generic claims
+5. Never guess addresses, hours, certifications, or third-party ratings
+6. CRITICAL: Output ALL content in ENGLISH. If input is in Japanese, translate to English.
+
+【Output format — JSON only, no code blocks】
+{
+  "qa_blocks": [
+    { "question": "Q1 (pre-purchase question in search query format)", "answer": "Direct answer in first 40-60 chars. Include unique info competitors cannot offer." },
+    { "question": "Q2 (usage / expected results)", "answer": "..." },
+    { "question": "Q3 (concerns / risk)", "answer": "..." },
+    { "question": "Q4 (price / purchase method)", "answer": "..." },
+    { "question": "Q5 (why this product vs competitors)", "answer": "..." }
+  ],
+  "meta_description": "150-char meta description that AI search engines will cite (direct answer + specific data)"
+}`.trim();
+  }
   return `
 あなたはAEO（Answer Engine Optimization）とGEO（Generative Engine Optimization）の専門家です。
 ChatGPT・Perplexity・Gemini・Google AIオーバービューなどのAI検索で引用・上位表示されるコンテンツを生成してください。
@@ -258,6 +296,54 @@ function buildProductSchemaJsonLd(p: ProductProfile): string {
 // ─────────────────────────────────────────────────────────────
 
 function buildFunnelPrompt(p: ProductProfile): string {
+  const isEn = p.lang === "en";
+  if (isEn) {
+    const urlInstructionEn = p.purchase_url
+      ? `Purchase URL: "${p.purchase_url}" — always use this URL.`
+      : "NEVER invent a URL. If no URL is provided, write 'Contact us for details'.";
+    return `
+You are a sales funnel strategist based on the AISAS model.
+CRITICAL: OUTPUT ALL RESPONSES IN ENGLISH ONLY. Translate any Japanese input to English. NEVER output Japanese characters.
+
+【Product Info】
+Name: ${p.name}
+Price: $${(p.price / 150).toFixed(0)} (approx. USD)
+Description: ${p.description}
+Target Customer: ${p.target}
+USP: ${p.usp}
+${p.purchase_url ? `Purchase URL: ${p.purchase_url}` : ""}
+${p.social_proof ? `Social Proof: ${p.social_proof}` : ""}
+${p.limited_offer ? `Limited Offer: ${p.limited_offer}` : ""}
+${p.competitor_diff ? `Competitive Difference: ${p.competitor_diff}` : ""}
+
+STEP 1 — Competitor Analysis (decide what NOT to say)
+Identify what competitors in this space "always say." Then find one thing competitors do NOT say or CANNOT say.
+→ Use this as "unique_angle" throughout all content.
+
+STEP 2 — Purchase Barrier & Rebuttal
+Identify the #1 reason this target customer hesitates to buy. Then write a rebuttal that directly addresses that fear using only provided facts.
+→ Use this as "objection_rebuttal" especially in the "action" copy.
+
+STEP 3 — Content Generation (reflect Steps 1 & 2)
+
+【Rules】
+- No Markdown. Plain text only.
+- CRITICAL: Output in ENGLISH only.
+- ${urlInstructionEn}
+- Never invent addresses, hours, staff count, or third-party data not in input
+- No product names, ingredients, or courses not in input
+
+【Output format — JSON only, no code blocks】
+{
+  "unique_angle": "Step 1 insight — what competitors don't say (1 sentence)",
+  "objection_rebuttal": "Step 2 insight — #1 purchase barrier and how to address it (2 sentences max)",
+  "attention": "Social media post — first 3 sentences stop the scroll. Instagram style, 3-5 sentences + 5-8 hashtags",
+  "interest": "Blog intro or LP opener (300 chars max). Story → problem → empathy in sequence",
+  "search": "FAQ or comparison content for search visitors (200 chars). Differentiate from competitors using unique_angle",
+  "action": "Sales copy to drive purchase (200 chars). Include objection_rebuttal + clear CTA",
+  "share": "Post-purchase review request message (150 chars). Warm, natural tone encouraging word-of-mouth"
+}`.trim();
+  }
   const urlInstruction = p.purchase_url
     ? `購入・申込のURLは「${p.purchase_url}」を必ず使う。`
     : "架空のURLは絶対に使わない。「詳細はDMまたはプロフィールリンクへ」と書く。";
@@ -329,6 +415,52 @@ STEP 3 — コンテンツ生成（STEP 1・2の分析を反映すること）
 // ─────────────────────────────────────────────────────────────
 
 function buildRetentionPrompt(p: ProductProfile): string {
+  const isEn = p.lang === "en";
+  if (isEn) {
+    return `
+You are a repeat-purchase and customer retention specialist for e-commerce and subscription businesses.
+CRITICAL: OUTPUT ALL RESPONSES IN ENGLISH ONLY. Translate any Japanese input to English. NEVER output Japanese characters.
+
+【Product Info】
+Name: ${p.name}
+Category: ${p.category}
+Price: $${(p.price / 150).toFixed(0)} (approx. USD)
+Description: ${p.description}
+Target: ${p.target}
+USP: ${p.usp}
+${p.purchase_url ? `Purchase URL: ${p.purchase_url}` : ""}
+
+【Retention Design Principles (must reflect these)】
+- Pareto: 20% of customers drive 80% of revenue
+- 5:25 Rule: 5% increase in retention → 25% profit improvement
+- 3-purchase model: 1st = loss leader, 2nd = break-even, 3rd = profit
+- First re-purchase bridge is critical (70% churn after 1st purchase)
+
+【Rules】
+- No Markdown. Plain text only.
+- Output in ENGLISH only.
+- Email subjects: max 10 words, benefit in first 40 chars
+- Never invent addresses, phone numbers, or data not in input
+
+【Output format — JSON only, no code blocks】
+{
+  "step_emails": [
+    { "day": 2, "subject": "Subject line (10 words max)", "purpose": "Purpose of this email (1 sentence)", "body": "Full email body — gratitude → usage guide → next step" },
+    { "day": 7, "subject": "...", "purpose": "...", "body": "..." },
+    { "day": 14, "subject": "...", "purpose": "...", "body": "..." },
+    { "day": 21, "subject": "...", "purpose": "...", "body": "..." }
+  ],
+  "loyalty_stages": [
+    { "stage": "New customer (after 1st purchase)", "condition": "Within 14 days of first purchase", "action": "Action to take", "message": "Example message (copy-ready)" },
+    { "stage": "Regular (2-3 purchases)", "condition": "...", "action": "...", "message": "..." },
+    { "stage": "Loyal (4+ purchases)", "condition": "...", "action": "...", "message": "..." },
+    { "stage": "At-risk", "condition": "No purchase in 60+ days", "action": "...", "message": "..." }
+  ],
+  "community_tactics": ["Tactic 1 (specific action level description)", "Tactic 2", "Tactic 3"],
+  "vip_event_idea": "VIP customer event idea (experiential, like Yoho Brewing's 'Choen' concept)",
+  "ugc_campaign": "UGC (review / social post) campaign idea with ready-to-use announcement copy"
+}`.trim();
+  }
   return `
 あなたはEC・通販のリピート購入専門コンサルタントです。
 以下の商品を「継続して買い続けてもらう」ための完全なリテンションシステムを設計してください。
@@ -414,6 +546,54 @@ ${p.purchase_url ? `購入URL: ${p.purchase_url}` : ""}
 // ─────────────────────────────────────────────────────────────
 
 function buildWeekActionsPrompt(p: ProductProfile): string {
+  const isEn = p.lang === "en";
+  if (isEn) {
+    const urlInstruction = p.purchase_url
+      ? `Booking/purchase URL must always be: "${p.purchase_url}".`
+      : "NEVER invent a URL. If needed, write 'Contact for details'.";
+    return `
+You are an expert marketing strategist for small business owners.
+CRITICAL: OUTPUT ALL RESPONSES IN ENGLISH ONLY. Translate any Japanese input to English. NEVER output Japanese characters.
+
+【Product Info】
+Name: ${p.name}
+Category: ${p.category}
+Price: $${(p.price / 150).toFixed(0)} (approx. USD)
+Description: ${p.description}
+Target: ${p.target}
+USP: ${p.usp}
+Industry: ${p.industry}
+${p.competitor_diff ? `Competitive Difference: ${p.competitor_diff}` : ""}
+
+STEP 1 — Competitive Angle Discovery
+What do competitors in this space "always say"? Find one angle they DON'T say or CAN'T say.
+→ Use this angle in the 'Empathy' action content.
+
+STEP 2 — Purchase Barrier Identification
+What is the #1 reason this target hesitates to buy? Address it directly using provided data.
+→ Embed this rebuttal in the 'CTA' action content.
+
+【3 Action Roles (must be distinct)】
+- actions[0] role: 'Empathy' — content that makes the target say "That's exactly my problem"
+- actions[1] role: 'CTA' — drives immediate action (book, inquire, purchase)
+- actions[2] role: 'Trust' — demonstrates proof, expertise, or results
+
+【Rules】
+- No Markdown. Plain text only.
+- Output in ENGLISH only.
+- Exactly 3 actions.
+- title: max 10 words, action-oriented
+- detail: max 20 words explaining why this action works
+- content_type options: Instagram Post, LINE Message, Google Review Reply, Product Description, Email, Announcement
+- content: ready-to-copy text for end customer (not advice to the owner)
+- ${urlInstruction}
+- Never invent addresses, hours, prices, or data not in input
+- No new product/course/menu names not in input
+
+【Output format — JSON only, no code blocks】
+{"strategy_note":"Why these 3 actions this week (2 sentences max, no jargon)","actions":[{"role":"Empathy","title":"max 10 words","detail":"max 20 words","content_type":"Instagram Post","content":"ready-to-copy text"},{"role":"CTA","title":"...","detail":"...","content_type":"...","content":"..."},{"role":"Trust","title":"...","detail":"...","content_type":"...","content":"..."}]}
+`.trim();
+  }
   const urlInstruction = p.purchase_url
     ? `予約・購入のURLは必ず「${p.purchase_url}」を使う。`
     : "架空のURLは絶対に使わない。URLが必要な場合は「詳細はDMまたはプロフィールリンクへ」と書く。";

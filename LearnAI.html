@@ -3398,12 +3398,13 @@ async function callAI(prompt, useHist = true, sysOverride = null) {
     // Proxima未起動またはpingタイムアウト → スキップ
   }
 
-  // ── Geminiがクールダウン中（RPM）なら短時間待機してリトライ ─────
-  // 長時間sleep（210秒）でUIが固まる問題を修正 → 最大10秒待機のみ
+  // ── Geminiがクールダウン中（RPM）なら待機してリトライ ────────────
+  // 他プロバイダーが全滅してGeminiだけ生き残っている時に自動で待機・再試行する
+  // 閾値: 210秒（3分30秒）= Geminiデフォルトクールダウン3分 + バッファ
   const _gemCoolUntil = _providerCooldown['gemini'];
   if (apiKey && _gemCoolUntil) {
     const _waitMs = _gemCoolUntil - Date.now();
-    if (_waitMs > 0 && _waitMs < 10000) {
+    if (_waitMs > 0 && _waitMs < 210000) {
       const _waitSec = Math.ceil(_waitMs / 1000);
       toast(`⏳ Gemini 制限中… ${_waitSec}秒後に自動リトライ`, '');
       setApiStatus('wait', `Gemini ${_waitSec}秒待機中`);
@@ -3414,15 +3415,15 @@ async function callAI(prompt, useHist = true, sysOverride = null) {
         toast('✅ Gemini（自動リトライ成功）', '');
         return _retryResult;
       } catch(_retryErr) {
+        // リトライも失敗 → 日次制限の可能性（RPMなら数分後に再試行を）
         const _isDaily = _retryErr?.message?.toLowerCase?.().includes('resource_exhausted') ||
                          _retryErr?.message?.includes('quota');
         if (_isDaily) {
-          _setProviderCooldown('gemini', 60 * 60 * 1000);
+          // 日次枯渇の可能性 → 長期クールダウンをセット（同じページセッション内は使わない）
+          _setProviderCooldown('gemini', 60 * 60 * 1000); // 1時間
           toast('⚠️ Gemini 日次制限の可能性。本日はしばらく使えません', 'err');
         }
       }
-    } else if (_waitMs >= 10000) {
-      toast('⏭ Gemini 制限中（10秒以上）→ スキップ', '');
     }
   }
 
@@ -3790,13 +3791,6 @@ async function callVisionAI(prompt, b64) {
   const errs = [];
   const OR_HEADERS = { 'HTTP-Referer': location.href, 'X-Title': 'LearnAI' };
 
-  // ── 0. 選択中プロバイダーが画像非対応の場合はユーザーに通知 ─────
-  const NON_VISION_PROVIDERS = new Set(['deepseek', 'perplexity']);
-  if (NON_VISION_PROVIDERS.has(p)) {
-    const nameMap = { deepseek: 'DeepSeek', perplexity: 'Perplexity' };
-    toast(`ℹ ${nameMap[p] || p}は画像解析に対応していません → 他のVision対応AIで代替`, '');
-  }
-
   // ── 1. 現在選択中プロバイダー & vision対応モデルを最優先 ──────────
   if (p === 'groq' && groqKey && VISION_MODELS.has(m) && !_groqVisionDailyBlocked) {
     try {
@@ -3888,12 +3882,13 @@ async function callVisionAI(prompt, b64) {
     } catch(e) { errs.push(`HuggingFace: ${e.message.slice(0,60)}`); }
   }
 
-  // ── Geminiがクールダウン中（RPM）なら短時間待機してリトライ ─────
-  // 長時間sleep（210秒）でUIが固まる問題を修正 → 最大10秒待機のみ
+  // ── Geminiがクールダウン中（RPM）なら待機してリトライ ────────────
+  // Groq/OR/HFが全滅してGeminiだけ生き残っている時に自動で待機・再試行する
+  // 閾値: 210秒（3分30秒）= Geminiデフォルトクールダウン3分 + バッファ
   const gemCoolUntil = _providerCooldown['gemini'];
   if (apiKey && gemCoolUntil) {
     const waitMs = gemCoolUntil - Date.now();
-    if (waitMs > 0 && waitMs < 10000) {
+    if (waitMs > 0 && waitMs < 210000) {
       const waitSec = Math.ceil(waitMs / 1000);
       toast(`⏳ Gemini 制限中… ${waitSec}秒後に自動リトライ（Vision）`, '');
       setApiStatus('wait', `Gemini ${waitSec}秒待機中`);
@@ -3904,12 +3899,11 @@ async function callVisionAI(prompt, b64) {
         return r;
       } catch(e) {
         errs.push(`Gemini(retry): ${e.message.slice(0,60)}`);
+        // 日次枯渇の可能性 → 長期クールダウン
         if (e.message?.toLowerCase().includes('resource_exhausted') || e.message?.includes('quota')) {
-          _setProviderCooldown('gemini', 60 * 60 * 1000);
+          _setProviderCooldown('gemini', 60 * 60 * 1000); // 1時間
         }
       }
-    } else if (waitMs >= 10000) {
-      errs.push(`Gemini: 制限中（${Math.ceil(waitMs/1000)}秒）→ スキップ`);
     }
   }
 
@@ -4134,25 +4128,16 @@ async function callPerplexity(prompt, useHist = true, sysOverride = null) {
   return data.choices?.[0]?.message?.content || '';
 }
 
-// 統合エントリポイント: 画像あり→callVisionAI→callAI(OCR+DeepSeek)、テキストのみ→callAI
+// 後方互換エイリアス（A-2画像はGemini固定）
 async function gemini(prompt, images = [], useHist = true, sysOverride = null) {
   if (images.length > 0) {
-    if (images.length === 1) {
-      try {
-        return await callVisionAI(prompt, images[0].data);
-      } catch(_) {
-        // Vision全滅 → OCR + テキストLLM（DeepSeek等）
-        const ocrText = await callLocalOCR(images[0].data);
-        const ocrInput = ocrText && ocrText.length > 20
-          ? ocrText
-          : `（OCRテキスト取得不可 / 図解・画像中心と推定）`;
-        return await callAI(`${prompt}\n\n【OCRテキスト】\n${ocrInput}`, useHist, sysOverride);
-      }
+    // 画像解析はGemini Vision固定。キー未設定なら分かりやすくエラー
+    if (!apiKey) {
+      openApiModal();
+      throw new Error('画像解析にはGemini APIキーが必要です。⚙ APIキーボタンから設定してください。');
     }
-    // 複数画像 → OCR + テキストLLM（DeepSeek等）
-    const ocrResults = await Promise.all(images.map(img => callLocalOCR(img.data)));
-    const ocrCombined = ocrResults.map((t, i) => `【画像${i+1}】\n${t || '（テキスト取得不可）'}`).join('\n\n');
-    return await callAI(`${prompt}\n\n${ocrCombined}`, useHist, sysOverride);
+    toast('Gemini使用: 画像解析', 'ok');
+    return callGemini(prompt, images, useHist, sysOverride);
   }
   return callAI(prompt, useHist, sysOverride);
 }
@@ -5232,27 +5217,22 @@ async function doCapture(force = false) {
     }
     if (_ocrReadable) _prevOcrText = _ocrPreCheck; // 次回比較用に保存
 
-    // ── Step2: 変化あり / 図解スライド → Vision API + OCRフォールバック ─
-    // Vision API全滅時はOCR(Tesseract.js) + テキストLLM(DeepSeek等)へカスケード
+    // ── Step2: 変化あり / 図解スライド → Vision API で高品質解析 ──────
     if (hasVisionKey) {
       const provName = apiKey ? 'Gemini' : groqKey ? 'Groq' : orKey ? 'OpenRouter' : 'GitHub';
-      try {
-        toast(`📸 ${provName} Vision で画面解析中…`);
-        r = await callVisionAI(capturePrompt, b64);
-      } catch(e) {
-        toast(`⚠ ${provName} → OCR+テキストAIで代替`, 'err');
-        const ocrTxt = await callLocalOCR(b64);
-        const inp = ocrTxt && ocrTxt.length > 20 ? ocrTxt : `（OCR未取得）`;
-        const p = _buildOCRPrompt(inp, isStructured, videoTopic, audioTranscript, prevCaptures, ts, diagramRules);
-        r = await callAI(p, false, null);
-        r = `[OCR取込]\n${r}`;
-      }
+      toast(`📸 ${provName} Vision で画面解析中…`);
+      r = await callVisionAI(capturePrompt, b64);
+
     } else {
+      // Vision APIキーなし → OCRテキスト + テキストLLM で代替
       toast('⚠ Vision APIキー未設定 → OCRで代替中（Geminiキー設定で大幅改善）');
-      const ocrTxt = await callLocalOCR(b64);
-      const inp = ocrTxt && ocrTxt.length > 20 ? ocrTxt : `（OCR未取得）`;
-      const p = _buildOCRPrompt(inp, isStructured, videoTopic, audioTranscript, prevCaptures, ts, diagramRules);
-      r = await callAI(p, false, null);
+      const ocrInput = _ocrReadable
+        ? _ocrPreCheck
+        : `（OCRテキスト取得不可 / 図解・グラフ・画像中心のスライドと推定）`;
+      const ocrPrompt = _buildOCRPrompt(
+        ocrInput, isStructured, videoTopic, audioTranscript, prevCaptures, ts, diagramRules
+      );
+      r = await callAI(ocrPrompt, false, null);
       r = `[OCR取込]\n${r}`;
     }
     const savedLabel = audioTranscript ? `${label} 🎵` : label;
@@ -5274,7 +5254,6 @@ async function doCapture(force = false) {
     const msg = (e.message || '');
     const msgLow = msg.toLowerCase();
     // 画像解析全失敗 → accumに記録しない（類似度チェックを汚染しないため）・キャプチャは継続
-    console.error('[doCapture] error:', msg, e.stack?.slice(0,300));
     const isAllFailed = msg.includes('全て失敗') || msg.includes('画像解析');
     const isAuthErr = !isAllFailed && (msgLow.includes('401') || msgLow.includes('403') || msgLow.includes('unauthorized') || msgLow.includes('未設定'));
     if (isAllFailed) {
@@ -5430,38 +5409,7 @@ async function doA2Manual() {
       '⚠ 推測・一般論・補足解説は不要。見えている事実のみ書いてください。',
     ].filter(Boolean).join('\n');
 
-    // 画像解析: VisionPool → OCR+テキストLLM（DeepSeek等）へカスケード
-    const _ocrLLMFallback = async (imgData) => {
-      const ocrText = await callLocalOCR(imgData);
-      const ocrInput = ocrText && ocrText.length > 20
-        ? ocrText
-        : `（OCRテキスト取得不可 / 図解・グラフ・画像中心の画像と推定）`;
-      const fallbackPrompt = isStructured
-        ? `【役割】スライド・資料の画面をOCRで読み取ったテキストを学習ノートに整理するAIです。\n${videoTopic ? `【コンテンツ】${videoTopic}` : ''}${note ? `【補足メモ】${note}` : ''}\n\n${diagramRulesManual}\n\n【OCRテキスト】\n${ocrInput}\n\n【出力形式】\n## 📌 今回のポイント\n（最重要事項を3〜5箇条で）\n## 🔑 重要語・数値・固有名詞\n（カンマ区切り）\n## 📖 詳細テキスト\n（全テキストを正確に再現）`
-        : `【役割】画面テキストを一字一句正確に記録するAIです。\n${videoTopic ? `【コンテンツ】${videoTopic}` : ''}${note ? `【補足メモ】${note}` : ''}\n\n${diagramRulesManual}\n\n【OCRテキスト】\n${ocrInput}\n\n■ 画面テキスト全文\n■ 重要な用語・数値`;
-      return await callAI(fallbackPrompt, false, null);
-    };
-    let r;
-    if (imgs.length === 1) {
-      try {
-        r = await callVisionAI(manualPrompt, imgs[0].data);
-      } catch(_) {
-        // Vision全滅 → OCR + テキストLLM（DeepSeek等）で代替
-        toast('⚠ Vision全滅 → OCR+テキストAI（DeepSeek等）で代替', 'err');
-        r = await _ocrLLMFallback(imgs[0].data);
-        r = `[OCR取込]\n${r}`;
-      }
-    } else {
-      // 複数画像 → 全画像でOCRしテキストLLMへ
-      toast('📷 複数画像 → OCR+テキストAI（DeepSeek等）で代替', '');
-      const ocrResults = await Promise.all(imgs.map(img => callLocalOCR(img.data)));
-      const ocrCombined = ocrResults.map((t, i) => `【画像${i+1}】\n${t || '（テキスト取得不可）'}`).join('\n\n');
-      const fallbackPrompt = isStructured
-        ? `【役割】複数のスライド・資料をOCRで読み取ったテキストを学習ノートに整理するAIです。\n${videoTopic ? `【コンテンツ】${videoTopic}` : ''}${note ? `【補足メモ】${note}` : ''}\n\n${diagramRulesManual}\n\n${ocrCombined}\n\n【出力形式】各画像ごとに「📌 今回のポイント」「🔑 重要語」「📖 詳細テキスト」を出力。`
-        : `【役割】複数画面のテキストを一字一句正確に記録するAIです。\n${videoTopic ? `【コンテンツ】${videoTopic}` : ''}${note ? `【補足メモ】${note}` : ''}\n\n${diagramRulesManual}\n\n${ocrCombined}`;
-      r = await callAI(fallbackPrompt, false, null);
-      r = `[OCR取込]\n${r}`;
-    }
+    const r = await gemini(manualPrompt, imgs, false);
     updateBubble(ai, r);
     addAccum('A-2', label, `[画面取込]\n${r}`);
     pendImgs = []; renderPreviews();
@@ -6964,62 +6912,4 @@ async function saveToNotionDB() {
       ...(memo    ? { 'メモ': { rich_text: [{ text: { content: memo.slice(0, 2000) } }] } } : {}),
     },
     children: [{
-      object: 'block', type: 'paragraph',
-      paragraph: { rich_text: [{ text: { content: content.slice(0, 2000) } }] }
-    }]
-  };
-
-  try {
-    // ── server.py プロキシ経由で保存 ──────────────────
-    const res  = await fetch(notionProxyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (res.ok && data.id) {
-      resultEl.textContent = '✅ Notionに保存しました！';
-      resultEl.className   = 'nm-result ok';
-      toast('📓 Notionに保存しました ✓', 'ok');
-      setTimeout(() => closeNotionModal(), 1800);
-    } else {
-      throw new Error(data.message || data.error || `HTTP ${res.status}`);
-    }
-  } catch(e) {
-    resultEl.textContent = `❌ 保存に失敗：${e.message.slice(0, 80)}`;
-    resultEl.className   = 'nm-result err';
-    toast('Notion保存に失敗しました', 'err');
-  }
-  btn.disabled = false; btn.textContent = '📓 Notionに保存';
-}
-
-function clearAll() {
-  if (isCap) { stopCapture(); }
-  accum    = [];
-  chatHist = [];
-  noteOut  = '';
-  pendImgs = [];
-  voiceText = '';
-  _flashcards = [];
-  document.getElementById('flashcardSection').style.display = 'none';
-  const accumList = document.getElementById('accumList');
-  if (accumList) accumList.innerHTML = '';
-  document.getElementById('accumBadge').textContent = '0件';
-  const chatMsgs = document.getElementById('chatMsgs');
-  if (chatMsgs) chatMsgs.innerHTML = '<div class="msg msg-ai"><div class="avatar">🤖</div><div class="bubble">こんにちは！今日は何を学びましたか？<br>気になったことや疑問点があれば何でも話しかけてください。</div></div>';
-  const outBox = document.getElementById('outBox');
-  if (outBox) { outBox.classList.add('empty'); outBox.textContent = 'ここにコンテンツが生成されます…'; }
-  document.getElementById('outActions')?.classList.add('hidden');
-  syncGenSource();
-  renderAccum();
-  toast('クリアしました', 'ok');
-}
-
-function updateCinCount() {
-  const v = document.getElementById('cin').value;
-  const el = document.getElementById('cinCount');
-  if (el) el.textContent = v.length + '文字';
-}
-</script>
-</body>
-</html>
+  
