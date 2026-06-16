@@ -186,6 +186,40 @@ class BlogScheduler:
             f"{lang_instruction} "
             "Write compelling, SEO-optimized blog posts with clear headings, real examples, and actionable takeaways."
         )
+
+        # 2026-06-12 収益化: CTAをトピックで出し分け（迷ったらGrowl優先）。
+        # 飲食店/マーケ寄り or 曖昧 → Growl（飲食店SaaS）。明確に開発/自動化寄りのみ → Developer Blueprint。
+        growl_cta = (
+            "## Get Your 3 Marketing Actions This Week\n\n"
+            "**Growl** is an AI marketing assistant built for small local businesses and restaurant owners. "
+            "Answer 5 quick questions and get 3 concrete, ready-to-do actions every week — plus copy-ready posts and ad creative you can publish in minutes.\n\n"
+            "- 🎯 3 specific actions every Monday — no marketing degree needed\n"
+            "- 🎯 Copy-ready captions, posts, and ad creative\n"
+            "- 🎯 Built for owners who do their own marketing\n\n"
+            "**[Try Growl free — no signup →](https://growl-app.vercel.app)**"
+        )
+        blueprint_cta = (
+            "## Want to Build This System Yourself?\n\n"
+            "**Sage 3.0 Developer Blueprint** is the complete technical guide to building an autonomous content engine like this one — the exact stack running in production since January 2026.\n\n"
+            "- ⚙️ Full Flask + LangGraph + CrewAI codebase\n"
+            "- ⚙️ Cloudflare Workers for 24/7 posting (no PC required)\n"
+            "- ⚙️ Auto-setup script + connection verifier with AI diagnosis\n"
+            "- ⚙️ Half a day to deploy. Runs forever after that.\n\n"
+            "**[$49 — Get the Developer Blueprint →](https://naofumi3.gumroad.com/l/apvbzh)**\n\n"
+            "One-time purchase. Your code, your keys, your data."
+        )
+        _t = (topic or "").lower()
+        _dev_kw = ["build", "automat", "code", "codebase", "langgraph", "crewai", "flask",
+                   "api", "agent", "autonomous", "deploy", "developer", "python", "workflow",
+                   "n8n", "self-host", "infrastructure", "scrap", "engineer", "pipeline", "llm", "webhook"]
+        _mkt_kw = ["restaurant", "food", "cafe", "diner", "marketing", "customer", "local business",
+                   "ad ", "advertis", "social media", "instagram", "review", "foot traffic", "branding",
+                   "funnel", "persona", "aida", "stp", "3c", "4p", "swot", "usp", "集客", "飲食", "店", "顧客"]
+        _is_dev = any(k in _t for k in _dev_kw)
+        _is_mkt = any(k in _t for k in _mkt_kw)
+        # 迷ったらGrowl: 明確に開発寄り(devキーワードあり & マーケ要素なし)のときだけBlueprint、それ以外はGrowl。
+        cta = blueprint_cta if (_is_dev and not _is_mkt) else growl_cta
+
         user_prompt = f"""Write a detailed blog post (1500+ words) on the topic: "{topic}"
 
 Return ONLY valid Markdown with this exact frontmatter at the top:
@@ -200,20 +234,9 @@ author: "Sage AI"
 
 Then write the full article body in Markdown. Use ## for sections, include bullet lists.
 
-MANDATORY: End EVERY article with this exact CTA section (adapt wording naturally, keep the links):
+MANDATORY: End EVERY article with this exact CTA section (adapt wording naturally, keep the link):
 
-## Want to Build This System Yourself?
-
-**Sage 3.0 Developer Blueprint** is the complete technical guide to building an autonomous content engine like this one — the exact stack running in production since January 2026.
-
-- ⚙️ Full Flask + LangGraph + CrewAI codebase
-- ⚙️ Cloudflare Workers for 24/7 posting (no PC required)
-- ⚙️ Auto-setup script + connection verifier with AI diagnosis
-- ⚙️ Half a day to deploy. Runs forever after that.
-
-**[$49 — Get the Developer Blueprint →](https://naofumi3.gumroad.com/l/apvbzh)**
-
-One-time purchase. Your code, your keys, your data."""
+{cta}"""
 
         raw = _call_llm_blog(
             messages=[
@@ -402,8 +425,10 @@ Respond with ONLY the topic title, nothing else. Make it specific and compelling
             if page_id:
                 self._update_notion_status(page_id, "完了")
             self._queue_sns_post(article["title"], article["slug"])
-            self._post_devto(article)
-            logger.info(f"[BLOG] ✅ Article published: {article['slug']}")
+            # 2026-06-12 収益化最適化: dev.to投稿は aeo-revenue-autopilot（週3・AEO設計）に一本化。
+            # ここでの日次dev.to投稿は二重投稿・スパムリスクになるため停止（ブログ生成とSNSキューは継続）。
+            # self._post_devto(article)
+            logger.info(f"[BLOG] ✅ Article published (blog only; dev.to handled by AEO autopilot): {article['slug']}")
         else:
             logger.error("[BLOG] git push failed. Notion status not updated.")
 

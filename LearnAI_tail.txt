@@ -1,0 +1,59 @@
+﻿      object: 'block', type: 'paragraph',
+      paragraph: { rich_text: [{ text: { content: content.slice(0, 2000) } }] }
+    }]
+  };
+
+  try {
+    // ── server.py プロキシ経由で保存 ──────────────────
+    const res  = await fetch(notionProxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.id) {
+      resultEl.textContent = '✅ Notionに保存しました！';
+      resultEl.className   = 'nm-result ok';
+      toast('📓 Notionに保存しました ✓', 'ok');
+      setTimeout(() => closeNotionModal(), 1800);
+    } else {
+      throw new Error(data.message || data.error || `HTTP ${res.status}`);
+    }
+  } catch(e) {
+    resultEl.textContent = `❌ 保存に失敗：${e.message.slice(0, 80)}`;
+    resultEl.className   = 'nm-result err';
+    toast('Notion保存に失敗しました', 'err');
+  }
+  btn.disabled = false; btn.textContent = '📓 Notionに保存';
+}
+
+function clearAll() {
+  if (isCap) { stopCapture(); }
+  accum    = [];
+  chatHist = [];
+  noteOut  = '';
+  pendImgs = [];
+  voiceText = '';
+  _flashcards = [];
+  document.getElementById('flashcardSection').style.display = 'none';
+  const accumList = document.getElementById('accumList');
+  if (accumList) accumList.innerHTML = '';
+  document.getElementById('accumBadge').textContent = '0件';
+  const chatMsgs = document.getElementById('chatMsgs');
+  if (chatMsgs) chatMsgs.innerHTML = '<div class="msg msg-ai"><div class="avatar">🤖</div><div class="bubble">こんにちは！今日は何を学びましたか？<br>気になったことや疑問点があれば何でも話しかけてください。</div></div>';
+  const outBox = document.getElementById('outBox');
+  if (outBox) { outBox.classList.add('empty'); outBox.textContent = 'ここにコンテンツが生成されます…'; }
+  document.getElementById('outActions')?.classList.add('hidden');
+  syncGenSource();
+  renderAccum();
+  toast('クリアしました', 'ok');
+}
+
+function updateCinCount() {
+  const v = document.getElementById('cin').value;
+  const el = document.getElementById('cinCount');
+  if (el) el.textContent = v.length + '文字';
+}
+</script>
+</body>
+</html>
