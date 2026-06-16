@@ -715,3 +715,22 @@ LearnAI（`/learn`）のトピック詳細ページ（Item 8）が未実装だ�
 ### Abstract Lesson
 「タイムアウト制限の緩和（maxDurationの調整）と、JSONスキーマレベルでの言語属性強制キー（`_language: ja`）の導入により、504エラーの防止とLLMの出力言語制御の完全強制化を同時に達成できる」
 
+
+
+---
+
+## 2026-06-16: APIコールごとの個別タイムアウト（AbortSignal.timeout）導入による504エラー対策の最適化
+
+### Root Cause
+Vercelのルートで \maxDuration: 60\ に延長したものの、複数APIプロバイダ（DeepSeek, Groq, Gemini）のフォールバック・チェーン自体が重なった場合、チェーン全体の累積待機時間が最大制限に引っかかり結局504になる恐れや、ユーザーに無駄な待ち時間（30秒以上）を強いる課題があった。
+
+### Fix
+- **\lib/gemini.ts\**: Node.js標準の \AbortSignal.timeout(ms)\ を導入し、各LLMプロバイダごとの通信時間上限を厳密に制限。
+  - DeepSeek および Groq 70B: **8秒**上限
+  - Groq 8B: **5秒**上限
+  - Gemini: **10秒**上限
+- \TimeoutError\ をキャッチした際、待機状態に陥らずに即座に次の安定したプロバイダへフォールバックするロジックへ更新。
+
+### Abstract Lesson
+「全体のリクエストタイムアウト（maxDuration）に依存するのではなく、ネットワークリクエスト単位での個別タイムアウト（AbortSignal.timeout）を導入して早期フェイルファストを実装することで、長時間のブロッキングを防ぎつつ安全で高速なフォールバック・チェーンを確立できる」
+
