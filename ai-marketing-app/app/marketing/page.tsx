@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import LangToggle from "@/components/LangToggle";
 import { loadOnboarding } from "@/lib/store";
 import { useLang } from "@/lib/i18n";
 
@@ -1046,7 +1047,10 @@ export default function MarketingPage() {
     <main className="min-h-screen bg-white flex flex-col">
       <section className="flex-1 px-6 py-12 max-w-lg mx-auto w-full">
         <div className="mb-8">
-          <Link href="/" className="text-gray-400 text-sm hover:text-gray-600">{isEn ? "← Back to Home" : "← ホームへ"}</Link>
+          <div className="flex items-center justify-between mb-2">
+            <Link href="/" className="text-gray-400 text-sm hover:text-gray-600">{isEn ? "← Back to Home" : "← ホームへ"}</Link>
+            <LangToggle />
+          </div>
           <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 text-xs font-medium px-3 py-1.5 rounded-full mt-4 mb-3">
             <span>📊</span> {isEn ? "AI Marketing Analysis" : "AIマーケティング分析"}
           </div>

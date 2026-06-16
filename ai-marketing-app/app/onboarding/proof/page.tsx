@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveProofData, loadProofData, isFlowActive } from "@/lib/store";
 import ProgressBar from "@/components/ProgressBar";
+import LangToggle from "@/components/LangToggle";
 import { useLang } from "@/lib/i18n";
 
 export default function ProofPage() {
@@ -37,6 +38,9 @@ export default function ProofPage() {
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
         <ProgressBar current={5} total={6} />
+        <div className="flex justify-end mb-2">
+          <LangToggle />
+        </div>
 
         <div className="text-center mb-6 mt-4">
           <span className="text-4xl">✨</span>
