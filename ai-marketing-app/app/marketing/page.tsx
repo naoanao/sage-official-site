@@ -249,9 +249,9 @@ function PositioningMapChart({ data }: { data: PositioningMap }) {
 // Main Component
 // ────────────────────────────────────────────
 export default function MarketingPage() {
-  const { lang } = useLang();
-  const isEn = lang === "en";
-  const SITUATIONS = getSituations(isEn);
+  const { lang, mounted } = useLang();
+  const isEn = mounted && lang === "en";
+  const SITUATIONS = !mounted ? getSituations(false) : getSituations(isEn);
 
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
@@ -441,7 +441,7 @@ export default function MarketingPage() {
   // Research loading
   if (step === "research-loading") {
     return (
-      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4" key={lang}>
         <div className="animate-spin w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full mb-6" />
         <p className="text-gray-600 font-medium text-lg">{isEn ? "AI is researching your market…" : "AIが市場をリサーチ中…"}</p>
         <p className="text-gray-400 text-sm mt-2 text-center">{isEn ? "Scanning competitors, reviews, ads, market size & government data" : "競合・レビュー・広告・市場規模・政府データをスキャン中"}</p>
@@ -454,7 +454,7 @@ export default function MarketingPage() {
   if (step === "research-result" && researchResult) {
     const r = researchResult.research;
     return (
-      <main className="min-h-screen bg-gray-50 px-4 py-10">
+      <main className="min-h-screen bg-gray-50 px-4 py-10" key={lang}>
         <div className="max-w-lg mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <button
@@ -680,7 +680,7 @@ export default function MarketingPage() {
   // Loading
   if (step === "loading") {
     return (
-      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4" key={lang}>
         <div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full mb-6" />
         <p className="text-gray-600 font-medium text-lg">{isEn ? "AI is analyzing…" : "AIが分析中…"}</p>
         <p className="text-gray-400 text-sm mt-2">
@@ -693,7 +693,7 @@ export default function MarketingPage() {
   // Result
   if (step === "result" && result) {
     return (
-      <main className="min-h-screen bg-gray-50 px-4 py-10">
+      <main className="min-h-screen bg-gray-50 px-4 py-10" key={lang}>
         <div className="max-w-lg mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <button
@@ -910,7 +910,7 @@ export default function MarketingPage() {
   // Step 2: Situation / Framework selection
   if (step === "situation") {
     return (
-      <main className="min-h-screen bg-gray-50 px-4 py-10">
+      <main className="min-h-screen bg-gray-50 px-4 py-10" key={lang}>
         <div className="max-w-lg mx-auto">
           <button
             onClick={() => { setStep("form"); setSelectedSituation(null); setSelectedFw(null); scrollTop(); }}
@@ -1044,7 +1044,7 @@ export default function MarketingPage() {
 
   // Step 1: Business info form
   return (
-    <main className="min-h-screen bg-white flex flex-col">
+    <main className="min-h-screen bg-white flex flex-col" key={lang}>
       <section className="flex-1 px-6 py-12 max-w-lg mx-auto w-full">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
