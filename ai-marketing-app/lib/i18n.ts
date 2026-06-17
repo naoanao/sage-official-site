@@ -147,6 +147,64 @@ const translations = {
     // ── 完了画面 ──
     "complete.back": "← ダッシュボードに戻る",
     "complete.share": "シェアする",
+
+    "land.hero.title1": "今週やること、\n",
+    "land.hero.title2": "3つだけ。",
+    "land.hero.title3": "",
+    "land.hero.desc": "「今週何を投稿しよう」と悩む時間、ゼロにしませんか。AIがあなたのビジネスを分析して、コピペするだけの完成文を3つ届けます。",
+    "land.hero.subdesc": "Instagram投稿文・Googleレビュー返信・LINE配信文——\n全部、明日から使える状態で届きます",
+    "land.hero.cta": "無料で始める →",
+    "land.hero.cta_sub": "登録不要・1分で完了・クレカ不要",
+    "land.hero.diag": "あなたの集客力を診断する →",
+    "land.hero.agency": "または、広告運用をAIにまるごとおまかせ →",
+    "land.stats.time": "1分",
+    "land.stats.time_sub": "入力にかかる時間",
+    "land.stats.freq": "毎週",
+    "land.stats.freq_sub": "AIが自動更新",
+    "land.stats.tasks": "週3つ",
+    "land.stats.tasks_sub": "だけでいい",
+    "land.target.title": "こんな方に",
+    "land.target.t1": "毎週「今週何を投稿しよう」と悩んでいる",
+    "land.target.t2": "マーケ専門家を雇う余裕はない",
+    "land.target.t3": "時間も人手も限られている",
+    "land.target.t4": "やると決めたら動ける。ただ何をやるかが分からない",
+    "land.voice.sub": "飲食店・サロン・工務店オーナーから",
+    "land.price.title": "シンプルな料金",
+    "land.price.sub": "まず無料で試して、必要になったら上げる。",
+    "land.price.free": "フリー",
+    "land.price.free.price": "¥0",
+    "land.price.free.unit": "/月",
+    "land.price.free.f1": "月10回まで分析",
+    "land.price.free.f2": "全10フレームワーク（3C・SWOT・STPなど）",
+    "land.price.free.f3": "登録不要",
+    "land.price.free.cta": "無料で始める →",
+    "land.price.popular": "おすすめ",
+    "land.price.std": "スタンダード",
+    "land.price.std.price": "¥3,000",
+    "land.price.std.unit": "/月",
+    "land.price.std.f1": "分析回数は無制限",
+    "land.price.std.f2": "Meta広告コピー自動生成",
+    "land.price.std.f3": "毎週の施策を自動配信",
+    "land.price.std.f4": "月次レポートで効果を確認",
+    "land.price.std.cta": "スタンダードにする →",
+    "land.price.footer": "いつでもキャンセル可 · Stripe決済で安全",
+    "land.bottom.desc": "5問答えるだけで、今週の施策が届きます",
+    "land.bottom.sub": "登録不要・クレジットカード不要",
+    "land.bottom.cta": "今すぐ無料で試す →",
+    "land.footer.market": "マーケ分析",
+    "land.footer.privacy": "プライバシーポリシー",
+    "land.footer.terms": "利用規約",
+    "land.footer.contact": "お問い合わせ",
+    "ob.proof.title": "広告をもっと強くする",
+    "ob.proof.sub": "任意入力ですが、これがあると広告の説得力が劇的に上がります。",
+    "ob.proof.num": "実績・数字",
+    "ob.proof.num.hint": "例：「300社以上が導入」「平均CVR3倍」「累計1,000名受講」",
+    "ob.proof.quote": "お客様の声（実際の言葉）",
+    "ob.proof.quote.hint": "例：「半信半疑でしたが、30日で売上が2倍になりました」",
+    "ob.proof.price": "価格・オファー",
+    "ob.proof.price.hint": "例：「初月無料」「月額980円〜」「無料相談あり」",
+    "ob.proof.skip": "今はスキップ",
+    "ob.proof.next": "次へ →",
   },
 
   en: {
@@ -289,6 +347,64 @@ const translations = {
     // ── Complete ──
     "complete.back": "← Back to Dashboard",
     "complete.share": "Share",
+
+    "land.hero.title1": "Just ",
+    "land.hero.title2": "3 actions",
+    "land.hero.title3": "\nthis week.",
+    "land.hero.desc": "No more wondering 'what should I post this week?'. AI analyzes your business and delivers 3 ready-to-use pieces of content.",
+    "land.hero.subdesc": "Instagram posts · Google review replies · social content —\nall delivered ready to use",
+    "land.hero.cta": "Start free →",
+    "land.hero.cta_sub": "No signup · 1 minute · No credit card",
+    "land.hero.diag": "Take a free marketing diagnosis →",
+    "land.hero.agency": "Or: let AI run your ads for you →",
+    "land.stats.time": "1 min",
+    "land.stats.time_sub": "to set up",
+    "land.stats.freq": "Weekly",
+    "land.stats.freq_sub": "AI auto-updates",
+    "land.stats.tasks": "3 tasks",
+    "land.stats.tasks_sub": "that's all",
+    "land.target.title": "Built for you if...",
+    "land.target.t1": "You wonder 'what should I post this week?' every single week",
+    "land.target.t2": "You can't afford to hire a marketing specialist",
+    "land.target.t3": "Time and staff are limited",
+    "land.target.t4": "Once you know what to do, you'll act — you just don't know what",
+    "land.voice.sub": "From restaurant, salon, and contractor owners",
+    "land.price.title": "Simple pricing",
+    "land.price.sub": "Start free. Upgrade when you're ready.",
+    "land.price.free": "Free",
+    "land.price.free.price": "$0",
+    "land.price.free.unit": "/mo",
+    "land.price.free.f1": "10 analyses per month",
+    "land.price.free.f2": "All 10 frameworks (3C, SWOT, STP...)",
+    "land.price.free.f3": "No signup required",
+    "land.price.free.cta": "Start free →",
+    "land.price.popular": "Most popular",
+    "land.price.std": "Standard",
+    "land.price.std.price": "$29",
+    "land.price.std.unit": "/mo",
+    "land.price.std.f1": "Unlimited analyses",
+    "land.price.std.f2": "Meta Ads copy generator",
+    "land.price.std.f3": "Weekly actions auto-delivered",
+    "land.price.std.f4": "Monthly performance report",
+    "land.price.std.cta": "Start Standard →",
+    "land.price.footer": "Cancel anytime · Secure payment via Stripe",
+    "land.bottom.desc": "Answer 5 questions and get this week's actions",
+    "land.bottom.sub": "No signup · No credit card",
+    "land.bottom.cta": "Start free →",
+    "land.footer.market": "Market Analysis",
+    "land.footer.privacy": "Privacy Policy",
+    "land.footer.terms": "Terms",
+    "land.footer.contact": "Contact",
+    "ob.proof.title": "Strengthen your ads",
+    "ob.proof.sub": "Optional — but these details make your ads dramatically more convincing.",
+    "ob.proof.num": "Proof / Results (numbers)",
+    "ob.proof.num.hint": "e.g. \"300+ clients\", \"Average 3x ROI\", \"Used by 50 companies\"",
+    "ob.proof.quote": "Customer quote (real words)",
+    "ob.proof.quote.hint": "e.g. \"I was skeptical but it changed my business in 30 days\"",
+    "ob.proof.price": "Price / Offer",
+    "ob.proof.price.hint": "e.g. \"Free first month\", \"From $29/mo\", \"Free consultation\"",
+    "ob.proof.skip": "Skip for now",
+    "ob.proof.next": "Next →",
   },
 } as const;
 
@@ -300,11 +416,11 @@ type TranslationKey = keyof typeof translations.ja;
 const LANG_EVENT = "growl:lang-change";
 
 export function useLang() {
-  const [lang, setLang] = useState<Lang>("ja"); // SSR/Hydration時は日本語をデフォルトに（英語表示の初期フラッシュを防止）
+  const [lang, setLang] = useState<Lang>("ja");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // 初期ロード: 1) 保存済みの選択 2) 無ければブラウザ言語で自動判定（日本語環境は日本語）
-    // これで日本のユーザーは最初から日本語UIで開く＝生成も日本語になり、英日混在を防ぐ。
+    setMounted(true);
     const saved = localStorage.getItem("growl_lang") as Lang | null;
     if (saved === "en" || saved === "ja") {
       setLang(saved);
@@ -312,7 +428,6 @@ export function useLang() {
       setLang("ja");
     }
 
-    // 他のコンポーネントの toggleLang() が発火したときに同期する
     function onLangChange(e: Event) {
       const next = (e as CustomEvent<Lang>).detail;
       setLang(next);
@@ -325,20 +440,22 @@ export function useLang() {
     const next: Lang = lang === "ja" ? "en" : "ja";
     setLang(next);
     localStorage.setItem("growl_lang", next);
-    // 同一ページ内の全 useLang インスタンスに変更を通知
     window.dispatchEvent(new CustomEvent<Lang>(LANG_EVENT, { detail: next }));
   }
 
   function t(key: TranslationKey): string {
+    if (!mounted) {
+      // hydration mismatch防止のためマウント前はデフォルトのjaを返す
+      return (translations.ja as Record<string, string>)[key] ?? key;
+    }
     return (translations[lang] as Record<string, string>)[key]
       ?? (translations.ja as Record<string, string>)[key]
       ?? key;
   }
 
-  return { lang, toggleLang, t };
+  return { lang, toggleLang, t, mounted };
 }
 
-// ── 言語を1回だけ読む（SSR不要の場所で使う） ──────────────────────────────────
 export function getLang(): Lang {
   if (typeof window === "undefined") return "ja";
   const v = localStorage.getItem("growl_lang");

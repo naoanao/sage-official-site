@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 // TIKTOK_APP_URL を必ずVercel環境変数に明示設定すること。
 // NEXT_PUBLIC_APP_URL はプレビューURL(growl-app.vercel.app)を返す場合があるため使用禁止。
 const APP_URL = process.env.TIKTOK_APP_URL ?? "https://growl-ai.com";
