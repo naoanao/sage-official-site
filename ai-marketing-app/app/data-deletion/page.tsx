@@ -75,8 +75,8 @@ export default function DataDeletionPage() {
               </button>
               <p className="text-xs text-gray-400 mt-3">
                 {isEn
-                  ? "Or email us directly at contact@growl-ai.com with the subject \"Data Deletion\"."
-                  : "または contact@growl-ai.com に件名「データ削除」でご連絡ください。"}
+                  ? "Or email us directly at hello@growl-ai.com with the subject \"Data Deletion\"."
+                  : "または hello@growl-ai.com に件名「データ削除」でご連絡ください。"}
               </p>
             </>
           )}

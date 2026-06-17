@@ -268,7 +268,7 @@ export default function LandingPage() {
           <a href="/terms" className="hover:text-gray-500 transition-colors">
             {t("land.footer.terms")}
           </a>
-          <a href="mailto:contact@growl-ai.com" className="hover:text-gray-500 transition-colors">
+          <a href="mailto:hello@growl-ai.com" className="hover:text-gray-500 transition-colors">
             {t("land.footer.contact")}
           </a>
         </div>

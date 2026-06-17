@@ -30,11 +30,11 @@ const JA_CONTENT = {
     },
     {
       h: "5. データの保存と削除",
-      p: "データはSupabase（クラウドデータベース）に保存されます。アカウント削除をご希望の場合は、contact@growl-ai.comまでご連絡ください。",
+      p: "データはSupabase（クラウドデータベース）に保存されます。アカウント削除をご希望の場合は、hello@growl-ai.comまでご連絡ください。",
     },
     {
       h: "6. お問い合わせ",
-      p: "contact@growl-ai.com",
+      p: "hello@growl-ai.com",
     },
   ],
 };
@@ -91,11 +91,11 @@ export default function PrivacyPage() {
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">5. Data Deletion</h2>
-           <p>Use the "Start over" button to clear your session. To delete server data, email: contact@growl-ai.com</p>
+           <p>Use the "Start over" button to clear your session. To delete server data, email: hello@growl-ai.com</p>
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">6. Contact</h2>
-          <p>contact@growl-ai.com</p>
+          <p>hello@growl-ai.com</p>
         </div>
       </section>
       <div className="mt-12 border-t border-gray-100 pt-6">

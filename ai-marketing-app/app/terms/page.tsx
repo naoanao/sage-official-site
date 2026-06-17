@@ -17,7 +17,7 @@ export default function TermsPage() {
           <div><h2 className="text-lg font-semibold text-gray-900 mb-2">2. サービスの説明</h2><p>Growlは、小規模事業者向けにAIによるマーケティング提案およびMeta広告作成支援を提供します。本サービスは「現状のまま」提供され、いかなる保証も伴いません。</p></div>
           <div><h2 className="text-lg font-semibold text-gray-900 mb-2">3. Meta広告機能</h2><p>広告は必ず「一時停止（PAUSED）」状態で作成されます。ユーザー自身がMeta広告マネージャーで確認・有効化する必要があります。広告費用はお客様のMetaアカウントに直接請求され、Growlは一切の広告費用を請求しません。</p></div>
           <div><h2 className="text-lg font-semibold text-gray-900 mb-2">4. 免責事項</h2><p>AIが生成するマーケティング提案は参考情報です。実際のビジネス判断はご自身の責任で行ってください。AI利用に伴う第三者とのトラブルについて、当社は一切の責任を負いません。</p></div>
-          <div><h2 className="text-lg font-semibold text-gray-900 mb-2">5. お問い合わせ</h2><p>contact@growl-ai.com</p></div>
+          <div><h2 className="text-lg font-semibold text-gray-900 mb-2">5. お問い合わせ</h2><p>hello@growl-ai.com</p></div>
         </section>
         <div className="mt-12 border-t border-gray-100 pt-6">
           <a href="/" className="text-sm text-indigo-500">Growlに戻る</a>
@@ -62,7 +62,7 @@ export default function TermsPage() {
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">7. Contact</h2>
-          <p>contact@growl-ai.com</p>
+          <p>hello@growl-ai.com</p>
         </div>
       </section>
       <div className="mt-12 border-t border-gray-100 pt-6">

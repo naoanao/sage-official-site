@@ -503,7 +503,7 @@ export default function AdBoostCard({ session, lang = "en", locale }: AdBoostCar
             </button>
             {result.error?.includes("credentials") && (
               <a
-                href={`mailto:contact@growl-ai.com?subject=${encodeURIComponent(isEn ? "Run my ad for me (Growl)" : "広告の配信代行を希望（Growl）")}&body=${encodeURIComponent((adCopy?.headline ? `Headline: ${adCopy.headline}\n` : "") + (isEn ? "Please launch and manage this ad for me." : "この広告の配信・運用をおまかせしたいです。"))}`}
+                href={`mailto:hello@growl-ai.com?subject=${encodeURIComponent(isEn ? "Run my ad for me (Growl)" : "広告の配信代行を希望（Growl）")}&body=${encodeURIComponent((adCopy?.headline ? `Headline: ${adCopy.headline}\n` : "") + (isEn ? "Please launch and manage this ad for me." : "この広告の配信・運用をおまかせしたいです。"))}`}
                 className="block w-full bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl text-center hover:bg-indigo-700 transition-all">
                 🚀 {isEn ? "Have Growl launch & manage it for you" : "配信はGrowlにおまかせ（代行を依頼）"}
               </a>
