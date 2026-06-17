@@ -285,7 +285,8 @@ export default function MarketingPage() {
   function isValidInput(str: string): boolean {
     const trimmed = str.trim();
     if (trimmed.length < 2) return false;
-    return /\p{L}/u.test(trimmed);
+    // Require at least one letter or number
+    return /[\p{L}\p{N}]/u.test(trimmed);
   }
 
   function scrollTop() {
