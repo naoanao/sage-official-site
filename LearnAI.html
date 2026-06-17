@@ -2550,10 +2550,10 @@ function _parseCooldownMs(headers, providerName) {
   // 3. プロバイダー別デフォルト
   const defaults = {
     'Cerebras':     2  * 60 * 1000,  // RPM制限が多い → 2分
-    'Groq':         30 * 60 * 1000,  // 日次上限が見えやすい → 30分
-    'Gemini':       90 * 1000,       // RPM制限 → 90秒（自動リトライ閾値210秒以内に収める）
+    'Groq':         60 * 1000,       // RPM制限 → 60秒（30分は誤り・日次でなくRPM）
+    'Gemini':       90 * 1000,       // RPM制限 → 90秒
     'GitHub Models':5  * 60 * 1000,
-    'OpenRouter':   5  * 60 * 1000,
+    'OpenRouter':   60 * 1000,       // RPM制限 → 60秒
     'SambaNova':    5  * 60 * 1000,
   };
   return defaults[providerName] ?? COOLDOWN_MS;
@@ -2561,14 +2561,15 @@ function _parseCooldownMs(headers, providerName) {
 
 let pplxKey = getAllowKeySave() ? localStorage.getItem('learnai_pplx') : null;
 let groqKey = getAllowKeySave() ? localStorage.getItem('learnai_groq') : null;
+if (!groqKey) { groqKey = 'learnai_groq_placeholder'; if (getAllowKeySave()) localStorage.setItem('learnai_groq', groqKey); }
 let orKey = getAllowKeySave() ? localStorage.getItem('learnai_or') : null;
 let ghKey = getAllowKeySave() ? localStorage.getItem('learnai_gh') : null;
 let cerebrasKey = getAllowKeySave() ? localStorage.getItem('learnai_cerebras') : null;
 let sambaKey = getAllowKeySave() ? localStorage.getItem('learnai_samba') : null;
 let hfKey = getAllowKeySave() ? localStorage.getItem('learnai_hf') : null;
-if (!hfKey) { hfKey = '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'; if (getAllowKeySave()) localStorage.setItem('learnai_hf', hfKey); }
+if (!hfKey) { hfKey = 'learnai_hf_placeholder'; if (getAllowKeySave()) localStorage.setItem('learnai_hf', hfKey); }
 let dsKey = getAllowKeySave() ? localStorage.getItem('learnai_ds') : null;
-if (!dsKey) { dsKey = 'sk-99662e8da279421580e8b9b6ffe73011'; if (getAllowKeySave()) localStorage.setItem('learnai_ds', dsKey); }
+if (!dsKey) { dsKey = 'learnai_ds_placeholder'; if (getAllowKeySave()) localStorage.setItem('learnai_ds', dsKey); }
 
 let proxyBaseUrl = getAllowKeySave()
   ? (localStorage.getItem('learnai_proxy_base') || 'http://localhost:8000/')
@@ -2580,10 +2581,12 @@ let notionProxyUrl = getAllowKeySave()
 
 let notionDbId = getAllowKeySave() ? localStorage.getItem('learnai_notion_db') : null;
 let notionKey = ''; // No longer used in frontend
-// Groq Vision の日次トークン上限フラグ（当日リセットまで Groq をスキップ）
-let _groqVisionDailyBlocked = false;
-// OpenRouter Vision の日次制限フラグ（free-models-per-day に達したらスキップ）
-let _orVisionDailyBlocked = false;
+// Groq Vision の日次上限フラグ（1時間後に自動リセット）
+let _groqVisionBlockedAt = 0;  // 0 = 未ブロック
+let _orVisionBlockedAt   = 0;  // 0 = 未ブロック
+const _VISION_BLOCK_EXPIRE_MS = 60 * 60 * 1000; // 1時間
+function _groqVisionDailyBlocked()  { return Date.now() - _groqVisionBlockedAt < _VISION_BLOCK_EXPIRE_MS; }
+function _orVisionDailyBlocked()    { return Date.now() - _orVisionBlockedAt   < _VISION_BLOCK_EXPIRE_MS; }
 let accum        = [];          // {id,mode,label,content,date,time}
 let chatHist     = [];          // {role,text}
 let currentSessionId = null;    // セッション管理
@@ -3776,12 +3779,12 @@ async function callVisionAI(prompt, b64) {
   const OR_HEADERS = { 'HTTP-Referer': location.href, 'X-Title': 'LearnAI' };
 
   // ── 0. 現在選択中プロバイダー & vision対応モデルを最優先 ──────────
-  if (p === 'groq' && groqKey && VISION_MODELS.has(m) && !_groqVisionDailyBlocked) {
+  if (p === 'groq' && groqKey && VISION_MODELS.has(m) && !_groqVisionDailyBlocked()) {
     try {
       return await callOpenAICompatVision(
         'https://api.groq.com/openai/v1/chat/completions', groqKey, 'Groq', m, prompt, b64);
     } catch(e) {
-      if (_isVisionDailyLimit(e.message)) { _groqVisionDailyBlocked = true; }
+      if (_isVisionDailyLimit(e.message)) { _groqVisionBlockedAt = Date.now(); }
       errs.push(`Groq(${m}): ${e.message}`);
     }
   }
@@ -3811,7 +3814,7 @@ async function callVisionAI(prompt, b64) {
   }
 
   // ── 2. Groq Vision（高速・良精度）───────────────────────────────────
-  if (groqKey && !_groqVisionDailyBlocked && !(p === 'groq' && VISION_MODELS.has(m))) {
+  if (groqKey && !_groqVisionDailyBlocked() && !(p === 'groq' && VISION_MODELS.has(m))) {
     try {
       const r = await callOpenAICompatVision(
         'https://api.groq.com/openai/v1/chat/completions', groqKey, 'Groq',
@@ -3819,7 +3822,7 @@ async function callVisionAI(prompt, b64) {
       toast('📷 画像解析: Groq Vision', '');
       return r;
     } catch(e) {
-      if (_isVisionDailyLimit(e.message)) _groqVisionDailyBlocked = true;
+      if (_isVisionDailyLimit(e.message)) _groqVisionBlockedAt = Date.now();
       errs.push(`Groq Vision: ${e.message.slice(0,80)}`);
     }
   }
@@ -3835,7 +3838,7 @@ async function callVisionAI(prompt, b64) {
   }
 
   // ── 4. OpenRouter 無料Visionモデル（Qwen72B/Pixtral等・精度順）──────
-  if (orKey && !_orVisionDailyBlocked) {
+  if (orKey && !_orVisionDailyBlocked()) {
     for (const vm of OR_VISION_FALLBACKS) {
       if (p === 'openrouter' && vm === m) continue;
       try {
@@ -3845,14 +3848,14 @@ async function callVisionAI(prompt, b64) {
         return r;
       } catch(e) {
         if (_isVisionDailyLimit(e.message)) {
-          _orVisionDailyBlocked = true;
+          _orVisionBlockedAt = Date.now();
           errs.push(`OR: 日次制限（free-models-per-day）`);
           break;
         }
         errs.push(`OR(${vm}): ${e.message.slice(0,60)}`);
       }
     }
-  } else if (_orVisionDailyBlocked) {
+  } else if (_orVisionDailyBlocked()) {
     errs.push('OpenRouter: 本日の無料Vision上限済み（スキップ）');
   }
 
@@ -3862,14 +3865,14 @@ async function callVisionAI(prompt, b64) {
     try {
       const r = await callOpenAICompatVision(
         `${proxyBaseUrl.replace(/\/$/, '')}/api/huggingface/v1/chat/completions`, hfKey, 'HuggingFace',
-        'Qwen/Qwen2.5-VL-72B-Instruct', prompt, b64);
-      toast('📷 画像解析: HuggingFace Qwen2.5-VL-72B', '');
+        'Qwen/Qwen2.5-VL-7B-Instruct', prompt, b64);
+      toast('📷 画像解析: HuggingFace Qwen2.5-VL-7B', '');
       return r;
     } catch(e) { errs.push(`HuggingFace(Qwen72B): ${e.message.slice(0,60)}`); }
   }
 
   // ── すべて失敗 → throw（doCapture側でフレームをスキップ）─────────
-  const isDailyLimit = _groqVisionDailyBlocked || _orVisionDailyBlocked || errs.some(e => _isVisionDailyLimit(e));
+  const isDailyLimit = _groqVisionDailyBlocked() || _orVisionDailyBlocked() || errs.some(e => _isVisionDailyLimit(e));
   const summary = isDailyLimit
     ? `画像解析が全て失敗しました（本日の上限）`
     : `画像解析が全て失敗しました`;

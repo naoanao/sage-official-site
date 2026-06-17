@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { saveOnboarding, clearOnboarding, setFlowActive } from "@/lib/store";
+import { saveOnboarding, clearOnboarding, setFlowActive, clearProofData, clearSession } from "@/lib/store";
 import { Industry, INDUSTRY_ICONS } from "@/lib/types";
 import ProgressBar from "@/components/ProgressBar";
 import { isLimitReached } from "@/components/FreeProgressBar";
@@ -26,6 +26,8 @@ function IndustryContent() {
       if (typeof window !== "undefined") localStorage.setItem("growl_onboarding_source", "agency");
     }
     clearOnboarding();
+    clearProofData();
+    clearSession();
     saveOnboarding({ industry });
     setFlowActive();
     router.push("/onboarding/business");

@@ -426,6 +426,8 @@ export function useLang() {
       setLang(saved);
     } else if (typeof navigator !== "undefined" && (navigator.language || "").toLowerCase().startsWith("ja")) {
       setLang("ja");
+    } else {
+      setLang("en");
     }
 
     function onLangChange(e: Event) {

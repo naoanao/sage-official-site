@@ -129,7 +129,7 @@ function _buildEnglishPrompt(
 - share_text: Write something a real person would actually want to post on X/Twitter. Slightly self-deprecating, a little embarrassed, totally honest. Example: "My service scored a C on SNS marketing. Thought I was doing fine — turns out I haven't replied to a single user feedback in 2 weeks. Fixing that tomorrow." Max 80 chars.
 - share_text_en: same as share_text (max 80 chars)
 
-Output ONLY raw JSON. No explanations. DO NOT use markdown code blocks (```). No explanation.
+Output ONLY raw JSON. No explanations. DO NOT use markdown code blocks (\`\`\`). No explanation.
 {"rank":"A-E","score":0-100,"weakness":"...concrete...","free_tip":"...specific action...","share_text":"...real person talking...","share_text_en":"..."}`;
 }
 

@@ -61,6 +61,24 @@ const DIRECTLY_USABLE_TYPES_EN = [
 const ATTRIBUTION_JA = "\n\n📊 Growlで作成";
 const ATTRIBUTION_EN = "\n\n📊 Made with Growl";
 
+// Translation maps for AI outputs (EN -> JA)
+const EN_TO_JA_ROLE: Record<string, string> = {
+  "Empathy": "共感獲得",
+  "Action": "行動促進",
+  "Trust": "信頼構築"
+};
+
+const EN_TO_JA_CONTENT_TYPE: Record<string, string> = {
+  "Instagram Post": "Instagram投稿文",
+  "Google Review Reply": "Googleレビュー返信文",
+  "LINE Message": "LINE配信文",
+  "Blog Intro": "ブログ記事冒頭",
+  "Email": "メール文",
+  "Announcement": "告知文",
+  "X (Twitter) Post": "X(Twitter)投稿文",
+  "Flyer Copy": "チラシ文"
+};
+
 function getIcon(contentType: string): string {
   return CONTENT_TYPE_ICONS[contentType] ?? "📝";
 }
@@ -117,7 +135,22 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
   const ROLE_STYLES = isEn ? ROLE_STYLES_EN : ROLE_STYLES_JA;
   // 言語間ロール名のフォールバック（AIがJA名をENモードで返す、または逆の場合も表示可能に）
   const ALL_ROLES = { ...ROLE_STYLES_JA, ...ROLE_STYLES_EN };
-  function getRoleStyle(role: string) { return ROLE_STYLES[role] || ALL_ROLES[role]; }
+  
+  function getRoleStyle(role: string) {
+    if (!isEn && EN_TO_JA_ROLE[role]) {
+      role = EN_TO_JA_ROLE[role];
+    }
+    return ROLE_STYLES[role] || ALL_ROLES[role];
+  }
+
+  function getDisplayContentType(type: string) {
+    if (!type) return isEn ? "Content" : "コンテンツ";
+    if (!isEn && EN_TO_JA_CONTENT_TYPE[type]) {
+      return EN_TO_JA_CONTENT_TYPE[type];
+    }
+    return type;
+  }
+
   const DIRECTLY_USABLE_TYPES = isEn ? DIRECTLY_USABLE_TYPES_EN : DIRECTLY_USABLE_TYPES_JA;
   const ATTRIBUTION = isEn ? ATTRIBUTION_EN : ATTRIBUTION_JA;
 
@@ -189,9 +222,9 @@ export default function ActionCard({ action, index, sessionId, onComplete, compl
             <div className="flex items-center gap-2">
               <span className="text-base">{getIcon(String(action.content_type ?? ""))}</span>
               <span className="text-xs font-semibold text-indigo-700 tracking-wide">
-                {String(action.content_type ?? "") || (isEn ? "Content" : "コンテンツ")}
+                {getDisplayContentType(String(action.content_type ?? ""))}
               </span>
-              {DIRECTLY_USABLE_TYPES.includes(String(action.content_type ?? "")) && (
+              {DIRECTLY_USABLE_TYPES.includes(getDisplayContentType(String(action.content_type ?? ""))) && (
                 <span className="text-xs text-indigo-500 font-medium bg-indigo-100 px-2 py-0.5 rounded-full">
                   {isEn ? "Ready to use" : "そのまま使える"}
                 </span>

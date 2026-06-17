@@ -163,3 +163,8 @@ export function loadProofData(): ProofData {
     return {};
   }
 }
+
+export function clearProofData() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PROOF_KEY);
+}
