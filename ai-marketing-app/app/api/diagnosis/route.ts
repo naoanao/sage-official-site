@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
 
   } catch (err) {
+    console.error("Diagnosis error:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
@@ -93,11 +94,11 @@ function _buildJapanesePrompt(
 
 ▼ アウトプット条件（重要。守らないと診断として機能しません）
 - weakness: この人の「たった1つ直せば結果が出る」弱点を、具体的に15文字以内で。抽象禁止。「SNS更新頻度」や「投稿不足」ではなく、「〇〇の写真が少ない」「キャプションが短い」レベル。必ず「日本語」で出力すること。
-- free_tip: 「今日、スマホで5分あればできる」行動を1つ。業種に合わせて具体的に。NG例「投稿を継続する」→ OK例「今日のランチの写真をInstagramストーリーズに1枚あげる」。必ず「日本語」で出力すること。
-- share_text: あなた自身が「これ、ちょっとシェアしたくなるな」と思える正直な一言（80文字以内）。他人に見せるとちょっと恥ずかしいけどリアルなやつ。例「うちの美容室、SNS集客力はC。週1投稿はしてるけどレビュー返信ができてなかった。まずは先月の3件、明日返します。」必ず「日本語」で出力すること。
+- free_tip: 「今日、スマホで5分あればできる」行動を1つ。業種に合わせて具体的に。NG例「投稿を継続する」→ OK例「[主力のSNS]を開いて、[自社の製品やサービスの裏側・魅力]が伝わる写真を1枚だけストーリーズに上げる」。必ず「日本語」で出力すること。
+- share_text: あなた自身が「これ、ちょっとシェアしたくなるな」と思える正直な一言（80文字以内）。他人に見せるとちょっと恥ずかしいけどリアルなやつ。例「うちのサービス、SNS集客力はC。機能アップデートは頑張ってたけどユーザーの声への返信ができてなかった。まずは先週のフィードバック3件、明日返します。」必ず「日本語」で出力すること。
 - share_text_en: share_textを自然な英語にしたもの（80文字以内）
 
-JSONだけを返してください。余計な説明禁止。コードブロック（\`\`\`）禁止。
+JSONだけを返してください。余計な説明禁止。コードブロック（\`\`\`）やマークダウンは絶対に禁止。生のJSON文字列のみを出力すること。
 【最重要】出力するJSONの値（share_text_enを除く）は、絶対にすべて「日本語」で出力してください。英語（アルファベット）の回答は厳禁です。
 {"rank":"A〜E","score":0〜100,"weakness":"具体的な弱点（日本語）","free_tip":"今すぐできる行動（日本語）","share_text":"正直でちょっと自虐的な一言（日本語）","share_text_en":"English version"}`;
 }
@@ -124,11 +125,11 @@ function _buildEnglishPrompt(
 
 ▼ Output rules (CRITICAL — these make or break the quiz)
 - weakness: ONE specific, actionable gap. NOT generic like "posting frequency". Must be concrete like "menu photos", "caption length", "review response time". Max 15 chars.
-- free_tip: ONE thing they can do TODAY in 5 minutes on their phone. Tailored to their industry. NOT vague like "post more". Must be like "Snap one photo of today's lunch and put it on Instagram Stories."
-- share_text: Write something a real person would actually want to post on X/Twitter. Slightly self-deprecating, a little embarrassed, totally honest. Example: "My restaurant scored a C on SNS marketing. Thought I was doing fine — turns out I haven't replied to a single review in 2 months. Fixing that tomorrow." Max 80 chars.
+- free_tip: ONE thing they can do TODAY in 5 minutes on their phone. Tailored to their industry. NOT vague like "post more". Must be like "Open [primary SNS] and post one photo showing the behind-the-scenes of your service."
+- share_text: Write something a real person would actually want to post on X/Twitter. Slightly self-deprecating, a little embarrassed, totally honest. Example: "My service scored a C on SNS marketing. Thought I was doing fine — turns out I haven't replied to a single user feedback in 2 weeks. Fixing that tomorrow." Max 80 chars.
 - share_text_en: same as share_text (max 80 chars)
 
-Return ONLY raw JSON. No code fences. No explanation.
+Output ONLY raw JSON. No explanations. DO NOT use markdown code blocks (```). No explanation.
 {"rank":"A-E","score":0-100,"weakness":"...concrete...","free_tip":"...specific action...","share_text":"...real person talking...","share_text_en":"..."}`;
 }
 
