@@ -149,3 +149,7 @@ backend/content/course/
 traceback.txt
 update_notion_task.py
 *tmpgitlog.txt
+
+# Local deployment script backups
+archive_deploys/
+
