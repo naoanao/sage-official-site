@@ -46,9 +46,9 @@ const rankColor: Record<string, string> = {
 };
 
 export default function DiagnosisPage() {
-  const { t, lang } = useLang();
-  const isEn = lang === "en";
-  const questions = isEn ? questionsEn : questionsJa;
+  const { t, lang, mounted } = useLang();
+  const isEn = mounted && lang === "en";
+  const questions = !mounted ? questionsJa : (lang === "en" ? questionsEn : questionsJa);
 
   const [step, setStep] = useState<Step>("quiz");
   const [currentQ, setCurrentQ] = useState(0);

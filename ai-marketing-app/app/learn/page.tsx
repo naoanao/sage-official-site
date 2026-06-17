@@ -40,8 +40,8 @@ const TOPICS_JA = [
 
 export default function LearnPage() {
   const router = useRouter();
-  const { t, lang } = useLang();
-  const TOPICS = lang === "ja" ? TOPICS_JA : TOPICS_EN;
+  const { t, lang, mounted } = useLang();
+  const TOPICS = !mounted ? TOPICS_JA : (lang === "en" ? TOPICS_EN : TOPICS_JA);
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10">

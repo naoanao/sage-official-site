@@ -9,7 +9,7 @@ import { useLang } from "@/lib/i18n";
 
 export default function ProofPage() {
   const router = useRouter();
-  const { t } = useLang();
+  const { t, lang } = useLang();
 
   const [proofNumbers, setProofNumbers] = useState("");
   const [customerQuote, setCustomerQuote] = useState("");
@@ -34,7 +34,7 @@ export default function ProofPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md" key={lang}>
         <ProgressBar current={5} total={6} />
         <div className="flex justify-end mb-2">
           <LangToggle />
