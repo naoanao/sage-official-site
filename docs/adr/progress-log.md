@@ -768,3 +768,27 @@ Vercelのルートで \maxDuration: 60\ に延長したものの、複数APIプ�
 ### Abstract Lesson
 「Next.js（SSR）においてUIコンポーネント内で直接言語切り替えの論理評価を行うとHydration不整合を招くため、必ずi18n辞書レイヤーで吸収させること。また、AIへの入力パラメータに暗黙の仮定（店舗名など）を残すとハルシネーションの温床になるため、明示的なデータ取得・注入フローを確立すること」
 
+---
+
+## 2026-06-17: i18n一元化リファクタリング、Hydrationミスマッチ修正、およびVercel自動プレビューデプロイ
+
+### Root Cause
+1. **多言語の混在とデグレード（モグラ叩き）**:
+   Next.js (SSR) において、ホームページやオンボーディングステップ内（特に入力プレースホルダー）の言語判定をインライン三項演算子で行っていたため、サーバー側で生成されたHTML（デフォルトen）とクライアント側マウント後の `localStorage` ("ja") の差分により React Hydration Mismatch が発生。結果としてDOMの一部のみが英語のまま取り残されたり、ページ遷移により混在が激しくなる現象が発生していた。
+2. **TikTok OAuth URLのキャッシュ問題**:
+   Vercel Edgeサーバーにて、`/api/auth/tiktok` 等のGETリクエストに対する 307 Redirect 結果がキャッシュされてしまい、環境変数やリダイレクト定義を更新したにもかかわらず古いデプレドメイン (`growl-app.vercel.app`) へ転送され続けていた。
+
+### Fix
+1. **`lib/i18n.ts` & 各ページへの適用**:
+   - 翻訳定義データを `lib/i18n.ts` へ完全一元化。コンポーネント内のインライン `isEn ?` 分岐を完全排除。
+   - `useLang` フックに `isMounted` 判定を組み込み、マウント完了前はローカルストレージの判定を保留させ、SSRとの Hydration Mismatch を構造的・完全に解消。
+2. **APIルートキャッシュ無効化**:
+   - `app/api/auth/tiktok/route.ts` および `callback/route.ts` に `export const dynamic = "force-dynamic";` を定義し、Vercelのエッジキャッシュをバイパス。
+3. **GitHub連携＆Vercelプレビュー展開**:
+   - `candidate/20260617-gtm-log` ブランチをリモートリポジトリへプッシュ。
+   - Vercelダッシュボードと連携してプレビュービルド（`https://growl-1mdixtj1c-naoanaos-projects.vercel.app`）をトリガーし、`Ready` になったことを確認。
+
+### Abstract Lesson
+「Next.jsのSSR環境において多言語化を行う際は、コンポーネント内インライン評価を避け、マウント状態（`isMounted`）を保護フックを通じて辞書から呼び出すこと。また、動的リダイレクト等を返すAPIルートは `force-dynamic` を設定してエッジキャッシュによる旧URLへの誤転送を防がなければならない」
+
+
