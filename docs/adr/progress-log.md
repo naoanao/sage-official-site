@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-17: GTM (GTM-TC428VRB) 導入と GA4 (G-9D3THC0HDM) 連携
+
+### Root Cause
+growl-ai.com（Next.js + Vercel）におけるWebサイトの行動分析およびコンバージョン計測を高度化するため、Googleタグマネージャー（GTM-TC428VRB）を本番環境に導入し、そこからGA4（G-9D3THC0HDM）へデータを送信する計測設計を構築する必要があった。
+
+### Fix
+1. **`ai-marketing-app/app/layout.tsx` の修正**: GTMの初期化スクリプト（`afterInteractive` の Script コンポーネント）とnoscript用 iframe（`noscript` タグ）を layout.tsx に追加。
+2. **環境変数対応**: `const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID ?? "GTM-TC428VRB"` を導入し、設定がない場合も既定値として動作するよう設計。
+3. **動作確認**: GTM Tag Assistant of growl-ai.com 上での GTM (`GTM-TC428VRB`) の検出およびGTM経由での GA4 (`G-9D3THC0HDM`) タグの発火を確認。
+
+### Abstract Lesson
+「Next.jsのApp Router環境でGTMを導入する際は、noscript iframeを `body` 直下に配置し、初期化スクリプトを `next/script`（afterInteractive）で読み込むことで、表示パフォーマンスを損なわずに安定したトラッキング基盤を構築できる」
+
+---
+
 ## 2026-06-15: Fix LearnAI Gemini→DeepSeek フロー停止問題
 
 ### 問題
