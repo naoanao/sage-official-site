@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
-import { callGemini } from "@/lib/gemini";
+import { callGemini, callDeepSeek, callGroq } from "@/lib/gemini";
 import { sendEmail } from "@/lib/notify";
 import crypto from "crypto";
 
@@ -99,7 +99,24 @@ export async function POST(req: Request) {
 
     // 1. AIで分類と下書き生成
     const userPrompt = `差出人: ${from}\n件名: ${subject}\n本文: ${bodyText}`;
-    const aiResponseStr = await callGemini(SYSTEM_PROMPT, userPrompt);
+    let aiResponseStr = "";
+    try {
+      console.log("Attempting classification with Gemini...");
+      aiResponseStr = await callGemini(SYSTEM_PROMPT, userPrompt);
+    } catch (e) {
+      console.warn("Gemini failed, trying DeepSeek...", e);
+      try {
+        aiResponseStr = await callDeepSeek(SYSTEM_PROMPT, userPrompt);
+      } catch (de) {
+        console.warn("DeepSeek failed, trying Groq...", de);
+        try {
+          aiResponseStr = await callGroq(SYSTEM_PROMPT, userPrompt);
+        } catch (ge) {
+          console.error("All AI providers failed for Support AI:", ge);
+          throw ge;
+        }
+      }
+    }
     
     let category = "HUMAN";
     let aiDraft = "";
