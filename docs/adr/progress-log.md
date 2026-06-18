@@ -962,3 +962,9 @@ Resend Inbound Webhook のエンドポイントに対して、不正な第三者
 ### Abstract Lesson
 「検索広告からディスプレイ広告への拡張を設計する際は、検索広告で検証したユーザーのインサイト（腸活、野菜不足、無添加、美容など）を、ディスプレイ広告のオーディエンス/トピックターゲティングにマッピングし直し、潜在層が共感しやすいライフスタイル提案型のコピーに変換して設計することが効果的である」
 
+
+
+## 2026-06-19: Display Ads Targeting Output Formatting
+- **Root Cause**: The TSV payload structure did not account for a narrow blank separator column (Column G) in the destination Google Spreadsheet, causing all subsequent columns to shift. Additionally, the targeting logic incorrectly combined audience targeting with content category targeting in remarketing/competitor campaigns, violating the best practice of avoiding overly restrictive AND conditions.
+- **Fix**: Re-captured spreadsheet layouts visually to map exact column indices. Refactored the TSV generation to include an empty tab for Column G, and stripped Content Category settings from Retargeting and Consideration campaigns to match the baseline examples.
+- **Abstract Lesson**: Always verify visual layout idiosyncrasies (e.g., hidden or narrow separator columns) of target spreadsheets before generating copy-paste TSV payloads, and strictly separate "Audience" logic from "Placement/Topic" logic for lower-funnel targets.
