@@ -107,8 +107,8 @@ export async function POST(req: Request) {
       const parsed = JSON.parse(aiResponseStr.replace(/```json/g, "").replace(/```/g, ""));
       category = parsed.category || "HUMAN";
       aiDraft = parsed.ai_draft || "";
-    } catch (e) {
-      console.error("Failed to parse AI response:", aiResponseStr);
+    } catch (error) {
+      console.error("Failed to parse AI response:", aiResponseStr, error);
     }
 
     if (category === "SPAM") {
