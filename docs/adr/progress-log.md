@@ -908,6 +908,27 @@ Vercelのルートで \maxDuration: 60\ に延長したものの、複数APIプ�
 ### Abstract Lesson
 - 「管理システムや承認フローを設計する際は、開発者が好むチャットツール（Telegram/Slack等）を押し付けるのではなく、ユーザーが日常的に使用しているツール（Gmail等）に完全に統合し、かつ非技術者向けに極限までシンプルに保つことで、最も実用的で愛されるUXを実現できる」
 
+---
+
+## 2026-06-18: Resend Inbound Webhook 署名検証の実装とセキュリティ強化
+
+### Root Cause
+Resend Inbound Webhook のエンドポイントに対して、不正な第三者からダミーリクエストや悪意ある大量リクエストが送信された場合、不要なAIクエリ消費（Gemini呼び出し）やデータベースへのゴミデータの書き込み（スパムチケットの生成）が発生し、課金増加やデータの信頼性低下に繋がるセキュリティリスクがあった。これを防ぐために、Resendの署名（Signing Secret）を使用した検証ロジックの実装が必要であった。
+
+### Fix
+1. **署名検証ロジックの実装**:
+   - `app/api/webhook/inbound-email/route.ts` に、Node.js標準の `crypto` を利用した HMAC-SHA256 Webhook署名検証（Svix互換）を実装。
+   - `svix-id`、`svix-timestamp`、`svix-signature` の各ヘッダーを検証し、署名が正しくない場合は `401 Unauthorized` を返すように変更。
+   - `RESEND_SIGNING_SECRET` 環境変数が定義されている場合のみ検証を強制し、未設定の場合は警告ログを出力して処理を継続する緩やかな移行設計を採用。
+2. **環境変数の更新**:
+   - `ai-marketing-app/.env.local` に `RESEND_SIGNING_SECRET` と、正しいカスタムドメイン（`https://growl-ai.com`）のベースURL設定を追加。
+3. **署名検証のE2Eテスト**:
+   - `scratch/test_signature_verification.js` テストスクリプトを作成し、署名検証の正確さ（正しい署名はパスし、偽の署名や改ざんされた本文は拒否されること）を検証（全件合格）。
+
+### Abstract Lesson
+「Webhookのエンドポイントを公開する際は、外部ライブラリ（svix等）に依存せずとも、Node.js標準のcryptoモジュールを用いてHMAC-SHA256署名検証を実装することで、追加の依存関係を増やさず軽量かつ安全なセキュリティ防壁を構築できる」
+
+
 
 
 
