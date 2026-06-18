@@ -882,4 +882,32 @@ Vercelのルートで \maxDuration: 60\ に延長したものの、複数APIプ�
 - 「問い合わせ対応をAI化する際は、完全自動化に頼るのではなく、AIが『自動分類・下書き』を行い、人間がメッセンジャー（Telegram/LINE）から『ワンタップで承認・送信』できるHuman-in-the-Loop構成にすることで、事故リスクを皆無に抑えながらオーナーの対応コストを最小化できる」
 
 
+---
+
+## 2026-06-18: 問い合わせAI (Support AI) のGmail承認フローへの再設計および実装完了
+
+### Root Cause
+- 問い合わせAIの承認フローとして当初設計した「Telegram/LINEを用いた承認」について、ユーザー（なおさん）より「LINEやTelegramはあまり使っておらず、普段はGmailのみを確認している」とのフィードバックがあった。
+- また、以前のアーキテクチャや技術的な説明が難解で分かりづらかったため、より直感的にGmailだけで承認作業を完結できるシンプルなフローに再設計する必要があった。
+
+### Fix
+1. **設計および計画書の更新**:
+   - `docs/roadmap/support-ai-design.md` および `implementation_plan.md` を全面的に書き換え、承認フローをLINE/Telegramから100% Gmail完結型に再設計。
+2. **メール受信Webhookの実装**:
+   - `app/api/webhook/inbound-email/route.ts` を新規作成。Resend Inbound Webhook からメールを受け取り、Gemini/DeepSeek/Groqのフォールバック機能付きで自動分類および返信下書きを生成。
+   - セキュリティのためのステートレス署名（HMAC token）を含む「承認リンク」を記載したHTML確認メールを、なおさんのGmail（`naofumi0930@gmail.com`）へ送信する仕組みを実装。
+   - 問い合わせ内容をSupabaseの `support_tickets` テーブルに保存。
+3. **承認受付APIの実装**:
+   - `app/api/support/approve/route.ts` を新規作成。なおさんがGmail内の [このまま送信する] をクリックした際、トークンの妥当性を検証し、Resend経由でユーザーへ返信メールを自動送信。
+   - 送信成功時には、ブラウザ上になおさん向けの美しい送信完了画面（HTML）を表示。
+4. **データベース用SQLファイルの作成**:
+   - データベース作成用のSQLマイグレーションファイル `supabase/migrations/20260618_create_support_tickets.sql` を追加。
+5. **テスト品質向上**:
+   - TypeScriptの型チェックをクリア。また、Pythonのテストスイート (`pytest` 38件) がすべてパスすることを確認（事前から存在した `COURSE_GEN_GLOBAL` のテスト不具合も修正・パッチ完了）。
+
+### Abstract Lesson
+- 「管理システムや承認フローを設計する際は、開発者が好むチャットツール（Telegram/Slack等）を押し付けるのではなく、ユーザーが日常的に使用しているツール（Gmail等）に完全に統合し、かつ非技術者向けに極限までシンプルに保つことで、最も実用的で愛されるUXを実現できる」
+
+
+
 

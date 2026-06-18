@@ -346,7 +346,7 @@ async function callGroqModel(apiKey: string, model: string, systemPrompt: string
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<string> {
+export async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<string> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) throw new Error("DeepSeek: API key not set");
 
@@ -375,7 +375,7 @@ async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<s
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-async function callGroq(systemPrompt: string, userPrompt: string): Promise<string> {
+export async function callGroq(systemPrompt: string, userPrompt: string): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("Groq: API key not set");
 
@@ -391,7 +391,7 @@ async function callGroq(systemPrompt: string, userPrompt: string): Promise<strin
   }
 }
 
-async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
+export async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Gemini: API key not set");
 

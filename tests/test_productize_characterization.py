@@ -77,11 +77,12 @@ class TestProductizeExecute:
         assert 'error' in data
 
     def test_course_no_pipeline_returns_500(self, client):
-        resp = client.post('/api/productize/execute',
-                           json={'type': 'COURSE', 'topic': 'Test'})
-        assert resp.status_code == 500
-        data = resp.get_json()
-        assert 'error' in data
+        with patch.dict(client.application.config, {'COURSE_GEN_GLOBAL': None}):
+            resp = client.post('/api/productize/execute',
+                               json={'type': 'COURSE', 'topic': 'Test'})
+            assert resp.status_code == 500
+            data = resp.get_json()
+            assert 'error' in data
 
     def test_invalid_type_returns_400(self, client):
         resp = client.post('/api/productize/execute',
