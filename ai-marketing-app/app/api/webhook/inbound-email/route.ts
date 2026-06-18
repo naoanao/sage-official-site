@@ -2,6 +2,43 @@ import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { callGemini } from "@/lib/gemini";
 import { sendEmail } from "@/lib/notify";
+import crypto from "crypto";
+
+function verifyResendSignature(payloadText: string, headers: Headers, secret: string): boolean {
+  const svixId = headers.get("svix-id");
+  const svixTimestamp = headers.get("svix-timestamp");
+  const svixSignature = headers.get("svix-signature");
+
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    return false;
+  }
+
+  const signedContent = `${svixId}.${svixTimestamp}.${payloadText}`;
+  const secretKey = secret.replace("whsec_", "");
+
+  try {
+    const expectedSignature = crypto
+      .createHmac("sha256", Buffer.from(secretKey, "base64"))
+      .update(signedContent)
+      .digest("base64");
+
+    const signatures = svixSignature.split(" ");
+    for (const sig of signatures) {
+      const idx = sig.indexOf("=");
+      if (idx === -1) continue;
+      const version = sig.substring(0, idx);
+      const hash = sig.substring(idx + 1);
+      if (version === "v1" && hash === expectedSignature) {
+        return true;
+      }
+    }
+  } catch (err) {
+    console.error("Signature verification error:", err);
+  }
+
+  return false;
+}
+
 
 // Resend Inbound Webhook Payload (simplified)
 interface ResendInboundEmail {
@@ -41,7 +78,22 @@ const SYSTEM_PROMPT = `
 
 export async function POST(req: Request) {
   try {
-    const payload = (await req.json()) as ResendInboundEmail;
+    const rawBody = await req.text();
+
+    // 署名検証
+    const signingSecret = process.env.RESEND_SIGNING_SECRET;
+    if (signingSecret) {
+      const isValid = verifyResendSignature(rawBody, req.headers, signingSecret);
+      if (!isValid) {
+        console.warn("Invalid Resend Webhook signature detected.");
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+      console.log("Resend Webhook signature verified successfully.");
+    } else {
+      console.warn("RESEND_SIGNING_SECRET is not configured. Skipping webhook verification.");
+    }
+
+    const payload = JSON.parse(rawBody) as ResendInboundEmail;
     const { from, subject, text, html } = payload;
     const bodyText = text || html || "No content";
 
