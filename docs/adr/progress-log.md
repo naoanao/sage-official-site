@@ -968,3 +968,21 @@ Resend Inbound Webhook のエンドポイントに対して、不正な第三者
 - **Root Cause**: The TSV payload structure did not account for a narrow blank separator column (Column G) in the destination Google Spreadsheet, causing all subsequent columns to shift. Additionally, the targeting logic incorrectly combined audience targeting with content category targeting in remarketing/competitor campaigns, violating the best practice of avoiding overly restrictive AND conditions.
 - **Fix**: Re-captured spreadsheet layouts visually to map exact column indices. Refactored the TSV generation to include an empty tab for Column G, and stripped Content Category settings from Retargeting and Consideration campaigns to match the baseline examples.
 - **Abstract Lesson**: Always verify visual layout idiosyncrasies (e.g., hidden or narrow separator columns) of target spreadsheets before generating copy-paste TSV payloads, and strictly separate "Audience" logic from "Placement/Topic" logic for lower-funnel targets.
+
+---
+
+## 2026-06-19: Googleディスプレイ広告設計・TSV最適化ドキュメント反映完了
+
+### Root Cause
+ユーザー（なおさん）の指示に基づき、完了済みの「Googleディスプレイ広告参考設計（ファンケル青汁）」および「TSV出力フォーマット最適化」の概要を、今後の機能設計のための参考資料として `SAGE_MASTER_CONTEXT.md` および `Sage_Growl_Complete_Report.md` に簡潔に追記する。
+
+### Fix
+1. **`SAGE_MASTER_CONTEXT.md` の更新**:
+   - セクション `## 3a-6. ファンケル青汁 Googleディスプレイ広告参考設計とTSV出力最適化（2026-06-19）` を追記。
+   - 最終更新日・要約を変更。
+2. **`Sage_Growl_Complete_Report.md` の更新**:
+   - 最新更新セクションに「Googleディスプレイ広告参考設計とTSV出力最適化」を追記。
+   - 調査・更新日を変更。
+
+### Abstract Lesson
+「設計の参考資料となるデータやドキュメントを反映する際は、ユーザーの要望に応じて詳細度を適切にチューニングし、システム要件や機能開発に直結する核心部分（キャンペーン構成やTSV整形時の境界条件など）に絞って簡潔に記録することで、認知負荷の低い高品質なドキュメントを維持できる。」
