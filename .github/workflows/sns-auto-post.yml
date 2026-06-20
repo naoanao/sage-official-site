@@ -23,9 +23,13 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
+        # SNSサイクル(run_sns_cycle.py → backend.scheduler.sns_daily_scheduler)が実際に必要とする
+        # 最小依存のみをインストールする。以前は backend/requirements.txt も best-effort で入れていたが、
+        # anyio 等の依存コンフリクト(ResolutionImpossible)で毎回失敗し、何もインストールできず、
+        # ログに ERROR を出すだけで投稿には不要だった(最小依存だけで成功している)。
+        # 重い解決処理を外すことで実行が速く・ログがクリーン・将来の解決失敗による不安定化も排除。
         run: |
           pip install groq atproto requests python-dotenv tweepy notion-client pillow
-          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt || true; fi
 
       - name: Run SNS cycle
         env:
