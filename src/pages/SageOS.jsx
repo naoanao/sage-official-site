@@ -414,8 +414,22 @@ const SageOS = () => {
         init();
         fetchSageMetrics();
         fetchAutomations();
-        const timer = setInterval(fetchSageMetrics, 10000);
-        return () => clearInterval(timer);
+        // 可視時のみ30秒間隔でポーリング（バックグラウンドタブでは停止）。
+        // 旧: 10秒毎に2API=約17,000回/日/タブがCF Pages Functions無料枠を圧迫していた。
+        // ダッシュボードを開きっぱなしでも隠れていれば0リクエストに抑える。
+        let timer = null;
+        const startPolling = () => { if (!timer) timer = setInterval(fetchSageMetrics, 30000); };
+        const stopPolling = () => { if (timer) { clearInterval(timer); timer = null; } };
+        const onVisibility = () => {
+            if (document.hidden) stopPolling();
+            else { fetchSageMetrics(); startPolling(); }
+        };
+        if (!document.hidden) startPolling();
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            stopPolling();
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
     }, []);
 
     useEffect(() => {
