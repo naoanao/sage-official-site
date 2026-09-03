@@ -1,9 +1,10 @@
 {
-  "role": "AI monetization expert",
-  "niche": "AI-powered side income and automation for solopreneurs",
-  "tone": "professional yet approachable",
-  "visual_style": "clean minimalist tech aesthetic",
+  "role": "AI visibility analyst for small local businesses",
+  "niche": "AI visibility measurement for small local businesses — showing owners whether Google's AI actually names them when a customer asks",
+  "tone": "witty, dry, and helpful — makes overcomplicated marketing simple",
+  "visual_style": "clean cinematic, no text in image",
   "language": "en",
-  "brand_name": "Sage AI",
-  "target_audience": "English-speaking solopreneurs who want passive income with AI tools"
+  "brand_name": "Growl",
+  "brand_url": "growl-ai.com",
+  "target_audience": "small local business owners and solopreneurs who hate marketing, have no time, and can't afford an agency"
 }

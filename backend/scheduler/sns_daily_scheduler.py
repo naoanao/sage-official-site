@@ -3,6 +3,7 @@ import json
 import logging
 import random
 from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 
 from backend.data.jobs_store import append as _jobs_append
@@ -11,6 +12,31 @@ load_dotenv('.env')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("SNS_Daily_Scheduler")
+
+
+def _numbers_rule(allowed: list | None, retry: bool) -> str:
+    """材料に在る数字だけを許すルール文をプロンプトに足す。
+
+    ⚠️ この文は `sns_number_guard` と**同じ制約を人間の言葉で言い直したもの**。
+    書いてあるから守られるのではなく、guard が落とすから守られる。
+    ここは「1回目で通る確率を上げる」ためだけにある。
+    """
+    if allowed is None:
+        return ""
+    if not allowed:
+        return "- This item has no verified figures. Do NOT write any number at all.\n"
+    listed = ", ".join(str(a) for a in allowed)
+    rule = (
+        f"- The ONLY numbers you may write are: {listed}. "
+        "Every one of them is a measured fact from my own data.\n"
+        "- Do not add, round, combine, or derive any other number. No percentages you calculated yourself.\n"
+    )
+    if retry:
+        rule += (
+            "- Your previous attempt contained a number that does not exist in my data. "
+            "Rewrite it. If you are unsure, write the post with fewer numbers.\n"
+        )
+    return rule
 
 
 class SNSDailyScheduler:
@@ -93,23 +119,82 @@ class SNSDailyScheduler:
                     timeout=20,
                 )
                 if resp.status_code == 200:
-                    return resp.json()["choices"][0]["message"]["content"].strip()
+                    # 2026-08-19: 中身が空でも200なら返しており、その先のGroq
+                    # フォールバックに一度も到達しなかった。空は失敗として扱う。
+                    _text = (resp.json()["choices"][0]["message"].get("content") or "").strip()
+                    if _text:
+                        return _text
+                    logger.warning("[LLM] DeepSeek returned empty content (HTTP 200); falling back to Groq")
             except Exception as e:
                 logger.warning(f"[LLM] DeepSeek failed: {e}, falling back to Groq")
         # Groq fallback
         client = self._load_groq_client()
-        response = client.chat.completions.create(
-            messages=messages, model="llama-3.3-70b-versatile", max_tokens=max_tokens,
+        create_kwargs = dict(
+            messages=messages, model="openai/gpt-oss-120b", max_tokens=max_tokens,  # 2026-07-18: Groq 2026-08-16廃止に伴う移行
         )
-        return response.choices[0].message.content.strip()
+        # 2026-08-19: gpt-oss は推論トークンが max_tokens を消費する
+        # (house標準 = llm_fallback._try_groq)。
+        try:
+            response = client.chat.completions.create(
+                **create_kwargs, extra_body={"reasoning_effort": "low"})
+        except TypeError:
+            response = client.chat.completions.create(**create_kwargs)
+        return (response.choices[0].message.content or "").strip()
 
-    def _generate_content(self, topic: str, content: str, motif: str) -> dict:
+    def _numbers_ok(self, item: dict, ig_caption: str, bs_text: str) -> bool:
+        """生成された2本の本文に、材料に無い数字が混ざっていないか。
+
+        材料（state fact）でないアイテムには `numbers` が無い。そのときは検査しない——
+        固定プールのネタは本文自体が人の書いた確定文なので、ここで縛ると誤爆する。
+        """
+        allowed = item.get("numbers")
+        if allowed is None:
+            return True
+        try:
+            from backend.modules.sns_number_guard import verify_numbers
+        except Exception as e:
+            logger.warning(f"[NUMBER GATE] guard unavailable ({e}); allowing.")
+            return True
+        for label, text in (("bluesky", bs_text), ("instagram", ig_caption)):
+            ok, bad = verify_numbers(text or "", allowed)
+            if not ok:
+                logger.error(f"🚫 [NUMBER GATE] {label}: figures not in the source data: {bad}")
+                return False
+        return True
+
+    def _links_ok(self, ig_caption: str, bs_text: str) -> bool:
+        """本文のリンクが現行の誘導先だけか。
+
+        実測で、過去投稿の175件が既に消えたドメインを指していた。
+        投稿は自動で出ていくので、**出す前に止めるしかない**。
+        """
+        try:
+            from backend.modules.sns_link_guard import check_text
+        except Exception as e:
+            logger.warning(f"[LINK GATE] guard unavailable ({e}); allowing.")
+            return True
+        for label, text in (("bluesky", bs_text), ("instagram", ig_caption)):
+            ok, bad = check_text(text or "")
+            if not ok:
+                logger.error(f"🚫 [LINK GATE] {label}: not a current destination: {bad}")
+                return False
+        return True
+
+    def _generate_content(
+        self,
+        topic: str,
+        content: str,
+        motif: str,
+        allowed_numbers: list | None = None,
+        retry: bool = False,
+    ) -> dict:
         """LLM generates ig_caption, bs_text, image_prompt in one JSON call."""
         # identity.jsonから動的に設定を読み込む（分身AI対応）
         niche = self.identity.get("niche", "AI tools and automation")
         tone = self.identity.get("tone", "professional yet approachable")
         brand = self.identity.get("brand_name", "Sage AI")
         target = self.identity.get("target_audience", "solopreneurs and developers")
+        url = self.identity.get("brand_url", "growl-ai.com")
 
         prompt = (
             f"You are a {tone} solopreneur sharing real, unfiltered experiences building AI tools while running a small business.\n"
@@ -133,13 +218,23 @@ class SNSDailyScheduler:
             f"Context: {content}\n"
             f"Mood: {motif}\n\n"
             "TASK:\n"
-            "1. bs_text: One Bluesky post per the rules above.\n"
-            "2. ig_caption: Instagram caption with 3-5 hashtags. Skip if irrelevant.\n"
+            "1. bs_text: One Bluesky post per the rules above (value-first, no link).\n"
+            f"2. ig_caption: Instagram caption with 3-5 hashtags, in {brand}'s witty voice, "
+            f"that gives one useful marketing tip, then a soft CTA: 'Try {brand} free at {url}'.\n"
             "3. image_prompt: A simple visual idea, 10 words max.\n\n"
             "ACCURACY:\n"
-            "- Never make up numbers (revenue, followers, growth %).\n"
+            "- Never make up numbers (revenue, followers, growth %, or any statistic/percentage).\n"
             "- If you don't know, say 'some days it works, some days it doesn't.'\n"
-            "- Never mention specific prices or product URLs.\n\n"
+            # 2026-09-01 の dry run で実際に出た2つの盛り方を名指しで塞ぐ。
+            # 「32ページ在る」→「I just posted 32 pages」（今日やったことにした）
+            # 「読まれていないが書く」→「it works」（出ていない成果を主張した）
+            "- Do NOT imply something happened today or recently unless the fact says so. "
+            "'There are N pages' does not mean 'I just published N pages'.\n"
+            "- Do NOT claim a result you have not measured. Never write 'it works', 'it pays off', "
+            "'it's growing', or any promise of outcome. State what happened, not what it earned.\n"
+            f"- Never invent prices. You MAY name the brand {brand} and its site {url} in the Instagram caption.\n"
+            + _numbers_rule(allowed_numbers, retry)
+            + "\n"
             'Output ONLY JSON:\n'
             '{{\n    "bs_text": "...",\n    "ig_caption": "...",\n    "image_prompt": "..."\n}}'
         )
@@ -227,8 +322,159 @@ class SNSDailyScheduler:
         except Exception as e:
             logger.error(f"❌ Bluesky post failed: {e}")
 
+    # ── Launch 項目管理（Revenue Loop 連携） ─────────────────────────────────
+
+    _LOCAL_POOL = Path("backend/data/local_content_pool.json")
+
+    def _load_launch_items(self) -> list:
+        """local_content_pool.json から category=='launch' かつ未投稿の項目を返す。"""
+        if not self._LOCAL_POOL.exists():
+            return []
+        try:
+            pool = json.loads(self._LOCAL_POOL.read_text(encoding="utf-8"))
+            if not isinstance(pool, list):
+                pool = pool.get("items", [])
+            return [
+                item for item in pool
+                if item.get("category") == "launch" and not item.get("posted")
+            ]
+        except Exception as e:
+            logger.warning(f"[SNS] Failed to load launch items: {e}")
+            return []
+
+    def _mark_launch_posted(self, item_id: str) -> None:
+        """launch 項目を投稿済みにマーク（二重投稿防止）。"""
+        if not self._LOCAL_POOL.exists():
+            return
+        try:
+            pool = json.loads(self._LOCAL_POOL.read_text(encoding="utf-8"))
+            if not isinstance(pool, list):
+                return
+            for item in pool:
+                if item.get("id") == item_id:
+                    item["posted"] = True
+                    item["posted_at"] = datetime.utcnow().isoformat()
+                    break
+            self._LOCAL_POOL.write_text(
+                json.dumps(pool, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            logger.info(f"[SNS] Launch item marked as posted: {item_id}")
+        except Exception as e:
+            logger.error(f"[SNS] Failed to mark launch item as posted: {e}")
+
+    def _process_launch_item(self, item: dict) -> None:
+        """
+        launch 項目の処理。
+
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        絶対ルール（v2 で確定）:
+          self.bluesky（= kanagawa 系アカウント）には launch 告知を
+          絶対に出さない。
+          投稿先は SAGE_OWN_BLUESKY_HANDLE で指定した Sage 専用英語
+          アカウントのみ。未設定なら投稿しない。
+          distribution.py が article / directory_kit / social_en を
+          別途処理するため、ここで投稿できなくても機能は失われない。
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        """
+        topic = item.get("topic", "Product Launch")
+        bs_text = item.get("content", "")
+        item_id = item.get("id", f"launch_{datetime.utcnow().strftime('%H%M%S')}")
+
+        logger.info(f"[SNS] Processing LAUNCH item: {topic!r} (id={item_id})")
+
+        if not bs_text:
+            logger.warning(f"[SNS] Launch item has empty content — skipping: {item_id}")
+            self._mark_launch_posted(item_id)
+            return
+
+        # ── Sage専用アカウントのチェック ──────────────────────────────────
+        # SAGE_OWN_BLUESKY_HANDLE が未設定 → kanagawa には絶対出さない。
+        # distribution.py が英語記事・ディレクトリキット・ソーシャルを別途処理。
+        sage_handle = os.getenv("SAGE_OWN_BLUESKY_HANDLE", "")
+        sage_password = os.getenv("SAGE_OWN_BLUESKY_APP_PASSWORD", "")
+
+        if not sage_handle:
+            logger.info(
+                f"[SNS] SAGE_OWN_BLUESKY_HANDLE not set — "
+                f"launch handled by distribution.py (no kanagawa post). "
+                f"Marking processed. item_id={item_id}"
+            )
+            self._write_job(item_id, topic, "", bs_text, "[DIST_HANDLED]", status="launch_dist_only")
+            self._mark_launch_posted(item_id)
+            return
+
+        if self.dry_run:
+            logger.info(f"[SNS][DRY_RUN] Sage-owned launch post (not actually posted):\n{bs_text[:120]}...")
+            self._write_job(item_id, topic, "", bs_text, "[DRY_RUN]", status="dry_run_launch")
+            self._mark_launch_posted(item_id)
+            return
+
+        # ── Sage専用アカウントで実投稿（self.bluesky=kanagawa は絶対に使わない） ──
+        posted = False
+        try:
+            from backend.integrations.bluesky_agent import BlueskyAgent
+            sage_agent = BlueskyAgent(handle=sage_handle, app_password=sage_password)
+            bs_result = sage_agent.post_skeet(bs_text)
+            if bs_result and "uri" in bs_result:
+                logger.info(f"[SNS] Launch post published (Sage account): {bs_result['uri']}")
+                posted = True
+            else:
+                logger.warning(f"[SNS] Sage Bluesky launch post returned no URI: {bs_result}")
+        except Exception as e:
+            logger.error(f"[SNS] Sage Bluesky launch post failed: {e}")
+
+        if posted:
+            self._write_job(item_id, topic, "", bs_text, "", status="launch_posted")
+            self._mark_launch_posted(item_id)
+            logger.info(f"[SNS] Launch SNS cycle completed for '{topic}'")
+        else:
+            logger.warning(f"[SNS] Launch post not marked as posted (will retry next cycle): {item_id}")
+
+    # ── メインサイクル ─────────────────────────────────────────────────────────
+
     def run_cycle(self) -> None:
         """Check for 'Ready' content and post to both platforms."""
+
+        # ── 最優先: launch 項目（買いリンク付き告知・Notionより先に確認） ───
+        launch_items = self._load_launch_items()
+        if launch_items:
+            logger.info(f"[SNS] 🚀 Launch item found — processing as priority post.")
+            self._process_launch_item(launch_items[0])
+            return  # launch 投稿のみ行い、通常サイクルはスキップ
+
+        # ── 現状ネタ: いま実際に起きていることを材料にする ──────────────────
+        # 固定プールより先に見る。プールは「去年の自分」で止まっているのに対し、
+        # ここは git log や実測ファイルを毎回数え直すので、**必ず今日の話になる**。
+        # 反応がずっと無い型は scorer が外す（生きている型が1つも無ければ外さない）。
+        # 🔴 try で囲むのは「材料を集めて選ぶ」ところまで。
+        #    最初は _process_item(pick) まで囲んでいたが、それだと
+        #    **LLMが401を返しただけで「材料が読めなかった」ことにされ、
+        #    止めたかった固定プールの古いネタに落ちて、そのまま投稿されていた**
+        #    （2026-09-01のCI実測で発覚。ログは "state reader unavailable" と出るのに
+        #      本当の原因は Groq の Invalid API Key だった＝原因も隠れる）。
+        pick = None
+        try:
+            from backend.modules.sns_state_reader import collect_facts
+            from backend.modules.sns_reaction_scorer import categories_to_avoid
+
+            facts = collect_facts()
+            if facts:
+                avoid = categories_to_avoid()
+                usable = [f for f in facts if f.get("category") not in avoid] or facts
+                pick = random.choice(usable)
+            else:
+                logger.info("[SNS] No measurable state today — falling back to the content pool.")
+        except Exception as e:
+            # 材料が読めないことを理由にSNSを止めない（止まっても誰も気づかない）
+            logger.warning(f"[SNS] state reader unavailable, falling back to pool: {e}")
+
+        if pick is not None:
+            logger.info(f"[SNS] 📊 Using measured state: {pick['id']} ({pick['source']})")
+            # ここから先の失敗は握りつぶさない。**古いネタに逃げるくらいなら投稿しない。**
+            self._process_item(pick)
+            return
+
+        # ── 通常フロー: Notion → ローカルフォールバック ─────────────────────
         items = []
         if self.notion_pool:
             logger.info("🔍 [SNS CEO] Scanning Notion for 'Ready' content...")
@@ -241,7 +487,12 @@ class SNSDailyScheduler:
                 logger.info("📂 Loading content from LOCAL FALLBACK (local_content_pool.json)...")
                 with open(fallback_path, 'r', encoding='utf-8') as f:
                     pool = json.load(f)
-                items = pool if isinstance(pool, list) else pool.get("items", [])
+                # launch 済みを除外してランダムに1件選ぶ（通常投稿用）
+                candidates = [
+                    item for item in (pool if isinstance(pool, list) else pool.get("items", []))
+                    if item.get("category") != "launch"
+                ]
+                items = candidates if candidates else (pool if isinstance(pool, list) else pool.get("items", []))
             except Exception as e:
                 logger.error(f"Local fallback read failed: {e}")
                 items = []
@@ -269,12 +520,43 @@ class SNSDailyScheduler:
             image_prompt = item.get("image_prompt", topic)
             logger.info("♻️ Using pre-existing optimized content from Notion/Test Item.")
         else:
-            generated = self._generate_content(topic, content, motif)
+            allowed = item.get("numbers")
+            generated = self._generate_content(topic, content, motif, allowed)
             ig_caption = generated.get("ig_caption", content)
             bs_text = generated.get("bs_text", topic)
             image_prompt = generated.get("image_prompt", topic)
 
+            # 🔴 数字の検査。プロンプトに「捏造するな」と書くだけでは守られない
+            #    （守らなかったことも見えない＝そのまま外に出る）。
+            #    1度だけ書き直させ、それでもダメなら**投稿しない**。
+            if not self._numbers_ok(item, ig_caption, bs_text):
+                logger.warning("🔁 [NUMBER GATE] Regenerating once with a stricter reminder.")
+                generated = self._generate_content(topic, content, motif, allowed, retry=True)
+                ig_caption = generated.get("ig_caption", content)
+                bs_text = generated.get("bs_text", topic)
+                image_prompt = generated.get("image_prompt", topic)
+                if not self._numbers_ok(item, ig_caption, bs_text):
+                    logger.error("🚫 [NUMBER GATE] Invented figures survived a retry. Not posting.")
+                    return
+
+        # 🔴 投稿する直前に、URL内の非ASCIIハイフンを直す。
+        #    LLMが `growl‑ai.com`(U+2011) を書くことがある——見た目は同じだが開けない。
+        #    落とすのではなく直すのは、これは主張の誤りではなく組版の事故だから。
+        try:
+            from backend.modules.sns_link_guard import repair_link_dashes
+
+            ig_caption = repair_link_dashes(ig_caption)
+            bs_text = repair_link_dashes(bs_text)
+        except Exception as e:
+            logger.warning(f"[LINK] dash repair unavailable: {e}")
+
         if not self._quality_check({"ig_caption": ig_caption, "bs_text": bs_text}, topic):
+            return
+
+        # 🔴 リンクの検査は固定プールのネタにも効かせる（数字の検査と違い、
+        #    プール側のネタこそ旧ドメインを抱えたまま古びる）。
+        if not self._links_ok(ig_caption, bs_text):
+            logger.error("🚫 [LINK GATE] Refusing to post a link that is not the current site.")
             return
 
         if self.stability_gate and "I have lost my connection to all intelligence providers" in ig_caption:

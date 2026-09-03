@@ -2,9 +2,7 @@ name: SNS Auto Post (Bluesky + Instagram)
 
 on:
   schedule:
-    # 毎日3回投稿: 日本時間 8:00 / 12:00 / 20:00 (UTC 23:00 / 03:00 / 11:00)
-    - cron: '0 23 * * *'   # JST 8:00
-    - cron: '0 3 * * *'    # JST 12:00
+    # 1日1回に削減（無料枠をGrowl優先で温存）: 日本時間 20:00 (UTC 11:00)
     - cron: '0 11 * * *'   # JST 20:00
   workflow_dispatch:        # 手動実行ボタン（テスト用）
 

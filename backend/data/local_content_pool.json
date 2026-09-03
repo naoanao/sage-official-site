@@ -5,7 +5,10 @@
     "content": "Sage AI has been posting to Bluesky and Instagram automatically for months now. Some days it works perfectly. Some days it hits a rate limit at 3am and queues up. The interesting part: follower growth is almost identical on good days and bad days. Consistency matters more than perfection.",
     "image_prompt": "minimalist dark dashboard showing automated scheduler running at night, green status indicators, solo developer theme",
     "category": "build_in_public",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-002",
@@ -13,7 +16,10 @@
     "content": "Early on I spent an hour crafting what I thought was the perfect post. It got 2 likes. Meanwhile a 40-second automated post about a real bug I fixed got shared multiple times. People want real, not polished. This is what Sage AI is built around — consistent, honest posts over manufactured virality.",
     "image_prompt": "contrast between over-designed post and simple authentic post, dark minimal aesthetic, indie developer vibe",
     "category": "build_in_public",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-003",
@@ -21,7 +27,10 @@
     "content": "3C analysis (Customer, Company, Competitor) taught me this: positioning isn't about what you say, it's about who you decide NOT to serve. Targeting 'all solopreneurs' made messaging fuzzy. Narrowing to 'solo devs who want passive income without hiring' made the CTA immediately sharper.",
     "image_prompt": "Venn diagram showing clear product-customer fit, clean dark design, minimalist infographic style",
     "category": "marketing_lesson",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-004",
@@ -29,7 +38,10 @@
     "content": "Feature: 'Posts to Bluesky 3x/day automatically.' Outcome: 'Your account stays active even when you have nothing to say.' Same product. Completely different reader response. The outcome version gets saved. The feature version gets scrolled past. One insight that changed every post we write.",
     "image_prompt": "split screen showing feature-based copy vs outcome-based copy, dark UI design, A/B test aesthetic",
     "category": "marketing_lesson",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-005",
@@ -37,7 +49,10 @@
     "content": "Posting at consistent times beats random posting even with the same content quality. Fixed slots at 8am, 1pm, 8pm JST outperform random scheduling in reach. Bluesky rewards consistency more than one-off viral attempts. Not exciting, but that's what 90 days of data looks like.",
     "image_prompt": "line graph showing consistent growth from daily posting, dark analytics dashboard, clean data visualization",
     "category": "insight",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-006",
@@ -45,7 +60,10 @@
     "content": "Who is your product NOT for? Most people can answer who it's for. Almost no one can clearly state who it's not for. Not having that answer is why marketing messages feel fuzzy and don't convert. Clarity on who you're excluding sharpens everything else about how you communicate.",
     "image_prompt": "minimalist design with clear boundary line, product positioning concept, dark aesthetic, sharp typography",
     "category": "insight",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-007",
@@ -53,23 +71,32 @@
     "content": "If your manual posts weren't getting traction, automating them won't fix that — it'll just scale the problem. Automation amplifies what you already have, good or bad. This is why content quality has to come first, then consistency. A weak message published 3x/day is just consistently weak.",
     "image_prompt": "amplifier concept, signal wave doubling in size, dark tech aesthetic, minimal clean design",
     "category": "insight",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-008",
     "topic": "Small business owners post but skip the research",
-    "content": "Most small business owners spend 80% of their effort creating content and 0% researching what their customers actually want to hear. Growl flips this: 5 minutes of market research before you write anything. Content that matches what customers are already searching for converts. Content that doesn't, doesn't.",
+    "content": "Most small business owners spend 80% of their effort creating content and 0% researching what their customers actually want to hear. Growl flips this: 5 minutes of market research before you write anything. Content that matches what customers are already searching for converts. Content that doesn't, doesn't. See it: growl-ai.com",
     "image_prompt": "research dashboard showing competitor data and customer insights, dark UI, clean data visualization",
     "category": "growl_cta",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-009",
     "topic": "The competitor research most solopreneurs skip",
-    "content": "What are your competitors saying? What do their unhappy customers complain about? Where are the gaps in the market they're not filling? This is what Growl surfaces automatically — real data from Amazon, Rakuten, review sites. No guessing. No hours of manual research.",
+    "content": "What are your competitors saying? What do their unhappy customers complain about? Where are the gaps in the market they're not filling? This is what Growl surfaces automatically — real data from Amazon, Rakuten, review sites. No guessing. No hours of manual research. Try it free: growl-ai.com",
     "image_prompt": "competitive landscape map, dark minimal design, data points connecting competitor brands",
     "category": "growl_cta",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-010",
@@ -77,7 +104,10 @@
     "content": "Posting more without knowing your audience is just making more noise. The accounts that grow aren't posting more — they're posting more precisely. Sage AI handles the consistency side. The strategy side is knowing what your audience actually cares about.",
     "image_prompt": "precision targeting concept, bullseye with single arrow, dark minimal aesthetic, clean design",
     "category": "soft_cta",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-011",
@@ -85,7 +115,10 @@
     "content": "The hardest part of building in public isn't the technical stuff — it's posting when the numbers are bad. The people who eventually break through are almost always the ones who kept going through the quiet period. The quiet period is not a sign to stop. It's the cost of entry.",
     "image_prompt": "solo developer at desk late at night, quiet city outside, persistent builder aesthetic, dark minimal",
     "category": "build_in_public",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-012",
@@ -93,7 +126,10 @@
     "content": "★5 reviews tell you why people buy. ★2-3 reviews tell you why they leave. Most marketing focuses on the first. The real opportunity is in the second — those complaints are your differentiation. If every competitor gets the same ★3 complaint, solving that one thing is your positioning.",
     "image_prompt": "star rating breakdown chart, 2-3 star reviews highlighted, dark data visualization, minimal design",
     "category": "marketing_lesson",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-013",
@@ -101,7 +137,10 @@
     "content": "No weekly planning meetings. No content calendar. Sage AI rotates through 6 content types — builder updates, insights, marketing lessons, questions, soft CTAs, product posts — in a fixed cycle. The rotation itself is the strategy. The system decides what to post. You decide whether to keep it running.",
     "image_prompt": "rotating content wheel with 6 categories, dark minimal design, automated system aesthetic",
     "category": "build_in_public",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-014",
@@ -109,7 +148,10 @@
     "content": "Most AI content tools generate text that sounds like it was written by someone who has never run a real business. The fix: ground the AI in real data — actual competitor reviews, real market research, specific product context. Generic prompts produce generic content. Specificity is what makes AI output worth reading.",
     "image_prompt": "AI brain connected to real-world data sources, dark tech aesthetic, data flow visualization",
     "category": "insight",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-015",
@@ -117,7 +159,10 @@
     "content": "What would a customer lose if your product disappeared tomorrow? Not 'what do you offer' — what would they actually miss? If the answer is vague, your positioning is vague. If the answer is specific and painful, you have something real. This question is worth sitting with before writing any marketing copy.",
     "image_prompt": "single question mark on dark background, contemplative minimal design, soft lighting",
     "category": "question",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-016",
@@ -125,7 +170,10 @@
     "content": "Built a free diagnosis tool for small biz marketing. Then took it myself. Scored C. Thought I was doing okay — turns out I had blindspots in review response and content consistency. Running your own diagnosis before building a strategy is like checking ingredients before cooking. Free tool here if you want to try: growl-ai.com/diagnosis",
     "image_prompt": "dashboard showing self-diagnosis score C, honest self-reflection, dark minimal UI",
     "category": "build_in_public",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-017",
@@ -133,7 +181,10 @@
     "content": "Spent 30 seconds answering 5 questions about how I market. The AI told me my biggest gap is review management — not posting frequency, not hashtags. I was ignoring the one thing that actually builds trust. One fix: reply to the 12 unread Google reviews sitting in my inbox. That one action matters more than 10 new posts.",
     "image_prompt": "Google review notification list on phone screen, dark UI, inbox zero concept",
     "category": "insight",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   },
   {
     "id": "local-018",
@@ -141,6 +192,31 @@
     "content": "Built a marketing diagnosis tool. Scored D. The weakness was obvious in hindsight: I was posting without any plan. The fix wasn't 'post more' — it was 'have one clear action per week.' Gave my own tool a try at growl-ai.com/diagnosis if you're curious about your score.",
     "image_prompt": "score D on dark dashboard, honest founder moment, minimal tech aesthetic",
     "category": "build_in_public",
-    "platform": ["bluesky", "instagram"]
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
+  },
+  {
+    "id": "local-019",
+    "topic": "I wrote 36 free marketing prompts for salon owners",
+    "content": "Spent the week turning what works for restaurants into something salons can use. 36 copy-paste prompts: before/after captions, Google review replies, rebooking texts. Free, no signup. Know a hair or nail salon owner drowning in their own marketing? Send them here: growl-ai.com/templates/salon",
+    "image_prompt": "minimal salon marketing prompt library on a phone screen, clean indigo UI, before-after hair photos",
+    "category": "build_in_public",
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
+  },
+  {
+    "id": "local-020",
+    "topic": "Salon owners are great at hair, not at marketing",
+    "content": "Most salon owners are brilliant with scissors and lost with Instagram. That is not a skill gap, it is a time gap. Growl hands them 3 ready-to-paste marketing actions every week: posts, review replies, rebooking nudges. Built for people who do their own marketing. growl-ai.com",
+    "image_prompt": "busy salon owner checking phone between clients, warm light, candid",
+    "category": "growl_cta",
+    "platform": [
+      "bluesky",
+      "instagram"
+    ]
   }
 ]
